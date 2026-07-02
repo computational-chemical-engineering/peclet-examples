@@ -22,6 +22,15 @@ precision — and the validation trap that makes it *look* inexact.
 *flow · cut-cell IBM · SDF · verification*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Pipe flow — second-order convergence →](examples/pipe-poiseuille/index.qmd)
+The same parabolic flow through a *curved* cylindrical wall, where the cut-cell
+IBM finally shows its genuine O(h²) accuracy — the convergence study the plane
+channel can't give.
+
+*flow · cut-cell IBM · SDF · convergence*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with
