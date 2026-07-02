@@ -40,6 +40,14 @@ analytic viscous rate.
 *flow · projection · unsteady · verification*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Lid-driven cavity vs Ghia →](examples/lid-driven-cavity/index.qmd)
+The most-cited wall-bounded benchmark: a moving lid, a primary vortex and corner
+eddies, with centreline profiles matched to the classic Ghia et al. (1982) data.
+
+*flow · boundary conditions · benchmark*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with

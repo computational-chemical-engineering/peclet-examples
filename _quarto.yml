@@ -29,6 +29,8 @@ website:
             text: "Pipe Poiseuille (curved wall, 2nd order)"
           - href: examples/taylor-green/index.qmd
             text: "Taylor–Green vortex"
+          - href: examples/lid-driven-cavity/index.qmd
+            text: "Lid-driven cavity (vs Ghia)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"
