@@ -27,6 +27,8 @@ website:
             text: "Plane Poiseuille (cut-cell IBM, exact)"
           - href: examples/pipe-poiseuille/index.qmd
             text: "Pipe Poiseuille (curved wall, 2nd order)"
+          - href: examples/taylor-green/index.qmd
+            text: "Taylor–Green vortex"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

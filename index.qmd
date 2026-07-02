@@ -31,6 +31,15 @@ channel can't give.
 *flow · cut-cell IBM · SDF · convergence*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Taylor–Green vortex →](examples/taylor-green/index.qmd)
+An exact unsteady Navier–Stokes solution: advection injects divergence, the
+projection removes it (to ~1e-15), and the kinetic energy decays at exactly the
+analytic viscous rate.
+
+*flow · projection · unsteady · verification*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with
