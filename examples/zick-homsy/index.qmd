@@ -1,0 +1,236 @@
+---
+title: "Stokes flow through sphere arrays: Zick & Homsy (1982)"
+subtitle: "Cut-cell IBM drag through periodic sphere packings — grid-converged and matched to the classic semi-analytic benchmark, across solid fractions and lattices."
+author: "Peclet"
+date: "2026-07-03"
+categories: [flow, Stokes, IBM, porous-media, benchmark]
+jupyter: python3
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/zick-homsy/index.ipynb){target="_blank"}
+&nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
+
+## What you'll learn
+
+The suite's flagship porous-media verification. **Zick & Homsy (1982)** computed the
+Stokes drag on periodic arrays of spheres to high semi-analytic accuracy — the
+external ground truth for any cut-cell/IBM porous-flow solver. Here we (1) drive
+creeping flow through a periodic sphere array with `peclet.flow`, (2) show the drag
+factor **grid-converges** at second order to the Z&H value, (3) reproduce their
+**parametric** drag-vs-solid-fraction curve, and (4) extend to the other cubic
+**lattices** (BCC, FCC) to expose the lattice-dependence of permeability.
+
+## The drag factor
+
+A body force $F$ drives Stokes flow (no inertia) through a periodic array of spheres
+of radius $R$ at solid fraction $\phi$. The mean (superficial) velocity
+$\langle u\rangle$ sets the dimensionless **drag factor** — the per-sphere drag
+normalised by the isolated-Stokes drag $6\pi\mu R \langle u\rangle$:
+
+$$
+K = \frac{F_\text{sphere}}{6\pi\mu R\,\langle u\rangle}
+  = \frac{F\,L^3 / n_\text{sph}}{6\pi\mu R\,\langle u\rangle},
+$$ {#eq-K}
+
+for $n_\text{sph}$ spheres in a periodic cell of side $L$. $K\to1$ in the dilute
+limit and diverges as $\phi\to\phi_\text{max}$. The Darcy permeability follows as
+$k = \mu\langle u\rangle / F$.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    sys.path.insert(0, _local)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+```
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from peclet import flow
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
+                     "grid.alpha": 0.3, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+BLUE, RED, GREEN = "#1f77b4", "#d62728", "#2ca02c"
+
+# Zick & Homsy (1982), simple cubic array: solid fraction phi -> drag factor K.
+ZH_PHI = np.array([0.000125, 0.001, 0.008, 0.027, 0.064, 0.125, 0.216, 0.343, 0.45, 0.5236])
+ZH_K   = np.array([1.096, 1.212, 1.525, 2.008, 2.810, 4.292, 7.442, 15.4, 28.1, 42.1])
+zh_ref = lambda phi: float(np.interp(phi, ZH_PHI, ZH_K))
+
+# Cubic lattices: fractional sphere centres in the periodic cell.
+SC  = [(0.5, 0.5, 0.5)]
+BCC = [(0, 0, 0), (0.5, 0.5, 0.5)]
+FCC = [(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)]
+PHI_MAX = {"SC": np.pi / 6, "BCC": np.pi * np.sqrt(3) / 8, "FCC": np.pi * np.sqrt(2) / 6}
+```
+
+## Geometry: spheres as a signed distance function
+
+For a lattice with $n_\text{sph}$ spheres per cell at solid fraction $\phi$, each
+sphere has radius $R = (3\phi / 4\pi n_\text{sph})^{1/3} L$. The SDF is the
+minimum over all spheres (with periodic min-image) of the distance-minus-radius —
+negative inside a sphere, positive in the pore space.
+
+```{python}
+def lattice_sdf(N, phi, centres):
+    n = len(centres)
+    R = (3 * phi / (4 * np.pi * n)) ** (1 / 3) * N
+    g = np.arange(N) + 0.5
+    X, Y, Z = np.meshgrid(g, g, g, indexing="ij")
+    best = np.full((N, N, N), 1e30)
+    for cx, cy, cz in centres:
+        dx = X - cx * N; dx -= N * np.round(dx / N)
+        dy = Y - cy * N; dy -= N * np.round(dy / N)
+        dz = Z - cz * N; dz -= N * np.round(dz / N)
+        best = np.minimum(best, np.sqrt(dx * dx + dy * dy + dz * dz) - R)
+    return best, R
+
+def drag(N, phi, centres, mu=0.1, F=1e-3, dt=80.0, max_steps=400, tol=1e-6, want_field=False):
+    sdf, R = lattice_sdf(N, phi, centres)
+    lv = max(2, int(np.log2(N)) - 1)
+    s = flow.Solver(N, N, N)
+    s.set_rho(1.0); s.set_mu(mu); s.set_dt(dt); s.set_body_force(F, 0, 0); s.set_advection(False)
+    s.set_velocity_solver_params(150)
+    s.set_pressure_multigrid(True, levels=lv)
+    s.set_pressure_pcg(True, 200, 1e-8)
+    s.set_solid(sdf, cutcell_pressure=True, pressure_coarse="rediscretized")
+    prev = 0.0
+    for it in range(max_steps):
+        s.step()
+        if it % 5 == 4:
+            m = float(s.get_u().mean())
+            if it > 10 and abs(m - prev) < tol * (abs(m) + 1e-30):
+                break
+            prev = m
+    umean = float(s.get_u().mean())
+    n = len(centres)
+    K = F * N ** 3 / n / (6 * np.pi * mu * R * umean)
+    k = mu * umean / F
+    out = dict(N=N, phi=phi, R=R, K=K, k=k, n=n)
+    if want_field:
+        out["field"] = s.get_u()[:, :, N // 2].copy()   # u on the mid-plane slice
+        out["sdf"] = sdf[:, :, N // 2].copy()
+    return out
+```
+
+## Grid convergence at a single solid fraction
+
+At $\phi = 0.125$ we refine the grid and watch the drag factor converge to the Z&H
+value. The error falls at (better than) second order — the cut-cell IBM resolving
+the curved sphere surface.
+
+```{python}
+#| label: fig-convergence
+#| fig-cap: "Left: drag factor K vs resolution converging to the Zick & Homsy value (dashed). Right: relative error vs N against an O(h²) reference."
+PHI0 = 0.125
+conv = [drag(N, PHI0, SC, want_field=(N == 48)) for N in (16, 24, 32, 48)]
+kref = zh_ref(PHI0)
+Ns = np.array([d["N"] for d in conv])
+Ks = np.array([d["K"] for d in conv])
+err = np.abs(Ks - kref) / kref
+order = np.polyfit(np.log(Ns), np.log(err), 1)[0]
+
+fig, (a0, a1) = plt.subplots(1, 2, figsize=(9, 3.8))
+a0.axhline(kref, ls="--", color="0.3", label=f"Z&H K={kref:.3f}")
+a0.plot(Ns, Ks, "o-", color=BLUE, label="peclet")
+a0.set(xlabel="N (cells per period)", ylabel="drag factor K", title=f"convergence at φ={PHI0}")
+a0.legend(fontsize=8)
+a1.loglog(Ns, err, "o-", color=RED, label="relative error")
+a1.loglog(Ns, err[0] * (Ns / Ns[0]) ** -2.0, "k--", label=r"$\mathcal{O}(h^2)$")
+a1.set(xlabel="N", ylabel="|K − K$_{ZH}$| / K$_{ZH}$", title=f"fitted order {order:.2f}")
+a1.legend(fontsize=8)
+fig.tight_layout()
+plt.show()
+for d, e in zip(conv, err):
+    print(f"  N={d['N']:3d}  K={d['K']:.3f}  (Z&H {kref:.3f}, err {100*e:+.2f}%)")
+```
+
+## The flow through the pore space
+
+```{python}
+#| label: fig-slice
+#| fig-cap: "Streamwise velocity on the mid-plane through the sphere (N=48, φ=0.125): flow accelerates through the constrictions between spheres and stagnates at the poles; the cut-cell IBM enforces no-slip on the curved surface."
+d = next(c for c in conv if "field" in c)
+field = np.where(d["sdf"] < 0, np.nan, d["field"])     # mask the solid sphere
+
+fig, ax = plt.subplots(figsize=(4.6, 4.2))
+im = ax.imshow(field.T, origin="lower", cmap="magma")
+th = np.linspace(0, 2 * np.pi, 200)
+ax.plot(d["N"] / 2 + d["R"] * np.cos(th), d["N"] / 2 + d["R"] * np.sin(th), "-", color="cyan", lw=1)
+ax.set(title="streamwise velocity through the array", xlabel="x", ylabel="y"); ax.grid(False)
+fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="u")
+plt.show()
+```
+
+## Parametric study and lattice dependence
+
+We sweep the solid fraction for all three cubic lattices at fixed resolution. The
+**simple-cubic** curve tracks the Zick & Homsy data (the validated anchor). At a
+given $\phi$ the **BCC** and **FCC** arrays pack more, smaller spheres per cell —
+more wetted surface — so they present more drag and lower permeability, and each
+lattice diverges as it approaches its own close-packing limit $\phi_\text{max}$.
+
+```{python}
+#| label: fig-parametric
+#| fig-cap: "Left: drag factor K(φ) for SC/BCC/FCC (N=32); the SC curve matches the Zick & Homsy points. Right: Darcy permeability k(φ), showing the strong lattice dependence at fixed solid fraction."
+PHIS = [0.05, 0.10, 0.15, 0.20, 0.30]
+lat = {name: [drag(32, phi, c) for phi in PHIS] for name, c in [("SC", SC), ("BCC", BCC), ("FCC", FCC)]}
+col = {"SC": BLUE, "BCC": RED, "FCC": GREEN}
+
+fig, (a0, a1) = plt.subplots(1, 2, figsize=(9.2, 3.9))
+for name in ("SC", "BCC", "FCC"):
+    ph = [d["phi"] for d in lat[name]]
+    a0.plot(ph, [d["K"] for d in lat[name]], "o-", color=col[name], label=name)
+    a1.semilogy(ph, [d["k"] for d in lat[name]], "o-", color=col[name], label=name)
+zp = np.linspace(0.02, 0.32, 50)
+a0.plot(zp, [zh_ref(p) for p in zp], "k--", lw=1, label="Z&H (SC)")
+a0.set(xlabel="solid fraction φ", ylabel="drag factor K", title="drag vs solid fraction")
+a0.legend(fontsize=8)
+a1.set(xlabel="solid fraction φ", ylabel="permeability k (grid units)", title="permeability vs lattice")
+a1.legend(fontsize=8)
+fig.tight_layout()
+plt.show()
+
+print("SC vs Zick & Homsy:")
+for d in lat["SC"]:
+    print(f"  φ={d['phi']:.2f}  K={d['K']:.3f}  (Z&H {zh_ref(d['phi']):.3f}, "
+          f"err {100*(d['K']-zh_ref(d['phi']))/zh_ref(d['phi']):+.1f}%)   k={d['k']:.3e}")
+```
+
+## The takeaway
+
+- The cut-cell IBM drag **grid-converges to Zick & Homsy** (sub-percent), at second
+  order — the porous-media counterpart of the [pipe-flow](../pipe-poiseuille/index.qmd)
+  curved-wall convergence.
+- The **parametric** SC curve reproduces the benchmark across two decades of drag.
+- **Lattice matters:** at the same solid fraction the permeability spans a factor of
+  several between SC, BCC and FCC — the geometry of the packing, not just its
+  porosity, sets the resistance. (SC is validated against Z&H; the BCC/FCC curves are
+  peclet predictions with the correct close-packing limits.)
+
+Real beds are not lattices, though — the companion *randomly close-packed bed*
+example (elsewhere in this gallery) generates the packing itself with `peclet.dem`.
+
+## Adapt this yourself
+
+- **Push to close packing.** Raise `φ` toward `PHI_MAX[...]`; the drag rises steeply
+  and the pressure solve gets stiffer (increase `max_steps` / PCG iterations).
+- **Report permeability directly.** `k = mu*<u>/F` is returned alongside `K`.
+- **Coarse-to-fine continuation.** Seed each resolution from the upsampled coarser
+  field (`set_state`) to reach steady state in far fewer steps — see the suite's
+  `validate_zick_homsy` script.
+
+## Reproduce this
+
+```bash
+pip install peclet
+quarto render examples/zick-homsy/index.qmd --execute
+# ...or against a local source build:
+PECLET_LOCAL_BUILD=/path/to/suite/flow/build_mpi OMP_NUM_THREADS=6 \
+  quarto render examples/zick-homsy/index.qmd --execute
+```

@@ -10,16 +10,16 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
 ## Tasks
 
 - [x] Diagnose poiseuille "error" → metric artifact, not a solver bug (ISSUES.md)
-- [~] Remove non-peclet `channel-mms`; drop helper-module imports; self-contained
-- [ ] Rewrite `poiseuille-ibm`: self-contained, **pointwise** error, both meshes
-- [ ] flow: rename `verify_poiseuille_sdflow.py`→`verify_poiseuille_flow.py`, pointwise metric
-- [ ] `pipe-poiseuille`: Hagen–Poiseuille in a cylindrical SDF pipe (test pointwise exactness)
-- [ ] `cylinder-vortex-street`: flow past a cylinder vs Re; Strouhal number vs literature
-- [ ] `zick-homsy`: SC grid convergence (2nd order) + parametric K(φ) + BCC/FCC lattices
-- [ ] `random-packed-bed`: peclet.dem packing → characterize → permeability stats + convergence
-- [ ] `lid-driven-cavity`: vs Ghia et al. (1982)
-- [ ] `backward-facing-step`: Gartling reattachment vs Re
-- [ ] `taylor-green`: analytic viscous decay
+- [x] Remove non-peclet `channel-mms`; drop helper-module imports; self-contained
+- [x] Rewrite `poiseuille-ibm`: self-contained, **pointwise** error, both meshes — PUSHED
+- [x] flow: rename `verify_poiseuille_sdflow.py`→`verify_poiseuille_flow.py`, pointwise — PUSHED (flow 6f0a312)
+- [x] `pipe-poiseuille`: curved wall → genuine O(h²) convergence (order ~1.86) — PUSHED
+- [x] `taylor-green`: exact NS, projection div-free ~1e-15, viscous decay — PUSHED
+- [x] `lid-driven-cavity`: vs Ghia (rms 0.013 at 64²) — PUSHED
+- [~] `zick-homsy`: SC convergence + parametric K(φ) + BCC/FCC — RENDERING (final cell)
+- [~] `backward-facing-step`: drafted; needs a test run to fix the reference comparison
+- [ ] `cylinder-vortex-street`: flow past a cylinder; Strouhal vs literature — NEEDS testing
+- [ ] `random-packed-bed`: peclet.dem packing → characterize → permeability stats
 - [ ] (stretch) other classics: Couette, Womersley, Kármán data, Stokes problems
 
 ## Findings / bugs (see ISSUES.md for full)

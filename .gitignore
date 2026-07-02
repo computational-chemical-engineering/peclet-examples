@@ -24,3 +24,7 @@ dist/
 # (small PNGs + result JSON) are committed so the Pages CI can render without a GPU.
 
 /.quarto/
+
+# stray root render artifacts (single-file renders)
+/*.html
+/site_libs/

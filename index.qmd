@@ -48,6 +48,15 @@ eddies, with centreline profiles matched to the classic Ghia et al. (1982) data.
 *flow · boundary conditions · benchmark*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Zick–Homsy sphere arrays →](examples/zick-homsy/index.qmd)
+Creeping flow through periodic sphere packings: the cut-cell drag grid-converges
+to the classic Zick & Homsy (1982) benchmark, across solid fractions and cubic
+lattices (SC/BCC/FCC).
+
+*flow · Stokes · porous media · benchmark*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with

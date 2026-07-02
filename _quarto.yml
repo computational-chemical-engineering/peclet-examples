@@ -31,6 +31,8 @@ website:
             text: "Taylor–Green vortex"
           - href: examples/lid-driven-cavity/index.qmd
             text: "Lid-driven cavity (vs Ghia)"
+          - href: examples/zick-homsy/index.qmd
+            text: "Zick–Homsy sphere arrays"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"
