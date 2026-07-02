@@ -6,14 +6,14 @@ primitives they build on. Built with [Quarto](https://quarto.org): each example 
 executed to produce its figures and numbers, ships as a downloadable notebook, and
 links back to the exact solver API it uses.
 
-**Live site:** https://peclet-suite.github.io/peclet-examples *(published by CI)*
+**Live site:** https://computational-chemical-engineering.github.io/peclet-examples *(published by CI)*
 
 ## Examples
 
 | Example | Methods | Runs where |
 |---|---|---|
 | [Channel MMS](examples/channel-mms/) | finite differences · MMS · grid convergence | anywhere (pure NumPy) |
-| [Poiseuille cut-cell IBM](examples/poiseuille-ibm/) | cut-cell IBM · SDF · projection | hardware with `peclet` (frozen for CI) |
+| [Poiseuille cut-cell IBM](examples/poiseuille-ibm/) | cut-cell IBM · SDF · projection | Colab/CPU via the `peclet` PyPI wheel (frozen for CI) |
 
 ## Build locally
 

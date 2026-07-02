@@ -52,7 +52,7 @@ reflects the scheme's true rate.
 import importlib.util, subprocess, sys
 if importlib.util.find_spec("peclet_examples") is None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                    "peclet-examples @ git+https://github.com/peclet-suite/peclet-examples"], check=True)
+                    "peclet-examples @ git+https://github.com/computational-chemical-engineering/peclet-examples"], check=True)
 ```
 
 ```{python}

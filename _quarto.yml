@@ -5,8 +5,8 @@ project:
 website:
   title: "Peclet Examples"
   description: "Worked, runnable examples for the peclet simulation suite."
-  site-url: "https://peclet-suite.github.io/peclet-examples"
-  repo-url: "https://github.com/peclet-suite/peclet-examples"
+  site-url: "https://computational-chemical-engineering.github.io/peclet-examples"
+  repo-url: "https://github.com/computational-chemical-engineering/peclet-examples"
   repo-actions: [source, issue]
   page-navigation: true
   navbar:
@@ -22,7 +22,7 @@ website:
             text: "Poiseuille with cut-cell IBM (peclet)"
     right:
       - icon: github
-        href: "https://github.com/peclet-suite/peclet-examples"
+        href: "https://github.com/computational-chemical-engineering/peclet-examples"
       - icon: youtube
         href: "https://www.youtube.com/"      # -> Peclet channel
 
