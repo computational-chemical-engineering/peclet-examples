@@ -7,6 +7,9 @@ categories: [flow, IBM, cut-cell, SDF, verification]
 jupyter: python3
 ---
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/poiseuille-ibm/index.ipynb){target="_blank"}
+&nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
+
 ## What you'll learn
 
 How to drive `peclet`'s incompressible flow solver, define solid geometry with a

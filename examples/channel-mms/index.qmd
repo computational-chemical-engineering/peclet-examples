@@ -7,6 +7,9 @@ categories: [verification, finite-differences, numpy]
 jupyter: python3
 ---
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/channel-mms/index.ipynb){target="_blank"}
+&nbsp;Pure NumPy — runs anywhere, no GPU or solver install needed.
+
 ## What you'll learn
 
 How to **verify** a discrete momentum solver without an analytical solution to

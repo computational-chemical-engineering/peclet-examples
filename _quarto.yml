@@ -1,6 +1,13 @@
 project:
   type: website
   output-dir: _site
+  # Author in .qmd; the committed .ipynb copies exist only for the "Open in Colab"
+  # buttons, so keep them out of the site render (they'd collide with index.html).
+  render:
+    - "index.qmd"
+    - "examples/**/*.qmd"
+    - "STYLE_GUIDE.md"
+    - "ISSUES.md"
 
 website:
   title: "Peclet Examples"
