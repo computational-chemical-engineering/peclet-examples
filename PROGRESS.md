@@ -16,11 +16,22 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
 - [x] `pipe-poiseuille`: curved wall → genuine O(h²) convergence (order ~1.86) — PUSHED
 - [x] `taylor-green`: exact NS, projection div-free ~1e-15, viscous decay — PUSHED
 - [x] `lid-driven-cavity`: vs Ghia (rms 0.013 at 64²) — PUSHED
-- [~] `zick-homsy`: SC convergence + parametric K(φ) + BCC/FCC — RENDERING (final cell)
-- [~] `backward-facing-step`: drafted; needs a test run to fix the reference comparison
-- [ ] `cylinder-vortex-street`: flow past a cylinder; Strouhal vs literature — NEEDS testing
-- [ ] `random-packed-bed`: peclet.dem packing → characterize → permeability stats
+- [x] `zick-homsy`: SC convergence (+1.74%→+0.08%) + parametric K(φ) + BCC/FCC — PUSHED
+- [~] `random-packed-bed`: dem LS packing (φ=0.64, Z~5.5) → characterize (ε,Z,g(r)) →
+      permeability (Carman–Kozeny) + convergence + stats — RENDERING in background
+- [!] `backward-facing-step`: drafted, but too slow to converge on CPU (>5min/Re,
+      didn't finish). Held back (unfrozen). COMPUTE-BOUND — needs GPU or a long run.
+- [!] `cylinder-vortex-street`: immersed-body + inflow/outflow. cutcell_pressure=True
+      NaNs (see ISSUES); mode B stable but wake won't converge on CPU in 5min.
+      COMPUTE-BOUND. Documented; will best-effort a background render if time.
 - [ ] (stretch) other classics: Couette, Womersley, Kármán data, Stokes problems
+
+## Findings logged to ISSUES.md this session
+1. Poiseuille metric artifact (resolved → reframed as exactness demo).
+2. Immersed cut-cell pressure (cutcell_pressure=True) + inflow/outflow → NaN;
+   workaround cutcell_pressure=False + all-fluid pressure. Real peclet.flow issue.
+3. Random-packing permeability slow to converge on CPU (tight throats) — physical.
+4. verify_poiseuille metric was lenient (fixed in flow, pointwise now).
 
 ## Findings / bugs (see ISSUES.md for full)
 - Poiseuille metric artifact (resolved — reframed as exactness demo)

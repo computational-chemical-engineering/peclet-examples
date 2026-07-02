@@ -57,6 +57,15 @@ lattices (SC/BCC/FCC).
 *flow · Stokes · porous media · benchmark*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Random packed bed (dem → flow) →](examples/random-packed-bed/index.qmd)
+The first cross-method example: build a random close packing with `peclet.dem`,
+characterise it (porosity, coordination, g(r)), then push Stokes flow through the
+pores with `peclet.flow` and measure permeability vs Carman–Kozeny.
+
+*dem · flow · porous media · multi-method*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with

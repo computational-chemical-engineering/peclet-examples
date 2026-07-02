@@ -33,6 +33,8 @@ website:
             text: "Lid-driven cavity (vs Ghia)"
           - href: examples/zick-homsy/index.qmd
             text: "Zick–Homsy sphere arrays"
+          - href: examples/random-packed-bed/index.qmd
+            text: "Random packed bed (dem → flow)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

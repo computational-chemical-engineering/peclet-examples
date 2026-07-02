@@ -51,6 +51,45 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
      reason and would not catch a genuine first-order regression. Tighten it to
      assert the pointwise node error (~1e-6), which actually tests method order.
 
+## Immersed cut-cell pressure + inflow/outflow domain BCs → divergence / NaN
+- **Status:** open (worked around in examples)
+- **Package / area:** flow — combining `set_solid(..., cutcell_pressure=True)` with
+  inflow/outflow domain BCs (`set_domain_bc` type 2/3)
+- **Found in:** prototyping the cylinder-in-channel examples
+- **Observed:** flow past an immersed cylinder (SDF) in a channel with a uniform
+  inflow + outflow, using the cut-cell pressure operator (`cutcell_pressure=True`),
+  runs with elevated flux divergence (~1e-5, vs ~1e-8 for pure-IBM/periodic cases)
+  and blows up to NaN over a few thousand steps at dt=0.3.
+- **Expected:** a stable steady/periodic wake with divergence at solver tolerance.
+- **Repro:** `flow.Solver(L,H,nz)` with an immersed-cylinder SDF via
+  `set_solid(sdf, cutcell_pressure=True)`, `set_domain_bc(0,2,U,0,0)` inflow +
+  `set_domain_bc(1,3)` outflow + no-slip ±y; dt=0.3, several thousand steps.
+- **Workaround:** `cutcell_pressure=False` + `set_pressure_geometry(all-fluid)` — the
+  velocity IBM enforces no-slip on the body while the pressure operator is all-fluid;
+  this is stable (div ~1e-8). Physically the body's pressure blockage is then only
+  weakly represented, so a bluff-body drag would be approximate.
+- **Notes:** The suite's inflow/outflow cases (channel, BFS) use `set_pressure_geometry`
+  (no immersed solid) and are fine; the immersed-solid cut-cell pressure operator has
+  only been exercised with periodic/body-force forcing. The combination *cut-cell
+  pressure operator + domain inflow/outflow openness* looks like the missing/untested
+  path (the boundary-face openness may not be composed with the cut-cell coarse
+  operator). Likely the "inflow/outflow issue" worth fixing in `peclet.flow`.
+
+## Pore-scale (random packing) permeability converges slowly on CPU
+- **Status:** documented (physical/practical, not a bug)
+- **Package / area:** flow (cut-cell Stokes) — resolution demand for random packings
+- **Found in:** examples/random-packed-bed
+- **Observed:** Stokes solves through a random close packing hit the step cap without
+  a tight steady-state and the permeability is resolution-sensitive at N≤64 (tight
+  pore throats only a few cells wide); k ≈ 1.0e-3 vs Carman–Kozeny ≈ 6.3e-4.
+- **Expected:** grid-converged k (as for the smooth Zick–Homsy lattice, which
+  converges cleanly at these N).
+- **Notes:** Not a solver bug — near-touching grains make the limiting throats
+  under-resolved on CPU-affordable grids. The example is written honestly around this
+  (characterisation + trend + caveat); grid-converged random-bed permeability needs
+  the GPU build for finer grids. Continuation seeding (coarse→fine `set_state`) would
+  also help the solve reach steady state in fewer steps.
+
 ## Inflow/outflow channel diverges to NaN at low resolution
 - **Status:** open
 - **Package / area:** flow — inflow/outflow domain BC + semi-coarsening pressure MG
