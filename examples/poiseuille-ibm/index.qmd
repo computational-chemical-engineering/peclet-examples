@@ -1,0 +1,152 @@
+---
+title: "Poiseuille through an SDF channel (cut-cell IBM)"
+subtitle: "The real peclet.flow solver: immersed no-slip walls that don't align with the grid."
+author: "Peclet"
+date: "2026-07-02"
+categories: [flow, IBM, cut-cell, SDF, verification]
+jupyter: python3
+---
+
+## What you'll learn
+
+How to drive `peclet`'s incompressible flow solver, define solid geometry with a
+**signed distance function** (SDF), and validate the **Robust-Scaled cut-cell
+immersed-boundary method** against an analytic solution. This is the
+solver-backed sequel to the [pure-NumPy MMS warm-up](../channel-mms/index.qmd):
+the same plane-Poiseuille physics, but now the no-slip walls are *immersed* — they
+sit at non-integer $y$, so most wall cells are **cut** and the solver must handle
+the partial cell openness exactly.
+
+## The setup
+
+A constant body force $F$ (a force per unit volume, equal to $-\mathrm{d}p/\mathrm{d}x$)
+pushes fluid down a channel of clear height $H$ between two walls. The steady,
+fully developed profile is the analytic parabola with peak velocity
+
+$$
+U_{\max} = \frac{F\,H^2}{8\,\mu}.
+$$ {#eq-umax}
+
+The walls are described by an SDF that is **negative inside the solid** (peclet's
+sign convention) and zero on the wall surface. Placing the walls at
+$y=\text{round}(0.3\,N)+\tfrac12$ and $y=\text{round}(0.7\,N)+\tfrac12$ puts them
+*between* grid nodes, so the solver exercises its cut-cell machinery rather than a
+lucky grid-aligned special case.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+# Makes this notebook run out-of-the-box on Colab/Binder — a real user just needs
+# the published packages. On first run it installs them; on a machine that already
+# has peclet (or a local source build via PECLET_LOCAL_BUILD) it does nothing.
+import importlib.util, os, subprocess, sys
+
+def _missing(mod): return importlib.util.find_spec(mod) is None
+def _pip(*pkgs): subprocess.run([sys.executable, "-m", "pip", "install", "-q", *pkgs], check=True)
+
+if _missing("peclet_examples"):        # this gallery's small helper package
+    _pip("peclet-examples @ git+https://github.com/peclet-suite/peclet-examples")
+if _missing("peclet") and not os.environ.get("PECLET_LOCAL_BUILD"):
+    _pip("peclet")                     # the solver, from PyPI — like a real user
+```
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from peclet_examples import channels
+
+# The SDF for the N=64 channel: a slab of fluid between two solid walls.
+res = channels.channel_sdf(8, 64, 8, ylo=round(0.3*64)+0.5, yhi=round(0.7*64)+0.5)
+print("SDF sign convention: <0 solid, >0 fluid.  min/max:", res.min(), res.max())
+```
+
+## Solve at three resolutions
+
+`channels.solve(N)` builds a `peclet.flow.Solver`, sets physical units
+(`set_rho`/`set_mu`/`set_dt`), applies the body force and the SDF walls
+(`set_solid(..., cutcell_pressure=False)` — the flow is $x$-independent so the
+pressure projection is a no-op), and marches to steady state.
+
+```{python}
+results = channels.convergence(Ns=(16, 32, 64))
+for r in results:
+    print(f"N={r['N']:3d}  H={r['H']:5.1f}  U_max(sim)={r['U_sim']:.5f}  "
+          f"U_max(ana)={r['U_ana']:.5f}  err={r['err']:.3f}%")
+```
+
+## The recovered profile
+
+At the finest resolution the cut-cell solution sits on the analytic parabola,
+including the near-wall cells that are only partially open.
+
+```{python}
+#| label: fig-profile
+#| fig-cap: "N=64 cut-cell IBM velocity profile (markers) against the analytic Poiseuille parabola (line). Shaded bands are the immersed solid walls."
+r = results[-1]
+yc = 0.5 * (r["ylo"] + r["yhi"])                      # channel centre
+ana = np.where((r["y"] > r["ylo"]) & (r["y"] < r["yhi"]),
+               r["U_ana"] * (1.0 - ((r["y"] - yc) / (0.5 * r["H"]))**2), np.nan)
+
+fig, ax = plt.subplots(figsize=(4.6, 3.8))
+ax.axhspan(r["y"][0], r["ylo"], color="0.85", label="solid wall")
+ax.axhspan(r["yhi"], r["y"][-1], color="0.85")
+ax.plot(ana, r["y"], "k-", label="analytic parabola")
+ax.plot(r["u"], r["y"], "o", ms=4, label="cut-cell IBM (N=64)")
+ax.set(xlabel="u(y)", ylabel="y", title="Poiseuille through immersed walls")
+ax.legend(loc="upper right", fontsize=8)
+plt.show()
+```
+
+## Order of accuracy
+
+The peak-velocity error shrinks as the grid is refined — the cut-cell method
+converges toward @eq-umax.
+
+```{python}
+#| label: fig-convergence
+#| fig-cap: "Peak-velocity error versus wall-to-wall resolution N."
+Ns = np.array([r["N"] for r in results])
+errs = np.array([r["err"] for r in results])
+
+fig, ax = plt.subplots(figsize=(4.6, 3.6))
+ax.loglog(Ns, errs, "o-")
+ax.set(xlabel="N (wall-to-wall cells)", ylabel="peak-velocity error (%)",
+       title="Cut-cell IBM grid convergence")
+ax.grid(True, which="both", alpha=0.3)
+plt.show()
+```
+
+The error falls from ~2.8% at $N=16$ to ~0.15% at $N=64$ — sub-percent accuracy
+on immersed walls that never touch a grid line.
+
+## Adapt this yourself
+
+- **Change the geometry.** Swap `channel_sdf` for any SDF array (`<0` inside
+  solid): a tilted channel, a wavy wall, a sphere packing. The cut-cell solver
+  treats them all the same — see the packed-bed permeability example (coming
+  soon) for `dem` packing → SDF → `flow`.
+- **Add pressure coupling.** For flow that varies along $x$, set
+  `cutcell_pressure=True` and give the pressure Poisson a real multigrid budget
+  (`set_pressure_multigrid`, `set_pressure_pcg`).
+- **Go multi-rank.** The identical script runs under `mpirun -np N python …`;
+  `get_u()`/`get_p()` are collective gathers returning the field on rank 0.
+
+## Reproduce this
+
+This example runs the compiled solver, so its outputs are **frozen** into the
+site. To regenerate them:
+
+```bash
+pip install -e .[sim]         # helpers + the peclet solver from PyPI
+quarto render examples/poiseuille-ibm/index.qmd --execute
+
+# ...or, authoring against a local source build of the suite (no wheel needed):
+PECLET_LOCAL_BUILD=/path/to/suite/flow/build_mpi \
+  OMP_NUM_THREADS=4 quarto render examples/poiseuille-ibm/index.qmd --execute
+```
+
+::: {.callout-note}
+The full solver reference lives in the `flow` project
+(`scripts/verify_poiseuille_sdflow.py` is this case as a standalone script; the
+solver API is documented in `flow/CLAUDE.md`).
+:::

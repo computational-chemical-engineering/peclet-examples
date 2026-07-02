@@ -1,0 +1,62 @@
+name: Publish gallery to GitHub Pages
+
+# Render the Quarto site and deploy it to Pages on every push to main.
+#
+# Execution model: examples are executed by their authors and their outputs are
+# committed under _freeze/ (see README). This job therefore RENDERS ONLY — it
+# never needs a GPU or the compiled peclet solver. `quarto render` replays the
+# frozen outputs; only pages whose source changed without a matching freeze
+# would re-execute (the pure-NumPy ones can, the solver-backed ones must be
+# pre-frozen).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Lightweight deps only: the helpers + NumPy/Matplotlib for any page that
+      # re-executes. The heavy `peclet` solver is intentionally NOT installed —
+      # its pages render from _freeze/.
+      - name: Install helpers
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install jupyter nbclient nbformat
+
+      - name: Render site
+        run: quarto render
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

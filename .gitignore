@@ -1,0 +1,26 @@
+# Quarto render output (published to Pages by CI, not committed)
+/_site/
+.quarto/
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+build/
+dist/
+
+# Large binary assets NEVER live in git — see README "Large files".
+# Videos -> YouTube (embed). Datasets / fields -> Zenodo or Release assets (fetch via pooch).
+*.mp4
+*.mov
+*.webm
+*.vti
+*.vtp
+*.vtu
+*.h5
+*.npz
+
+# NOTE: _freeze/ is intentionally NOT ignored — the frozen execution outputs
+# (small PNGs + result JSON) are committed so the Pages CI can render without a GPU.
+
+/.quarto/

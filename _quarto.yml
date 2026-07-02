@@ -1,0 +1,45 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Peclet Examples"
+  description: "Worked, runnable examples for the peclet simulation suite."
+  site-url: "https://peclet-suite.github.io/peclet-examples"
+  repo-url: "https://github.com/peclet-suite/peclet-examples"
+  repo-actions: [source, issue]
+  page-navigation: true
+  navbar:
+    logo: ""
+    left:
+      - href: index.qmd
+        text: Home
+      - text: Examples
+        menu:
+          - href: examples/channel-mms/index.qmd
+            text: "Channel MMS (NumPy warm-up)"
+          - href: examples/poiseuille-ibm/index.qmd
+            text: "Poiseuille with cut-cell IBM (peclet)"
+    right:
+      - icon: github
+        href: "https://github.com/peclet-suite/peclet-examples"
+      - icon: youtube
+        href: "https://www.youtube.com/"      # -> Peclet channel
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-tools: true
+    code-link: true
+    highlight-style: github
+    fig-cap-location: bottom
+
+# Execute examples locally (or on a GPU runner), commit the cached outputs under
+# _freeze/, and let the Pages CI *render only*. This keeps the public build free
+# of any GPU / heavy-solver dependency. `quarto render` re-executes a page only
+# when its source changes; force a refresh with `quarto render --execute`.
+execute:
+  freeze: auto
+
+bibliography: references.bib

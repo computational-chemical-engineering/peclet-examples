@@ -1,0 +1,43 @@
+---
+title: "Peclet Examples"
+subtitle: "See what's possible — then copy, run, and adapt."
+toc: false
+---
+
+Worked, **runnable** examples for the [`peclet`](https://pypi.org/project/peclet/)
+simulation suite: GPU-accelerated particle dynamics, CFD, and the spatial-indexing
+primitives they build on. Every example is executed to produce the figures and
+numbers you see, ships its source as a downloadable notebook, and links back to
+the exact solver API it uses.
+
+New here? Start with the NumPy warm-up, then see the same physics solved by the
+real cut-cell immersed-boundary solver.
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+### [Channel flow: the Method of Manufactured Solutions →](examples/channel-mms/index.qmd)
+Verify a finite-difference momentum solve against an exact, self-manufactured
+profile and measure its order of accuracy — pure NumPy, runs anywhere.
+
+*Methods: finite differences · MMS · grid convergence*
+:::
+
+::: {.g-col-12 .g-col-md-6}
+### [Poiseuille through an SDF channel (peclet) →](examples/poiseuille-ibm/index.qmd)
+The real thing: `peclet.flow`'s Robust-Scaled **cut-cell immersed-boundary**
+solver drives body-force channel flow past non-grid-aligned walls and recovers
+the analytic parabola to a fraction of a percent.
+
+*Methods: cut-cell IBM · SDF geometry · pressure projection · grid convergence*
+:::
+
+:::
+
+::: {.callout-note}
+## How these run
+Lightweight examples execute in CI and in the browser (Binder/Colab). Solver-backed
+examples are executed on hardware with `peclet` installed, and their outputs are
+**frozen** into the site so this page always builds — see each example's *Reproduce
+this* box.
+:::
