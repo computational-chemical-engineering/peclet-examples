@@ -1,8 +1,8 @@
 ---
-title: "Poiseuille through an SDF channel (cut-cell IBM)"
-subtitle: "The real peclet.flow solver: immersed no-slip walls that don't align with the grid."
+title: "Plane Poiseuille flow: the cut-cell IBM is exact on flat walls"
+subtitle: "Body-force channel flow past immersed no-slip walls — reproduced to machine precision."
 author: "Peclet"
-date: "2026-07-02"
+date: "2026-07-03"
 categories: [flow, IBM, cut-cell, SDF, verification]
 jupyter: python3
 ---
@@ -12,144 +12,188 @@ jupyter: python3
 
 ## What you'll learn
 
-How to drive `peclet`'s incompressible flow solver, define solid geometry with a
-**signed distance function** (SDF), and validate the **Robust-Scaled cut-cell
-immersed-boundary method** against an analytic solution. This is the
-solver-backed sequel to the [pure-NumPy MMS warm-up](../channel-mms/index.qmd):
-the same plane-Poiseuille physics, but now the no-slip walls are *immersed* — they
-sit at non-integer $y$, so most wall cells are **cut** and the solver must handle
-the partial cell openness exactly.
+How to drive `peclet`'s incompressible flow solver, describe solid geometry with a
+**signed distance function** (SDF), and — the point of this example — how to
+*correctly* check the **Robust-Scaled cut-cell immersed-boundary method** against an
+analytic solution. The headline result: for flat immersed walls the method
+reproduces the exact velocity profile **to solver tolerance at every resolution**,
+because a second-order scheme is exact on a quadratic and a flat wall is
+represented exactly. (The [cylindrical pipe](../pipe-poiseuille/index.qmd) shows
+what changes when the wall is *curved*.)
 
-## The setup
+## The problem
 
-A constant body force $F$ (a force per unit volume, equal to $-\mathrm{d}p/\mathrm{d}x$)
-pushes fluid down a channel of clear height $H$ between two walls. The steady,
-fully developed profile is the analytic parabola with peak velocity
+A constant body force $F$ (force per unit volume, $=-\mathrm{d}p/\mathrm{d}x$) drives
+fluid down a channel of clear height $H$ between two no-slip walls. The steady,
+fully developed profile is the parabola
 
 $$
-U_{\max} = \frac{F\,H^2}{8\,\mu}.
-$$ {#eq-umax}
+u(y) = \frac{F}{2\mu}\,(y-y_\text{lo})(y_\text{hi}-y), \qquad
+U_{\max} = \frac{F\,H^2}{8\mu},
+$$ {#eq-parab}
 
-The walls are described by an SDF that is **negative inside the solid** (peclet's
-sign convention) and zero on the wall surface. Placing the walls at
-$y=\text{round}(0.3\,N)+\tfrac12$ and $y=\text{round}(0.7\,N)+\tfrac12$ puts them
-*between* grid nodes, so the solver exercises its cut-cell machinery rather than a
-lucky grid-aligned special case.
+which is **exactly quadratic** in $y$. A second-order discretization reproduces a
+quadratic with zero truncation error, so — provided the wall is represented
+exactly — the discrete solution should match @eq-parab at every grid node, at any
+resolution.
 
 ```{python}
 #| label: bootstrap
 #| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
-# Makes this notebook run out-of-the-box on Colab/Binder — a real user just needs
-# the published packages. On first run it installs them; on a machine that already
-# has peclet (or a local source build via PECLET_LOCAL_BUILD) it does nothing.
+# Makes this notebook run out-of-the-box on Colab/Binder. A real user just needs the
+# published package; this installs it on first run. Authors can instead point at a
+# local source build of the suite with the PECLET_LOCAL_BUILD env var.
 import importlib.util, os, subprocess, sys
-
-def _missing(mod): return importlib.util.find_spec(mod) is None
-def _pip(*pkgs): subprocess.run([sys.executable, "-m", "pip", "install", "-q", *pkgs], check=True)
-
-if _missing("peclet_examples"):        # this gallery's small helper package
-    _pip("peclet-examples @ git+https://github.com/computational-chemical-engineering/peclet-examples")
-if _missing("peclet") and not os.environ.get("PECLET_LOCAL_BUILD"):
-    _pip("peclet")                     # the solver, from PyPI — like a real user
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    sys.path.insert(0, _local)                                  # local source build
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
 ```
 
 ```{python}
 import numpy as np
 import matplotlib.pyplot as plt
-from peclet_examples import channels
+from peclet import flow
 
-# The SDF for the N=64 channel: a slab of fluid between two solid walls.
-res = channels.channel_sdf(8, 64, 8, ylo=round(0.3*64)+0.5, yhi=round(0.7*64)+0.5)
-print("SDF sign convention: <0 solid, >0 fluid.  min/max:", res.min(), res.max())
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
+                     "grid.alpha": 0.3, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+BLUE, RED, GREY = "#1f77b4", "#d62728", "0.80"
 ```
 
-## Solve at three resolutions
+## Geometry: two flat walls as an SDF
 
-`channels.solve(N)` builds a `peclet.flow.Solver`, sets physical units
-(`set_rho`/`set_mu`/`set_dt`), applies the body force and the SDF walls
-(`set_solid(..., cutcell_pressure=False)` — the flow is $x$-independent so the
-pressure projection is a no-op), and marches to steady state.
+The SDF is negative inside the solid and positive in the fluid (peclet's
+convention). For a slab of fluid between walls at $y_\text{lo}$ and $y_\text{hi}$,
+the signed distance to the nearer wall is `min(y - ylo, yhi - y)`. Placing the
+walls at **half-integer** $y$ puts them *between* grid nodes, so the wall cells are
+genuinely **cut** — this is not a lucky grid-aligned special case.
 
 ```{python}
-results = channels.convergence(Ns=(16, 32, 64))
-for r in results:
-    print(f"N={r['N']:3d}  H={r['H']:5.1f}  U_max(sim)={r['U_sim']:.5f}  "
-          f"U_max(ana)={r['U_ana']:.5f}  err={r['err']:.3f}%")
+def channel_sdf(nx, ny, nz, ylo, yhi):
+    """sdf[x,y,z] < 0 inside the solid walls, > 0 in the fluid slab (dx = 1)."""
+    gy = np.arange(ny, dtype=np.float64)                 # velocity nodes at integer y
+    sdf = np.empty((nx, ny, nz))
+    sdf[:] = np.minimum(gy - ylo, yhi - gy)[None, :, None]
+    return sdf
+
+# Show the cut: walls at 5.5 / 11.5 leave fluid nodes y = 6..11, wall exactly between nodes.
+sdf_demo = channel_sdf(8, 16, 8, 5.5, 11.5)
+print("SDF along y (x,z fixed):", sdf_demo[4, :, 4])
 ```
 
-## The recovered profile
+## Solve, and compare *pointwise*
 
-At the finest resolution the cut-cell solution sits on the analytic parabola,
-including the near-wall cells that are only partially open.
+We build a staggered-grid `flow.Solver`, set physical units, apply the body force
+and the SDF walls (`cutcell_pressure=False` — the flow is $x$-independent so the
+pressure projection is a no-op), and march to steady state with a large `dt`
+(backward Euler → steady Stokes).
+
+The right way to validate is **pointwise**: compare the computed velocity at each
+fluid node to @eq-parab evaluated *at the same node*. (Comparing the discrete
+`u.max()` to the continuum peak $U_\max$ is a trap — see the note below.)
+
+```{python}
+def solve_channel(N, Solver=flow.Solver, F=0.01, mu=0.1, dt=50.0, max_steps=400):
+    nx, nz = 8, 8
+    ny = N
+    ylo = round(0.30 * ny) + 0.5     # half-integer walls -> cut cells
+    yhi = round(0.70 * ny) + 0.5
+    H = yhi - ylo
+    s = Solver(nx, ny, nz)
+    s.set_rho(1.0); s.set_mu(mu); s.set_dt(dt)
+    s.set_body_force(F, 0.0, 0.0)
+    s.set_velocity_solver_params(200)
+    s.set_pressure_solver_params(1)
+    s.set_solid(channel_sdf(nx, ny, nz, ylo, yhi), cutcell_pressure=False)
+    prev = 0.0
+    for it in range(max_steps):
+        s.step()
+        u = s.get_u()
+        if it > 5 and abs(float(u.max()) - prev) < 1e-10 * (abs(float(u.max())) + 1e-12):
+            break
+        prev = float(u.max())
+    u = s.get_u()[nx // 2, :, nz // 2]
+    gy = np.arange(ny, dtype=float)
+    u_ana = np.where((gy > ylo) & (gy < yhi), (F / (2 * mu)) * (gy - ylo) * (yhi - gy), 0.0)
+    fluid = (gy > ylo) & (gy < yhi)
+    node_err = float(np.max(np.abs(u[fluid] - u_ana[fluid])))
+    return dict(N=N, H=H, ylo=ylo, yhi=yhi, gy=gy, u=u, u_ana=u_ana, fluid=fluid,
+                node_err=node_err, Umax_ana=F * H * H / (8 * mu))
+
+r = solve_channel(32)
+print(f"N=32  H={r['H']}  max|u_node - analytic_node| = {r['node_err']:.3e}   (machine/solver level)")
+```
+
+## The profile sits exactly on the parabola
 
 ```{python}
 #| label: fig-profile
-#| fig-cap: "N=64 cut-cell IBM velocity profile (markers) against the analytic Poiseuille parabola (line). Shaded bands are the immersed solid walls."
-r = results[-1]
-yc = 0.5 * (r["ylo"] + r["yhi"])                      # channel centre
-ana = np.where((r["y"] > r["ylo"]) & (r["y"] < r["yhi"]),
-               r["U_ana"] * (1.0 - ((r["y"] - yc) / (0.5 * r["H"]))**2), np.nan)
+#| fig-cap: "Computed velocity (markers) on the analytic parabola (line); shaded bands are the immersed solid walls. The match is exact to the eye and to ~1e-7 in numbers."
+yy = np.linspace(0, r["gy"][-1], 400)
+ana_c = np.where((yy > r["ylo"]) & (yy < r["yhi"]),
+                 (0.01 / (2 * 0.1)) * (yy - r["ylo"]) * (r["yhi"] - yy), np.nan)
 
-fig, ax = plt.subplots(figsize=(4.6, 3.8))
-ax.axhspan(r["y"][0], r["ylo"], color="0.85", label="solid wall")
-ax.axhspan(r["yhi"], r["y"][-1], color="0.85")
-ax.plot(ana, r["y"], "k-", label="analytic parabola")
-ax.plot(r["u"], r["y"], "o", ms=4, label="cut-cell IBM (N=64)")
-ax.set(xlabel="u(y)", ylabel="y", title="Poiseuille through immersed walls")
+fig, ax = plt.subplots(figsize=(4.6, 4.0))
+ax.axhspan(r["gy"][0], r["ylo"], color=GREY, label="solid wall")
+ax.axhspan(r["yhi"], r["gy"][-1], color=GREY)
+ax.plot(ana_c, yy, "-", color="0.2", lw=1.5, label="analytic parabola")
+ax.plot(r["u"][r["fluid"]], r["gy"][r["fluid"]], "o", color=BLUE, ms=6, label="cut-cell IBM (N=32)")
+ax.set(xlabel="u(y)", ylabel="y", title="Plane Poiseuille through immersed walls")
 ax.legend(loc="upper right", fontsize=8)
 plt.show()
 ```
 
-## Order of accuracy
+## Exact at every resolution, on both meshes
 
-The peak-velocity error shrinks as the grid is refined — the cut-cell method
-converges toward @eq-umax.
+`peclet` offers a staggered MAC grid (`flow.Solver`, the default) and a
+cell-centered/collocated grid (`flow.SolverColocated`). For flat walls **both** are
+exact — the pointwise node error stays at solver-tolerance level as the channel is
+refined (here refinement widens the channel at fixed spacing $h=1$, so $H$ grows).
 
 ```{python}
-#| label: fig-convergence
-#| fig-cap: "Peak-velocity error versus wall-to-wall resolution N."
-Ns = np.array([r["N"] for r in results])
-errs = np.array([r["err"] for r in results])
-
-fig, ax = plt.subplots(figsize=(4.6, 3.6))
-ax.loglog(Ns, errs, "o-")
-ax.set(xlabel="N (wall-to-wall cells)", ylabel="peak-velocity error (%)",
-       title="Cut-cell IBM grid convergence")
-ax.grid(True, which="both", alpha=0.3)
-plt.show()
+#| label: tbl-exact
+print(f"{'N':>4} {'H':>5} {'staggered node err':>20} {'collocated node err':>21}")
+for N in (16, 32, 64):
+    rs = solve_channel(N, flow.Solver)
+    rc = solve_channel(N, flow.SolverColocated)
+    print(f"{N:4d} {rs['H']:5.1f} {rs['node_err']:20.3e} {rc['node_err']:21.3e}")
 ```
 
-The error falls from ~2.8% at $N=16$ to ~0.15% at $N=64$ — sub-percent accuracy
-on immersed walls that never touch a grid line.
+::: {.callout-important}
+## A validation trap: never compare `u.max()` to the continuum peak
+It is tempting to check $U_\max = F H^2/(8\mu)$ against `u.max()`. Don't. The
+discrete maximum is sampled *at a node*, but with half-integer walls the channel
+centre falls on a half-integer — always $0.5h$ from the nearest node. The parabola
+drops by $\tfrac{F}{2\mu}(0.5h)^2$ over that half cell — a **constant** offset,
+independent of resolution — so `u.max()` sits a fixed amount below $U_\max$, and
+dividing by $U_\max\propto H^2$ manufactures a *fake* "converging" error sequence
+(2.8% → 0.7% → 0.15%). It looks like discretization error; it is pure sampling.
+Move the peak onto a node (keeping the walls cut) and `u.max()` matches $U_\max$ to
+$10^{-6}$. Always validate **pointwise**, node-to-node.
+:::
 
 ## Adapt this yourself
 
-- **Change the geometry.** Swap `channel_sdf` for any SDF array (`<0` inside
-  solid): a tilted channel, a wavy wall, a sphere packing. The cut-cell solver
-  treats them all the same — see the packed-bed permeability example (coming
-  soon) for `dem` packing → SDF → `flow`.
-- **Add pressure coupling.** For flow that varies along $x$, set
-  `cutcell_pressure=True` and give the pressure Poisson a real multigrid budget
-  (`set_pressure_multigrid`, `set_pressure_pcg`).
+- **Change the geometry.** Swap `channel_sdf` for any SDF array (`<0` inside solid):
+  a tilted channel, a wavy wall, a sphere packing. The cut-cell solver treats them
+  all the same.
+- **Curve the wall.** A flat wall is represented exactly; a *curved* one is not —
+  see the [cylindrical pipe](../pipe-poiseuille/index.qmd), where the same parabolic
+  flow instead converges at second order.
 - **Go multi-rank.** The identical script runs under `mpirun -np N python …`;
   `get_u()`/`get_p()` are collective gathers returning the field on rank 0.
 
 ## Reproduce this
 
-This example runs the compiled solver, so its outputs are **frozen** into the
-site. To regenerate them:
+The compiled solver runs this, so its outputs are **frozen** into the site. To
+regenerate:
 
 ```bash
-pip install -e .[sim]         # helpers + the peclet solver from PyPI
+pip install peclet            # the solver, from PyPI (CPU wheels run this example)
 quarto render examples/poiseuille-ibm/index.qmd --execute
-
-# ...or, authoring against a local source build of the suite (no wheel needed):
-PECLET_LOCAL_BUILD=/path/to/suite/flow/build_mpi \
-  OMP_NUM_THREADS=4 quarto render examples/poiseuille-ibm/index.qmd --execute
+# ...or against a local source build of the suite (no wheel needed):
+PECLET_LOCAL_BUILD=/path/to/suite/flow/build_mpi OMP_NUM_THREADS=4 \
+  quarto render examples/poiseuille-ibm/index.qmd --execute
 ```
-
-::: {.callout-note}
-The full solver reference lives in the `flow` project
-(`scripts/verify_poiseuille_sdflow.py` is this case as a standalone script; the
-solver API is documented in `flow/CLAUDE.md`).
-:::

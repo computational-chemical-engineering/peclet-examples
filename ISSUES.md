@@ -20,6 +20,37 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 ---
 
+## Poiseuille example reported a fake "convergence" — misleading validation metric
+- **Status:** diagnosed (root cause found); fix pending — see Notes
+- **Package / area:** examples (poiseuille-ibm) + flow `scripts/verify_poiseuille_sdflow.py`
+- **Found in:** examples/poiseuille-ibm — user challenged "a 2nd-order method must
+  reproduce a quadratic exactly, so N=16 should have ~0 error."
+- **Observed:** peak-velocity "error" 2.78% → 0.69% → 0.15% presented as O(h²)
+  convergence of the cut-cell IBM.
+- **Expected:** near-zero error at every resolution (Poiseuille is exactly
+  quadratic; a 2nd-order scheme is exact on quadratics).
+- **Diagnosis (confirmed):** the solver IS exact. Pointwise, the computed profile
+  matches the analytic parabola *at the grid nodes* to ~6e-8 at N=16 (solver
+  tolerance), on BOTH the staggered and collocated meshes (identical). The
+  reported error was a **metric artifact**: `U_max` is the discrete max sampled at
+  a node, but the half-integer walls put the channel centre on a half-integer —
+  always 0.5h from the nearest node — while `U_ana = F H²/(8μ)` is the *continuum*
+  peak. The gap is the parabola's drop over half a cell, `F/(2μ)(0.5h)² = 0.0125`,
+  a CONSTANT independent of N; dividing by `U_ana ∝ H²` fabricates the shrinking
+  percentage. Proof: keep cut cells but shift the peak onto a node (walls
+  10.5/21.5, centre=16.0) → `U_max` matches `U_ana` to 0.000%. Also note the study
+  "refines" at fixed h=1 (H grows 6→12→26), so it isn't spatial refinement anyway.
+- **Fixes:**
+  1. examples/poiseuille-ibm — validate pointwise against the parabola sampled at
+     the same nodes (report max node error ~1e-7 at all N, both meshes); drop the
+     fake log-log convergence plot. A genuine O(h²) convergence demo needs CURVED
+     geometry (Zick–Homsy spheres), where boundary-representation error is the O(h²)
+     term — make that a separate example.
+  2. **flow (suite):** `scripts/verify_poiseuille_sdflow.py` uses the same lenient
+     `U_max`-vs-continuum metric with a 2% tolerance — it PASSES for the wrong
+     reason and would not catch a genuine first-order regression. Tighten it to
+     assert the pointwise node error (~1e-6), which actually tests method order.
+
 ## Inflow/outflow channel diverges to NaN at low resolution
 - **Status:** open
 - **Package / area:** flow — inflow/outflow domain BC + semi-coarsening pressure MG

@@ -23,10 +23,8 @@ website:
         text: Home
       - text: Examples
         menu:
-          - href: examples/channel-mms/index.qmd
-            text: "Channel MMS (NumPy warm-up)"
           - href: examples/poiseuille-ibm/index.qmd
-            text: "Poiseuille with cut-cell IBM (peclet)"
+            text: "Plane Poiseuille (cut-cell IBM, exact)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"
