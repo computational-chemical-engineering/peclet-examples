@@ -53,23 +53,27 @@ jams near random close packing. A final quench settles it into a rigid contact
 network.
 
 ```{python}
-def pack_bed(N=200, phi_ref=0.66, radius=0.5, seed=1, dt=0.002, limit_time=6.0,
-             iters=60, quench=3000):
+def pack_bed(N=180, phi_ref=0.63, radius=0.5, seed=3, dt=0.002, limit_time=7.0, iters=60,
+             temperature=1.0, scale_init=0.05, criterion=5e-3, cooling_time=5.0, quench=1200,
+             growth_accel=1.02, growth_decay=0.85, growth_rate_init=0.5):
+    # box sized so that full-scale spheres would give phi_ref; the growth stops *before* that,
+    # at the jamming point, so the achieved density (and radii) come out below phi_ref.
     volp = (4 / 3) * math.pi * radius ** 3
     side = (N * volp / phi_ref) ** (1 / 3)
     half = side / 2.0
-    gr, cool = 0.5, int(4.0 / dt)
+    gr = growth_rate_init
+    cool = min(int(cooling_time / dt), int(limit_time / dt))
     rng = np.random.default_rng(seed)
     s = dem.Simulation(N)
     s.initialize(shape_type=1, radius=radius)
     s.set_domain((-half, -half, -half), (half, half, half))
     s.enable_periodicity(True, True, True); s.set_gravity(0, 0, 0)
-    s.set_material_params(1.0, 1.0, 0.0); s.set_solver_iterations(iters, iters)
+    s.set_material_params(1.0, 1.0, 0.0); s.set_solver_iterations(iters, iters)   # restitution 1 while fluid
     pos = rng.uniform(-half, half, (N, 4)).astype(np.float32); pos[:, 3] = 1.0
     s.set_positions(pos)
-    s.set_velocities(rng.normal(0, 1, (N, 3)).astype(np.float32))
+    s.set_velocities(rng.normal(0.0, math.sqrt(temperature), (N, 3)).astype(np.float32))
     s.set_scales(np.full(N, 1.0, np.float32))
-    s.set_growth_params(gr, 0.05); s.set_thermostat(1.0, dt)
+    s.set_growth_params(gr, scale_init); s.set_thermostat(temperature, dt)
 
     def overlap_frac():
         c = 2 * radius * float(s.get_scales().ravel().mean())
@@ -79,29 +83,32 @@ def pack_bed(N=200, phi_ref=0.66, radius=0.5, seed=1, dt=0.002, limit_time=6.0,
         if step == cool:                                    # anneal: dissipative + thermostat off
             s.set_material_params(0.5, 1.0, 0.0); s.set_thermostat(0.0, 1e4 * dt)
         s.step(dt); mo = overlap_frac()
-        if mo > 5e-3:                                        # overlaps too big -> back the growth off
+        if mo > criterion:                                  # overlaps too big -> back the growth off
             it = 0
             while True:
                 s.step(0.0); it += 1; mn = overlap_frac()
                 if mn >= 0.95 * mo and it > 6:
                     break
                 mo = mn
-            if mo > 5e-3:
+            if mo > criterion:
                 gf = float(s.get_growth_factor()) * math.exp(-gr * dt)
-                gr *= 0.85; s.set_growth_params(gr, gf)
+                gr *= growth_decay; s.set_growth_params(gr, gf)
         else:                                               # room to grow -> accelerate
-            gr = min(gr * 1.02, 0.5); s.set_growth_params(gr, float(s.get_growth_factor()))
-    s.set_material_params(0.0, 0.0, 0.0); s.set_thermostat(0.0, 10 * dt)
+            gr = min(gr * growth_accel, growth_rate_init); s.set_growth_params(gr, float(s.get_growth_factor()))
+    s.set_material_params(0.0, 0.0, 0.0); s.set_thermostat(0.0, 10 * dt)   # quench into the rigid network
     for _ in range(quench):
         s.step(dt)
-    sc = s.get_scales().ravel()
+    # EFFECTIVE radius = per-particle scale * global growth factor * base radius. The growth factor
+    # (< 1 at jamming) is essential — omitting it overstates the radii and fakes overlaps in g(r).
+    r_eff = radius * s.get_scales().ravel() * float(s.get_growth_factor())
     pos = s.get_positions()[:, :3].astype(float)
-    return pos, (radius * sc).astype(float), float(side), float(phi_ref * np.mean(sc ** 3))
+    phi = float(np.sum(4 / 3 * np.pi * r_eff ** 3) / side ** 3)
+    return pos, r_eff.astype(float), float(side), phi
 
 t0 = time.time()
-pos, r, side, phi = pack_bed(seed=1)
+pos, r, side, phi = pack_bed()
 print(f"random close packing: N={len(pos)}  φ={phi:.3f}  porosity ε={1-phi:.3f}  "
-      f"box={side:.2f}  ({time.time()-t0:.0f}s)")
+      f"mean radius={r.mean():.4f}  box={side:.2f}  ({time.time()-t0:.0f}s)")
 ```
 
 ## Step 2 — Characterise the microstructure
@@ -141,7 +148,7 @@ print(f"mean coordination Z = {Z[Z>0].mean():.2f} (isostatic 6)   rattlers = {in
 ```{python}
 #| label: fig-microstructure
 #| fig-cap: "Left: a slice through the packing (spheres intersecting the mid-plane). Right: the radial distribution function g(r/d), with the contact peak at one diameter and the split second peak characteristic of random close packing."
-d = 2 * 0.5
+d = 2 * r.mean()                                  # sphere diameter (effective)
 fig, (a0, a1) = plt.subplots(1, 2, figsize=(9, 3.9))
 zc = 0.0
 for k in range(len(pos)):
@@ -203,7 +210,7 @@ def permeability(Ng, pos, r, side, mu=0.1, F=1e-3, dt=80.0, max_steps=500, tol=1
 
 main = permeability(56, pos, r, side, want_field=True)
 eps = 1 - phi
-k_CK = eps ** 3 * (2 * 0.5) ** 2 / (180 * (1 - eps) ** 2)         # Carman–Kozeny estimate
+k_CK = eps ** 3 * (2 * r.mean()) ** 2 / (180 * (1 - eps) ** 2)    # Carman–Kozeny estimate (d = diameter)
 print(f"Ng=56:  permeability k = {main['k']:.3e}   Carman–Kozeny ≈ {k_CK:.3e}   "
       f"ε={eps:.3f}  ({main['steps']} steps)")
 ```
@@ -252,8 +259,8 @@ characterise each, and report the spread.
 ```{python}
 #| label: fig-statistics
 #| fig-cap: "Permeability and porosity across independent random packings. The permeability scatters by a few percent around the mean at fixed target density."
-real = [dict(seed=1, phi=phi, k=conv[1]["k"], Z=Z[Z > 0].mean())]   # reuse seed 1 (Ng=44)
-for sd in (2, 3):
+real = [dict(seed=3, phi=phi, k=conv[1]["k"], Z=Z[Z > 0].mean())]   # reuse the main packing (seed 3, Ng=44)
+for sd in (4, 5):
     p2, r2, s2, ph2 = pack_bed(seed=sd)
     Z2, _, _ = microstructure(p2, r2, s2)
     k2 = permeability(44, p2, r2, s2)["k"]
@@ -277,9 +284,10 @@ print(f"permeability over {len(real)} realizations: mean={ks.mean():.3e}  std={k
 - Two `peclet` codes compose cleanly: `dem` builds the geometry, `flow` solves the
   transport, joined by an SDF — the same signed-distance representation used
   throughout the suite.
-- The generated packing shows the hallmarks of a **dense random packing**:
-  $\phi\approx0.66$, coordination $Z\approx5$ (approaching the frictionless isostatic
-  value 6, with no rattlers), and the split-second-peak $g(r)$.
+- The generated packing shows the hallmarks of a **random close packing**:
+  $\phi\approx0.62$, coordination $Z\approx6$–$7$ (at the frictionless isostatic value,
+  no rattlers), and a $g(r)$ that is zero inside one diameter with a sharp contact
+  peak and the split second peak of dense random packing.
 - Permeability at this porosity is well-behaved (grid-insensitive across the
   resolutions shown) and a few percent above the Carman–Kozeny estimate. *Denser*
   beds, with near-touching grains and few-cell throats, are the genuinely hard case

@@ -97,9 +97,11 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 - **Validated (OpenMP, single rank):** a confined D=16 cylinder at Re=40 (inflow/outflow,
   no-slip ±y walls) that previously NaN'd by step ~200 now runs stably to steady state —
   no-slip holds (mean|u| inside ≈ 2.5e-3), max|u| steady ≈ 1.78, divergence bounded
-  (~1e-6–1e-4, decaying with the transient). Channel (`verify_channel`) and BFS
-  (`verify_bfs`) regressions are unchanged (byte-identical). GPU (CUDA/HIP) revalidation
-  still recommended before shipping the compute-heavy wake example.
+  (~1e-6–1e-4, decaying with the transient). Channel (`verify_channel`) is byte-identical.
+  The BFS instability turned out to be a *separate*, still-open pre-existing issue (an
+  advection-driven marginal mode at the profile inlet / outflow) — see the "Inflow/outflow
+  diverges to NaN" entry below; not resolved here. GPU (CUDA/HIP) revalidation still
+  recommended before shipping the compute-heavy wake example.
 - **(a)/(b) status:** with (c) fixed, the single correct call for a no-slip immersed body
   in an inflow/outflow domain is `set_solid(sdf, cutcell_pressure=True)` — you do **not**
   call `set_pressure_geometry` as well (docstrings updated to say so). The setters still
@@ -136,7 +138,18 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   also help the solve reach steady state in fewer steps.
 
 ## dem: periodic collisions across a boundary are NOT detected/resolved (SEVERE)
-- **Status:** open — CONFIRMED with a 2-particle minimal repro; corrupts every periodic packing
+- **Status:** RESOLVED (dem 0.2.1, commit 46dbe71) — periodic ghost halo layers were not
+  being filled in the CUDA→Kokkos port. The 2-particle boundary repro now detects the
+  overlap (0.400) and resolves to touching (1.000), identical to the interior pair. The
+  `random-packed-bed` example was regenerated against the fix: φ=0.629, Z=6.63, 0
+  rattlers, min gap ≥ 0, g(r)=0 for r<d with the contact peak at d, and permeability
+  ~6% above Carman–Kozeny (the corrected porosity ε=0.371 vs the earlier wrong 0.34).
+  Two example-side fixes were also needed: use the EFFECTIVE radius
+  `baseRadius*scale*growth_factor` (the growth factor < 1 at jamming; omitting it
+  overstated radii and faked overlaps), and use the properly-annealed `pack.py`
+  protocol at phi_ref≈0.63 (the earlier phi_ref=0.66 + crude feedback overshot jamming).
+  Original report below.
+- **~~Status~~:** ~~open~~ — CONFIRMED with a 2-particle minimal repro; corrupts every periodic packing
 - **Package / area:** dem — single-GPU `step()` periodic ghost-contact resolution
 - **Found in:** examples/random-packed-bed — user noticed the g(r) has weight at r < d
   (spheres closer than one diameter), i.e. overlap, which is impossible for hard spheres.
@@ -172,9 +185,9 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   (different code) and is separately validated, so this is specific to the single-GPU
   periodic self-ghost path.
 
-## Inflow/outflow channel diverges to NaN at low resolution
-- **Status:** open
-- **Package / area:** flow — inflow/outflow domain BC + semi-coarsening pressure MG
+## Inflow/outflow (profile inlet / BFS) diverges to NaN — advection-driven marginal mode
+- **Status:** INVESTIGATING (NOT fixed) — partially improved; deeper open issue. See "Findings".
+- **Package / area:** flow — inflow/outflow domain BC + advection (was mis-attributed to the pressure MG)
 - **Found in:** scratch run while prototyping `poiseuille-ibm` (the developing
   inflow→outflow channel variant; we shipped the periodic body-force case instead)
 - **Observed:** `U_mean=nan`, `max_open_divergence=-inf` after 3000 steps.
@@ -184,13 +197,29 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   `dt=0.5`, inflow BC face 0 (type 2, U), outflow face 1 (type 3), no-slip ±y,
   `set_pressure_multigrid(True, levels=8)`, `set_pressure_solver_params(80)`,
   `set_pressure_geometry(all-fluid)`; OpenMP backend, 4 threads.
-- **Notes:** The canonical script uses `H=32, L=224` and passes. Suspect the
-  combination of a small/odd `H=24` with `levels=8` semi-coarsening (which caps
-  levels by even-axis divisibility) and/or too few pressure iterations for the
-  entrance-length transient. Need to bisect: does it NaN at `levels` auto-capped
-  low, or only deep? Is `H` divisibility the trigger? Determine whether this is a
-  robustness bug (should degrade gracefully / warn) or expected for an
-  under-resolved config that the API should reject.
+- **Findings (root cause NOT the pressure MG; NOT simply explicit advection):**
+  - Bisection: the pressure machinery is fine — **Stokes (advection OFF) is stable to
+    machine precision** (div ~5e-15) at the same dt; MG depth and pressure-iteration count
+    don't change the blow-up. So the mode is **advection-driven**.
+  - The implicit upwind + deferred correction was **gated off for `has_bc_`** (`flow_ibm.hpp`
+    `step()`: `if (implicitFou_ && advect_ && !hasBc_)`, "IBM path only … separate milestone"),
+    so the domain-BC path ran advection **explicitly**. I wired implicit-FOU through the
+    domain-BC path (new `bcStencilPath()` → build the FOU stencil + solve with the cut-cell/FOU
+    stencil smoother + reflection ghosts). This is a genuine improvement (channel byte-identical
+    under explicit, correct under implicit; cylinder unaffected; BFS survives ~2× longer with
+    lower divergence).
+  - **BUT it does not robustly cure the BFS.** The divergence shows a **transient spike during
+    recirculation development** (peaks ~1e-4 around step 800, then decays as it approaches steady
+    state) that is **near-neutral and roundoff-sensitive**: run-to-run (OpenMP reduction order)
+    it sometimes decays to a valid steady state (x_r/S≈5.2, correct) and sometimes tips over to
+    **NaN**. max|u| stays pinned at the inlet peak throughout — the signature of a **boundary
+    mode**, most likely **outflow backflow** (the developing recirculation interacting with the
+    zero-gradient outflow) — the "convective outflow" follow-up flagged in flow's CLAUDE.md. A
+    separate, deeper numerical-BC project; NOT the immersed-solid bug above.
+- **Status of the wiring change:** kept as an improvement (opt-in `set_implicit_advection(True)`),
+  but it is **not advertised as a BFS fix**. `verify_bfs` should NOT be treated as passing until
+  the outflow-backflow mode is addressed (candidate fixes: a convective/Neumann-traction outflow,
+  or backflow stabilization at the outflow).
 
 ## Kokkos "deallocated after finalize" warning under Jupyter/Quarto
 - **Status:** open

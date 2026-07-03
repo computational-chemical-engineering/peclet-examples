@@ -58,3 +58,7 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
 - [!] random-packed-bed packing is INVALID: dem periodic-collision bug (cross-boundary
       contacts missed) → real overlaps → inflated φ/Z and bad g(r). CONFIRMED (2-particle
       repro in ISSUES). Walled packing is clean (workaround). Needs dem fix or rework.
+
+- [x] random-packed-bed FIXED (dem 0.2.1 periodic-collision fix): regenerated clean —
+      φ=0.629, Z=6.63, 0 rattlers, g(r)=0 for r<d, k ~6% above Carman-Kozeny. Uses the
+      effective radius (scale*growth_factor) + annealed pack.py protocol. PUSHED.
