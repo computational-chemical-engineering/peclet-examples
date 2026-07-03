@@ -28,3 +28,5 @@ dist/
 # stray root render artifacts (single-file renders)
 /*.html
 /site_libs/
+
+**/*.quarto_ipynb
