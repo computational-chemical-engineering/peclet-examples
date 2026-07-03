@@ -1,0 +1,193 @@
+---
+title: "Meshing a packed-bed pore space with a volume-controlled Voronoi grid"
+subtitle: "Seed the interstitial space of a peclet.dem sphere packing, tessellate + clip against the sphere walls, and relax the seeds so the cell volumes follow a target — uniform, or graded to refine at the walls (an inflation layer)."
+author: "Peclet"
+date: "2026-07-04"
+categories: [voro, dem, meshing, porous-media, sdf]
+jupyter: python3
+---
+
+::: {.callout-note}
+**Experimental method.** The SDF-walled volume mesh optimiser in `peclet.voro` is not yet in the
+released PyPI package, so this example drives a small C++ tool from a local `suite` checkout (set
+`PECLET_SUITE`). The packing (`peclet.dem`) is stock. The figures are frozen for the site; the
+"Reproduce this" block has the exact commands.
+:::
+
+## What you'll learn
+
+How to build a **body-fitted Voronoi mesh of a pore space**: drop seed points into the fluid between
+packed spheres, tessellate, **clip every cell against the sphere surfaces** (their signed-distance
+field), then *move the seeds* so the cell volumes hit a per-cell target `V_ref`. With a wall-graded
+target you get a **boundary-layer (inflation-layer) mesh** — small cells hugging the walls, coarser
+cells in the open pores — the Voronoi analogue of a graded CFD mesh. You'll also see, honestly, where
+the position-only relaxation still struggles (cell collapse in tight throats), which motivates the
+next step.
+
+## The setup
+
+The packing is periodic; the fluid is everything outside the spheres. The solid is described by the
+union signed-distance field $\phi(\mathbf{x}) = \min_i(\lVert \mathbf{x}-\mathbf{c}_i\rVert - r_i)$
+($\phi<0$ inside a sphere, $>0$ in the fluid). We seed $N$ points where $\phi>0$, build their Voronoi
+cells, and clip each against the $\phi=0$ surfaces so the cells tile only the fluid.
+
+We then minimise a volume energy over the seed positions. The **relative** form
+$E=\sum_i (V_i/V_{\mathrm{ref},i}-1)^2$ drives each cell to its target; the **free-energy** form
+
+$$
+E = -\sum_i V_{\mathrm{ref},i}\,\log V_i
+$$ {#eq-free}
+
+is especially natural — its constant-"pressure" equilibrium ($\partial E/\partial V_i = -V_{\mathrm{ref},i}/V_i$
+equal for all $i$, with $\sum_i V_i$ fixed by the tessellation) is exactly $V_i \propto V_{\mathrm{ref},i}$,
+and the $-\log V$ term resists collapse. For the graded target we use
+$V_{\mathrm{ref}} = \mathrm{clamp}(\phi, s_{lo}, s_{hi})^3$: a cell *volume* that shrinks toward the wall.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (peclet.dem from PyPI; the mesh tool from a local suite build)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    sys.path.insert(0, _local)                                  # local dem/voro build
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.collections import PolyCollection
+from matplotlib.patches import Circle
+from matplotlib.colors import LogNorm, TwoSlopeNorm
+from peclet_examples import pore_mesh as pm
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "figure.facecolor": "white",
+                     "savefig.bbox": "tight"})
+```
+
+## Step 1 — pack the spheres and run the four stages
+
+`peclet.dem` grows a random close packing (porosity ≈ 0.37); the C++ tool then seeds the pore space
+and writes four stages as clipped-polyhedron VTUs.
+
+```{python}
+#| label: run
+work = os.path.abspath("_work"); os.makedirs(work, exist_ok=True)
+centres, radii, L = pm.pack_spheres(n=180)
+pm.write_packing(f"{work}/packing.txt", centres, radii, L)
+pm.run_stages(f"{work}/packing.txt", work, n_seeds=4000)     # -> stage{1..4}_*.vtu
+print(f"packing: {len(centres)} spheres, box L={L:.2f}, porosity ≈ {1 - (4/3*np.pi*(radii**3).sum())/L**3:.2f}")
+```
+
+The four stages are: **1 random** (uniform seeds, raw Voronoi), **2 uniform relaxation**, **3 graded
+seeding** (seed density $\propto 1/V_{\mathrm{ref}}$, dense at the walls), **4 graded relaxation**.
+
+## Step 2 — a cross-section of each stage
+
+We slice the 3-D cells at $z=L/2$ and colour them by cell volume (grey discs = spheres cut by the
+plane). A small vtk-free helper does the slicing.
+
+```{python}
+#| label: fig-volume
+#| fig-cap: "Cross-section of the four stages, cells coloured by volume (log, shared scale). Stage 3 shows the intended small cells packed against the spheres; the relaxed stages (2, 4) partly collapse cells in the tight throats (gaps)."
+#| fig-width: 11
+z0 = L / 2
+stages = [("stage1_random.vtu", "1 · random seeds"),
+          ("stage2_equalized.vtu", "2 · uniform relaxation"),
+          ("stage3_graded_seed.vtu", "3 · graded seeding  Vref=φ³"),
+          ("stage4_graded_relaxed.vtu", "4 · graded relaxation")]
+sl = [pm.slice_vtu(f"{work}/{f}", z0) for f, _ in stages]
+allv = np.concatenate([v for _, v, _ in sl]); norm = LogNorm(*np.percentile(allv[allv > 0], [3, 97]))
+
+def draw(ax, polys, vals, nrm, cmap, title, win=None, lw=0.25):
+    ax.add_collection(PolyCollection(polys, array=np.asarray(vals), cmap=cmap, norm=nrm,
+                                     edgecolors="k", linewidths=lw, alpha=0.92))
+    for c, r in zip(centres, radii):
+        for sx in (0, -L, L):
+            for sy in (0, -L, L):
+                if abs(z0 - c[2]) < r:
+                    ax.add_patch(Circle((c[0]+sx, c[1]+sy), np.sqrt(r*r-(z0-c[2])**2),
+                                        facecolor="0.55", edgecolor="0.25", lw=0.5, zorder=3))
+    ax.set(xlim=win[:2] if win else (0, L), ylim=win[2:] if win else (0, L), aspect="equal")
+    ax.set_title(title, fontsize=10); ax.set_xticks([]); ax.set_yticks([])
+
+fig, axes = plt.subplots(2, 2, figsize=(11, 11))
+for ax, (polys, vals, _), (_, t) in zip(axes.ravel(), sl, stages):
+    draw(ax, polys, vals, norm, "viridis", t)
+fig.colorbar(axes[0, 0].collections[0], ax=axes, fraction=0.025, pad=0.02, label="cell volume (log)")
+plt.show()
+```
+
+Structurally, **graded seeding (3) is what we want**: a ring of small cells around every sphere,
+larger cells in the open pores. The relaxed stages move the seeds toward equal (2) / graded (4)
+volumes but also lose some cells to collapse — the gaps.
+
+## Step 3 — what happens at a wall
+
+Zooming onto one sphere makes the wall behaviour explicit — the honest headline of this example.
+
+```{python}
+#| label: fig-wall
+#| fig-cap: "Zoom at a sphere. Left: random seeds tile the pore space cleanly. Right: after graded relaxation the tight throats develop gaps — cells there are squeezed to zero volume."
+#| fig-width: 11
+cross = [(i, r*r-(z0-c[2])**2) for i, (c, r) in enumerate(zip(centres, radii)) if abs(z0-c[2]) < r]
+i0 = max(cross, key=lambda t: t[1])[0]; cx, cy, w = centres[i0, 0], centres[i0, 1], 1.6
+win = (cx-w, cx+w, cy-w, cy+w)
+fig, ax = plt.subplots(1, 2, figsize=(11, 5.5))
+for a, k, t in [(ax[0], 0, "random seeds"), (ax[1], 3, "graded seeding + relaxation")]:
+    p, v, _ = sl[k]; draw(a, p, v, norm, "viridis", t, win=win, lw=0.5)
+plt.show()
+```
+
+## Results — equalisation quality
+
+Colouring the two *relaxed* meshes by $V/V_{\mathrm{ref}}$ (renormalised so 1 = on target) shows how
+well each target was met. The **graded target is broadly achieved** — a boundary layer of near-target
+cells, with red only in throats it can't fill — while the **uniform target is not**: the pore
+geometry is too heterogeneous for equal-volume cells without moving seeds *between* pores.
+
+```{python}
+#| label: fig-rel
+#| fig-cap: "V/V_ref after relaxation (blue = too small, white = on target, red = too big). Graded (right) is broadly on target; uniform (left) is not."
+#| fig-width: 11
+fig, ax = plt.subplots(1, 2, figsize=(11, 5.5))
+rn = TwoSlopeNorm(vmin=1/4, vcenter=1.0, vmax=4.0)
+for a, f, t in [(ax[0], "stage2_equalized.vtu", "uniform target"),
+                (ax[1], "stage4_graded_relaxed.vtu", "graded target φ³")]:
+    p, v, _ = pm.slice_vtu(f"{work}/{f}", z0, array="rel"); draw(a, p, v, rn, "coolwarm", t)
+fig.colorbar(ax[1].collections[0], ax=ax, fraction=0.025, pad=0.02, label="V / V_ref")
+plt.show()
+```
+
+## Adapt this yourself
+
+- **Change the grading.** Edit `vrefOf` in `pore_mesh_stages.cpp` — e.g. `φ` (linear) or `φ²` for a
+  thicker inflation layer, or a *field* target (finer where a solution gradient is large) for
+  solution-adaptive meshing.
+- **Denser or coarser.** Raise `n_seeds`; the graded density follows `1/V_ref` automatically.
+- **Different geometry.** The tool only needs a `packing.txt` (spheres); swap in any SDF by editing
+  `SdfSpheres`, or bake a `dem.Simulation.get_sdf_grid` field into an `SdfGrid`.
+
+## Open issues (logged in ISSUES.md)
+
+1. **Cell collapse in tight throats.** Position-only relaxation can't move seeds *between* pores, so
+   for an unmatched seeding it collapses cells instead of redistributing. Density-graded seeding
+   (stage 3) is the mitigation; a hard log-barrier keeps cells open once the start is feasible.
+2. **Curved-wall gradient.** The cell-volume gradient's wall term is exact for a flat wall but only
+   first-order for a sphere; with the delicate free-energy gradient this stalls the relaxation. An
+   exact tessellator-side wall gradient is the fix.
+
+*(Some gaps in the figures are also a render artefact — the exporter reconstructs each clipped cell
+independently, and a large open-pore cell can fail to re-bound; the optimiser's own cells are cleaner.)*
+
+## Reproduce this
+
+```bash
+# from a checkout of peclet-examples, with a local suite build (Kokkos OpenMP prefix + dem):
+pip install -e .
+export PECLET_SUITE=/path/to/suite
+export PECLET_LOCAL_BUILD=/path/to/suite/dem/build     # dem (packing); CUDA or OpenMP
+quarto render examples/pore-mesh-voronoi/index.qmd --execute
+```
+
+The C++ driver (`pore_mesh_stages.cpp`), packing script, and standalone plotter live in
+`suite/voro/examples/packed_bed_voronoi/`.

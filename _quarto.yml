@@ -45,6 +45,8 @@ website:
             text: "Ring packed-bed permeability study (dem → flow)"
           - href: examples/sdf-particle-packing/index.qmd
             text: "Custom-shaped particles (dem, SDF)"
+          - href: examples/pore-mesh-voronoi/index.qmd
+            text: "Pore-space Voronoi mesh (dem → voro, graded)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

@@ -255,3 +255,24 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   on CUDA (to release View registries before the module unloads); the OpenMP path
   emits this order-of-teardown warning instead. Consider registering the
   `atexit` finalize unconditionally in the bindings so notebooks/CI are quiet.
+
+---
+
+## Pore-space Voronoi mesh: cell collapse + first-order curved-wall gradient
+- **Status:** diagnosed; both open (method not yet finished)
+- **Package / area:** voro (SDF-walled `meshVolumeOptimize`, experimental / not in PyPI)
+- **Found in:** examples/pore-mesh-voronoi
+- **Observed:** relaxing interstitial Voronoi seeds toward a target volume collapses cells
+  in the tight throats between spheres (cell count drops, gaps appear); the free-energy
+  objective `−Σ V_ref·log V` (validated to machine-zero on a wall-free box) STALLS with an
+  SDF (line search `alpha→0`).
+- **Expected:** cells relax toward `V ∝ V_ref` (uniform, or graded `V_ref=φ³` for a wall
+  inflation layer) without collapsing.
+- **Repro:** `suite/voro/examples/packed_bed_voronoi/pore_mesh_stages.cpp` → stages 2 & 4.
+- **Notes:** two root causes. (1) Position-only relaxation can't move seeds *between* pores,
+  so an unmatched seeding collapses cells instead of redistributing — mitigated by
+  density-graded seeding (`∝ 1/V_ref`) + a hard log-barrier from a feasible start. (2) The
+  cell-volume gradient's SDF wall term is exact for a flat wall but only first-order for a
+  sphere; on the small free-energy gradient this dominates the direction and stalls the step.
+  Fix = an exact tessellator-side wall gradient (the tessellator already publishes the wall
+  facet area vectors). See suite memory voro-mesh-optimizer-wall-force.
