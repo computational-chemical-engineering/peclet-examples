@@ -17,14 +17,21 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
 - [x] `taylor-green`: exact NS, projection div-free ~1e-15, viscous decay — PUSHED
 - [x] `lid-driven-cavity`: vs Ghia (rms 0.013 at 64²) — PUSHED
 - [x] `zick-homsy`: SC convergence (+1.74%→+0.08%) + parametric K(φ) + BCC/FCC — PUSHED
-- [~] `random-packed-bed`: dem LS packing (φ=0.64, Z~5.5) → characterize (ε,Z,g(r)) →
-      permeability (Carman–Kozeny) + convergence + stats — RENDERING in background
-- [!] `backward-facing-step`: drafted, but too slow to converge on CPU (>5min/Re,
-      didn't finish). Held back (unfrozen). COMPUTE-BOUND — needs GPU or a long run.
-- [!] `cylinder-vortex-street`: immersed-body + inflow/outflow. cutcell_pressure=True
-      NaNs (see ISSUES); mode B stable but wake won't converge on CPU in 5min.
-      COMPUTE-BOUND. Documented; will best-effort a background render if time.
-- [ ] (stretch) other classics: Couette, Womersley, Kármán data, Stokes problems
+- [x] `random-packed-bed`: dem LS packing (φ=0.66, Z=5.1, 0 rattlers) → ε,Z,g(r) →
+      permeability (flat across N, ~1.5× Carman–Kozeny, 9% over realizations) — PUSHED
+- [!] `backward-facing-step`: complete draft, COMPUTE-BOUND (>5min/Re, no steady on
+      CPU). Moved to drafts/ (outside render path). Render on GPU to finish.
+- [!] `cylinder-vortex-street`: DROPPED — immersed solid + inflow/outflow is broken in
+      peclet.flow (CONFIRMED, see ISSUES: geometry setters clobber; cutcell True NaNs;
+      False leaks no-slip). Needs a solver C++ fix + it's ~19min/run on CPU.
+- [ ] (stretch) other classics: Couette, Womersley, Kármán, Stokes problems — not done
+
+## FINAL STATE (overnight session)
+**6 examples live** at https://computational-chemical-engineering.github.io/peclet-examples/ :
+poiseuille-ibm, pipe-poiseuille, taylor-green, lid-driven-cavity, zick-homsy,
+random-packed-bed. Plus the flow verify-script fix (pushed to suite). CI green,
+site current. The two unshipped examples are documented + preserved (BFS in drafts/,
+cylinder deferred pending a peclet.flow inflow/outflow fix).
 
 ## Findings logged to ISSUES.md this session
 1. Poiseuille metric artifact (resolved → reframed as exactness demo).

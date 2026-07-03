@@ -1,0 +1,167 @@
+---
+title: "Backward-facing step: separation and reattachment"
+subtitle: "The canonical separated-flow benchmark — a recirculation bubble whose length grows with Reynolds number, on the Armaly/Gartling curve."
+author: "Peclet"
+date: "2026-07-03"
+categories: [flow, separation, inflow-outflow, benchmark]
+jupyter: python3
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/backward-facing-step/index.ipynb){target="_blank"}
+&nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
+
+## What you'll learn
+
+How to set an **inflow/outflow** problem with a prescribed inlet velocity profile,
+and reproduce the **backward-facing step** — the reference case for flow separation.
+Fluid enters over the upper half of an expansion, separates at the step lip, and
+reattaches downstream; the reattachment length $x_r$ grows with Reynolds number. We
+compare $x_r/S$ against the experimental/numerical literature (Armaly et al. 1983;
+Gartling 1990).
+
+## Setup
+
+The geometry (Gartling expansion ratio 2) is a channel of full height $H=2S$ with a
+step of height $S$. The inlet is realised **purely as a boundary condition** — a
+developed parabola over the open upper half $y\in[S,2S]$, zero over the step face —
+so no immersed solid is needed. The outlet is an outflow; top and bottom are no-slip.
+$\mathrm{Re}_S = U_\text{in} S/\nu$ with $U_\text{in}$ the mean inlet velocity.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    sys.path.insert(0, _local)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+```
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from peclet import flow
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
+                     "grid.alpha": 0.3, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+BLUE, RED = "#1f77b4", "#d62728"
+```
+
+## The inlet profile and the solve
+
+```{python}
+def inlet_profile(H, S, nz, U_in):
+    """Developed parabola over the open upper half y in [S, 2S], zero over the step face."""
+    prof = np.zeros((H, nz, 3))
+    yc = np.arange(H) + 0.5
+    eta = (yc - S) / S                             # 0 at the step lip, 1 at the top wall
+    up = yc > S
+    prof[up, :, 0] = (6.0 * U_in * eta * (1.0 - eta))[up, None]
+    return prof
+
+def reattachment(u_bottom):
+    """First -> + crossing of the near-bottom-wall streamwise velocity after the flow reverses."""
+    reversed_yet = False
+    for i in range(1, len(u_bottom)):
+        if u_bottom[i] < 0.0:
+            reversed_yet = True
+        elif reversed_yet and u_bottom[i] >= 0.0:
+            return (i - 1) + u_bottom[i - 1] / (u_bottom[i - 1] - u_bottom[i])
+    return 0.0
+
+def solve_bfs(Re, S=12, Lr=12, U_in=1.0, nz=4, dt=0.4, max_steps=9000):
+    H, L = 2 * S, Lr * S
+    nu = U_in * S / Re
+    s = flow.Solver(L, H, nz)
+    s.set_rho(1.0); s.set_mu(nu); s.set_dt(dt); s.set_advection(True)
+    s.set_domain_bc_profile(0, inlet_profile(H, S, nz, U_in))   # -x partial parabolic inlet
+    s.set_domain_bc(1, 3)                                       # +x outflow
+    s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)               # -y, +y no-slip walls
+    s.set_velocity_solver_params(60)
+    s.set_pressure_multigrid(True, levels=8)
+    s.set_pressure_solver_params(80)
+    s.set_pressure_geometry(np.full((L, H, nz), 1e30))
+    prev = 0.0
+    for it in range(max_steps):
+        s.step()
+        if it % 100 == 99:
+            xr = reattachment(s.get_u()[:, 0, nz // 2])
+            if it > 2500 and xr > S and abs(xr - prev) < 1e-3 * S:
+                break
+            prev = xr
+    u = s.get_u()[:, :, nz // 2]
+    xr = reattachment(u[:, 0])
+    return dict(Re=Re, S=S, H=H, L=L, u=u, v=s.get_v()[:, :, nz // 2], xr_S=xr / S,
+                steps=it + 1, div=float(s.max_open_divergence()))
+
+res = [solve_bfs(Re) for Re in (100, 200)]
+for r in res:
+    print(f"Re_S={r['Re']:<4d}  x_r/S = {r['xr_S']:.2f}   ({r['steps']} steps, div={r['div']:.1e})")
+```
+
+## The recirculation bubble
+
+```{python}
+#| label: fig-streamlines
+#| fig-cap: "Re_S=200 backward-facing step: streamlines over the streamwise velocity. Flow enters over the upper half, separates at the step lip, and reattaches on the bottom wall; the recirculation bubble (blue, reversed flow) sits behind the step."
+r = res[-1]
+L, H = r["L"], r["H"]
+x = np.arange(L) + 0.5
+y = np.arange(H) + 0.5
+X, Y = np.meshgrid(x, y)
+U2, V2 = r["u"].T, r["v"].T
+
+fig, ax = plt.subplots(figsize=(9, 2.6))
+lim = np.max(np.abs(U2))
+pc = ax.pcolormesh(X, Y, U2, cmap="RdBu_r", vmin=-0.4 * lim, vmax=lim, shading="auto")
+ax.streamplot(X, Y, U2, V2, color="k", density=(2.2, 0.7), linewidth=0.5, arrowsize=0.6)
+ax.axvline(r["xr_S"] * r["S"], color="lime", lw=1.5, ls="--")
+ax.text(r["xr_S"] * r["S"], H * 1.02, f"  reattachment x_r/S={r['xr_S']:.1f}", color="green", fontsize=8)
+ax.set(title=f"Backward-facing step, Re_S={r['Re']}", xlabel="x", ylabel="y", aspect="equal")
+ax.grid(False)
+fig.colorbar(pc, ax=ax, fraction=0.02, pad=0.02, label="u")
+plt.show()
+```
+
+## Reattachment length vs Reynolds number
+
+The reattachment length grows with $\mathrm{Re}$ in the laminar regime. We compare
+our two points to the reference values for the expansion-ratio-2 step (Armaly et al.
+1983; Biswas et al. 2004), the same benchmark the suite's `flow` verification uses.
+
+```{python}
+#| label: fig-reattach
+#| fig-cap: "Reattachment length x_r/S vs Re_S: peclet (markers) against the laminar ER=2 reference values."
+REF = {100: 5.3, 200: 8.3}                        # Armaly/Biswas laminar ER=2 (as used in the suite validation)
+
+fig, ax = plt.subplots(figsize=(5.0, 3.8))
+ax.plot(list(REF), list(REF.values()), "s-", color="0.4", ms=8, label="reference (Armaly/Biswas)")
+ax.plot([r["Re"] for r in res], [r["xr_S"] for r in res], "o", color=RED, ms=9, label="peclet")
+ax.set(xlabel="Re$_S$ = U$_{in}$ S / ν", ylabel="reattachment length x$_r$/S",
+       title="Backward-facing step reattachment")
+ax.legend()
+plt.show()
+for r in res:
+    print(f"  Re_S={r['Re']:<4d}  x_r/S(peclet) = {r['xr_S']:.2f}   (reference ≈ {REF[r['Re']]:.1f})")
+```
+
+## Adapt this yourself
+
+- **Higher Re.** Push toward the Gartling $\mathrm{Re}=800$ benchmark (longer channel,
+  smaller `dt`, many more steps) and add the *second*, upper-wall recirculation bubble.
+- **Expansion ratio.** Change the step fraction in `inlet_profile` to study how the
+  bubble length depends on the geometry.
+- **Unsteady wake.** At higher Re the reattachment starts to oscillate — sample the
+  bottom-wall velocity in time to see it.
+
+## Reproduce this
+
+```bash
+pip install peclet
+quarto render examples/backward-facing-step/index.qmd --execute
+# ...or against a local source build:
+PECLET_LOCAL_BUILD=/path/to/suite/flow/build_mpi OMP_NUM_THREADS=6 \
+  quarto render examples/backward-facing-step/index.qmd --execute
+```

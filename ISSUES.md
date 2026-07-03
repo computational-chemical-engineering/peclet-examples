@@ -51,29 +51,43 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
      reason and would not catch a genuine first-order regression. Tighten it to
      assert the pointwise node error (~1e-6), which actually tests method order.
 
-## Immersed cut-cell pressure + inflow/outflow domain BCs → divergence / NaN
-- **Status:** open (worked around in examples)
-- **Package / area:** flow — combining `set_solid(..., cutcell_pressure=True)` with
-  inflow/outflow domain BCs (`set_domain_bc` type 2/3)
-- **Found in:** prototyping the cylinder-in-channel examples
-- **Observed:** flow past an immersed cylinder (SDF) in a channel with a uniform
-  inflow + outflow, using the cut-cell pressure operator (`cutcell_pressure=True`),
-  runs with elevated flux divergence (~1e-5, vs ~1e-8 for pure-IBM/periodic cases)
-  and blows up to NaN over a few thousand steps at dt=0.3.
-- **Expected:** a stable steady/periodic wake with divergence at solver tolerance.
-- **Repro:** `flow.Solver(L,H,nz)` with an immersed-cylinder SDF via
-  `set_solid(sdf, cutcell_pressure=True)`, `set_domain_bc(0,2,U,0,0)` inflow +
-  `set_domain_bc(1,3)` outflow + no-slip ±y; dt=0.3, several thousand steps.
-- **Workaround:** `cutcell_pressure=False` + `set_pressure_geometry(all-fluid)` — the
-  velocity IBM enforces no-slip on the body while the pressure operator is all-fluid;
-  this is stable (div ~1e-8). Physically the body's pressure blockage is then only
-  weakly represented, so a bluff-body drag would be approximate.
-- **Notes:** The suite's inflow/outflow cases (channel, BFS) use `set_pressure_geometry`
-  (no immersed solid) and are fine; the immersed-solid cut-cell pressure operator has
-  only been exercised with periodic/body-force forcing. The combination *cut-cell
-  pressure operator + domain inflow/outflow openness* looks like the missing/untested
-  path (the boundary-face openness may not be composed with the cut-cell coarse
-  operator). Likely the "inflow/outflow issue" worth fixing in `peclet.flow`.
+## Immersed solid + inflow/outflow is broken in three concrete ways (flow)
+- **Status:** open — CONFIRMED with minimal repros; blocks the cylinder-wake example
+- **Package / area:** flow — an immersed SDF body (`set_solid`) together with
+  inflow/outflow domain BCs (`set_domain_bc` type 2/3). The suite has never exercised
+  this combination (immersed solids use periodic/body-force; inflow/outflow cases —
+  channel, BFS — use `set_pressure_geometry` with NO immersed solid). This is the
+  "inflow/outflow issue" to repair in `peclet.flow`.
+- **Found in:** prototyping the cylinder-vortex-street example.
+
+  **(a) `set_pressure_geometry()` after `set_solid()` SILENTLY WIPES THE SOLID.**
+  Minimal repro (80 steps, flow past a cylinder, uniform inflow):
+  - `set_solid(sdf, cutcell_pressure=False)` **then** `set_pressure_geometry(all-fluid)`
+    → mean|u| *inside* the cylinder = **1.000** (no no-slip at all), max|u| = 1.000
+    (uniform flow — the body has vanished).
+  - `set_pressure_geometry(all-fluid)` **then** `set_solid(...)`, or `set_solid`
+    alone → mean|u| inside = 0.62, max|u| = 2.05 (body present, flow accelerates).
+  So the two geometry setters overwrite each other and the result is **order-
+  dependent and silent**. A 6000-step cylinder run built the "solid then geometry"
+  way produced a perfectly uniform field (no wake, no shedding) — 19 min wasted on a
+  domain with no cylinder in it. Fix: make the setters compose (or error) instead of
+  the last one silently clobbering the other.
+
+  **(b) `cutcell_pressure=False` gives leaky no-slip.** Even with correct ordering,
+  the velocity IBM leaves mean|u| ≈ 0.62 *inside* the solid (should be ~0), because the
+  pressure operator treats the solid as fluid. Fine for the flat/periodic Poiseuille
+  cases (x-independent), wrong for a bluff body.
+
+  **(c) `cutcell_pressure=True` (proper no-slip) + inflow/outflow → NaN.** Elevated
+  divergence (~1e-5 vs ~1e-8) growing to NaN over a few thousand steps at dt=0.3 —
+  the boundary-face openness is not composed with the cut-cell pressure operator.
+- **Net:** there is currently NO working path for a no-slip immersed body in an
+  inflow/outflow domain. Repair needs C++ work in the cut-cell pressure assembly
+  (compose domain-BC openness with the cut-cell operator; make the geometry setters
+  non-clobbering) + GPU validation — deferred, not attempted overnight.
+- **Consequence:** the cylinder-vortex-street example is **not shippable** on the
+  current solver; deferred until this is fixed (and it is compute-heavy: ~19 min for
+  6000 CPU steps, so it is GPU-territory regardless).
 
 ## Pore-scale (random packing) permeability converges slowly on CPU
 - **Status:** documented (physical/practical, not a bug)
