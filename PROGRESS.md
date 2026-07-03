@@ -54,3 +54,7 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
 - Quarto binary: scratchpad `quarto-1.5.57/bin/quarto`. Render: `quarto render`.
 - Regenerate a Colab notebook after editing a qmd: `quarto convert examples/<slug>/index.qmd`.
 - Keep grids modest — CPU-only overnight. Commit+push each example when green.
+
+- [!] random-packed-bed packing is INVALID: dem periodic-collision bug (cross-boundary
+      contacts missed) → real overlaps → inflated φ/Z and bad g(r). CONFIRMED (2-particle
+      repro in ISSUES). Walled packing is clean (workaround). Needs dem fix or rework.

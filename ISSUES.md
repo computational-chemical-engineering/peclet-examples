@@ -52,7 +52,8 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
      assert the pointwise node error (~1e-6), which actually tests method order.
 
 ## Immersed solid + inflow/outflow is broken in three concrete ways (flow)
-- **Status:** open — CONFIRMED with minimal repros; blocks the cylinder-wake example
+- **Status:** RESOLVED (flow `src/flow_ibm.hpp`) — the core blocker (c) is fixed; a
+  no-slip immersed body in an inflow/outflow domain now runs stably. See "Resolution" below.
 - **Package / area:** flow — an immersed SDF body (`set_solid`) together with
   inflow/outflow domain BCs (`set_domain_bc` type 2/3). The suite has never exercised
   this combination (immersed solids use periodic/body-force; inflow/outflow cases —
@@ -79,13 +80,34 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   cases (x-independent), wrong for a bluff body.
 
   **(c) `cutcell_pressure=True` (proper no-slip) + inflow/outflow → NaN.** Elevated
-  divergence (~1e-5 vs ~1e-8) growing to NaN over a few thousand steps at dt=0.3 —
-  the boundary-face openness is not composed with the cut-cell pressure operator.
-- **Net:** there is currently NO working path for a no-slip immersed body in an
-  inflow/outflow domain. Repair needs C++ work in the cut-cell pressure assembly
-  (compose domain-BC openness with the cut-cell operator; make the geometry setters
-  non-clobbering) + GPU validation — deferred, not attempted overnight.
-- **Consequence:** the cylinder-vortex-street example is **not shippable** now.
+  divergence (~1e-5 vs ~1e-8) growing to NaN over a few hundred steps at dt=0.3.
+- **Resolution (root cause — different from the original hypothesis):** the *pressure*
+  operator already composed domain-BC openness with the cut-cell operator correctly.
+  The real bug was in the **momentum (velocity-diffusion) solve**: on the staggered grid,
+  `smoothComp` short-circuited to a **constant-coefficient, all-fluid** diffusion smoother
+  whenever domain BCs were active (`has_bc_`), *discarding the cut-cell IBM stencil
+  entirely* (the code path was literally commented "domain-BC — no immersed solid"). So the
+  velocity field never saw the body while the projection did → operator mismatch → energy
+  injection → blow-up (it NaN'd even in Stokes/advection-off, proving it was not CFL). Fix:
+  when a solid is actually present (`has_solid_`, any inner SDF < 0) *and* domain BCs are
+  set, route the staggered momentum solve through the Robust-Scaled cut-cell IBM stencil
+  with domain-BC ghosts refreshed each colour (reflection walls/inflow + zero-gradient
+  outflow) — mirroring the already-correct collocated path. The all-fluid channel/BFS path
+  is gated out (`has_solid_` false there) so it stays byte-identical.
+- **Validated (OpenMP, single rank):** a confined D=16 cylinder at Re=40 (inflow/outflow,
+  no-slip ±y walls) that previously NaN'd by step ~200 now runs stably to steady state —
+  no-slip holds (mean|u| inside ≈ 2.5e-3), max|u| steady ≈ 1.78, divergence bounded
+  (~1e-6–1e-4, decaying with the transient). Channel (`verify_channel`) and BFS
+  (`verify_bfs`) regressions are unchanged (byte-identical). GPU (CUDA/HIP) revalidation
+  still recommended before shipping the compute-heavy wake example.
+- **(a)/(b) status:** with (c) fixed, the single correct call for a no-slip immersed body
+  in an inflow/outflow domain is `set_solid(sdf, cutcell_pressure=True)` — you do **not**
+  call `set_pressure_geometry` as well (docstrings updated to say so). The setters still
+  share one SDF, so calling both is still a footgun; a hard error/compose was left for
+  later since the correct single-call path now works. (b) is by-design: `cutcell_pressure`
+  must be `True` for a bluff body.
+- **Consequence:** the cylinder-vortex-street example is now unblocked on the solver
+  (still GPU-territory for resolution/runtime, per the note below).
 - **The stable route (for when it's built on a GPU):** drive the cylinder in a fully
   **periodic** box with a body force (the Zick–Homsy path — immersed solid + periodic,
   no domain BCs), advection ON. This path is *stable* — a D=16 cylinder ran to Re≈134
@@ -112,6 +134,43 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   (characterisation + trend + caveat); grid-converged random-bed permeability needs
   the GPU build for finer grids. Continuation seeding (coarse→fine `set_state`) would
   also help the solve reach steady state in fewer steps.
+
+## dem: periodic collisions across a boundary are NOT detected/resolved (SEVERE)
+- **Status:** open — CONFIRMED with a 2-particle minimal repro; corrupts every periodic packing
+- **Package / area:** dem — single-GPU `step()` periodic ghost-contact resolution
+- **Found in:** examples/random-packed-bed — user noticed the g(r) has weight at r < d
+  (spheres closer than one diameter), i.e. overlap, which is impossible for hard spheres.
+- **Observed:** a periodic sphere packing generated with the Lubachevsky–Stillinger
+  protocol contains **deep real overlaps** (min pair gap ≈ −0.77 of a radius; centres
+  0.23 apart for r=0.5 spheres; ~170/19900 pairs overlapping), yet dem's
+  `get_max_overlap()`/`compute_overlaps()` report **0**. So the growth feedback (which
+  keys off `compute_overlaps`) never backs off → grows to full scale → interpenetration;
+  and the reported φ and coordination Z are inflated by the overlaps.
+- **Root cause (minimal repro, box L=6, r=0.5, periodic):**
+  - INTERIOR pair (x=0.0 and 0.6, overlap 0.4): `compute_overlaps`=0.400, resolves to
+    centre distance 1.000 (touching). **Works.**
+  - BOUNDARY pair (x=2.7 and −2.7, min-image gap 0.6, SAME overlap 0.4):
+    `compute_overlaps`=**0.000**, and after 300 steps the pair has **not moved**
+    (distance still 0.600). **Broken.**
+  So contacts whose closest image crosses a periodic face are invisible to both the
+  overlap measure and the position solve. `set_global_scale(2.0)` (which forces the
+  ghost band `skin = 1.0*globalScale` to cover these particles) does not help — so it
+  is **not** the ghost-emission band width; `step()`→`demStep()`→`generateGhostsKokkos()`
+  runs, but the ghost *contacts* are never applied to the real owners. The defect is in
+  the ghost-contact narrowphase/position-solve mapping, not ghost emission.
+- **Expected:** g(r)=0 for r<d, first peak exactly at contact r=d; boundary contacts
+  resolved identically to interior ones; `max_overlap`→0 meaning *actually* no overlap.
+- **Workaround (validated):** pack in a **non-periodic, walled** box instead (6
+  `add_plane(px,py,pz, nx,ny,nz)` walls, `enable_periodicity(False,…)`). That path gives
+  a CLEAN packing (min gap 0.000, dem max_overlap 0.000). Downside: wall-ordering near
+  the boundaries and the packing is no longer periodic (so the periodic body-force CFD
+  needs rethinking — extract an interior sub-cube, or solve the walled column).
+- **Impact on the gallery:** the shipped `random-packed-bed` example's packing is
+  therefore invalid (overlapping; φ≈0.66 and Z≈5.1 are inflated). It needs the dem fix
+  (proper) or a rework onto the walled path (interim). Flagged for correction.
+- **Note:** the distributed `step_mpi` path supplies periodicity via the cross-rank halo
+  (different code) and is separately validated, so this is specific to the single-GPU
+  periodic self-ghost path.
 
 ## Inflow/outflow channel diverges to NaN at low resolution
 - **Status:** open
