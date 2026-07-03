@@ -25,6 +25,8 @@ website:
         menu:
           - href: examples/poiseuille-ibm/index.qmd
             text: "Plane Poiseuille (cut-cell IBM, exact)"
+          - href: examples/developing-channel/index.qmd
+            text: "Developing channel (inflow/outflow)"
           - href: examples/pipe-poiseuille/index.qmd
             text: "Pipe Poiseuille (curved wall, 2nd order)"
           - href: examples/taylor-green/index.qmd

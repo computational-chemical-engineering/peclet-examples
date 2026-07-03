@@ -23,6 +23,14 @@ precision — and the validation trap that makes it *look* inexact.
 :::
 
 ::: {.g-col-12 .g-col-md-6}
+### [Developing channel flow →](examples/developing-channel/index.qmd)
+A uniform stream enters a channel and relaxes into the parabolic Poiseuille
+profile — the classic entrance region, using inflow/outflow boundaries.
+
+*flow · inflow/outflow · boundary conditions*
+:::
+
+::: {.g-col-12 .g-col-md-6}
 ### [Pipe flow — second-order convergence →](examples/pipe-poiseuille/index.qmd)
 The same parabolic flow through a *curved* cylindrical wall, where the cut-cell
 IBM finally shows its genuine O(h²) accuracy — the convergence study the plane
