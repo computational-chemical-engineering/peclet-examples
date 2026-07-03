@@ -36,6 +36,10 @@ if _local:
         sys.path.insert(0, p)
 elif importlib.util.find_spec("peclet") is None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+# the interactive 3-D bed needs plotly (+ scikit-image for the isosurface mesh)
+for _mod, _pip in (("plotly", "plotly"), ("skimage", "scikit-image")):
+    if importlib.util.find_spec(_mod) is None:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", _pip], check=True)
 ```
 
 ```{python}
@@ -158,14 +162,43 @@ def permeability(sim, side, Ng, mu=0.1, F=1e-3, dt=50.0, max_steps=170, vel_iter
 
 ## Step 1 — Pack a bed and look at it
 
+We build the baseline bed (D₀=1, AR=1.5, t/R=0.4) and reconstruct its solid surface as a
+signed-distance isosurface. The figure below is **interactive — drag to rotate, scroll to
+zoom** — so you can see how the hollow cylinders interlock in the periodic box.
+
 ```{python}
-#| label: fig-bed
-#| fig-cap: "A packed bed of hollow-cylinder rings (D₀=1, AR=1.5, t/R=0.4). Left: the engine-reconstructed solid mask on a mid-plane slice (grey = ring material, white = pore). Right: the streamwise pore velocity from the Stokes solve — flow threads the connected pores and stagnates in the ring holes and against the walls."
+#| label: fig-bed3d
+#| fig-cap: "The packed bed of rings in 3-D (**drag to rotate**). The surface is the sdf = 0 isosurface of the DEM-reconstructed packing — the outer walls, the holes through each ring, and the contacts between them are all visible."
+import plotly.graph_objects as go
+from skimage import measure
+
 t0 = time.time()
 sim0, g0 = pack_ring_bed(seed=0)
+print(f"packed {g0['N']} rings in {time.time()-t0:.0f}s   (box side {g0['side']:.2f}, S_v = {g0['Sv']:.2f})")
+
+sdf3d = np.ascontiguousarray(sim0.get_sdf_grid((56, 56, 56)), np.float64)  # <0 inside the ring solid
+verts, faces, _, _ = measure.marching_cubes(sdf3d, level=0.0)              # triangulated solid surface
+fig3d = go.Figure(go.Mesh3d(
+    x=verts[:, 0], y=verts[:, 1], z=verts[:, 2],
+    i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
+    color="#c8a26e", opacity=1.0, flatshading=True,
+    lighting=dict(ambient=0.5, diffuse=0.85, specular=0.25, roughness=0.6),
+    lightposition=dict(x=120, y=160, z=220)))
+fig3d.update_layout(
+    width=560, height=520, margin=dict(l=0, r=0, t=32, b=0),
+    title="ring packed bed — drag to rotate",
+    scene=dict(aspectmode="data", xaxis_title="x", yaxis_title="y", zaxis_title="z"))
+fig3d.show()
+```
+
+The Stokes solve then gives the pore velocity. A mid-plane slice shows the flow field:
+
+```{python}
+#| label: fig-bed
+#| fig-cap: "Left: the engine-reconstructed solid mask on a mid-plane slice (grey = ring material, white = pore). Right: the streamwise pore velocity from the Stokes solve — flow threads the connected pores and stagnates in the ring holes and against the walls."
 main = permeability(sim0, g0["side"], 56, want_field=True)
 print(f"baseline ring bed:  ε = {main['eps']:.3f}   k = {main['k']:.3e}   "
-      f"({main['steps']} Stokes steps, div={main['div']:.1e}, {time.time()-t0:.0f}s)")
+      f"({main['steps']} Stokes steps, div={main['div']:.1e})")
 
 fig, (a0, a1) = plt.subplots(1, 2, figsize=(9, 4.0))
 a0.imshow((main["sdf"] < 0).T, origin="lower", cmap="Greys", vmin=0, vmax=1.6)
