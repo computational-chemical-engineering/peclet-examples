@@ -1,0 +1,265 @@
+---
+title: "Custom-shaped particles: pack your own (peclet.dem)"
+subtitle: "Author a particle as a signed distance function, turn it into a DEM particle — surface shell, moment of inertia and all — and pack a boxful."
+author: "Peclet"
+date: "2026-07-03"
+categories: [dem, particles, sdf, non-spherical, packing]
+jupyter: python3
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/sdf-particle-packing/index.ipynb){target="_blank"}
+&nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
+
+## What you'll learn
+
+`peclet.dem` is not limited to spheres. A particle is a **signed distance field
+(SDF)** plus a set of **surface points**, and the collision solver works for *any*
+shape you can describe implicitly. In this example you will:
+
+1. **Author a particle** with a few lines of implicit-solid (CSG) modelling — here a
+   *dumbbell* built from two lobes and a neck.
+2. Turn it into a DEM particle with **`peclet.dem.build_particle`**, which samples the
+   SDF onto a grid, extracts a **surface point shell** by marching cubes, and computes
+   the **mass, centre of mass and full inertia tensor** by voxel integration —
+   returning the particle in its **principal-axis frame** so the solver's inertia is
+   exact (no hand-tuned numbers).
+3. **Pack a boxful** of these particles by Lubachevsky–Stillinger growth and measure
+   the packing fraction.
+
+Everything runs on a CPU in well under a minute.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet + scikit-image on Colab/Binder)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    for p in _local.split(os.pathsep):
+        sys.path.insert(0, p)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+# build_particle turns an SDF into a surface shell via marching cubes (scikit-image).
+if importlib.util.find_spec("skimage") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "scikit-image"], check=True)
+```
+
+```{python}
+import numpy as np
+import math, time
+import matplotlib.pyplot as plt
+from peclet import dem
+from peclet.dem import build_particle
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+print("peclet.dem backend:", dem.execution_space)
+```
+
+## Step 1 — Author a particle as an SDF
+
+An SDF is just a function that returns, for any point, the **signed distance** to the
+surface — negative inside the solid, positive outside. Complex shapes are built by
+combining primitives with constructive-solid-geometry (CSG) operations. Here are a
+sphere, a capsule (a rounded cylinder) and a *smooth union* that blends shapes
+together, all as plain NumPy functions of an `(N, 3)` array of points:
+
+```{python}
+def sphere(center, r):
+    c = np.asarray(center, float)
+    return lambda p: np.linalg.norm(p - c, axis=1) - r
+
+def capsule_x(half_len, r):
+    """A cylinder of radius r along x with hemispherical caps (a true distance field)."""
+    def f(p):
+        dx = np.abs(p[:, 0]) - half_len
+        dr = np.linalg.norm(p[:, 1:], axis=1) - r
+        return np.sqrt(np.maximum(dx, 0)**2 + np.maximum(dr, 0)**2) + np.minimum(np.maximum(dx, dr), 0)
+    return f
+
+def smooth_union(a, b, k=0.08):
+    """Blend two SDFs with a rounded seam of width ~k."""
+    def f(p):
+        da, db = a(p), b(p)
+        h = np.clip(0.5 + 0.5 * (db - da) / k, 0, 1)
+        return db * (1 - h) + da * h - k * h * (1 - h)
+    return f
+
+# a dumbbell: two lobes joined by a neck
+dumbbell = smooth_union(
+    smooth_union(sphere((-0.45, 0, 0), 0.32), sphere((0.45, 0, 0), 0.32)),
+    capsule_x(0.45, 0.14),
+)
+```
+
+::: {.callout-tip}
+Any callable `f(points) -> distances` works — including the output of a dedicated
+implicit-modelling library such as [`fogleman/sdf`](https://github.com/fogleman/sdf),
+which gives you a rich CSG algebra (`union`, `difference`, `twist`, `shell`, ...). We
+keep it to a few NumPy lines here so the example is self-contained.
+:::
+
+## Step 2 — Build the DEM particle
+
+`build_particle` does the heavy lifting: it samples the SDF on a grid, extracts a
+surface point shell (marching cubes, thinned to a controlled density), and integrates
+the mass properties. It returns the shape in its **principal-axis body frame**, so the
+diagonal inverse inertia the solver uses is exact.
+
+```{python}
+shape = build_particle(
+    dumbbell,
+    bounds=((-0.9, -0.5, -0.5), (0.9, 0.5, 0.5)),   # a box enclosing the solid
+    resolution=64,
+    target_shell_points=200,
+)
+print(f"mass            = {shape.mass:.4f}")
+print(f"bounding radius = {shape.bounding_radius:.3f}")
+print(f"surface points  = {len(shape.shell)}")
+print(f"principal inertia (unit mass) = {np.round(shape.inertia / shape.mass, 4)}")
+print(f"  -> anisotropy I_perp / I_axial = {shape.inertia.max() / shape.inertia.min():.2f}"
+      "  (a dumbbell spins easily about its long axis, not across it)")
+```
+
+The particle is fully described by its **surface shell** (the collision probes) and its
+**SDF** (the field those probes are tested against). Let's look at both:
+
+```{python}
+fig = plt.figure(figsize=(9, 3.8))
+
+ax = fig.add_subplot(121, projection="3d")
+sh = shape.shell
+ax.scatter(sh[:, 0], sh[:, 1], sh[:, 2], s=4, c=sh[:, 0], cmap="coolwarm")
+ax.set_title(f"surface point shell ({len(sh)} pts)"); ax.set_box_aspect((1.8, 1, 1))
+
+ax = fig.add_subplot(122)
+mid = shape.grid.shape[2] // 2
+o, sp = shape.origin, shape.spacing; g = shape.grid
+extent = [o[0], o[0] + sp[0]*(g.shape[0]-1), o[1], o[1] + sp[1]*(g.shape[1]-1)]
+im = ax.imshow(g[:, :, mid].T, origin="lower", extent=extent, cmap="RdBu", vmin=-0.4, vmax=0.4)
+ax.contour(g[:, :, mid].T, levels=[0], colors="k", linewidths=1.2, extent=extent)
+ax.set_title("SDF slice (z = 0)"); ax.set_aspect("equal")
+fig.colorbar(im, ax=ax, shrink=0.75, label="signed distance")
+fig.tight_layout(); plt.show()
+```
+
+## Step 3 — Pack a boxful
+
+We pack the dumbbells by the **Lubachevsky–Stillinger** protocol: the particles start
+small (so there is no initial overlap), then grow while a thermostat keeps the assembly
+fluid. Growth is gated on the measured overlap, so the particles settle into gentle
+contact rather than being forced to interpenetrate. A final quench freezes the packing.
+
+The particle's shape, surface shell and inertia are shared by every particle via
+`shape.apply_to(sim)`; per-particle position, orientation and scale are yours to set —
+exactly as for the built-in sphere.
+
+```{python}
+N = 64
+phi_target = 0.42
+D = (N * shape.mass / phi_target) ** (1/3)      # cube sized so full-size particles give phi_target
+plen = 2 * shape.bounding_radius
+
+sim = dem.Simulation(N)
+shape.apply_to(sim)                              # <-- the imported particle becomes THE shape
+sim.set_domain((0, 0, 0), (D, D, D))
+sim.enable_periodicity(False, False, False)
+for point, normal in [((0,0,0),(1,0,0)), ((D,0,0),(-1,0,0)), ((0,0,0),(0,1,0)),
+                      ((0,D,0),(0,-1,0)), ((0,0,0),(0,0,1)), ((0,0,D),(0,0,-1))]:
+    sim.add_plane(point, normal)                 # six walls
+sim.set_gravity(0, 0, 0)
+sim.set_material_params(0.3, 0.3, 0.0)
+sim.set_solver_iterations(40, 8)
+
+rng = np.random.default_rng(5)
+p = rng.uniform(0.15*D, 0.85*D, (N, 4)).astype(np.float32); p[:, 3] = 1.0
+sim.set_positions(p)
+sim.set_velocities(rng.normal(0, 0.4, (N, 3)).astype(np.float32))
+q = rng.normal(0, 1, (N, 4)).astype(np.float32); q /= np.linalg.norm(q, axis=1, keepdims=True)
+sim.set_quaternions(q)                           # random initial orientations
+sim.set_angular_velocities(np.zeros((N, 3), np.float32))
+
+rate, dt, crit = 1.0, 0.005, 0.02 * plen
+sim.set_scales(np.full(N, 1.0, np.float32))
+sim.set_growth_params(rate, 0.06)
+sim.set_thermostat(0.6, 0.004)
+t0 = time.time()
+for i in range(1100):                            # grow to full size, gated on overlap
+    grow = sim.get_max_overlap() < crit and float(sim.get_scales().mean()) < 0.999
+    sim.set_growth_params(rate if grow else 0.0, sim.get_growth_factor())
+    sim.step(dt)
+sim.set_thermostat(0, 1); sim.set_material_params(0, 0, 0)
+for i in range(300):                             # quench to a static packing
+    sim.step(dt)
+
+phi = phi_target * float(np.mean(sim.get_scales() ** 3))
+print(f"packed {N} dumbbells in {time.time()-t0:.1f} s")
+print(f"packing fraction phi ~ {phi:.3f}")
+print(f"max overlap = {sim.get_max_overlap()/plen*100:.1f}% of the particle length")
+```
+
+## The packing
+
+To draw the result generically — using nothing but the surface shell every particle
+already carries — we transform each particle's shell by its final position and
+orientation and scatter the points, coloured by height:
+
+```{python}
+pos = sim.get_positions().reshape(-1, 3)
+quat = sim.get_quaternions().reshape(-1, 4)
+scale = sim.get_scales().ravel()
+
+def qrot(q, v):                                  # rotate v by quaternion q = (x,y,z,w)
+    qv = q[:3]; t = 2.0 * np.cross(qv, v)
+    return v + q[3] * t + np.cross(qv, t)
+
+cloud, height = [], []
+for i in range(N):
+    wp = np.array([qrot(quat[i], v * scale[i]) for v in shape.shell]) + pos[i]
+    cloud.append(wp); height.append(np.full(len(wp), pos[i, 2]))
+cloud = np.vstack(cloud); height = np.concatenate(height)
+
+fig = plt.figure(figsize=(5.2, 5))
+ax = fig.add_subplot(111, projection="3d")
+ax.scatter(cloud[:, 0], cloud[:, 1], cloud[:, 2], s=1, c=height, cmap="viridis")
+ax.set_title(f"N = {N} dumbbells,  phi ~ {phi:.2f}")
+ax.set_box_aspect((1, 1, 1)); plt.show()
+```
+
+## Adapt this yourself
+
+- **Change the particle.** Swap `dumbbell` for any SDF. A rounded cube (a die) is one
+  line:
+  ```python
+  def rounded_box(half, rad):
+      half = np.asarray(half, float)
+      def f(p):
+          q = np.abs(p) - half
+          return np.linalg.norm(np.maximum(q, 0), axis=1) + np.minimum(np.max(q, axis=1), 0) - rad
+      return f
+  shape = build_particle(rounded_box((0.4, 0.4, 0.4), 0.1),
+                         ((-0.6,)*3, (0.6,)*3), resolution=64)
+  ```
+  Concave shapes (stars, gears) work too, but resolve contacts less cleanly than convex
+  ones. For a full CSG algebra, feed `build_particle` a callable from
+  [`fogleman/sdf`](https://github.com/fogleman/sdf).
+- **Real mass / density.** `apply_to` uses unit mass by default. For a real density,
+  call `shape.apply_to(sim, unit_mass=False)` and set `sim.set_inv_mass(1/mass)` — the
+  builder exposes `shape.mass` and `shape.inertia` at your chosen `density=`.
+- **Export the packing.** `sim.write_vtp("pack.vtp")` writes particle centres/orientations
+  for ParaView/Ovito; `sim.get_sdf_grid((128,128,128))` reconstructs the pore-space SDF
+  of the whole bed — the bridge to a CFD run with `peclet.flow` (see the
+  [random packed bed](../random-packed-bed/index.qmd) example).
+- **Go bigger / on a GPU.** Increase `N`; on a CUDA/HIP build the same script runs on the
+  device. A distributed build adds `sim.init_mpi(...)` / `sim.step_mpi(...)`.
+
+## Reproduce this
+
+```bash
+# from a checkout of peclet-examples
+pip install -e '.[sim]'          # or: pip install peclet scikit-image
+python -c "import runpy; runpy.run_path('examples/sdf-particle-packing/index.qmd')"  # (or open the notebook)
+
+# refresh the rendered page from a local build of the suite:
+PECLET_LOCAL_BUILD=/path/to/suite/dem/build_omp \
+  quarto render examples/sdf-particle-packing/index.qmd --execute
+```

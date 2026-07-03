@@ -39,6 +39,8 @@ website:
             text: "Cylinder vortex street (Schäfer–Turek)"
           - href: examples/random-packed-bed/index.qmd
             text: "Random packed bed (dem → flow)"
+          - href: examples/sdf-particle-packing/index.qmd
+            text: "Custom-shaped particles (dem, SDF)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

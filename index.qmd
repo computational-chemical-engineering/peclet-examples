@@ -82,6 +82,15 @@ pores with `peclet.flow` and measure permeability vs Carman–Kozeny.
 *dem · flow · porous media · multi-method*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Custom-shaped particles (dem, SDF) →](examples/sdf-particle-packing/index.qmd)
+Beyond spheres: author a particle as a signed distance function (a dumbbell), turn
+it into a DEM particle — surface shell, moment of inertia and all — with
+`build_particle`, and pack a boxful.
+
+*dem · particles · SDF · non-spherical · packing*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with
