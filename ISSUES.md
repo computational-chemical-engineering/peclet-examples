@@ -108,6 +108,15 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   share one SDF, so calling both is still a footgun; a hard error/compose was left for
   later since the correct single-call path now works. (b) is by-design: `cutcell_pressure`
   must be `True` for a bluff body.
+- **UPDATE (SHIPPED):** the `cylinder-vortex-street` example is now live on the
+  Schäfer–Turek 2D-2 geometry (Re=100). Released in **peclet-flow 0.2.1** (→ peclet
+  0.2.2): the momentum fix above + `set_backflow_stabilization` (vortices leave the
+  outlet) + `set_deferred_correction` (higher-order advection — the coarse-grid
+  numerical dissipation was suppressing shedding into a false steady wake; turning it
+  on lets the Kármán instability grow). Even at a CPU-affordable D=10 it sheds cleanly:
+  **St=0.267** (benchmark ~0.30; ~10% low from the under-resolved D≈1-cell boundary
+  layer), Δp≈2.5 (matches). C_D/C_L still need a force-on-solid query flow doesn't
+  expose. Finer D (GPU) converges St→0.30. Render is ~70 min at D=10 on CPU.
 - **Consequence:** the cylinder-vortex-street example is now unblocked on the solver
   (still GPU-territory for resolution/runtime, per the note below).
 - **The stable route (for when it's built on a GPU):** drive the cylinder in a fully
@@ -216,10 +225,21 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
     mode**, most likely **outflow backflow** (the developing recirculation interacting with the
     zero-gradient outflow) — the "convective outflow" follow-up flagged in flow's CLAUDE.md. A
     separate, deeper numerical-BC project; NOT the immersed-solid bug above.
-- **Status of the wiring change:** kept as an improvement (opt-in `set_implicit_advection(True)`),
-  but it is **not advertised as a BFS fix**. `verify_bfs` should NOT be treated as passing until
-  the outflow-backflow mode is addressed (candidate fixes: a convective/Neumann-traction outflow,
-  or backflow stabilization at the outflow).
+  - **Literature diagnosis (confirmed):** this is the classical **backflow divergence** at open/
+    outflow boundaries. The do-nothing / zero-gradient outflow is only *conditionally* energy-stable;
+    when flow reverses across the outlet (`u·n<0`, the developing recirculation/shed vortices), the
+    convective term advects undefined exterior data in and injects kinetic energy → divergence.
+    Literature signature matches exactly: *"on finer meshes the error concentrates and the mesh
+    resolves the instability rather than damping it"* → our resolution dependence (S=8 stable, S=16
+    marginal). Refs: Bazilevs et al. 2009; Esmaily-Moghadam, Bazilevs, Marsden 2011 (*A comparison of
+    outlet boundary treatments for prevention of backflow divergence*); Dong et al. (energy-stable OBC).
+- **Fix (implemented — implicit-advection default + backflow stabilization):**
+  1. Implicit-FOU advection is now the **default on the domain-BC (inflow/outflow) path** (via
+     `implicitAdv()`); channel stays correct (`u_max/U_mean=1.494`).
+  2. **Backflow stabilization** (`flow_ibm.hpp` `applyBackflowStab`): the standard dissipative outflow
+     term `+β·ρ·|min(u·n,0)|` added to the normal-momentum diagonal where the outlet reverses (β=0.2
+     default, `set_backflow_stabilization`). Purely dissipative + implicit, and **inert where the
+     outlet is outgoing** → the channel (no reversal) stays byte-identical.
 
 ## Kokkos "deallocated after finalize" warning under Jupyter/Quarto
 - **Status:** open

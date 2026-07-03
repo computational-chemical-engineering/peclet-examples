@@ -66,6 +66,14 @@ lattices (SC/BCC/FCC).
 :::
 
 ::: {.g-col-12 .g-col-md-6}
+### [Cylinder vortex street →](examples/cylinder-vortex-street/index.qmd)
+Unsteady flow past a confined cylinder on the Schäfer–Turek benchmark geometry:
+a periodic Kármán vortex street, with the Strouhal number and pressure drop.
+
+*flow · inflow/outflow · IBM · unsteady · benchmark*
+:::
+
+::: {.g-col-12 .g-col-md-6}
 ### [Random packed bed (dem → flow) →](examples/random-packed-bed/index.qmd)
 The first cross-method example: build a random close packing with `peclet.dem`,
 characterise it (porosity, coordination, g(r)), then push Stokes flow through the

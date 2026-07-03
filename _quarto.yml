@@ -35,6 +35,8 @@ website:
             text: "Lid-driven cavity (vs Ghia)"
           - href: examples/zick-homsy/index.qmd
             text: "Zick–Homsy sphere arrays"
+          - href: examples/cylinder-vortex-street/index.qmd
+            text: "Cylinder vortex street (Schäfer–Turek)"
           - href: examples/random-packed-bed/index.qmd
             text: "Random packed bed (dem → flow)"
     right:

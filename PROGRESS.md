@@ -62,3 +62,12 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
 - [x] random-packed-bed FIXED (dem 0.2.1 periodic-collision fix): regenerated clean —
       φ=0.629, Z=6.63, 0 rattlers, g(r)=0 for r<d, k ~6% above Carman-Kozeny. Uses the
       effective radius (scale*growth_factor) + annealed pack.py protocol. PUSHED.
+
+## Inflow/outflow examples (peclet-flow 0.2.1 released)
+- [x] RELEASE: peclet-flow 0.2.1 (inflow/outflow fix + set_backflow_stabilization +
+      set_deferred_correction) + peclet 0.2.2 metapackage. Both on PyPI. tag v0.2.1
+      (flow) / v0.2.2 (umbrella). pip install peclet now has the fix.
+- [x] developing-channel: uniform inlet -> Poiseuille (u_max/Um=1.493, L_e~0.04ReH). LIVE.
+- [~] cylinder-vortex-street (Schafer-Turek 2D-2, Re=100): SHEDS at D=10 with
+      deferred-correction advection, St=0.267 (bench ~0.30), dP~2.5. Rendering (~70min).
+      C_D/C_L need a force-on-solid binding flow lacks. nav+gallery+ISSUES prepped.
