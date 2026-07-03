@@ -85,9 +85,18 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   inflow/outflow domain. Repair needs C++ work in the cut-cell pressure assembly
   (compose domain-BC openness with the cut-cell operator; make the geometry setters
   non-clobbering) + GPU validation — deferred, not attempted overnight.
-- **Consequence:** the cylinder-vortex-street example is **not shippable** on the
-  current solver; deferred until this is fixed (and it is compute-heavy: ~19 min for
-  6000 CPU steps, so it is GPU-territory regardless).
+- **Consequence:** the cylinder-vortex-street example is **not shippable** now.
+- **The stable route (for when it's built on a GPU):** drive the cylinder in a fully
+  **periodic** box with a body force (the Zick–Homsy path — immersed solid + periodic,
+  no domain BCs), advection ON. This path is *stable* — a D=16 cylinder ran to Re≈134
+  with no NaN (the inflow/outflow path NaNs by step ~200). Two remaining requirements
+  make it GPU-territory: (i) a Re≈100 wake needs the cylinder resolved to D≳30 cells
+  (boundary layer ~D/√Re), i.e. a large 2-D domain (~20–40 min/run on CPU); (ii) below
+  that resolution the "steady" wake is a confinement/under-resolution artifact (a real
+  cylinder sheds by Re≈47), so it must not be presented as a benchmark. Build it on the
+  CUDA/HIP `peclet` build with D≈30–40 and a large periodic box, probe the wake for the
+  shedding frequency, and report St vs the isolated-cylinder value with the array-spacing
+  caveat. The classic *inflow/outflow* street additionally needs the solver fix above.
 
 ## Pore-scale (random packing) permeability converges slowly on CPU
 - **Status:** documented (physical/practical, not a bug)

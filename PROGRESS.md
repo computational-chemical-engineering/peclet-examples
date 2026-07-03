@@ -21,9 +21,12 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       permeability (flat across N, ~1.5× Carman–Kozeny, 9% over realizations) — PUSHED
 - [!] `backward-facing-step`: complete draft, COMPUTE-BOUND (>5min/Re, no steady on
       CPU). Moved to drafts/ (outside render path). Render on GPU to finish.
-- [!] `cylinder-vortex-street`: DROPPED — immersed solid + inflow/outflow is broken in
-      peclet.flow (CONFIRMED, see ISSUES: geometry setters clobber; cutcell True NaNs;
-      False leaks no-slip). Needs a solver C++ fix + it's ~19min/run on CPU.
+- [!] `cylinder-vortex-street`: DROPPED after exhaustive testing (see ISSUES for the
+      full map). Two independent blockers: (1) inflow/outflow + immersed solid NaNs
+      (real peclet.flow bug, localized to setSolid openness composition); (2) a Re~100
+      wake needs D≳30 cells → large 2-D domain → ~20-40min/run = GPU-territory. The
+      PERIODIC body-force path is stable (ran to Re~134, no NaN) and is the recommended
+      route to build it on a GPU. Not shippable on CPU tonight without over-claiming.
 - [ ] (stretch) other classics: Couette, Womersley, Kármán, Stokes problems — not done
 
 ## FINAL STATE (overnight session)
