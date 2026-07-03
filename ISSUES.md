@@ -268,7 +268,8 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   SDF (line search `alpha→0`).
 - **Expected:** cells relax toward `V ∝ V_ref` (uniform, or graded `V_ref=φ³` for a wall
   inflation layer) without collapsing.
-- **Repro:** `suite/voro/examples/packed_bed_voronoi/pore_mesh_stages.cpp` → stages 2 & 4.
+- **Repro:** `peclet.voro.optimize_pore_mesh(..., free_energy=True)` on an interstitial seeding →
+  the relaxed stages (2 & 4) of examples/pore-mesh-voronoi.
 - **Notes:** two root causes. (1) Position-only relaxation can't move seeds *between* pores,
   so an unmatched seeding collapses cells instead of redistributing — mitigated by
   density-graded seeding (`∝ 1/V_ref`) + a hard log-barrier from a feasible start. (2) The

@@ -1,32 +1,28 @@
 """Helpers for the pore-mesh-voronoi example.
 
-The volume-controlled *SDF-walled* Voronoi mesh optimiser is experimental and not yet in the released
-`peclet` Python API, so this example drives a small C++ tool from a local `suite` checkout
-(`pore_mesh_stages`, in `voro/examples/packed_bed_voronoi`). These helpers build+run it and read its
-VTUs without needing VTK — so the figures render in a plain numpy/matplotlib environment.
-
-Point `PECLET_SUITE` at the suite checkout (default: ~/Codes/suite).
+Everything runs through the published `peclet` package: `peclet.dem` for the packing and
+`peclet.voro` for the SDF-walled interstitial Voronoi meshing (`optimize_pore_mesh`,
+`sdf_voronoi_cells`). These helpers add the numpy plumbing (union-SDF seeding, graded target,
+z-slice of the returned polyhedra) so the figures render in a plain numpy/matplotlib environment —
+no VTK needed.
 """
 from __future__ import annotations
 import math
-import os
-import subprocess
-import xml.etree.ElementTree as ET
-from pathlib import Path
-
 import numpy as np
 
-SUITE = Path(os.environ.get("PECLET_SUITE", str(Path.home() / "Codes" / "suite")))
-_EXDIR = SUITE / "voro" / "examples" / "packed_bed_voronoi"
+
+def _dem():
+    try:
+        from peclet import dem
+    except ImportError:
+        import dem
+    return dem
 
 
 def pack_spheres(n=180, phi_ref=0.63, radius=0.5, seed=3):
     """Random close packing of `n` spheres in a periodic box, via peclet.dem (Lubachevsky–Stillinger
-    growth). Returns (centres (n,3) in [0,L), radii (n,), L). Needs `dem` importable."""
-    try:
-        from peclet import dem  # PyPI package
-    except ImportError:
-        import dem  # local suite build (PECLET_LOCAL_BUILD)
+    growth). Returns (centres (n,3) in [0,L), radii (n,), L)."""
+    dem = _dem()
     volp = (4 / 3) * math.pi * radius ** 3
     side = (n * volp / phi_ref) ** (1 / 3)
     half, dt = side / 2, 0.002
@@ -67,65 +63,50 @@ def pack_spheres(n=180, phi_ref=0.63, radius=0.5, seed=3):
     for _ in range(1200):
         s.step(dt)
     r = radius * s.get_scales().ravel() * float(s.get_growth_factor())
-    c = (s.get_positions()[:, :3].astype(float) + half) % side  # shift into [0, L)
-    return c, r.astype(float), float(side)
+    c = (s.get_positions()[:, :3].astype(float) + half) % side
+    return np.ascontiguousarray(c), np.ascontiguousarray(r.astype(float)), float(side)
 
 
-def write_packing(path, centres, radii, L):
-    with open(path, "w") as f:
-        f.write(f"{len(centres)} {L:.10g}\n")
-        for c, r in zip(centres, radii):
-            f.write(f"{c[0]:.10g} {c[1]:.10g} {c[2]:.10g} {r:.10g}\n")
+def union_sdf(pts, centres, radii, L):
+    """min_i(|x−c_i|_minimage − r_i): <0 inside a ball, >0 in the fluid (periodic box L)."""
+    d = pts[:, None, :] - centres[None, :, :]
+    d -= L * np.round(d / L)
+    return (np.linalg.norm(d, axis=2) - radii[None, :]).min(axis=1)
 
 
-def build_tool():
-    """cmake-build the pore_mesh_stages tool against the OpenMP Kokkos prefix; return its path."""
-    exe = _EXDIR / "build" / "pore_mesh_stages"
-    prefix = SUITE / "extern" / "install" / "host-openmp"
-    subprocess.run(["cmake", "-B", "build", f"-DCMAKE_PREFIX_PATH={prefix}",
-                    "-DCMAKE_BUILD_TYPE=Release"], cwd=_EXDIR, check=True,
-                   stdout=subprocess.DEVNULL)
-    subprocess.run(["cmake", "--build", "build", "--target", "pore_mesh_stages", "-j"],
-                   cwd=_EXDIR, check=True, stdout=subprocess.DEVNULL)
-    return exe
+def vref_graded(phi, s_lo=0.06, s_hi=0.35):
+    """Graded reference cell volume V_ref = clamp(sdf, s_lo, s_hi)³ — small at the walls, capped in bulk."""
+    return np.clip(phi, s_lo, s_hi) ** 3
 
 
-def run_stages(packing_txt, outdir, n_seeds=4000, threads=8):
-    """Run the 4-stage tool → outdir/stage{1..4}_*.vtu + spheres.txt."""
-    exe = build_tool()
-    os.makedirs(outdir, exist_ok=True)
-    env = {**os.environ, "OMP_NUM_THREADS": str(threads), "OMP_PROC_BIND": "false"}
-    subprocess.run([str(exe), str(packing_txt), str(outdir), str(n_seeds)], check=True, env=env)
+def seed_interstitial(centres, radii, L, n, margin=0.02, graded=False, seed=1, batch=20000):
+    """Reject-sample `n` seeds in the fluid (sdf>margin). If graded, weight acceptance by 1/V_ref so
+    the density is ∝ 1/V_ref (dense at the walls). Returns (n,3) float64."""
+    rng = np.random.default_rng(seed)
+    vref_min = vref_graded(np.array([s_lo := 0.06]))[0]
+    keep = []
+    while sum(len(k) for k in keep) < n:
+        p = rng.uniform(0, L, (batch, 3))
+        phi = union_sdf(p, centres, radii, L)
+        m = phi > margin
+        p, phi = p[m], phi[m]
+        if graded:
+            acc = vref_min / vref_graded(phi)
+            p = p[rng.uniform(0, 1, len(p)) < acc]
+        keep.append(p)
+    return np.ascontiguousarray(np.vstack(keep)[:n], dtype=np.float64)
 
 
-def read_spheres(path):
-    with open(path) as f:
-        M, L = f.readline().split()
-        c = np.array([[float(x) for x in f.readline().split()] for _ in range(int(M))])
-    return c[:, :3], c[:, 3], float(L)
-
-
-def slice_vtu(path, z0, array="volume"):
-    """VTK-free z=z0 cross-section of a VTK_POLYHEDRON VTU: intersect each cell's face edges with the
-    plane and order the crossings into a convex polygon. Returns (list of (k,2) polygons, values,
-    wall-flags)."""
-    piece = ET.parse(path).find(".//Piece")
-    P = np.array(piece.find("Points/DataArray").text.split(), float).reshape(-1, 3)
-    cells = piece.find("Cells")
-
-    def carr(name):
-        return np.array(cells.find(f"DataArray[@Name='{name}']").text.split(), np.int64)
-
-    def darr(name):
-        return np.array(piece.find(f"CellData/DataArray[@Name='{name}']").text.split(), float)
-
-    faces, foff = carr("faces"), carr("faceoffsets")
-    val, bnd = darr(array), darr("boundary")
-    polys, vals, wall, prev = [], [], [], 0
-    for ci, end in enumerate(foff):
-        blk = faces[prev:end]; prev = end
-        i, nF = 1, int(blk[0])
-        segs = []
+def slice_cells(cells, z0, values=None):
+    """z=z0 cross-section of the polyhedra returned by peclet.voro.sdf_voronoi_cells (points + per-cell
+    face lists): intersect each cell's face edges with the plane, order the crossings into a convex
+    polygon. Returns (list of (k,2) polygons, values). `values` defaults to cell volume."""
+    P = np.asarray(cells["points"]); faces = np.asarray(cells["faces"]); foff = np.asarray(cells["face_offsets"])
+    vals = np.asarray(cells["volume"] if values is None else values)
+    polys, out, prev = [], [], 0
+    for ci in range(len(foff) - 1):
+        blk = faces[prev:foff[ci + 1]]; prev = foff[ci + 1]
+        i, nF, segs = 1, int(blk[0]), []
         for _ in range(nF):
             npf = int(blk[i]); i += 1
             Q = P[blk[i:i + npf]]; i += npf
@@ -133,12 +114,10 @@ def slice_vtu(path, z0, array="volume"):
                 a, b = Q[k], Q[(k + 1) % npf]
                 da, db = a[2] - z0, b[2] - z0
                 if (da > 0) != (db > 0):
-                    t = da / (da - db)
-                    segs.append(a[:2] + t * (b[:2] - a[:2]))
+                    t = da / (da - db); segs.append(a[:2] + t * (b[:2] - a[:2]))
         if len(segs) < 3:
             continue
-        pts = np.array(segs)
-        c = pts.mean(0)
+        pts = np.array(segs); c = pts.mean(0)
         pts = pts[np.argsort(np.arctan2(pts[:, 1] - c[1], pts[:, 0] - c[0]))]
-        polys.append(pts); vals.append(val[ci]); wall.append(bnd[ci])
-    return polys, np.asarray(vals), np.asarray(wall)
+        polys.append(pts); out.append(vals[ci])
+    return polys, np.asarray(out)
