@@ -27,6 +27,8 @@ website:
             text: "Plane Poiseuille (cut-cell IBM, exact)"
           - href: examples/developing-channel/index.qmd
             text: "Developing channel (inflow/outflow)"
+          - href: examples/backward-facing-step/index.qmd
+            text: "Backward-facing step (separation)"
           - href: examples/pipe-poiseuille/index.qmd
             text: "Pipe Poiseuille (curved wall, 2nd order)"
           - href: examples/taylor-green/index.qmd
@@ -39,6 +41,8 @@ website:
             text: "Cylinder vortex street (Schäfer–Turek)"
           - href: examples/random-packed-bed/index.qmd
             text: "Random packed bed (dem → flow)"
+          - href: examples/ring-packed-bed/index.qmd
+            text: "Ring packed-bed permeability study (dem → flow)"
           - href: examples/sdf-particle-packing/index.qmd
             text: "Custom-shaped particles (dem, SDF)"
     right:

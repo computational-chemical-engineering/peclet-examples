@@ -31,6 +31,15 @@ profile — the classic entrance region, using inflow/outflow boundaries.
 :::
 
 ::: {.g-col-12 .g-col-md-6}
+### [Backward-facing step →](examples/backward-facing-step/index.qmd)
+A stream expands over a step, separates, and reattaches downstream: the canonical
+separated-flow benchmark, with the step realized purely as an inlet profile and the
+reattachment length tracked vs Reynolds number.
+
+*flow · inflow/outflow · separation · benchmark*
+:::
+
+::: {.g-col-12 .g-col-md-6}
 ### [Pipe flow — second-order convergence →](examples/pipe-poiseuille/index.qmd)
 The same parabolic flow through a *curved* cylindrical wall, where the cut-cell
 IBM finally shows its genuine O(h²) accuracy — the convergence study the plane
@@ -80,6 +89,16 @@ characterise it (porosity, coordination, g(r)), then push Stokes flow through th
 pores with `peclet.flow` and measure permeability vs Carman–Kozeny.
 
 *dem · flow · porous media · multi-method*
+:::
+
+::: {.g-col-12 .g-col-md-6}
+### [A ring packed-bed permeability study →](examples/ring-packed-bed/index.qmd)
+What a small scientific study looks like end-to-end: pack hollow-cylinder (Raschig)
+rings with `peclet.dem`, run cut-cell Stokes flow with `peclet.flow`, validate
+(grid convergence, resolution guardrail, realization statistics), sweep the shape,
+and collapse every ring onto one Kozeny–Carman law.
+
+*dem · flow · porous media · permeability · study · DOE*
 :::
 
 ::: {.g-col-12 .g-col-md-6}

@@ -1,0 +1,349 @@
+---
+title: "A permeability study of ring packed beds (dem → flow)"
+subtitle: "A small, end-to-end pore-scale CFD study: pack hollow-cylinder (Raschig) rings, push Stokes flow through the pores, and collapse the permeability of every shape onto one Kozeny–Carman law."
+author: "Peclet"
+date: "2026-07-04"
+categories: [dem, flow, porous-media, permeability, study, DOE]
+jupyter: python3
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/ring-packed-bed/index.ipynb){target="_blank"}
+&nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
+
+## What you'll learn
+
+Most examples in this gallery isolate *one* method. This one shows what a **small
+scientific study** looks like end-to-end with `peclet`: a research question, a
+coupled `dem`→`flow` pipeline, a **validation protocol** (grid convergence, a
+geometric resolution guardrail, and statistical averaging over random realizations),
+a **design-of-experiments** sweep over particle shape, and a **physics-informed
+correlation** fitted to the result. The physical system — packed beds of hollow
+cylinders (Raschig rings, the workhorse packing of chemical reactors and columns) —
+is a real problem with no simple analytic answer.
+
+It is a runnable miniature of a larger campaign (16 geometries, 113 packed beds); the
+coarse grids here fit a laptop, and we are honest below about what that costs in
+accuracy. The full study's converged constants are quoted so you can see how close a
+few-minute run gets.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    for p in _local.split(os.pathsep):
+        sys.path.insert(0, p)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+```
+
+```{python}
+import numpy as np
+import math, time
+import matplotlib.pyplot as plt
+from peclet import dem, flow
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
+                     "grid.alpha": 0.3, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+BLUE, RED, GREEN, ORANGE = "#1f77b4", "#d62728", "#2ca02c", "#ff7f0e"
+```
+
+## The question and the design space
+
+A hollow cylinder is set by three numbers: outer diameter $D_0$, aspect ratio
+$\mathrm{AR}=L/D_0$, and wall thickness $t$ (as a fraction $t/R$ of the outer radius
+$R=D_0/2$; $t/R=1$ is a *solid* cylinder). We ask the classic question of packed-bed
+transport: **how does the Darcy permeability $k$ depend on the ring's shape and on
+the porosity $\varepsilon$ of the bed it forms?**
+
+Driving creeping flow through the pore space with a body force $F$ gives the
+superficial velocity $\langle u\rangle$ and hence Darcy's law
+
+$$ k \;=\; \mu\,\frac{\langle u\rangle}{F}. $$ {#eq-darcy}
+
+The organising hypothesis of packed-bed theory is that geometry enters mainly through
+one length — the **hydraulic diameter** built from the porosity and the solid
+specific surface $S_v$ (surface area per unit *solid* volume) — via a Kozeny–Carman law
+
+$$ d_h \;=\; \frac{4\varepsilon}{(1-\varepsilon)\,S_v},
+   \qquad k \;=\; \frac{\varepsilon^{3}}{K\,(1-\varepsilon)^{2} S_v^{2}}
+   \;=\; C_k\, d_h^{2}, \qquad C_k=\tfrac{K}{16}\big/\big(\tfrac{\varepsilon}{16}\big)^{-1}\!, $$ {#eq-kc}
+
+with a *shape-independent* Kozeny constant $K$ (equivalently $C_k=k/d_h^2$). Our study
+tests exactly that claim across ring shapes. For a ring $S_v$ is analytic:
+
+```{python}
+def ring_specific_surface(R, Ri, H):
+    """Solid specific surface S_v = (surface area)/(solid volume) for a hollow cylinder."""
+    Vs = math.pi * H * (R * R - Ri * Ri)
+    As = 2 * math.pi * R * H + 2 * math.pi * Ri * H + 2 * math.pi * (R * R - Ri * Ri)  # outer+inner walls + 2 caps
+    return As / Vs
+
+print("S_v (per solid vol):  thin ring t/R=0.4 -> %.2f    solid cylinder t/R=1 -> %.2f  (D0=1, AR=1.5)"
+      % (ring_specific_surface(0.5, 0.3, 1.5), ring_specific_surface(0.5, 0.0, 1.5)))
+```
+
+## Method — a `dem` → SDF → `flow` pipeline
+
+**Pack** the rings in a periodic box with `peclet.dem` (a growth-and-anneal protocol:
+grow the particles under a thermostat, back the growth off whenever contacts overlap,
+then quench), **read the packing's signed distance field** straight from the engine
+(`get_sdf_grid` — no meshing), and **solve** cut-cell Stokes flow through the pore
+space with `peclet.flow`.
+
+```{python}
+def pack_ring_bed(N=46, D0=1.0, aspect=1.5, wall_ratio=0.4, target_phi=0.50, seed=0,
+                  steps=3000, dt=1e-3, iters=26, growth=2.7, scale0=0.05, temp=0.75,
+                  jam=2.2e-3, cool_frac=0.80):
+    R = 0.5 * D0; H = D0 * aspect; t = wall_ratio * R; Ri = max(R - t, 0.0)
+    vp = math.pi * H * (R * R - Ri * Ri)
+    side = (N * vp / target_phi) ** (1 / 3); half = 0.5 * side
+    rng = np.random.default_rng(seed)
+    s = dem.Simulation(N)
+    s.initialize(shape_type=2, radius=R, height=H, thickness=t)   # shape_type 2 = hollow cylinder
+    s.set_domain((-half, -half, -half), (half, half, half)); s.enable_periodicity(True, True, True)
+    s.set_gravity(0, 0, 0); s.set_material_params(1.0, 1.0, 0.0); s.set_solver_iterations(iters, iters)
+    m = 0.92 * half
+    pos = rng.uniform(-m, m, (N, 4)).astype(np.float32); pos[:, 3] = 1.0; s.set_positions(pos)
+    s.set_velocities(rng.normal(0, math.sqrt(temp), (N, 3)).astype(np.float32))
+    q = rng.normal(0, 1, (N, 4)).astype(np.float32); q /= np.linalg.norm(q, axis=1, keepdims=True)
+    s.set_quaternions(q); s.set_angular_velocities(np.zeros((N, 3), np.float32))
+    s.set_scales(np.full(N, 1.0, np.float32))
+    gr = growth; s.set_growth_params(gr, scale0); s.set_thermostat(temp, dt)
+    cool = int(cool_frac * steps)
+    for step in range(steps):
+        if step == cool:                                   # anneal: dissipative + thermostat off
+            s.set_material_params(0.28, 1.0, 0.0); s.set_thermostat(0.0, 1.8e4 * dt)
+        s.step(dt); ov = float(s.get_max_overlap())
+        if ov > jam:                                       # overlaps too big -> back the growth off
+            for _ in range(4):
+                s.step(0.0); ro = float(s.get_max_overlap())
+                if ro >= 0.98 * ov:
+                    break
+                ov = ro
+            gf = float(s.get_growth_factor()) * math.exp(-gr * dt); gr *= 0.99; s.set_growth_params(gr, gf)
+        else:
+            gr = min(gr * 1.02, growth); s.set_growth_params(gr, float(s.get_growth_factor()))
+    return s, dict(N=N, D0=D0, aspect=aspect, wall_ratio=wall_ratio, R=R, Ri=Ri, H=H, t=t, side=side,
+                   Sv=ring_specific_surface(R, Ri, H))
+
+
+def permeability(sim, side, Ng, mu=0.1, F=1e-3, dt=50.0, max_steps=170, vel_iter=120, tol=3e-4,
+                 want_field=False):
+    """Cut-cell Stokes permeability on an Ng^3 grid. k is in physical (D0=1) units via the cell size."""
+    sdf = np.ascontiguousarray(sim.get_sdf_grid((Ng, Ng, Ng)), np.float64)  # <0 inside solid
+    lv = max(2, int(np.log2(Ng)) - 1)
+    s = flow.Solver(Ng, Ng, Ng)
+    s.set_rho(1.0); s.set_mu(mu); s.set_dt(dt); s.set_body_force(F, 0, 0); s.set_advection(False)  # Stokes
+    s.set_velocity_solver_params(vel_iter)
+    s.set_pressure_multigrid(True, levels=lv); s.set_pressure_pcg(True, 200, 1e-8)
+    s.set_solid(sdf, cutcell_pressure=True, pressure_coarse="rediscretized")
+    prev = 0.0
+    for it in range(max_steps):
+        s.step()
+        if it % 5 == 4:
+            m = float(s.get_u().mean())
+            if it > 10 and abs(m - prev) < tol * (abs(m) + 1e-30) and s.max_open_divergence() < 1e-4:
+                break
+            prev = m
+    U = float(s.get_u().mean()); eps = float((sdf > 0).mean()); cell = side / Ng
+    out = dict(Ng=Ng, k=mu * U / F * cell * cell, U=U, eps=eps, steps=it + 1,
+               div=float(s.max_open_divergence()))
+    if want_field:
+        out["u"] = s.get_u()[:, :, Ng // 2].copy(); out["sdf"] = sdf[:, :, Ng // 2].copy()
+    return out
+```
+
+## Step 1 — Pack a bed and look at it
+
+```{python}
+#| label: fig-bed
+#| fig-cap: "A packed bed of hollow-cylinder rings (D₀=1, AR=1.5, t/R=0.4). Left: the engine-reconstructed solid mask on a mid-plane slice (grey = ring material, white = pore). Right: the streamwise pore velocity from the Stokes solve — flow threads the connected pores and stagnates in the ring holes and against the walls."
+t0 = time.time()
+sim0, g0 = pack_ring_bed(seed=0)
+main = permeability(sim0, g0["side"], 56, want_field=True)
+print(f"baseline ring bed:  ε = {main['eps']:.3f}   k = {main['k']:.3e}   "
+      f"({main['steps']} Stokes steps, div={main['div']:.1e}, {time.time()-t0:.0f}s)")
+
+fig, (a0, a1) = plt.subplots(1, 2, figsize=(9, 4.0))
+a0.imshow((main["sdf"] < 0).T, origin="lower", cmap="Greys", vmin=0, vmax=1.6)
+a0.set(title="solid mask (mid-plane)", xlabel="x", ylabel="y"); a0.grid(False)
+u = np.where(main["sdf"] < 0, np.nan, main["u"])
+im = a1.imshow(u.T, origin="lower", cmap="magma")
+a1.set(title="pore velocity u (mid-plane)", xlabel="x", ylabel="y"); a1.grid(False)
+fig.colorbar(im, ax=a1, fraction=0.046, pad=0.04, label="u")
+fig.tight_layout(); plt.show()
+```
+
+## Step 2 — Validation I: grid convergence and the resolution guardrail
+
+The number to watch in a ring study is the **wall**: the thin annulus is the hardest
+feature to resolve, and an under-resolved wall leaks flow and *over*-estimates $k$. A
+basic guardrail is that the thinnest feature must span at least ~3 cells. We refine the
+grid on the baseline bed and watch $k$ — and the wall resolution — move.
+
+```{python}
+#| label: fig-convergence
+#| fig-cap: "Permeability vs grid resolution for one ring bed, annotated with the wall resolution (cells across the ring wall). Below the ~3-cell guardrail (shaded) the wall is under-resolved and k is biased high; k is still drifting at these laptop-scale grids — the honest reading is 'not yet converged', which is exactly why the full study runs on a GPU at 256³."
+conv = [permeability(sim0, g0["side"], Ng) for Ng in (32, 44, 56)]
+cells_across_wall = [g0["t"] / (g0["side"] / c["Ng"]) for c in conv]
+for c, w in zip(conv, cells_across_wall):
+    print(f"  N={c['Ng']:3d}  k={c['k']:.3e}  wall≈{w:.1f} cells  ({c['steps']} steps)")
+
+fig, ax = plt.subplots(figsize=(5.2, 3.8))
+Ngs = [c["Ng"] for c in conv]; ks = [c["k"] for c in conv]
+ax.plot(Ngs, ks, "o-", color=BLUE)
+for c, w in zip(conv, cells_across_wall):
+    ax.annotate(f"{w:.1f} cells\nacross wall", (c["Ng"], c["k"]),
+                textcoords="offset points", xytext=(6, 6), fontsize=8, color="0.35")
+ax.axvspan(Ngs[0] - 2, 3 * g0["side"] / g0["t"], color=RED, alpha=0.07)
+ax.set(xlabel="grid resolution N", ylabel="permeability k", title="grid convergence (baseline ring)")
+plt.show()
+```
+
+## Step 3 — The DOE: sweep the ring shape from thin wall to solid cylinder
+
+The experiment. At fixed $D_0$ and aspect ratio we vary the wall thickness across the
+range that spans a **thin Raschig ring** ($t/R=0.4$) to a **solid cylinder**
+($t/R=1$). Each shape packs to a different porosity and has a different specific
+surface — the two ingredients of @eq-kc.
+
+```{python}
+#| label: fig-doe
+#| fig-cap: "Design-of-experiments sweep. Left: permeability falls as the wall thickens (the bed gets denser and the specific surface changes). Right: the same permeabilities plotted against porosity ε, the primary macroscopic control variable."
+doe = []
+for wr in (0.4, 0.6, 0.8, 1.0):
+    sim, g = pack_ring_bed(wall_ratio=wr, seed=0)
+    r = permeability(sim, g["side"], 44)
+    doe.append(dict(wall_ratio=wr, Sv=g["Sv"], **r))
+    print(f"  t/R={wr:.1f}  ε={r['eps']:.3f}  S_v={g['Sv']:.2f}  k={r['k']:.3e}")
+
+wr = [d["wall_ratio"] for d in doe]; kk = [d["k"] for d in doe]; ee = [d["eps"] for d in doe]
+fig, (a0, a1) = plt.subplots(1, 2, figsize=(9, 3.6))
+a0.plot(wr, kk, "o-", color=BLUE); a0.set(xlabel="wall thickness t/R", ylabel="permeability k",
+                                          title="k vs wall thickness")
+a0.axvspan(0.98, 1.02, color="0.85"); a0.annotate("solid\ncylinder", (1.0, kk[-1]),
+            textcoords="offset points", xytext=(-4, 18), fontsize=8, ha="right", color="0.35")
+a1.scatter(ee, kk, c=wr, cmap="viridis", s=55, zorder=3)
+a1.set(xlabel="porosity ε", ylabel="permeability k", title="k vs porosity")
+fig.tight_layout(); plt.show()
+```
+
+## Step 4 — Validation II: statistics over random realizations
+
+Permeability is a property of a *random* packing, so it scatters between independent
+beds. The study's protocol is to run several realizations per geometry and report the
+**power-law ($p=1/3$) effective-medium average**
+$K_\text{eff}=\big(\tfrac1M\sum_i k_i^{1/3}\big)^{3}$ — the mixing rule appropriate for
+a Darcy medium — with the spread as the statistical error bar.
+
+```{python}
+#| label: fig-realizations
+#| fig-cap: "Permeability across independent realizations of the baseline ring bed (different random seeds). The dashed line is the power-law (p=1/3) effective-medium average; the scatter sets the statistical error bar that any fitted correlation must be judged against."
+reals = []
+for sd in (0, 1, 2):
+    sim, g = pack_ring_bed(seed=sd)
+    r = permeability(sim, g["side"], 44)
+    reals.append(dict(seed=sd, Sv=g["Sv"], **r))
+kr = np.array([r["k"] for r in reals]); er = np.array([r["eps"] for r in reals])
+k_eff = float((np.mean(kr ** (1 / 3))) ** 3)
+print(f"realizations: k = {kr}  ->  K_eff(p=1/3) = {k_eff:.3e}   "
+      f"spread = {100*kr.std()/kr.mean():.1f}%   mean ε = {er.mean():.3f}")
+
+fig, ax = plt.subplots(figsize=(5.0, 3.6))
+ax.bar([r["seed"] for r in reals], kr, color=BLUE, alpha=0.8)
+ax.axhline(k_eff, ls="--", color=RED, label=f"$K_{{eff}}$ (p=1/3) = {k_eff:.2e}")
+ax.set(xlabel="realization (seed)", ylabel="permeability k", title="realization scatter"); ax.legend(fontsize=8)
+plt.show()
+```
+
+## Step 5 — The result: one Kozeny–Carman law for every ring shape
+
+Now the payoff. For each shape we form the dimensionless Kozeny constant implied by
+@eq-kc, $K=\varepsilon^{3}/[(1-\varepsilon)^{2}S_v^{2}k]$. The study's central claim is
+that $K$ is **the same for all ring shapes** — that the wildly different permeabilities
+above collapse once porosity and specific surface are accounted for.
+
+```{python}
+#| label: fig-collapse
+#| fig-cap: "The collapse. Left: raw permeability spans a wide range across shapes and realizations. Right: the Kozeny constant K = ε³/[(1−ε)²S_v²k] is nearly flat — every ring shape obeys one Kozeny–Carman law with a shape-independent constant. This IS the study's headline: to leading order the ring enters only through its specific surface."
+pts = doe + reals
+def kozeny_K(eps, Sv, k):
+    return eps ** 3 / ((1 - eps) ** 2 * Sv ** 2 * k)
+Ks = np.array([kozeny_K(p["eps"], p["Sv"], p["k"]) for p in pts])
+K_mean = float(Ks.mean())
+dh = np.array([4 * p["eps"] / ((1 - p["eps"]) * p["Sv"]) for p in pts])
+kv = np.array([p["k"] for p in pts])
+
+Ck = float((kv / dh ** 2).mean())
+fig, (a0, a1) = plt.subplots(1, 2, figsize=(9, 3.7))
+a0.scatter(dh ** 2, kv, color=BLUE, s=45)
+xs = np.linspace(0, (dh ** 2).max() * 1.05, 50)
+a0.plot(xs, Ck * xs, "--", color="0.5", label=fr"$k = C_k\,d_h^2$, $C_k$={Ck:.4f}")
+a0.set(xlabel=r"$d_h^2$", ylabel="permeability k", title=r"$k \propto d_h^2$ (raw collapse)"); a0.legend(fontsize=8)
+a1.scatter(range(len(Ks)), Ks, color=GREEN, s=45, zorder=3)
+a1.axhline(K_mean, ls="--", color=RED, label=f"this run: K = {K_mean:.1f} ± {Ks.std():.1f}")
+a1.axhline(5.5, ls=":", color="0.35", label="full study (converged): K ≈ 5.5")
+a1.set(xlabel="configuration (DOE + realizations)", ylabel="Kozeny constant K",
+       title="K is (nearly) shape-independent"); a1.legend(fontsize=8)
+fig.tight_layout(); plt.show()
+
+print(f"Kozeny constant across {len(pts)} configs:  K = {K_mean:.2f} ± {Ks.std():.2f} "
+      f"({100*Ks.std()/K_mean:.0f}%)   |   C_k = k/d_h^2 = {(kv/dh**2).mean():.4f}")
+```
+
+## Findings
+
+- **Two `peclet` codes compose into a study.** `dem` builds each ring packing, `flow`
+  solves the pore-scale Stokes problem, and the engine's SDF joins them with no meshing.
+  The whole loop — pack, solve, converge, average, correlate — is a few hundred lines.
+- **The permeabilities of very different ring shapes collapse onto one Kozeny–Carman
+  law.** Across thin rings to solid cylinders the Kozeny constant $K$ is nearly
+  constant: to leading order a ring enters the permeability *only through its specific
+  surface* $S_v$ and the resulting porosity. That is the study's headline, and it is
+  visible even at laptop resolution.
+- **The full campaign** (GPU, 256³, 16 geometries × 4–11 realizations, plus a
+  Reynolds-number continuation for the inertial Forchheimer term) sharpens this to a
+  reported closure $k = C_k\,d_h^2\,\mathrm{AR}^{c}$ with $C_k\approx0.0052$,
+  $K\approx5.5$, and a weak aspect-ratio (tortuosity) refinement $c\approx0.07$.
+
+## Limitations (read before trusting a number)
+
+This is a *miniature*. Its coarse grids are deliberately below the study's standard,
+and it shows:
+
+- **Different regime, and coarse — so trust the collapse, not the constant.** This
+  simple protocol jams *loose*: ε ≈ 0.68–0.82, above the full study's ε ≈ 0.38–0.67.
+  The Kozeny "constant" is known to drift upward with porosity, so $K\approx 6.8$ here
+  sitting *above* the converged 5.5 is mostly the porosity regime, not a bug. On top of
+  that the walls span only ~1.5–2.7 cells (below the 3-cell guardrail at *every*
+  resolution shown — a 256³ GPU grid gives ~12), so $k$ is not grid-converged either.
+  What is robust is the **collapse** — $K$ nearly shape-independent; pinning the
+  *absolute* constant needs the denser beds and finer grids of the full campaign.
+- **One $(D_0,\mathrm{AR})$ slice, few realizations, Stokes only.** The real study
+  sweeps aspect ratio, drives the realization count until the statistical error bar is
+  small, and adds a finite-Reynolds Forchheimer term. None of that changes the code —
+  only its scale.
+
+Per the gallery's rule: when an example's number surprises you, that is a finding, not
+something to tune away. Here the under-converged $K$ is expected and instructive.
+
+## Adapt this yourself
+
+- **Sweep aspect ratio too.** Add `aspect` to the DOE loop and test the tortuosity
+  refinement $k\propto \mathrm{AR}^{c}$.
+- **Add inertia.** Turn on advection (`set_advection(True)`, implicit) and ramp the body
+  force to trace the Forchheimer drop $k_\text{app}(Re)/k_D = 1/(1+a_1 Re)$.
+- **Go to the study's scale on a GPU.** The identical code runs on the CUDA/HIP `peclet`
+  build; there 256³ grids resolve the walls and the converged $K\approx5.5$ emerges. See
+  the related [random packed bed](../random-packed-bed/index.qmd) and
+  [Zick–Homsy](../zick-homsy/index.qmd) examples.
+
+## Reproduce this
+
+```bash
+pip install peclet
+quarto render examples/ring-packed-bed/index.qmd --execute
+```

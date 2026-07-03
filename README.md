@@ -14,6 +14,9 @@ links back to the exact solver API it uses.
 |---|---|---|
 | [Channel MMS](examples/channel-mms/) | finite differences · MMS · grid convergence | anywhere (pure NumPy) |
 | [Poiseuille cut-cell IBM](examples/poiseuille-ibm/) | cut-cell IBM · SDF · projection | Colab/CPU via the `peclet` PyPI wheel (frozen for CI) |
+| [Ring packed-bed permeability study](examples/ring-packed-bed/) | dem → flow · porous media · DOE · Kozeny–Carman | Colab/CPU via the `peclet` PyPI wheel (frozen for CI) |
+
+…plus more in the [gallery](https://computational-chemical-engineering.github.io/peclet-examples) (Zick–Homsy, lid-driven cavity, vortex street, random packed bed, custom SDF particles, …).
 
 ## Build locally
 
