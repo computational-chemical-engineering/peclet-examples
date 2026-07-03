@@ -254,9 +254,9 @@ plt.show()
 - **Real mass / density.** `apply_to` uses unit mass by default. For a real density,
   call `shape.apply_to(sim, unit_mass=False)` and set `sim.set_inv_mass(1/mass)` — the
   builder exposes `shape.mass` and `shape.inertia` at your chosen `density=`.
-- **Export the particle / packing.** The `verts, faces` above are a triangle mesh in the
-  body frame — dump them to **STL** (e.g. with `numpy-stl` or `trimesh`) to open the bean
-  in Blender/ParaView, or to render the packing offline for a publication figure.
+- **Export the particle / packing.** `shape.to_stl("bean.stl")` writes the bean's surface
+  mesh to **STL** (also available as `shape.vertices` / `shape.faces`) — open it in
+  Blender/ParaView/Ovito, or render the packing offline for a publication figure.
   `sim.write_vtp("beans.vtp")` writes particle centres/orientations for ParaView/Ovito;
   `sim.get_sdf_grid((128,128,128))` reconstructs the pore-space SDF of the whole bed —
   the bridge to a CFD run with `peclet.flow` (see the
