@@ -93,39 +93,36 @@ inflation layer meshes the walls so the pore space fills.
 
 ```{python}
 #| label: run
-opt = dict(method="steepest", max_iter=30, sw=6)                # position-only descent on the walls
+opt = dict(method="steepest", max_iter=15, sw=6)                # position-only descent on the walls
+WP = 100                                                        # inflation seeds per sphere
 
-s1 = pm.seed_pore_space(centres, radii, L, n_bulk=2000, graded=False, wall_per=80, seed=1)
-cells1 = voro.sdf_voronoi_cells(s1, centres, radii, L)
-
+s1 = pm.seed_pore_space(centres, radii, L, n_bulk=2000, graded=False, wall_per=WP, seed=1)
 vset_u = np.full(len(s1), L**3 / len(s1))
-s2 = voro.optimize_pore_mesh(s1, vset_u, centres, radii, L, **opt)["positions"]
-cells2 = voro.sdf_voronoi_cells(np.ascontiguousarray(s2), centres, radii, L)
+s2 = np.ascontiguousarray(voro.optimize_pore_mesh(s1, vset_u, centres, radii, L, **opt)["positions"])
 
-s3 = pm.seed_pore_space(centres, radii, L, n_bulk=2000, graded=True, wall_per=80, seed=3)
+s3 = pm.seed_pore_space(centres, radii, L, n_bulk=2000, graded=True, wall_per=WP, seed=3)
 vset3 = pm.vref_graded(pm.union_sdf(s3, centres, radii, L))
-cells3 = voro.sdf_voronoi_cells(s3, centres, radii, L)
-
-s4 = voro.optimize_pore_mesh(s3, vset3, centres, radii, L, **opt)["positions"]
-s4 = np.ascontiguousarray(s4)
+s4 = np.ascontiguousarray(voro.optimize_pore_mesh(s3, vset3, centres, radii, L, **opt)["positions"])
 vset4 = pm.vref_graded(pm.union_sdf(s4, centres, radii, L))
-cells4 = voro.sdf_voronoi_cells(s4, centres, radii, L)
-print("cells per stage:", [len(c["volume"]) for c in (cells1, cells2, cells3, cells4)])
+
+z0 = L / 2
+stages = [s1, s2, s3, s4]
+sec = [pm.section_cells(s, centres, radii, L, z0) for s in stages]   # each -> (polygons, volume, seed)
+print("cells per stage:", [len(v) for _, v, _ in sec])
 ```
 
 ## Step 3 — a cross-section of each stage
 
-We slice the 3-D cells at $z=L/2$ and colour them by cell volume (grey discs = spheres cut by the
-plane). The slicing is a small numpy helper on the returned polyhedra — no VTK needed.
+We cut the 3-D cells with the plane $z=L/2$ and colour them by cell volume (grey discs = spheres cut by
+the plane). `sdf_voronoi_section` cuts each cell directly from its dual structure — a robust convex
+section that tiles the plane exactly — so no VTK and no fragile face slicing.
 
 ```{python}
 #| label: fig-volume
-#| fig-cap: "Cross-section of the four stages, cells coloured by volume (log, shared scale). The raw seeded stages (1, 3) fill the pore space up to the walls thanks to the inflation layer; the relaxed stages (2, 4) partly collapse cells in the tight throats (gaps)."
+#| fig-cap: "Cross-section of the four stages, cells coloured by volume (log, shared scale). The raw seeded stages (1, 3) tile the pore space up to the walls thanks to the inflation layer; the relaxed stages (2, 4) partly collapse cells in the tight throats (gaps)."
 #| fig-width: 11
-z0 = L / 2
-allc = [cells1, cells2, cells3, cells4]
 titles = ["1 · random seeds", "2 · uniform relaxation", "3 · graded seeding  Vref=φ³", "4 · graded relaxation"]
-sl = [pm.tile_periodic(*pm.slice_cells(c, z0), L) for c in allc]   # +periodic images at the box faces
+sl = [pm.tile_periodic(polys, vol, L) for polys, vol, _ in sec]   # +periodic images at the box faces
 allv = np.concatenate([v for _, v in sl]); norm = LogNorm(*np.percentile(allv[allv > 0], [3, 97]))
 
 def draw(ax, polys, vals, nrm, cmap, title, win=None, lw=0.25):
@@ -182,15 +179,15 @@ geometry is too heterogeneous for equal-volume cells without moving seeds *betwe
 #| label: fig-rel
 #| fig-cap: "V/V_ref after relaxation (blue = too small, white = on target, red = too big). Graded (right) is broadly on target; uniform (left) is not."
 #| fig-width: 11
-def rel(cells, vref):
-    v = np.asarray(cells["volume"]); vr = np.asarray(vref)[np.asarray(cells["seed"])]
-    return v / (vr * v.sum() / vr.sum())           # renormalise so Σ V_ref = Σ V (on-target = 1)
+def rel(sec_i, vref):
+    polys, vol, seed = sec_i
+    vr = np.asarray(vref)[seed]
+    return polys, vol / (vr * vol.sum() / vr.sum())   # renormalise so Σ V_ref = Σ V (on-target = 1)
 
 fig, ax = plt.subplots(1, 2, figsize=(11, 5.5))
 rn = TwoSlopeNorm(vmin=1/4, vcenter=1.0, vmax=4.0)
-for a, cells, vref, t in [(ax[0], cells2, vset_u, "uniform target"),
-                          (ax[1], cells4, vset4, "graded target φ³")]:
-    draw(a, *pm.tile_periodic(*pm.slice_cells(cells, z0, rel(cells, vref)), L), rn, "coolwarm", t)
+for a, i, vref, t in [(ax[0], 1, vset_u, "uniform target"), (ax[1], 3, vset4, "graded target φ³")]:
+    draw(a, *pm.tile_periodic(*rel(sec[i], vref), L), rn, "coolwarm", t)
 fig.colorbar(ax[1].collections[0], ax=ax, fraction=0.025, pad=0.02, label="V / V_ref")
 plt.show()
 ```
@@ -215,8 +212,9 @@ plt.show()
    first-order for a sphere; with the delicate free-energy gradient this stalls the relaxation. An
    exact tessellator-side wall gradient is the fix.
 
-*(Some gaps in the figures are also a reconstruction artefact — `sdf_voronoi_cells` rebuilds each
-clipped cell independently, and a large open-pore cell can fail to re-bound.)*
+*(The cross-section is cut cell-by-cell with `sdf_voronoi_section`, which tiles exactly — the residual
+white is real: the thin near-wall band the flat-facet SDF clip can't reach in the tightest throats,
+shrinking with a denser inflation layer, plus the relaxed-stage collapse above.)*
 
 ## Reproduce this
 

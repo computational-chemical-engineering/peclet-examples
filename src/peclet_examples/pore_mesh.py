@@ -121,6 +121,19 @@ def seed_pore_space(centres, radii, L, n_bulk, graded=False, wall_per=100, wall_
     return np.ascontiguousarray(np.vstack([bulk, wall]))
 
 
+def section_cells(positions, centres, radii, L, z0):
+    """Cross-section polygons of the SDF-clipped Voronoi mesh at the plane z=z0, via
+    ``peclet.voro.sdf_voronoi_section`` — which cuts every cell directly from its dual structure
+    (``ConvexCell::sectionPolygon``), so the plane tiles exactly (no fragile face-by-face slicing).
+    Returns (list of (k,2) polygons, per-cell volume, per-cell seed index)."""
+    from peclet import voro
+    sec = voro.sdf_voronoi_section(np.ascontiguousarray(positions, dtype=np.float64),
+                                   centres, radii, L, (0.0, 0.0, float(z0)), (0.0, 0.0, 1.0))
+    verts = np.asarray(sec["verts"]); off = np.asarray(sec["offsets"])
+    polys = [verts[off[i]:off[i + 1], :2] for i in range(len(off) - 1)]
+    return polys, np.asarray(sec["volume"]), np.asarray(sec["seed"])
+
+
 def tile_periodic(polys, vals, L):
     """Replicate each slice polygon by ±L in x and y and keep the images that intersect the [0,L]²
     window, so cells whose seed sits near a box face — and which therefore straddle the periodic
