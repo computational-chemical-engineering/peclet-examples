@@ -117,6 +117,15 @@ genuine second-order convergence, Zick–Homsy Stokes drag through sphere arrays
 flow past a cylinder and its vortex street, the lid-driven cavity vs Ghia, the
 Taylor–Green vortex, packed beds built with `peclet.dem`, and more.)*
 
+## Characterization & benchmarks
+
+Beyond *what* the suite can do, a companion set of pages measures *how well* it does
+it — accuracy (order of convergence and discretization bias), performance, and
+parallel scaling. The first: a head-to-head **[staggered vs collocated grid
+convergence](benchmarks/staggered-vs-collocated/index.qmd)** of the Stokes drag
+through a sphere array — same problem, two velocity placements, and the ~1% accuracy
+gap that survives mesh refinement. See the **[benchmarks overview](benchmarks/index.qmd)**.
+
 ::: {.callout-note}
 ## How these run
 Each example installs `peclet` from PyPI in its first cell, so it runs on a free

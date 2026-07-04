@@ -1,0 +1,50 @@
+---
+title: "Characterization & benchmarks"
+subtitle: "Not what the suite can do — how *well* it does it: accuracy, performance, and parallel scaling, measured."
+toc: false
+---
+
+The [examples](../index.qmd) gallery shows *what* the `peclet` suite can do. This
+companion set of pages measures *how well* it does it — the numbers you'd want
+before trusting a solver or choosing between its options:
+
+- **Accuracy** — how fast does a quantity of interest converge to ground truth as
+  the mesh is refined, and to *what* limit? (Order of accuracy, and the discretization
+  bias that survives refinement.)
+- **Performance** — wall-clock and solver-iteration cost per unknown, and how it
+  scales with resolution.
+- **Parallel scaling** — strong and weak scaling across MPI ranks / GPUs on the
+  shared `core` decomposition and halo exchange.
+
+Each page is a **self-contained, runnable characterization script**: it builds its
+own geometry, sweeps a parameter (mesh, rank count, …), and reports a table plus a
+figure with a stated headline number. Like the examples, the solver-backed pages are
+executed on real hardware and **frozen** into the site, so the public build needs no
+GPU. Where there is an external ground truth (an analytic solution or a published
+benchmark), the characterization is measured *against it*.
+
+## Pages
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+### [Staggered vs collocated: Stokes-drag convergence →](staggered-vs-collocated/index.qmd)
+The two `peclet.flow` velocity placements, put head-to-head on the Zick–Homsy sphere
+array. The staggered MAC grid shows textbook second-order convergence **onto** the
+benchmark; the collocated grid's error is **bias-dominated** — it sits ~1% high and
+mesh refinement does not remove it. Quantifies the intrinsic velocity-placement bias
+(and what it costs in wall-clock), so you know which grid to reach for and what the
+trade is.
+
+*flow · accuracy · staggered vs collocated · Stokes · verification*
+:::
+
+:::
+
+## How to read these
+
+A characterization is only as good as its ground truth and its honesty about what it
+*didn't* measure. Every page states the reference it compares against, the regime it
+holds in, and — where a result plateaus or a run is resolution-limited — says so
+rather than tuning until the curve looks clean. Surprises get logged to
+[`ISSUES.md`](../ISSUES.md), the same backlog the examples feed.
