@@ -97,6 +97,44 @@ def seed_interstitial(centres, radii, L, n, margin=0.02, graded=False, seed=1, b
     return np.ascontiguousarray(np.vstack(keep)[:n], dtype=np.float64)
 
 
+def seed_wall_layer(centres, radii, L, per_sphere=100, eps=0.03, seed=7):
+    """Inflation-layer seeds: `per_sphere` points on each sphere surface pushed out by `eps` into the
+    fluid, kept only where they are actually in the fluid (not buried in a neighbouring sphere). These
+    give the near-wall cells that let the SDF-clipped Voronoi cells hug the curved walls."""
+    rng = np.random.default_rng(seed)
+    pts = []
+    for c, r in zip(centres, radii):
+        u = rng.normal(size=(per_sphere, 3))
+        u /= np.linalg.norm(u, axis=1, keepdims=True)
+        q = (c + u * (r + eps)) % L
+        pts.append(q[union_sdf(q, centres, radii, L) > 0.4 * eps])
+    return np.vstack(pts)
+
+
+def seed_pore_space(centres, radii, L, n_bulk, graded=False, wall_per=100, wall_eps=0.03, seed=1):
+    """Interstitial seeds = a bulk cloud (uniform, or density ∝ 1/V_ref if graded) PLUS an inflation
+    layer hugging every sphere, so the thin near-wall fluid is meshed and the cross-section fills up to
+    the walls (a uniform bulk alone under-samples the near-wall band and the cells recede from the
+    curved surface). Returns (N,3) float64."""
+    bulk = seed_interstitial(centres, radii, L, n_bulk, margin=wall_eps, graded=graded, seed=seed)
+    wall = seed_wall_layer(centres, radii, L, wall_per, wall_eps, seed=seed + 100)
+    return np.ascontiguousarray(np.vstack([bulk, wall]))
+
+
+def tile_periodic(polys, vals, L):
+    """Replicate each slice polygon by ±L in x and y and keep the images that intersect the [0,L]²
+    window, so cells whose seed sits near a box face — and which therefore straddle the periodic
+    boundary — tile both sides instead of leaving a gap. Use at the center plane to avoid z-wrap."""
+    op, ov = [], []
+    for poly, v in zip(polys, vals):
+        for sx in (-L, 0, L):
+            for sy in (-L, 0, L):
+                q = poly + (sx, sy)
+                if q[:, 0].max() > 0 and q[:, 0].min() < L and q[:, 1].max() > 0 and q[:, 1].min() < L:
+                    op.append(q); ov.append(v)
+    return op, np.asarray(ov)
+
+
 def slice_cells(cells, z0, values=None):
     """z=z0 cross-section of the polyhedra returned by peclet.voro.sdf_voronoi_cells (points + per-cell
     face lists): intersect each cell's face edges with the plane, order the crossings into a convex
