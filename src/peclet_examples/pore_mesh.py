@@ -97,28 +97,41 @@ def seed_interstitial(centres, radii, L, n, margin=0.02, graded=False, seed=1, b
     return np.ascontiguousarray(np.vstack(keep)[:n], dtype=np.float64)
 
 
-def seed_wall_layer(centres, radii, L, per_sphere=100, eps=0.03, seed=7):
-    """Inflation-layer seeds: `per_sphere` points on each sphere surface pushed out by `eps` into the
-    fluid, kept only where they are actually in the fluid (not buried in a neighbouring sphere). These
-    give the near-wall cells that let the SDF-clipped Voronoi cells hug the curved walls."""
+def _fib_sphere(n):
+    """`n` roughly-even points on the unit sphere (Fibonacci spiral)."""
+    i = np.arange(n) + 0.5
+    phi = np.arccos(1 - 2 * i / n)
+    theta = np.pi * (1 + 5 ** 0.5) * i
+    return np.c_[np.sin(phi) * np.cos(theta), np.sin(phi) * np.sin(theta), np.cos(phi)]
+
+
+def seed_graded(centres, radii, L, s_lo=0.10, s_hi=0.35, margin=0.01, jitter=0.35, seed=1):
+    """Distance-graded seeding that *realises the target cell-size field* s(φ)=clip(φ, s_lo, s_hi).
+
+    Instead of rejection-sampling a density (which places Poisson-clustered points that don't hit a
+    target size), lay down concentric shells around every sphere: a shell at distance ``d`` from the
+    wall, with both its radial step to the next shell AND its in-surface point spacing equal to the
+    local size ``s(d)``. A seed at distance φ from the nearest wall then gets a Voronoi cell of size
+    ≈ s(φ) — genuinely small (``s_lo``) hugging the curved walls and growing to ``s_hi`` in the open
+    pores: a body-fitted inflation-layer mesh straight from the seeding, no relaxation. Pass
+    ``s_lo == s_hi`` for a uniform mesh. Points are jittered off the shells (blue-noise-ish) and kept
+    only near their own layer distance, so each fluid point is meshed once at the right scale.
+    Returns (N,3) float64. N grows like ~area/s_lo², so keep ``s_lo`` ≳ 0.08 for a packed bed."""
     rng = np.random.default_rng(seed)
+    dists, d = [], 0.6 * s_lo
+    while d < 3 * s_hi:
+        dists.append(d)
+        d += float(np.clip(d, s_lo, s_hi))
     pts = []
-    for c, r in zip(centres, radii):
-        u = rng.normal(size=(per_sphere, 3))
-        u /= np.linalg.norm(u, axis=1, keepdims=True)
-        q = (c + u * (r + eps)) % L
-        pts.append(q[union_sdf(q, centres, radii, L) > 0.4 * eps])
-    return np.vstack(pts)
-
-
-def seed_pore_space(centres, radii, L, n_bulk, graded=False, wall_per=100, wall_eps=0.03, seed=1):
-    """Interstitial seeds = a bulk cloud (uniform, or density ∝ 1/V_ref if graded) PLUS an inflation
-    layer hugging every sphere, so the thin near-wall fluid is meshed and the cross-section fills up to
-    the walls (a uniform bulk alone under-samples the near-wall band and the cells recede from the
-    curved surface). Returns (N,3) float64."""
-    bulk = seed_interstitial(centres, radii, L, n_bulk, margin=wall_eps, graded=graded, seed=seed)
-    wall = seed_wall_layer(centres, radii, L, wall_per, wall_eps, seed=seed + 100)
-    return np.ascontiguousarray(np.vstack([bulk, wall]))
+    for d in dists:
+        h = float(np.clip(d, s_lo, s_hi))
+        for c, r in zip(centres, radii):
+            R = r + d
+            n = max(6, int(4 * np.pi * R * R / (h * h)))
+            p = _fib_sphere(n) * R + c + rng.normal(0, jitter * h, (n, 3))
+            phi = union_sdf(p % L, centres, radii, L)
+            pts.append((p % L)[np.abs(phi - d) < 0.75 * h])   # keep points near their own layer
+    return np.ascontiguousarray(np.vstack(pts))
 
 
 def section_cells(positions, centres, radii, L, z0):
