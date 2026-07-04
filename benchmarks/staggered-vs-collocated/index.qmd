@@ -1,6 +1,6 @@
 ---
 title: "Staggered vs collocated: grid convergence of Stokes drag"
-subtitle: "The two peclet.flow velocity placements on the Zick–Homsy sphere array — one grid converges onto the benchmark, the other to a value ~1% off."
+subtitle: "The two peclet.flow velocity placements on the Zick–Homsy sphere array — both converge to the benchmark, but the staggered grid at second order and the collocated grid at first."
 author: "Peclet"
 date: "2026-07-04"
 categories: [flow, accuracy, staggered, collocated, Stokes, verification]
@@ -29,8 +29,11 @@ refine the mesh and ask, for each grid:
 2. **To *what value* does it converge** — the benchmark, or something offset from it?
 3. **What does it cost** (iterations, wall-clock) to get there?
 
-The punchline is (2): both grids are second-order *solvers*, but they do **not**
-converge to the same number.
+The punchline is **(1)**: both grids converge to the *same* Zick–Homsy value, but at
+**different orders** — the staggered grid at **second order**, the collocated grid at
+**first**. So at any practical resolution the collocated drag carries a larger (but
+entirely *reducible*) error. Getting this right needed resolutions up to $N=128$ on a
+GPU; the coarse grids alone are genuinely ambiguous (see the note below).
 
 ## The drag factor
 
@@ -145,123 +148,127 @@ for name, rows in data.items():
         f"N={r['N']}→K={r['K']:.4f}({100*(r['K']-K_ZH)/K_ZH:+.2f}%)" for r in rows))
 ```
 
-## Order and limit of each grid
+## Push to finer grids (the part that needs a GPU)
 
-To separate *"is it converging"* from *"does it converge to the right answer"*, we
-fit each grid's drag to
-
-$$
-K(N)=K_\infty + C\,N^{-p},
-$$ {#eq-fit}
-
-where $K_\infty$ is the grid's **own** continuum limit and $p$ its observed order.
-The fit is linear in $(K_\infty, C)$ for any fixed $p$, so a one-dimensional scan
-over $p$ (least squares at each step) finds all three with nothing but NumPy. When
-the error is *bias-dominated* — the values hover near their limit within scatter
-rather than decaying monotonically — there is no clean power law, and the fit
-degenerates to "flat at $K_\infty$" (huge $p$, tiny $C$). We flag that case instead
-of reporting a meaningless order.
+The live sweep above stops at $N=40$ so it runs on a Colab CPU. But **the coarse grids
+are genuinely ambiguous**: at $N\le40$ the collocated error looks like it might be
+levelling off at ~1%, and you can't tell "slowly converging" from "stuck at a floor".
+The following resolutions — up to $N=128$, with the collocated case run to a tight
+steady state — were computed on an **RTX 5080 GPU** and are quoted here as data (the
+*Reproduce this* section gives the exact GPU command). They are the numbers that
+settle the question.
 
 ```{python}
-#| label: fit
-def fit_order(Ns, Ks, ps=np.linspace(0.5, 4.0, 701)):
-    Ns = np.asarray(Ns, float); Ks = np.asarray(Ks, float)
-    best = None
-    for p in ps:
-        A = np.column_stack([np.ones_like(Ns), Ns ** (-p)])   # columns: K_inf, C
-        coef, *_ = np.linalg.lstsq(A, Ks, rcond=None)
-        r = float(np.sum((A @ coef - Ks) ** 2))
-        if best is None or r < best[0]:
-            best = (r, p, coef[0], coef[1])
-    _, p, Kinf, C = best
-    monotone = np.all(np.diff(Ks) > 0) or np.all(np.diff(Ks) < 0)
-    clean = monotone and p < 3.5           # a genuine, resolvable power law
-    return dict(p=p, Kinf=Kinf, C=C, clean=clean)
+#| label: hires
+# Signed error (K - K_ZH)/K_ZH in %, computed on GPU (RTX 5080) at a tight steady state.
+# (staggered, collocated) per resolution.
+HIRES = {48: (-0.08, +0.68), 56: (-0.05, +0.53), 64: (-0.018, +0.598),
+         96: (+0.009, +0.397), 128: (+0.013, +0.299)}
 
-fits = {name: fit_order(Ns, [r["K"] for r in rows]) for name, rows in data.items()}
-for name, f in fits.items():
-    bias = 100 * (f["Kinf"] - K_ZH) / K_ZH
-    order = f"order p≈{f['p']:.2f}" if f["clean"] else "no clean power law (bias-dominated)"
-    print(f"{name:>11s}: {order:<38s} K∞={f['Kinf']:.4f}  bias vs Z&H {bias:+.2f}%")
+# Merge the live coarse sweep (computed above) with the GPU points into one series/grid.
+err_live = {name: {r["N"]: 100 * (r["K"] - K_ZH) / K_ZH for r in rows}
+            for name, rows in data.items()}
+allN = sorted(set(Ns) | set(HIRES))
+E = {"staggered": [], "collocated": []}
+for N in allN:
+    es = err_live["staggered"].get(N, HIRES.get(N, (None, None))[0])
+    ec = err_live["collocated"].get(N, HIRES.get(N, (None, None))[1])
+    E["staggered"].append(es); E["collocated"].append(ec)
+allN = np.array(allN, float)
+for k in E: E[k] = np.array(E[k], float)
+```
+
+## Observed order of accuracy
+
+With the full range in hand, read the **local order** between successive resolutions,
+$p=\log(|e_{i-1}|/|e_i|)\,/\,\log(N_i/N_{i-1})$. This asks the sharp question directly:
+how fast does each grid's error shrink?
+
+```{python}
+#| label: order
+print(f"{'N pair':>10} | {'staggered p':>12} | {'collocated p':>13}")
+for i in range(1, len(allN)):
+    ps = np.log(abs(E['staggered'][i-1]) / abs(E['staggered'][i])) / np.log(allN[i]/allN[i-1])
+    pc = np.log(abs(E['collocated'][i-1]) / abs(E['collocated'][i])) / np.log(allN[i]/allN[i-1])
+    print(f"{int(allN[i-1]):>4}->{int(allN[i]):<4} | {ps:>+12.2f} | {pc:>+13.2f}")
+print("\nHigh-resolution trend (N=64->96->128):")
+print("  staggered  -> at the ~0.01% solver-tolerance floor (converged)")
+print(f"  collocated -> {E['collocated'][-3]:+.3f}%, {E['collocated'][-2]:+.3f}%, "
+      f"{E['collocated'][-1]:+.3f}%  (local order p ≈ 1.0)")
 ```
 
 ## The result
 
 ```{python}
 #| label: fig-convergence
-#| fig-cap: "Left: drag factor vs resolution. The staggered grid converges onto the Zick & Homsy value (dashed); the collocated grid hovers ~1% high. Centre: signed relative error — staggered heads to zero, collocated to a non-zero floor (the velocity-placement bias, not a transient). Right: wall-clock to steady state (single 6-thread CPU; indicative) — the collocated approximate projection is the costlier of the two."
-fig, (a0, a1, a2) = plt.subplots(1, 3, figsize=(12.5, 3.9))
+#| fig-cap: "Left: signed relative error vs resolution — BOTH grids head to zero (both converge to Zick & Homsy). Right: |error| on log-log axes — the staggered error runs parallel to O(h²) down to its ~0.01% solver-tolerance floor, while the collocated error runs parallel to O(h¹). Same limit, one order apart. The ~1% collocated error at N≈32 is first-order boundary error, halving each time N doubles — not a fixed bias."
+fig, (a0, a1) = plt.subplots(1, 2, figsize=(11, 4.1))
 col = {"staggered": BLUE, "collocated": RED}
-Nf = np.linspace(min(Ns) * 0.95, max(Ns) * 1.05, 100)
+mk = {"staggered": "o", "collocated": "s"}
 
-a0.axhline(K_ZH, ls="--", color="0.3", lw=1, label=f"Z&H  K={K_ZH:.3f}")
-for name, rows in data.items():
-    K = [r["K"] for r in rows]; f = fits[name]
-    a0.plot(Ns, K, "o", color=col[name], label=f"{name}  (K∞={f['Kinf']:.3f})")
-    a0.plot(Nf, f["Kinf"] + f["C"] * Nf ** (-f["p"]), "-", color=col[name], lw=1, alpha=.7)
-a0.set(xlabel="N (cells per period)", ylabel="drag factor K", title="convergence")
-a0.legend(fontsize=8)
+a0.axhline(0, color="0.4", ls="--", lw=1)
+for name in E:
+    a0.plot(allN, E[name], mk[name] + "-", color=col[name], label=name)
+a0.set(xlabel="N (cells per period)", ylabel="(K − K$_{ZH}$) / K$_{ZH}$  [%]",
+       title="signed error → 0 for both")
+a0.legend(fontsize=9)
 
-for name, rows in data.items():
-    err = 100 * (np.array([r["K"] for r in rows]) - K_ZH) / K_ZH
-    a1.plot(Ns, err, "o-", color=col[name], label=name)
-a1.axhline(0, color="0.3", ls="--", lw=1)
-a1.set(xlabel="N", ylabel="(K − K$_{ZH}$) / K$_{ZH}$  [%]", title="signed error → limit")
+for name in E:
+    a1.loglog(allN, np.abs(E[name]), mk[name] + "-", color=col[name], label=name)
+a1.loglog(allN, np.abs(E["collocated"][2]) * (allN / allN[2]) ** -1.0, ":",
+          color=RED, lw=1.2, label="O(h¹)")
+a1.loglog(allN, np.abs(E["staggered"][0]) * (allN / allN[0]) ** -2.0, "k--",
+          lw=1, label="O(h²)")
+a1.set(xlabel="N", ylabel="|K − K$_{ZH}$| / K$_{ZH}$  [%]",
+       title="collocated ∥ O(h), staggered ∥ O(h²)")
 a1.legend(fontsize=8)
-
-for name, rows in data.items():
-    a2.plot(Ns, [r["secs"] for r in rows], "o-", color=col[name], label=name)
-a2.set(xlabel="N", ylabel="wall-clock to steady [s]", title="solve cost")
-a2.legend(fontsize=8)
 fig.tight_layout()
 plt.show()
 ```
 
-```{python}
-#| label: tbl
-print(f"{'grid':>11s} {'N':>4s} {'K':>8s} {'err%':>7s} {'p_iter':>7s} {'steps':>6s} {'sec':>6s}")
-for name, rows in data.items():
-    for r in rows:
-        print(f"{name:>11s} {r['N']:>4d} {r['K']:>8.4f} "
-              f"{100*(r['K']-K_ZH)/K_ZH:>+6.2f} {r['pit']:>7.0f} {r['steps']:>6d} {r['secs']:>6.1f}")
-```
-
 ## What it means
 
-- **The staggered grid converges — cleanly, and onto the benchmark.** Its drag rises
-  monotonically with resolution and fits $K_\infty + C\,N^{-p}$ with $p\approx2$; the
-  extrapolated limit $K_\infty$ lands on the Zick & Homsy value to a fraction of a
-  percent. This is the cut-cell IBM resolving the curved sphere surface at the
-  expected second order — the accurate grid for drag and permeability.
-- **The collocated grid does *not* converge onto it.** Its error is **bias-dominated**:
-  the drag sits ~1% above Z&H across the whole sweep and only jitters at the
-  sub-percent level with refinement — there is no clean decaying power law, because
-  the dominant error is a *resolution-independent* offset, not a discretization term
-  that shrinks with $h$. Refining the mesh does not remove it. It is an intrinsic
-  property of the cell-centred velocity placement plus its ABC *approximate*
-  projection — not a transient and not a bug. (This is exactly why the staggered grid
-  is *the* flow solver in the suite; the collocated variant exists for coupling and
-  single-grid convenience, with this accuracy trade understood.)
-- **Cost.** The collocated approximate projection also leaves the mean velocity
-  jittering — it never reaches the machine-tight steady state the staggered grid's
-  *exact* projection does, so it needs more steps to a fair tolerance (hence the
-  tail-averaging). On this problem the staggered grid is both more accurate *and*
-  cheaper.
+- **Both grids converge to Zick & Homsy — at different orders.** The staggered grid is
+  **second order** (local $p\approx2$, reaching the ~0.01% solver-tolerance floor by
+  $N=64$). The collocated grid is **first order** (local $p\approx1.0$ once the coarse
+  transient clears: $+0.60\%\to+0.40\%\to+0.30\%$ at $N=64/96/128$). It converges to the
+  *same* value, just as $O(h)$ instead of $O(h^2)$ — extrapolating to ~0.15% at $N=256$.
+- **So the "~1% collocated error" is first-order boundary error, not a floor.** It is
+  real at practical resolution but **reducible**: double $N$ and it roughly halves. An
+  earlier version of this page mis-read the coarse ($N\le40$) data as a resolution-
+  independent bias — the finer grids show it is not.
+- **Why the order gap.** On the **staggered** grid each velocity lives on the same face
+  whose fluid-area fraction (openness) enforces mass conservation, and the projection is
+  *exact* — the no-slip and the incompressibility constraint are imposed on one
+  consistent representation of the wall, and the drag inherits second order. On the
+  **collocated** grid the no-slip is reconstructed at the cell centre (an axis-by-axis
+  cut-cell stencil) while the mass flux uses the face fractions a half-cell away, and the
+  projection is only *approximate* — a half-cell geometric inconsistency at a curved
+  boundary that is $O(h)$ and does not cancel, giving first-order drag. On a **flat,
+  grid-aligned** wall the two representations coincide and both grids are pointwise
+  exact.
+- **The fix is known.** A Basilisk-style *embedded-boundary* treatment — one geometric
+  description of the cut cell (volume + face fractions, boundary centroid and normal)
+  driving *both* the viscous no-slip and the pressure projection, with the wall gradient
+  reconstructed along the true normal — restores second order on a collocated grid. See
+  the detailed analysis in the flow solver's `doc/collocated_first_order_analysis.md`.
 
 The headline for a practitioner: **use the staggered `flow.Solver` for
-permeability/drag**; the ~1% collocated offset is a property of *where the velocities
-live*, measurable here and irreducible by mesh refinement.
+permeability/drag** — it is second-order and lands on the benchmark at modest
+resolution. The collocated variant is a *consistent* solver (it converges to the same
+answer) but first-order at curved immersed walls, so it needs finer grids there.
 
 ## Adapt this yourself
 
 - **Change the solid fraction.** Raise `PHI0` toward close packing ($\phi_\max=\pi/6$
   for simple cubic) and update `K_ZH` from the Zick & Homsy table (see the
-  [Zick–Homsy example](../../examples/zick-homsy/index.qmd)); the bias trend persists.
-- **Add finer grids.** Append `48, 64` to `Ns` (GPU-territory on wall-clock) to pin
-  down each $K_\infty$ more tightly and sharpen the fitted order.
+  [Zick–Homsy example](../../examples/zick-homsy/index.qmd)); the order gap persists.
+- **Extend the live sweep.** Append `48, 64` to `Ns` if you have the wall-clock (or a
+  GPU build) and watch the collocated error keep falling at first order rather than
+  plateauing.
 - **Swap the quantity of interest.** The same head-to-head applies to any QoI with a
   ground truth — a Poiseuille profile, a Taylor–Green decay rate — to map *where* the
-  two placements agree and where the collocated bias shows up.
+  two placements share an order and where the collocated grid drops one.
 
 ## Reproduce this
 
@@ -273,6 +280,13 @@ PECLET_LOCAL_BUILD=/path/to/suite/flow/build_mpi OMP_NUM_THREADS=6 \
   OMP_PROC_BIND=spread OMP_PLACES=threads \
   quarto render benchmarks/staggered-vs-collocated/index.qmd --execute
 ```
+
+The `HIRES` points (N=48–128) were computed with the same `drag()` harness pointed at a
+**CUDA build** of the solver (`PECLET_LOCAL_BUILD=/path/to/suite/flow/build_cuda`),
+running the collocated case to a tight steady state (`warm_tol=1e-7`, up to 4000 steps —
+the ABC projection never fully quiets, so it tail-averages). On the RTX 5080 the whole
+N=64/96/128 pass is a few minutes; on CPU it is hours, which is why they are quoted as
+data rather than recomputed on every render.
 
 ::: {.callout-note}
 ## Ground truth
