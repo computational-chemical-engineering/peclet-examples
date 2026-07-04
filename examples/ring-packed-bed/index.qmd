@@ -36,10 +36,9 @@ if _local:
         sys.path.insert(0, p)
 elif importlib.util.find_spec("peclet") is None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
-# the interactive 3-D bed needs plotly (+ scikit-image for the isosurface mesh)
-for _mod, _pip in (("plotly", "plotly"), ("skimage", "scikit-image")):
-    if importlib.util.find_spec(_mod) is None:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", _pip], check=True)
+# the interactive 3-D bed needs plotly
+if importlib.util.find_spec("plotly") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "plotly"], check=True)
 ```
 
 ```{python}
@@ -168,22 +167,50 @@ zoom** — so you can see how the hollow cylinders interlock in the periodic box
 
 ```{python}
 #| label: fig-bed3d
-#| fig-cap: "The packed bed of rings in 3-D (**drag to rotate**). The surface is the sdf = 0 isosurface of the DEM-reconstructed packing — the outer walls, the holes through each ring, and the contacts between them are all visible."
+#| fig-cap: "The packed bed of rings in 3-D (**drag to rotate, scroll to zoom**). Each hollow cylinder is drawn from its own mesh, placed at the exact position, orientation and grown size the DEM engine assigns it — so you can pick out individual rings and the holes through them, coloured by depth."
 import plotly.graph_objects as go
-from skimage import measure
 
 t0 = time.time()
 sim0, g0 = pack_ring_bed(seed=0)
 print(f"packed {g0['N']} rings in {time.time()-t0:.0f}s   (box side {g0['side']:.2f}, S_v = {g0['Sv']:.2f})")
 
-sdf3d = np.ascontiguousarray(sim0.get_sdf_grid((56, 56, 56)), np.float64)  # <0 inside the ring solid
-verts, faces, _, _ = measure.marching_cubes(sdf3d, level=0.0)              # triangulated solid surface
+def hollow_cylinder_mesh(R, Ri, H, nseg=44):
+    """Triangle mesh of a hollow cylinder (axis along y, centred at the origin — the
+    DEM shape_type=2 body frame). Returns (verts[Nv,3], faces[Nf,3])."""
+    th = np.linspace(0, 2 * np.pi, nseg, endpoint=False)
+    c, s = np.cos(th), np.sin(th)
+    ring = lambda rad, y: np.stack([rad * c, np.full(nseg, y), rad * s], 1)
+    V = np.concatenate([ring(R, -H / 2), ring(R, H / 2), ring(Ri, -H / 2), ring(Ri, H / 2)])
+    f = []
+    for k in range(nseg):
+        j = (k + 1) % nseg
+        ob, ot, ib, it = k, nseg + k, 2 * nseg + k, 3 * nseg + k
+        ob2, ot2, ib2, it2 = j, nseg + j, 2 * nseg + j, 3 * nseg + j
+        f += [(ob, ot, ot2), (ob, ot2, ob2)]      # outer wall
+        f += [(ib2, it2, it), (ib2, it, ib)]      # inner wall
+        f += [(ot, it, it2), (ot, it2, ot2)]      # top annulus
+        f += [(ob2, ib2, ib), (ob2, ib, ob)]      # bottom annulus
+    return V, np.array(f)
+
+def qrot(q, V):                                    # rotate verts by quaternion q = (x, y, z, w)
+    qv = q[:3]; t = 2.0 * np.cross(np.broadcast_to(qv, V.shape), V)
+    return V + q[3] * t + np.cross(np.broadcast_to(qv, V.shape), t)
+
+cv, cf = hollow_cylinder_mesh(g0["R"], g0["Ri"], g0["H"])
+pos = sim0.get_positions().reshape(-1, 3)
+quat = sim0.get_quaternions().reshape(-1, 4)          # (x, y, z, w)
+gf = float(sim0.get_growth_factor())                  # grown size at jamming (get_scales == gf here)
+V, F, C, off = [], [], [], 0
+for i in range(len(pos)):
+    w = qrot(quat[i], cv * gf) + pos[i]               # place this ring in the box
+    V.append(w); F.append(cf + off); C.append(np.full(len(w), pos[i, 2])); off += len(w)
+V, F, C = np.concatenate(V), np.concatenate(F), np.concatenate(C)
+
 fig3d = go.Figure(go.Mesh3d(
-    x=verts[:, 0], y=verts[:, 1], z=verts[:, 2],
-    i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
-    color="#c8a26e", opacity=1.0, flatshading=True,
-    lighting=dict(ambient=0.5, diffuse=0.85, specular=0.25, roughness=0.6),
-    lightposition=dict(x=120, y=160, z=220)))
+    x=V[:, 0], y=V[:, 1], z=V[:, 2], i=F[:, 0], j=F[:, 1], k=F[:, 2],
+    intensity=C, colorscale="Viridis", showscale=False, flatshading=True,
+    lighting=dict(ambient=0.55, diffuse=0.7, specular=0.15, roughness=0.7),
+    lightposition=dict(x=120, y=200, z=160)))
 fig3d.update_layout(
     width=560, height=520, margin=dict(l=0, r=0, t=32, b=0),
     title="ring packed bed — drag to rotate",
