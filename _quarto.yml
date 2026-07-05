@@ -7,6 +7,7 @@ project:
     - "index.qmd"
     - "examples/**/*.qmd"
     - "benchmarks/**/*.qmd"
+    - "sanity-checks/**/*.qmd"
     - "STYLE_GUIDE.md"
     - "ISSUES.md"
 
@@ -56,6 +57,10 @@ website:
             text: "Characterization & benchmarks (overview)"
           - href: benchmarks/staggered-vs-collocated/index.qmd
             text: "Staggered vs collocated (Stokes-drag convergence)"
+      - text: Sanity checks
+        menu:
+          - href: sanity-checks/index.qmd
+            text: "DEM sanity checks (restitution, friction, stacks)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

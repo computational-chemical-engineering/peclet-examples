@@ -135,6 +135,15 @@ convergence](benchmarks/staggered-vs-collocated/index.qmd)** of the Stokes drag
 through a sphere array — same problem, two velocity placements, and the ~1% accuracy
 gap that survives mesh refinement. See the **[benchmarks overview](benchmarks/index.qmd)**.
 
+## Sanity checks
+
+Before a solver earns trust on a hard problem, it should reproduce the collisions that
+have a **closed-form answer**. The **[DEM sanity checks](sanity-checks/index.qmd)** page
+is a fast, self-checking scorecard: coefficient of restitution in a binary collision, the
+$e^2$ bounce-height law off a wall (plane *and* SDF), a sliding grain spinning up to
+$\tfrac57 v_0$ rolling, a static load-bearing column, and friction-driven spin deflection —
+each a measured number against the textbook. They double as a physics-regression tripwire.
+
 ::: {.callout-note}
 ## How these run
 Each example installs `peclet` from PyPI in its first cell, so it runs on a free
