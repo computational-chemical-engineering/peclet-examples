@@ -120,6 +120,15 @@ carry the bed up the rising side to a dynamic angle of repose.
 :::
 
 ::: {.g-col-12 .g-col-md-6}
+### [Tumbling cubes (dem, non-spherical, GPU) →](examples/tumbling-cubes/index.qmd)
+Beyond spheres, at scale: fill a drum with tens of thousands of **hard cubes** on a GPU
+and spin it into a cascade. Cubes don't roll — they tumble and interlock — rendered as
+shaded, oriented 3-D cubes.
+
+*dem · non-spherical · cubes · rotating-drum · gpu · visualization*
+:::
+
+::: {.g-col-12 .g-col-md-6}
 ### [Gas–solid fluidized bed (online CFD–DEM) →](examples/fluidized-bed/index.qmd)
 The first *online* coupling: gas and grains run together, trading drag and void
 fraction every step. Blow gas up a cylindrical vessel until the packed bed unpacks

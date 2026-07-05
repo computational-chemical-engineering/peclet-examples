@@ -49,6 +49,8 @@ website:
             text: "Custom-shaped particles (dem, SDF)"
           - href: examples/rotating-drum/index.qmd
             text: "Rotating drum (dem, moving SDF walls)"
+          - href: examples/tumbling-cubes/index.qmd
+            text: "Tumbling cubes (dem, non-spherical, GPU)"
           - href: examples/fluidized-bed/index.qmd
             text: "Fluidized bed (online CFD–DEM, Gidaspow)"
           - href: examples/pore-mesh-voronoi/index.qmd
