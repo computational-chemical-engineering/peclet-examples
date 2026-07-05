@@ -119,6 +119,15 @@ carry the bed up the rising side to a dynamic angle of repose.
 *dem · SDF · walls · granular · rotating-drum · friction*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Gas–solid fluidized bed (online CFD–DEM) →](examples/fluidized-bed/index.qmd)
+The first *online* coupling: gas and grains run together, trading drag and void
+fraction every step. Blow gas up a cylindrical vessel until the packed bed unpacks
+and boils (Gidaspow drag) — then benchmark the ArborX broadphase to a million grains.
+
+*coupling · cfd-dem · dem · flow · fluidization · gidaspow · performance*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with
