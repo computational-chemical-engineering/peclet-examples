@@ -110,6 +110,15 @@ it into a DEM particle — surface shell, moment of inertia and all — with
 *dem · particles · SDF · non-spherical · packing*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Rotating drum (dem, moving SDF walls) →](examples/rotating-drum/index.qmd)
+The *container* is an SDF too: confine grains in a drum written as a signed distance
+function, give the wall a velocity it never actually moves at, and watch friction
+carry the bed up the rising side to a dynamic angle of repose.
+
+*dem · SDF · walls · granular · rotating-drum · friction*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with

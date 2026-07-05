@@ -1,0 +1,295 @@
+---
+title: "Rotating drum: moving SDF walls (peclet.dem)"
+subtitle: "Confine grains in a container written as a signed distance function, give the wall a velocity it never actually moves at, and watch a spinning drum carry the bed up its rising side."
+author: "Peclet"
+date: "2026-07-05"
+categories: [dem, sdf, walls, granular, rotating-drum, friction]
+jupyter: python3
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/rotating-drum/index.ipynb){target="_blank"}
+&nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
+
+## What you'll learn
+
+In [custom-shaped particles](../sdf-particle-packing/index.qmd) the **particles** were
+signed distance fields. Here the **container** is one too. `peclet.dem` lets you collide
+grains against an arbitrary static **SDF wall** — a drum, a hopper, a vibrating tray — with
+its own **binary particle–wall material**: a friction and restitution that belong to the
+*pair* of surfaces, not to the grain alone. You will:
+
+1. **Write a drum as an SDF** — a cylinder — and load it as a wall with its particle–wall
+   friction and restitution.
+2. Give that wall a **rigid-body velocity field** `v(x) = ω × (x − c)`. The geometry never
+   moves, but a grain in contact feels the wall's velocity — exactly the trick a real
+   rotating drum plays: the barrel spins, its shape does not change.
+3. **Spin the drum** and measure the **dynamic angle of repose**: wall friction drags grains
+   up the rising side until the bed tilts to a steady angle and surface grains avalanche back.
+
+Everything runs on a CPU in about a minute.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    for p in _local.split(os.pathsep):
+        sys.path.insert(0, p)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+```
+
+```{python}
+import numpy as np
+import time
+import matplotlib.pyplot as plt
+from matplotlib import animation
+from peclet import dem
+from peclet.dem import build_wall_sdf
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+print("peclet.dem backend:", dem.execution_space)
+```
+
+## Step 1 — The drum is a signed distance function
+
+Grains live in the **void** and the barrel is **solid**, so we adopt the natural wall
+convention: the SDF is **positive where the grains are** and **negative inside the wall** —
+the mirror image of a particle SDF. We study the drum **cross-section**: a cylinder of
+radius `R` about the axis, made **periodic along its axis** (`z`), so there are no end caps
+and the dynamics are the clean 2-D roll you would see looking down the barrel. That is a
+single signed distance, `R − r`:
+
+```{python}
+cx, cy = 20.0, 20.0        # drum axis (x, y), in grain radii
+R      = 15.0              # barrel radius  (grain radius = 1 throughout)
+Lz     = 8.0               # slab thickness along the (periodic) axis
+
+def drum_sdf(p):
+    """+ inside the void (where grains live), − inside the solid barrel."""
+    return R - np.hypot(p[:, 0] - cx, p[:, 1] - cy)
+```
+
+::: {.callout-tip}
+Working in **grain-radius units** (grain radius = 1, the default `global_scale`) keeps the
+sphere–sphere contact model exact — size the *drum* in radii rather than shrinking the
+grains. Any callable `f(points) → distance` works: swap `drum_sdf` for a hopper (a cone
+`min`'d with a floor), a chute, or a boolean CSG of primitives.
+:::
+
+`build_wall_sdf` samples that callable onto a world-space lattice; `add_to` uploads it with
+the **binary particle–wall material** — here a grippy wall (`friction = 0.6`) so it can lift
+the bed, and a low restitution so wall collisions are inelastic. The axis (`z`) is made
+periodic so grains recirculate along the drum rather than piling at an end.
+
+```{python}
+lo, hi = (0.0, 0.0, 0.0), (40.0, 40.0, Lz)
+sim = dem.Simulation(400)
+sim.set_sphere_shape(1.0)                        # grains of radius 1
+sim.set_domain(lo, hi)
+sim.enable_periodicity(False, False, True)       # periodic along the drum axis
+
+wall = build_wall_sdf(drum_sdf, (lo, hi), resolution=96)
+wid  = wall.add_to(sim, restitution=0.1, friction=0.6)   # <-- particle–wall material
+print(f"wall SDF grid {wall.grid.shape}, range [{wall.grid.min():.1f}, {wall.grid.max():.1f}]")
+```
+
+Here is the drum's zero level set — the barrel the grains cannot cross:
+
+```{python}
+#| label: fig-sdf
+#| fig-cap: "The drum as an SDF (cross-section). The black contour is the barrel wall; blue is the void the grains fill, red the solid wall the SDF pushes them out of."
+gx = np.linspace(lo[0], hi[0], 240); gy = np.linspace(lo[1], hi[1], 240)
+X, Y = np.meshgrid(gx, gy)
+S = drum_sdf(np.stack([X.ravel(), Y.ravel(), np.zeros(X.size)], axis=1)).reshape(X.shape)
+
+fig, ax = plt.subplots(figsize=(4.2, 4.2))
+im = ax.pcolormesh(X, Y, S, cmap="RdBu", vmin=-R, vmax=R, shading="auto")
+ax.contour(X, Y, S, levels=[0], colors="k", linewidths=1.6)
+ax.set_aspect("equal"); ax.set_title("drum SDF (cross-section)")
+fig.colorbar(im, ax=ax, shrink=0.8, label="signed distance (+ void, − wall)")
+plt.show()
+```
+
+## Step 2 — Fill the drum
+
+We drop grains in and pack them by **growth**: they start small (so nothing overlaps) and
+grow to full size while the barrel confines them, gated on the measured overlap. A short
+quench settles the bed. This is the same Lubachevsky–Stillinger protocol as the
+[particle-packing example](../sdf-particle-packing/index.qmd) — but now the boundary is the
+curved SDF wall, not six planes. We fill to about a third so the bed has a clear free
+surface.
+
+```{python}
+def fill_drum(friction_wall=0.6, seed_fill=0.33):
+    sim = dem.Simulation(400)
+    sim.set_sphere_shape(1.0)
+    sim.set_domain(lo, hi)
+    sim.enable_periodicity(False, False, True)
+    wid = build_wall_sdf(drum_sdf, (lo, hi), resolution=96).add_to(
+        sim, restitution=0.1, friction=friction_wall)
+    sim.set_gravity(0.0, -20.0, 0.0)
+    sim.set_material_params(0.1, 0.0, 0.4)        # grain–grain: restitution, (unused), friction
+    sim.set_solver_iterations(24, 6)
+
+    g  = np.arange(cx - R + 1.5, cx + R - 1.5, 2.4)
+    zs = np.arange(lo[2] + 0.6, hi[2] - 0.6, 2.2)
+    ytop = cy - R + seed_fill * 2 * R
+    pts = np.array([(x, y, z) for z in zs for x in g for y in g
+                    if (x - cx)**2 + (y - cy)**2 < (R - 2.0)**2 and y < ytop], np.float32)
+    N = len(pts)
+    p = np.zeros((N, 4), np.float32); p[:, :3] = pts; p[:, 3] = 1.0
+    sim.set_positions(p); sim.set_scales(np.ones(N, np.float32)); sim.set_growth_params(1.0, 0.15)
+
+    dt, crit = 0.004, 0.06
+    for _ in range(1500):                         # grow, gated on overlap
+        grow = sim.get_max_overlap() < crit and float(sim.get_scales().mean()) < 0.999
+        sim.set_growth_params(1.0 if grow else 0.0, sim.get_growth_factor())
+        sim.step(dt)
+    sim.set_growth_params(0.0, sim.get_growth_factor())
+    for _ in range(1000):                         # settle
+        sim.step(dt)
+    return sim, wid, N
+
+t0 = time.time()
+sim, wid, N = fill_drum()
+print(f"packed {N} grains in {time.time()-t0:.1f} s; max overlap = {sim.get_max_overlap():.3f} (grain r = 1)")
+```
+
+## Step 3 — Spin the wall
+
+The drum's surface velocity is a **rigid-body field** `v(x) = v_lin + ω × (x − center)`. For
+rotation we set the angular velocity about the axis point `(cx, cy)`; grains that touch the
+barrel feel that tangential velocity through **wall friction** and are carried up the rising
+side. `set_wall_velocity` is cheap (a few scalars) — set it once for a steady drum, or every
+step for a vibrating wall (see *Adapt this*). We keep the [Froude
+number](https://en.wikipedia.org/wiki/Froude_number) `ω²R/g ≈ 0.3` in the *cascading* regime,
+where a bed rolls rather than centrifuging onto the wall.
+
+```{python}
+dt = 0.004
+omega = 0.6     # rad/s, counter-clockwise about +z  (Froude number ω²R/g ≈ 0.27)
+sim.set_wall_velocity(wid, lin_vel=(0, 0, 0), ang_vel=(0, 0, omega), center=(cx, cy, 0))
+
+frames = []
+def snapshot():
+    pos = sim.get_positions().reshape(-1, 3)
+    vel = sim.get_velocities().reshape(-1, 3)
+    frames.append((pos[:, 0].copy(), pos[:, 1].copy(), np.linalg.norm(vel, axis=1)))
+
+for f in range(90):                               # ~ one revolution
+    for _ in range(29):
+        sim.step(dt)
+    snapshot()
+
+pos = sim.get_positions().reshape(-1, 3)
+esc = int((np.hypot(pos[:, 0] - cx, pos[:, 1] - cy) > R + 1.0).sum())
+print(f"grains that escaped the barrel: {esc} / {N}")
+```
+
+## The cascading bed
+
+Coloured by speed, the spinning bed is unmistakable: it climbs the rising (`+x`) wall,
+shears along a tilted free surface, and avalanches back down — the grains near the barrel
+move fastest (they share the wall's speed), those in the passive core barely at all.
+
+```{python}
+#| label: fig-drum-anim
+#| fig-cap: "The rotating drum (counter-clockwise), grains coloured by speed. Wall friction drags the bed up the rising side to a steady **dynamic angle of repose**, where surface grains avalanche back — the signature of a moving SDF wall."
+theta = np.linspace(0, 2*np.pi, 200)
+vmax = max(f[2].max() for f in frames) * 0.7
+fig, ax = plt.subplots(figsize=(4.6, 4.6))
+ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), "k-", lw=2)   # barrel
+scat = ax.scatter(frames[0][0], frames[0][1], c=frames[0][2], s=30,
+                  cmap="viridis", vmin=0, vmax=vmax, edgecolors="none")
+ax.annotate("ω", xy=(cx - 0.78*R, cy + 0.62*R), fontsize=13, color="0.35")
+ax.annotate("", xy=(cx - 0.86*R, cy + 0.36*R), xytext=(cx - 0.60*R, cy + 0.66*R),
+            arrowprops=dict(arrowstyle="->", color="0.5", lw=1.6, connectionstyle="arc3,rad=0.3"))
+ax.set_xlim(cx - R - 2, cx + R + 2); ax.set_ylim(cy - R - 2, cy + R + 2)
+ax.set_aspect("equal"); ax.axis("off"); ax.set_title("rotating drum — CCW")
+
+def update(i):
+    x, y, s = frames[i]
+    scat.set_offsets(np.column_stack([x, y])); scat.set_array(s)
+    return scat,
+
+anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=80, blit=True)
+plt.close(fig)
+from IPython.display import HTML
+HTML(anim.to_jshtml())
+```
+
+## The dynamic angle of repose
+
+The headline number: how far wall friction drags the bed off vertical. We measure the angle
+of the bed's **centre of mass** from straight-down — zero for a symmetric bed at rest,
+positive when the drum spins it up the rising side. We compare against an identical drum left
+static.
+
+```{python}
+#| label: fig-repose
+#| fig-cap: "Static bed (symmetric, bottom of the barrel) vs the spinning bed (tilted up the rising side). The dashed line is the bed's centre-of-mass direction from the axis; its angle from vertical is the dynamic angle of repose."
+def bed_tilt(pos):
+    """Angle (deg) of the bed COM from straight-down, seen from the axis (+ = toward +x)."""
+    sx, sy = pos[:, 0].mean() - cx, pos[:, 1].mean() - cy
+    return np.degrees(np.arctan2(sx, -sy)), sx, sy
+
+# identical drum, never spun, as the static reference
+ref, _, _ = fill_drum()
+rp = ref.get_positions().reshape(-1, 3)
+ang_stat, rx, ry = bed_tilt(rp)
+ang_spin, sx, sy = bed_tilt(pos)
+
+fig, axes = plt.subplots(1, 2, figsize=(8.6, 4.4))
+for ax, (px, py, cxx, cyy, ang, ttl) in zip(axes, [
+        (rp[:, 0], rp[:, 1], rx, ry, ang_stat, f"static (ω = 0):  {ang_stat:+.0f}°"),
+        (pos[:, 0], pos[:, 1], sx, sy, ang_spin, f"spinning (ω = {omega}):  {ang_spin:+.0f}°")]):
+    ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), "k-", lw=1.5)
+    ax.scatter(px, py, s=18, c="0.6", edgecolors="none")
+    ax.plot([cx, cx + 1.6*cxx], [cy, cy + 1.6*cyy], "--", color="crimson", lw=2)
+    ax.plot(cx + cxx, cy + cyy, "o", color="crimson", ms=7)     # bed centre of mass
+    ax.set_aspect("equal"); ax.axis("off"); ax.set_title(ttl)
+fig.suptitle("Bed centre of mass: straight down at rest, tilted when spinning", y=0.99)
+plt.show()
+print(f"static  angle of repose ≈ {ang_stat:+.1f}°")
+print(f"dynamic angle of repose ≈ {ang_spin:+.1f}°  (bed dragged up the rising side by wall friction)")
+```
+
+The static bed sits at the bottom of the barrel; the spinning drum holds it at a **positive
+dynamic angle of repose** — grains are carried up the rising wall by friction and cascade
+down the free surface, exactly as a real rotating drum mixes powder.
+
+## Adapt this yourself
+
+- **Vibrate the wall instead of spinning it.** A moving wall needs no rotation — drive the
+  *linear* velocity sinusoidally each step to shake the bed (the geometry stays put):
+  ```python
+  for k in range(nsteps):
+      v = A * omega_v * np.cos(omega_v * k * dt)      # oscillating wall velocity
+      sim.set_wall_velocity(wid, lin_vel=(0, v, 0), ang_vel=(0, 0, 0), center=(cx, cy, 0))
+      sim.step(dt)
+  ```
+- **Change the material.** `friction` and `restitution` in `add_to` are the *binary*
+  particle–wall pair — a slick wall (`friction≈0.1`) lets the bed slip and slump; a grippy
+  wall lifts it further and steepens the angle. They are independent of the grain–grain
+  `set_material_params`.
+- **Change the container.** Any SDF works: a **hopper** is a cone `min`'d with a floor; a
+  **chute** is a tilted slab; add lifters/baffles by `min`-ing more primitives. Keep the sign
+  convention (**+ in the void, − in the wall**) and cover the whole domain with the grid.
+- **Non-spherical grains.** Swap `set_sphere_shape` for an imported
+  [`build_particle`](../sdf-particle-packing/index.qmd) shape — the same wall collides against
+  each surface point of the grain, so rods and beans tumble in the drum too.
+- **Go bigger / on a GPU.** Increase the grain count and drum size; on a CUDA/HIP build the
+  identical script runs on the device.
+
+## Reproduce this
+
+```bash
+# from a checkout of peclet-examples
+pip install -e '.[sim]'          # or: pip install peclet
+# refresh the rendered page from a local build of the suite:
+PECLET_LOCAL_BUILD=/path/to/suite/dem/build_omp \
+  quarto render examples/rotating-drum/index.qmd --execute
+```

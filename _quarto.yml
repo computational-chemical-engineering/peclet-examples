@@ -46,6 +46,8 @@ website:
             text: "Ring packed-bed permeability study (dem → flow)"
           - href: examples/sdf-particle-packing/index.qmd
             text: "Custom-shaped particles (dem, SDF)"
+          - href: examples/rotating-drum/index.qmd
+            text: "Rotating drum (dem, moving SDF walls)"
           - href: examples/pore-mesh-voronoi/index.qmd
             text: "Pore-space Voronoi mesh (dem → voro, graded)"
       - text: Benchmarks
