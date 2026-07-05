@@ -102,6 +102,10 @@ def make_flow(U):
     s.set_domain_bc(4, 2, 0.0, 0.0, U)     # -z: inflow, gas up at U
     s.set_domain_bc(5, 3)                  # +z: outflow
     for f in (0, 1, 2, 3): s.set_domain_bc(f, 1)   # lateral no-slip
+    # The pressure Poisson is a geometric-multigrid-preconditioned CG (V-cycle + red-black
+    # Gauss-Seidel). On this cut-cell cylinder + inflow/outflow it stalls at ~6e-3 divergence, so the
+    # default 500-iteration cap just burns iterations — cap it at 50 for the same bed, ~7x faster.
+    s.set_pressure_pcg(True, 50, 1e-6)
     s.set_solid(cylinder_flow_sdf().flatten(order="F"), True)   # cut-cell IBM no-slip vessel
     return s
 ```
@@ -258,17 +262,23 @@ ax[1].set(xlabel="grains N", ylabel="M grains / s", title="throughput"); ax[1].g
 plt.tight_layout()
 ```
 
-A **million grains** steps in ~0.6 s on four CPU cores here, and ~**10 ms on an RTX 5080** (≈ 100 M
-grains/s) — the throughput *rises* with `N` on the GPU as the device fills up, the signature of a
-broadphase that parallelizes cleanly. The BVH is emphatically suited to this; the granular solver is
-**not** the bottleneck.
+This is a **loose** pack (grains barely touching), so it measures the broadphase: a **million grains**
+steps in ~0.6 s on four CPU cores here, and ~**10 ms on an RTX 5080** (≈ 100 M grains/s) — the
+throughput *rises* with `N` on the GPU as the device fills up, the signature of a broadphase that
+parallelizes cleanly. In a *dense* bed every grain is in contact, so the narrowphase + XPBD constraint
+solve dominate and the per-grain cost is higher (roughly 5–50× the loose figure, set by the coordination
+number, not the BVH). The BVH is emphatically suited to this; the DEM is fast either way.
 
 The *coupled* step stays **entirely on-device** — `CfdDem` deposits, gathers, and writes the drag
 straight into dem's external-force buffer through zero-copy device views, with no per-step host copy —
-so the coupling's own overhead is a few percent (~0.1 s at 100k grains). What the coupled step actually
-pays for is the two solvers themselves: the **incompressible-flow pressure solve** on the fluid grid,
-and the DEM (which costs more in a *dense* bed than the loose scaling pack above — every grain is in
-contact). The granular solver has headroom to spare; a bigger bed is limited by the CFD, not the BVH.
+so the coupling's own overhead is negligible (<1 %). The coupled cost is just the two solvers. For the
+115k-grain bed on `16×16×40 = 10240` cells (RTX 5080), a step is ~**150 ms** ≈ **DEM (90 ms–1.3 s,
+growing as the bed packs)** + **flow (~60 ms)**. Two honest notes on the flow: (1) it is worth capping
+the pressure PCG — the geometric multigrid stalls at ~6e-3 divergence on this cut-cell cylinder +
+inflow/outflow, so the *default* 500-iteration cap burns ~450 iterations for nothing (406 → 60 ms once
+capped, same bed); (2) on a grid this small the GPU is under-utilized, so the flow step is launch- and
+iteration-bound rather than FLOP-bound. So: the DEM is the bottleneck in a real (dense) bed, exactly as
+it should be — the BVH is not the limit.
 
 ::: {.callout-note}
 ## A million grains, packed
