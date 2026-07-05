@@ -1,6 +1,6 @@
 ---
 title: "Rotating drum: moving SDF walls (peclet.dem)"
-subtitle: "Confine grains in a container written as a signed distance function, give the wall a velocity it never actually moves at, and watch a spinning drum carry the bed up its rising side into a steady cascade."
+subtitle: "Confine grains in a container written as a signed distance function, give the wall a velocity it never actually moves at, and watch a spinning drum carry the bed up to a steady angle of repose while the surface tumbles."
 author: "Peclet"
 date: "2026-07-05"
 categories: [dem, sdf, walls, granular, rotating-drum, friction]
@@ -12,22 +12,19 @@ jupyter: python3
 
 ## What you'll learn
 
-In [custom-shaped particles](../sdf-particle-packing/index.qmd) the **particles** were
-signed distance fields. Here the **container** is one too. `peclet.dem` lets you collide
-grains against an arbitrary static **SDF wall** — a drum, a hopper, a vibrating tray — with
-its own **binary particle–wall material**: a friction and restitution that belong to the
-*pair* of surfaces, not to the grain alone. You will:
+In [custom-shaped particles](../sdf-particle-packing/index.qmd) the **particles** were signed
+distance fields. Here the **container** is one too. `peclet.dem` lets you collide grains against an
+arbitrary static **SDF wall** — a drum, a hopper, a vibrating tray — with its own **binary
+particle–wall material** (a friction and restitution that belong to the *pair* of surfaces). You will:
 
-1. **Write a drum as an SDF** — a cylinder — and load it as a wall with its particle–wall
-   friction and restitution.
-2. Give that wall a **rigid-body velocity field** `v(x) = ω × (x − c)`. The geometry never
-   moves, but a grain in contact feels the wall's velocity — exactly the trick a real
-   rotating drum plays: the barrel spins, its shape does not change.
-3. **Spin the drum** into the *rolling / cascading* regime and measure the **dynamic angle of
-   repose** — wall friction drags grains up the rising side until the bed's free surface tilts
-   to a steady angle and surface grains avalanche back down.
+1. **Write a drum as an SDF** — a cylinder — and load it as a wall.
+2. Give that wall a **rigid-body velocity field** `v(x) = ω × (x − c)`. The geometry never moves, but
+   a grain in contact feels the wall's velocity — the trick a real rotating drum plays.
+3. **Spin the drum** into the *cascading* regime (chosen with the **Froude number**) and watch wall
+   friction drag the bed up to a steady **angle of repose** while the surface layer continuously
+   tumbles down.
 
-Everything runs on a CPU in about a minute.
+Everything runs on a CPU in a couple of minutes.
 
 ```{python}
 #| label: bootstrap
@@ -46,6 +43,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.collections import EllipseCollection
 from peclet import dem
 from peclet.dem import build_wall_sdf
 
@@ -56,17 +54,16 @@ print("peclet.dem backend:", dem.execution_space)
 
 ## Step 1 — The drum is a signed distance function
 
-Grains live in the **void** and the barrel is **solid**, so we adopt the natural wall
-convention: the SDF is **positive where the grains are** and **negative inside the wall** —
-the mirror image of a particle SDF. We study the drum **cross-section**: a cylinder of
-radius `R` about the axis, made **periodic along its axis** (`z`) and only a couple of grains
-thick, so it is effectively a 2-D disc — the clean roll you would see looking down the barrel.
-That is a single signed distance, `R − r`:
+Grains live in the **void** and the barrel is **solid**, so the wall SDF is **positive where the
+grains are** and **negative inside the wall**. We study the drum **cross-section** — a cylinder of
+radius `R`, made **periodic along its axis** (`z`) and a couple of grains thick, so it is effectively
+a 2-D disc, the view you would get looking down the barrel. That is a single signed distance, `R − r`:
 
 ```{python}
-cx, cy = 12.0, 12.0        # drum axis (x, y), in grain radii
-R      = 11.0              # barrel radius  (grain radius = 1 throughout)
+cx, cy = 22.0, 22.0        # drum axis (x, y), in grain radii
+R      = 20.0              # barrel radius  (grain radius = 1 throughout)
 Lz     = 2.5               # slab thickness along the (periodic) axis — one grain layer
+g      = 9.8               # gravity
 
 def drum_sdf(p):
     """+ inside the void (where grains live), − inside the solid barrel."""
@@ -75,150 +72,135 @@ def drum_sdf(p):
 
 ::: {.callout-tip}
 Working in **grain-radius units** (grain radius = 1, the default `global_scale`) keeps the
-sphere–sphere contact model exact — size the *drum* in radii rather than shrinking the
-grains. Any callable `f(points) → distance` works: swap `drum_sdf` for a hopper (a cone
-`min`'d with a floor), a chute, or a boolean CSG of primitives.
+sphere–sphere contact model exact — size the *drum* in radii rather than shrinking the grains. Any
+callable `f(points) → distance` works: swap `drum_sdf` for a hopper, a chute, or a CSG of primitives.
 :::
 
-`build_wall_sdf` samples that callable onto a world-space lattice; `add_to` uploads it with
-the **binary particle–wall material** — a grippy wall (`friction = 1.0`) so it can lift the
-bed, and a low restitution so wall collisions are inelastic. The axis (`z`) is periodic so
-grains recirculate rather than piling at an end.
+`build_wall_sdf` samples that callable onto a world-space lattice; `add_to` uploads it with the
+**binary particle–wall material** — a grippy wall (`friction = 1.0`) so it lifts the bed, and a low
+restitution so wall collisions are inelastic.
 
 ```{python}
-lo, hi = (0.0, 0.0, 0.0), (24.0, 24.0, Lz)
-sim = dem.Simulation(600)
-sim.set_sphere_shape(1.0)                        # grains of radius 1
-sim.set_domain(lo, hi)
-sim.enable_periodicity(False, False, True)       # periodic along the drum axis
+lo, hi = (0.0, 0.0, 0.0), (2 * cx, 2 * cy, Lz)
 
-wall = build_wall_sdf(drum_sdf, (lo, hi), resolution=110)
-wid  = wall.add_to(sim, restitution=0.1, friction=1.0)   # <-- particle–wall material
-print(f"wall SDF grid {wall.grid.shape}, range [{wall.grid.min():.1f}, {wall.grid.max():.1f}]")
-```
-
-Here is the drum's zero level set — the barrel the grains cannot cross:
-
-```{python}
-#| label: fig-sdf
-#| fig-cap: "The drum as an SDF (cross-section). The black contour is the barrel wall; blue is the void the grains fill, red the solid wall the SDF pushes them out of."
-gx = np.linspace(lo[0], hi[0], 240); gy = np.linspace(lo[1], hi[1], 240)
-X, Y = np.meshgrid(gx, gy)
-S = drum_sdf(np.stack([X.ravel(), Y.ravel(), np.zeros(X.size)], axis=1)).reshape(X.shape)
-
-fig, ax = plt.subplots(figsize=(4.2, 4.2))
-im = ax.pcolormesh(X, Y, S, cmap="RdBu", vmin=-R, vmax=R, shading="auto")
-ax.contour(X, Y, S, levels=[0], colors="k", linewidths=1.6)
-ax.set_aspect("equal"); ax.set_title("drum SDF (cross-section)")
-fig.colorbar(im, ax=ax, shrink=0.8, label="signed distance (+ void, − wall)")
-plt.show()
-```
-
-## Step 2 — Fill the drum about half full
-
-We drop grains in and pack them by **growth**: they start small (so nothing overlaps) and
-grow to full size while the barrel confines them, gated on the measured overlap. A short
-quench settles the bed. This is the same Lubachevsky–Stillinger protocol as the
-[particle-packing example](../sdf-particle-packing/index.qmd) — but now the boundary is the
-curved SDF wall, not six planes. We fill to a bit under half so there is a deep, flowing bed
-(a single scattered layer just rolls; a bed several grains deep *cascades*).
-
-```{python}
-def fill_drum(friction_wall=1.0, friction_grain=0.8):
-    sim = dem.Simulation(600)
+def fill_drum(friction_wall=1.0, friction_grain=0.7, fill=0.42):
+    """Pack a drum about `fill` full by growth, return (sim, wall_id, N)."""
+    sim = dem.Simulation(900)
     sim.set_sphere_shape(1.0)
     sim.set_domain(lo, hi)
-    sim.enable_periodicity(False, False, True)
-    wid = build_wall_sdf(drum_sdf, (lo, hi), resolution=110).add_to(
-        sim, restitution=0.1, friction=friction_wall)
-    sim.set_gravity(0.0, -20.0, 0.0)
-    sim.set_material_params(0.1, 0.0, friction_grain)   # grain–grain: restitution, (unused), friction
-    sim.set_solver_iterations(28, 8)
+    sim.enable_periodicity(False, False, True)     # periodic along the drum axis
+    wid = build_wall_sdf(drum_sdf, (lo, hi), resolution=140).add_to(
+        sim, restitution=0.2, friction=friction_wall)
+    sim.set_gravity(0.0, -g, 0.0)
+    sim.set_material_params(0.2, 0.0, friction_grain)   # grain–grain material
+    sim.set_solver_iterations(24, 7)
 
-    g = np.arange(cx - R + 1.2, cx + R - 1.2, 2.15)
-    pts = np.array([(x, y, Lz / 2) for x in g for y in g
-                    if (x - cx)**2 + (y - cy)**2 < (R - 1.3)**2 and y < cy + 0.4 * R], np.float32)
+    grid = np.arange(cx - R + 1.2, cx + R - 1.2, 2.1)
+    pts = np.array([(x, y, Lz / 2) for x in grid for y in grid
+                    if (x - cx)**2 + (y - cy)**2 < (R - 1.3)**2 and y < cy - R + fill * 2 * R], np.float32)
     N = len(pts)
     p = np.zeros((N, 4), np.float32); p[:, :3] = pts; p[:, 3] = 1.0
     sim.set_positions(p); sim.set_scales(np.ones(N, np.float32)); sim.set_growth_params(1.0, 0.2)
 
-    dt, crit = 0.004, 0.06
-    for _ in range(1400):                         # grow, gated on overlap
+    dt, crit = 0.003, 0.06
+    for _ in range(1500):                          # grow, gated on overlap
         grow = sim.get_max_overlap() < crit and float(sim.get_scales().mean()) < 0.999
         sim.set_growth_params(1.0 if grow else 0.0, sim.get_growth_factor())
         sim.step(dt)
     sim.set_growth_params(0.0, sim.get_growth_factor())
-    for _ in range(900):                          # settle
+    for _ in range(800):                           # settle
         sim.step(dt)
     return sim, wid, N
 
-dt = 0.004
 t0 = time.time()
 sim, wid, N = fill_drum()
 print(f"packed {N} grains in {time.time()-t0:.1f} s; max overlap = {sim.get_max_overlap():.3f} (grain r = 1)")
 ```
 
-## Step 3 — Spin the wall
+## Step 2 — Pick the spin with the Froude number
 
-The drum's surface velocity is a **rigid-body field** `v(x) = v_lin + ω × (x − center)`. For
-rotation we set the angular velocity about the axis point `(cx, cy)`; grains that touch the
-barrel feel that tangential velocity through **wall friction** and are carried up the rising
-side. `set_wall_velocity` is cheap (a few scalars) — set it once for a steady drum, or every
-step for a vibrating wall (see *Adapt this*). We keep the [Froude
-number](https://en.wikipedia.org/wiki/Froude_number) `ω²R/g ≈ 0.45` in the *cascading* regime,
-where the bed rolls rather than centrifuging onto the wall.
+A rotating drum's flow regime is set by the **Froude number** $\mathrm{Fr} = \omega^2 R / g$ — the
+ratio of centrifugal to gravitational acceleration at the wall (Mellmann 2001):
+
+| regime | Fr | what you see |
+|---|---|---|
+| **slumping** | $\lesssim 10^{-3}$ | the whole bed tilts, then avalanches as a block — jerky |
+| **rolling / cascading** | $\sim10^{-2}\!-\!10^{-1}$ | a steady inclined surface with a thin flowing layer — *this* |
+| **cataracting** | $\sim0.5\!-\!1$ | grains thrown off the top |
+| **centrifuging** | $\gtrsim 1$ | the bed sticks to the wall and rotates as a ring |
+
+We want a **steady angle of repose with continuous surface tumbling**, so we aim at the upper rolling
+/ cascading range, $\mathrm{Fr}\approx 0.4$, and solve for the wall speed:
 
 ```{python}
-omega = 0.9     # rad/s, counter-clockwise about +z  (Froude number ω²R/g ≈ 0.45)
-pre_spin = sim.get_positions().reshape(-1, 3).copy()     # the bed at rest, for the angle baseline
+Fr = 0.4
+omega = np.sqrt(Fr * g / R)                        # rad/s about +z, counter-clockwise
+print(f"Fr = {Fr}  ->  ω = {omega:.3f} rad/s  (wall surface speed ωR = {omega*R:.1f})")
+```
+
+## Step 3 — Spin the wall
+
+The drum's surface velocity is the rigid-body field `v(x) = v_lin + ω × (x − center)`; grains that
+touch the barrel feel it through **wall friction** and are carried up the rising side. We let it reach
+a steady cascade, then record.
+
+```{python}
+dt = 0.003
 sim.set_wall_velocity(wid, lin_vel=(0, 0, 0), ang_vel=(0, 0, omega), center=(cx, cy, 0))
+pre_spin = sim.get_positions().reshape(-1, 3).copy()      # bed at rest, for the angle baseline
+
+rev = int(2 * np.pi / omega / dt)                          # steps per revolution
+for _ in range(rev):                                       # let the cascade reach steady state
+    sim.step(dt)
 
 frames = []
-def snapshot():
+for f in range(64):                                        # record ~1 revolution
+    for _ in range(rev // 60):
+        sim.step(dt)
     pos = sim.get_positions().reshape(-1, 3)
     vel = sim.get_velocities().reshape(-1, 3)
     frames.append((pos[:, 0].copy(), pos[:, 1].copy(), np.linalg.norm(vel, axis=1)))
 
-for f in range(90):                               # ~ a couple of revolutions
-    for _ in range(25):
-        sim.step(dt)
-    snapshot()
-
 pos = sim.get_positions().reshape(-1, 3)
 esc = int((np.hypot(pos[:, 0] - cx, pos[:, 1] - cy) > R + 1.0).sum())
-peak = max(f[2].max() for f in frames[30:])
-print(f"grains that escaped the barrel: {esc} / {N}")
-print(f"peak grain speed = {peak:.1f}  vs wall surface speed ωR = {omega*R:.1f} "
-      f"(grains never outrun the wall — no spurious energy)")
+peak = max(f[2].max() for f in frames)
+print(f"escaped the barrel: {esc} / {N};  peak grain speed = {peak:.1f} vs wall speed ωR = {omega*R:.1f}")
 ```
 
 ## The cascading bed
 
-Coloured by speed, the spinning bed is unmistakable: it climbs the rising (`+x`) wall, shears
-along a tilted free surface, and avalanches back down — the grains near the barrel move
-fastest (they share the wall's speed), those in the passive core barely at all.
+Rendered as true-size spheres coloured by speed, the flow is unmistakable: a **thin fast layer
+tumbles down the inclined free surface** (bright) while the bulk rotates with the drum as a near-rigid
+body (dark). The surface holds a steady angle — the dynamic angle of repose.
 
 ```{python}
 #| label: fig-drum-anim
-#| fig-cap: "The rotating drum (counter-clockwise), grains coloured by speed. Wall friction drags the bed up the rising side to a steady **dynamic angle of repose**, where surface grains avalanche back — the signature of a moving SDF wall."
-theta = np.linspace(0, 2*np.pi, 200)
-vmax = max(f[2].max() for f in frames) * 0.75
-fig, ax = plt.subplots(figsize=(4.6, 4.6))
-ax.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), "k-", lw=2)   # barrel
-scat = ax.scatter(frames[0][0], frames[0][1], c=frames[0][2], s=60,
-                  cmap="viridis", vmin=0, vmax=vmax, edgecolors="0.2", linewidths=0.3)
-ax.annotate("ω", xy=(cx - 0.80*R, cy + 0.64*R), fontsize=13, color="0.35")
-ax.annotate("", xy=(cx - 0.88*R, cy + 0.38*R), xytext=(cx - 0.62*R, cy + 0.68*R),
-            arrowprops=dict(arrowstyle="->", color="0.5", lw=1.6, connectionstyle="arc3,rad=0.3"))
+#| fig-cap: "The rotating drum (counter-clockwise), grains drawn at true size and coloured by speed. Wall friction drags the bed up to a steady angle of repose; a thin surface layer continuously avalanches back down — the cascading regime of a moving SDF wall."
+theta = np.linspace(0, 2 * np.pi, 200)
+vmax = np.percentile(np.concatenate([f[2] for f in frames]), 98)
+
+def draw(ax, x, y, speed):
+    xy = np.column_stack([x, y])
+    coll = EllipseCollection(widths=2.0, heights=2.0, angles=0, units="xy", offsets=xy,
+                             transOffset=ax.transData, cmap="turbo", edgecolors="0.25", linewidths=0.3)
+    coll.set_array(speed); coll.set_clim(0, vmax)
+    return ax.add_collection(coll)
+
+fig, ax = plt.subplots(figsize=(4.6, 4.6), dpi=80)   # modest dpi keeps the embedded animation small
+ax.plot(cx + R * np.cos(theta), cy + R * np.sin(theta), "k-", lw=2.2)
+coll = draw(ax, *frames[0])
+ax.annotate("ω", xy=(cx - 0.82 * R, cy + 0.66 * R), fontsize=14, color="0.35")
+ax.annotate("", xy=(cx - 0.90 * R, cy + 0.40 * R), xytext=(cx - 0.64 * R, cy + 0.70 * R),
+            arrowprops=dict(arrowstyle="->", color="0.5", lw=1.7, connectionstyle="arc3,rad=0.3"))
 ax.set_xlim(cx - R - 2, cx + R + 2); ax.set_ylim(cy - R - 2, cy + R + 2)
 ax.set_aspect("equal"); ax.axis("off"); ax.set_title("rotating drum — CCW")
 
 def update(i):
     x, y, s = frames[i]
-    scat.set_offsets(np.column_stack([x, y])); scat.set_array(s)
-    return scat,
+    coll.set_offsets(np.column_stack([x, y])); coll.set_array(s)
+    return coll,
 
-anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=80, blit=True)
+anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=70, blit=True)
 plt.close(fig)
 from IPython.display import HTML
 HTML(anim.to_jshtml())
@@ -226,22 +208,19 @@ HTML(anim.to_jshtml())
 
 ## The dynamic angle of repose
 
-The headline: the tilt of the bed's **free surface**. We fit a line to the top grain in each
-vertical strip across the central span of the drum (away from where the bed climbs the wall) and
-read its slope. A rotating bed does not tilt to a *fixed* angle — it **avalanches
-intermittently**, so the surface angle oscillates about a steady mean. We therefore track it over
-the whole spin: it starts flat (the bed at rest), rises as friction drags the bed up, and then
-fluctuates about the dynamic angle of repose.
+We fit a line to the top grain in each vertical strip across the drum's central span (away from where
+the bed climbs the wall) and read its slope over the whole recording. Flat at rest, it rises as
+friction drags the bed up and then holds a steady **dynamic angle of repose**, jittering by a few
+degrees as surface avalanches come and go.
 
 ```{python}
 #| label: fig-repose
-#| fig-cap: "Left: the free-surface angle over the spin — flat at rest, then a sawtooth as the surface is dragged up to its maximum angle of repose and released by a bulk avalanche (the slumping regime). Right: the bed at the last frame with the fitted free surface (red)."
-def surface_angle(x, y, band=0.62):
-    """Slope angle (deg) and fitted line of the top-of-bed surface across the drum's central band."""
+#| fig-cap: "Left: the free-surface angle over the spin — flat at rest, then a steady dynamic angle of repose (the cascading regime; contrast the slumping regime's block avalanches). Right: the tilted bed with the fitted free surface (red)."
+def surface_angle(x, y, band=0.6):
     xc, yc = x - cx, y - cy
     keep = np.abs(xc) < band * R
     xc, yc = xc[keep], yc[keep]
-    bins = np.linspace(xc.min(), xc.max(), 9)
+    bins = np.linspace(xc.min(), xc.max(), 11)
     idx = np.clip(np.digitize(xc, bins), 1, len(bins) - 1)
     xs, ys = [], []
     for b in range(1, len(bins)):
@@ -252,83 +231,76 @@ def surface_angle(x, y, band=0.62):
     slope, intercept = np.polyfit(xs, ys, 1)
     return np.degrees(np.arctan(slope)), (slope, intercept)
 
-t = np.arange(len(frames)) * 25 * dt
+t = np.arange(len(frames)) * (rev // 60) * dt
 ang_t = np.array([surface_angle(fx, fy)[0] for fx, fy, _ in frames])
-ang_stat = surface_angle(pre_spin[:, 0], pre_spin[:, 1])[0]      # same bed, at rest
-steady = ang_t[len(ang_t) // 2:]                                # second half = steady regime
-ang_dyn, ang_sd = steady.mean(), steady.std()
-ang_peak = steady.max()                                         # avalanche-triggering angle
+ang_stat = surface_angle(pre_spin[:, 0], pre_spin[:, 1])[0]
+ang_dyn, ang_sd = ang_t.mean(), ang_t.std()
 
-fig, (axL, axR) = plt.subplots(1, 2, figsize=(9.0, 4.2))
+fig, (axL, axR) = plt.subplots(1, 2, figsize=(9.2, 4.3))
 axL.axhline(ang_stat, color="0.5", ls="--", lw=1.2, label=f"at rest ({ang_stat:+.0f}°)")
-axL.axhline(ang_dyn, color="crimson", lw=1.5, label=f"dynamic mean ({ang_dyn:+.0f}°)")
+axL.axhline(ang_dyn, color="crimson", lw=1.6, label=f"dynamic angle of repose ({ang_dyn:+.0f}°)")
 axL.fill_between(t, ang_dyn - ang_sd, ang_dyn + ang_sd, color="crimson", alpha=0.12)
-axL.plot(t, ang_t, color="#2a6fdb", lw=1.2)
+axL.plot(t, ang_t, color="#2a6fdb", lw=1.3)
 axL.set_xlabel("time"); axL.set_ylabel("free-surface angle (°)"); axL.legend(loc="lower right")
-axL.set_title("build up to the repose angle, then avalanche"); axL.grid(True, alpha=0.3)
+axL.set_title("a steady angle of repose"); axL.grid(True, alpha=0.3); axL.set_ylim(-5, max(35, ang_dyn + 12))
 
-fx, fy, fs = frames[-1]
+fx, fy, fs = frames[np.argmin(np.abs(ang_t - ang_dyn))]     # a representative frame
 _, (slope, intercept) = surface_angle(fx, fy)
-axR.plot(cx + R*np.cos(theta), cy + R*np.sin(theta), "k-", lw=1.5)
-axR.scatter(fx, fy, s=55, c=fs, cmap="viridis", vmin=0, vmax=vmax, edgecolors="0.3", linewidths=0.3)
-xx = np.array([-0.62 * R, 0.62 * R])
+axR.plot(cx + R * np.cos(theta), cy + R * np.sin(theta), "k-", lw=1.5)
+draw(axR, fx, fy, fs)
+xx = np.array([-0.6 * R, 0.6 * R])
 axR.plot(cx + xx, cy + slope * xx + intercept, "-", color="crimson", lw=3)
-axR.set_aspect("equal"); axR.axis("off"); axR.set_title(f"last frame:  {surface_angle(fx, fy)[0]:+.0f}°")
+axR.set_xlim(cx - R - 2, cx + R + 2); axR.set_ylim(cy - R - 2, cy + R + 2)
+axR.set_aspect("equal"); axR.axis("off"); axR.set_title(f"free surface:  {surface_angle(fx, fy)[0]:+.0f}°")
 plt.show()
-print(f"at rest:  surface angle ≈ {ang_stat:+.1f}°  (a settled bed, near flat)")
-print(f"spinning: surface builds to a maximum angle of repose ≈ {ang_peak:+.1f}° then avalanches back")
-print(f"          (mean {ang_dyn:+.1f}° ± {ang_sd:.0f}° over the avalanche cycle)")
+print(f"at rest:  surface angle ≈ {ang_stat:+.1f}°")
+print(f"spinning: dynamic angle of repose ≈ {ang_dyn:+.1f}° ± {ang_sd:.0f}°")
 ```
 
-At rest the surface is flat. Spinning, this small bead bed sits in the **intermittent-avalanche
-(slumping) regime**: wall friction drags the surface up until it reaches its **maximum angle of
-repose**, a bulk avalanche releases it back toward flat, and the cycle repeats — the sawtooth in the
-plot. That periodic build-and-release is real granular physics, not solver noise (grains never
-outrun the wall — the peak-speed check above is how we know the contact solve is not injecting
-energy). The angle is gentle because smooth spheres *roll*: a bead bed cascades far shallower than
-angular sand (~25–35°). Grip the grains harder (raise `friction`), fill deeper, spin faster (a higher
-Froude number moves into the *continuous cascading* regime), or use non-spherical
-[`build_particle`](../sdf-particle-packing/index.qmd) shapes, and the angle steepens.
+At rest the surface is flat; spinning, the drum holds a **steady dynamic angle of repose** of roughly
+25° while a thin surface layer tumbles — the cascading regime. Two ingredients make this work where a
+naive setup gives a limp, flat bed:
 
-::: {.callout-note}
-## What "wrong" looks like — a debugging note
-An earlier version of the moving-wall contact solve **injected energy** on the downhill side of the
-cascade: grains that should have rolled gently back down instead *jumped*, and their peak speed shot
-past the wall speed. The tell was quantitative — `peak grain speed` above `ωR` is unphysical for a
-driven-by-friction bed. The [DEM sanity checks](../../sanity-checks/index.qmd) pin down exactly this
-kind of regression; the fix restored `peak speed < ωR`, printed above.
-:::
+- **The wall must grip the *whole* bed, not just the surface grains.** The wall-friction bound is the
+  *force-chain* normal load — the weight of grains stacked above pressing a buried grain into the wall
+  — so a deep bed is dragged up as a body instead of the wall slipping under it.
+- **The Froude number sets the regime.** Too slow → jerky block slumping; too fast → cataracting or
+  centrifuging. `Fr ≈ 0.4` sits in the steady cascade.
+
+The bed settles to a **bounded, steady angle** rather than growing without limit — how we know the
+moving-wall contact solve is not injecting energy (an earlier version did, sending downhill grains to
+ever-higher speeds — the [sanity checks](../../sanity-checks/index.qmd) now guard against it). A few
+surface grains *do* briefly outrun the wall as they avalanche down the steep face, which is physical.
+Because smooth spheres *roll*, this angle is still gentler than angular sand (~35°); grip harder
+(`friction`), or use non-spherical [`build_particle`](../sdf-particle-packing/index.qmd) shapes, to
+steepen it.
 
 ## Adapt this yourself
 
-- **Vibrate the wall instead of spinning it.** A moving wall needs no rotation — drive the
-  *linear* velocity sinusoidally each step to shake the bed (the geometry stays put):
+- **Vibrate the wall instead of spinning it.** A moving wall needs no rotation — drive the *linear*
+  velocity sinusoidally each step to shake the bed (the geometry stays put):
   ```python
   for k in range(nsteps):
       v = A * omega_v * np.cos(omega_v * k * dt)      # oscillating wall velocity
       sim.set_wall_velocity(wid, lin_vel=(0, v, 0), ang_vel=(0, 0, 0), center=(cx, cy, 0))
       sim.step(dt)
   ```
-- **Change the material.** `friction` and `restitution` in `add_to` are the *binary*
-  particle–wall pair — a slick wall (`friction≈0.1`) lets the bed slip and slump; a grippy
-  wall lifts it further and steepens the angle. They are independent of the grain–grain
-  `set_material_params`.
-- **Change the container.** Any SDF works: a **hopper** is a cone `min`'d with a floor; a
-  **chute** is a tilted slab; add lifters/baffles by `min`-ing more primitives. Keep the sign
-  convention (**+ in the void, − in the wall**) and cover the whole domain with the grid.
-- **Non-spherical grains.** Swap `set_sphere_shape` for an imported
-  [`build_particle`](../sdf-particle-packing/index.qmd) shape — the same wall collides against
-  each surface point of the grain, so rods and beans tumble (and cascade at a steeper angle).
-- **Go bigger / on a GPU or cluster.** Increase the grain count and drum size; on a CUDA/HIP
-  build the identical script runs on the device, and a distributed build adds
-  `sim.init_mpi(...)` / `sim.step_mpi(...)` (use a closed or rounded drum under MPI).
+- **Sweep the Froude number.** Lower `Fr` (slower `ω`) drops into slumping — the whole bed tilts and
+  releases in blocks; raise it past ~0.5 for cataracting, where grains are flung off the top.
+- **Change the material.** `friction`/`restitution` in `add_to` are the *binary* particle–wall pair,
+  independent of the grain–grain `set_material_params`. A slick wall lets the bed slump; a grippy one
+  steepens the angle of repose.
+- **Change the container.** Any SDF works: a **hopper** is a cone `min`'d with a floor, a **chute** a
+  tilted slab; add lifters/baffles by `min`-ing more primitives (keep + in the void, − in the wall).
+- **Go bigger / on a GPU or cluster.** Increase the grain count and drum size; on a CUDA/HIP build the
+  identical script runs on the device, and a distributed build adds `sim.init_mpi(...)` /
+  `sim.step_mpi(...)` (use a closed or rounded drum under MPI).
 
 ## Reproduce this
 
 ```bash
 # from a checkout of peclet-examples
 pip install -e '.[sim]'          # or: pip install peclet
-# refresh the rendered page from a local build of the suite:
 PECLET_LOCAL_BUILD=/path/to/suite/dem/build_omp \
   quarto render examples/rotating-drum/index.qmd --execute
 ```
