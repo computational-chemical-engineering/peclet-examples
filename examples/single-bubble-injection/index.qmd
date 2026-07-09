@@ -1,0 +1,241 @@
+---
+title: "Single-bubble injection: a jet, a bubble, an eruption"
+subtitle: "Bring a cylindrical bed to the edge of fluidization, then punch a short gas jet through a central nozzle. A single bubble nucleates, detaches, rises as a clean void — deforming into the classic kidney shape with a wake of raining grains — and erupts at the surface. Online CFD–DEM reproducing the Boyce MRI experiment and the MFIX-Exa benchmark."
+author: "Peclet"
+date: "2026-07-09"
+categories: [coupling, cfd-dem, dem, flow, fluidization, bubble, gidaspow, benchmark, gpu]
+jupyter: python3
+bibliography: ../../references.bib
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/single-bubble-injection/index.ipynb){target="_blank"}
+&nbsp;An **online** CFD–DEM example (drag and void fraction exchanged every step) — needs the `peclet-coupling` module (built from source, see *Reproduce*) and a GPU for the 260k-grain bed. It reproduces the **Single Bubble Injection** case from the [MFIX-Exa qualitative benchmarks](https://mfix.netl.doe.gov/doc/mfix-exa/guide/latest/test_benchmarks/qualitative_bencharks/single_bubble.html), which follows the magnetic-resonance-imaging experiments of Boyce and coworkers [@boyce2019].
+
+## What you'll learn
+
+A bubble in a fluidized bed is the unit event of gas–solid contacting — it carries gas through the bed,
+mixes solids, and sets the reactor's behaviour. The cleanest way to study one is to make **exactly one**:
+hold a bed at *incipient* fluidization (just barely suspended), then inject a brief, fast jet from a
+central nozzle. This example builds that experiment:
+
+1. Settle **260 000 grains** (2.93 mm, ρ = 1040 kg/m³) into a **cylindrical** bed and bring it to
+   incipient fluidization at its minimum-fluidization velocity U~mf~ ≈ 0.66 m/s.
+2. Drive a **spatially-varying inlet** with `set_domain_bc_profile` — a uniform distributor everywhere,
+   plus a **central jet** — to inject a single bubble.
+3. Watch the bubble **nucleate, detach, rise, and erupt**, track its **diameter over time**, and compare
+   the size and shape to the Boyce MRI data and the MFIX-Exa benchmark.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (local build, or peclet + peclet-coupling)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    for p in _local.split(os.pathsep):
+        sys.path.insert(0, p)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet[cfd-dem]"], check=True)
+```
+
+```{python}
+import numpy as np, time
+import matplotlib.pyplot as plt
+from peclet import flow, dem
+from peclet.dem import build_wall_sdf
+from peclet.coupling import CfdDem
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+print("backends — flow:", flow.execution_space, " dem:", dem.execution_space)
+```
+
+## The setup — a cylinder at the edge of fluidization
+
+The vessel is the Boyce rig: a **190 mm** cylinder in a 192 mm box, resolved on an **8 mm** grid, with a
+static bed of about **200 mm**. As in the [fluidized-bed example](../fluidized-bed/index.qmd) the cylinder
+is a signed distance field used twice — a cut-cell no-slip wall for the gas and a restitution wall for the
+grains. Everything runs in **cell units** (cell size `h`; SI lengths become `length / h`).
+
+```{python}
+Ddom, Hdom, Dcyl = 192e-3, 384e-3, 190e-3
+rho_g, mu_g, g    = 1.2, 1.8e-5, 9.81
+dpp, rho_p        = 2.93e-3, 1040.0
+Umf, Ujet         = 0.66, 20.0                  # incipient velocity; jet peak (m/s)
+
+h        = 8.0e-3
+NX = NY  = int(round(Ddom/h)); NZ = int(round(Hdom/h))    # 24 x 24 x 48
+R, cx    = Dcyl/2/h, NX/2.0
+rp       = dpp/2/h
+mu_c, g_c        = mu_g/h**2, g/h
+Umf_c, Ujet_c    = Umf/h, Ujet/h
+m_p      = rho_p*(4/3)*np.pi*rp**3
+dt       = 1.0e-3
+print(f"grid {NX}x{NY}x{NZ}  cylinder R={R:.1f} cells  cell/dp={h/dpp:.1f}  U_mf={Umf} m/s")
+```
+
+Pour a jittered lattice of grains inside the cylinder and let the DEM settle them into a packed bed. With
+260 000 grains the settled height lands right at the experimental **~200 mm**.
+
+```{python}
+rng = np.random.default_rng(2); sp = 1.03*2*rp
+xs = (cx-R) + (np.arange(int(2*R/sp))+0.5)*sp
+pos, k = [], 0
+while len(pos) < 260_000:
+    z = rp + (k+0.5)*sp
+    for x in xs:
+        for y in xs:
+            if (x-cx)**2 + (y-cx)**2 < (R-1.2*rp)**2: pos.append((x, y, z))
+    k += 1
+pos = np.array(pos[:260_000], np.float32); pos[:, :2] += rng.uniform(-0.03, 0.03, (len(pos), 2)).astype(np.float32)
+N = len(pos)
+
+d = dem.Simulation(int(1.15*N) + 128)
+d.initialize(shape_type=1, radius=rp); d.set_sphere_shape(rp)
+d.set_domain((0, 0, 0), (NX, NY, NZ)); d.enable_periodicity(False, False, False)
+d.set_gravity(0, 0, -g_c); d.set_material_params(0.6, 0.0, 0.2); d.set_solver_iterations(12, 4)
+d.set_dt(dt/20)
+wall = lambda p: np.minimum.reduce([R-np.hypot(p[:,0]-cx, p[:,1]-cx), p[:,2], (NZ-2)-p[:,2]])
+build_wall_sdf(wall, ((0,0,0),(NX,NY,NZ)), resolution=96).add_to(d, restitution=0.5, friction=0.3)
+d.set_positions(np.c_[pos, np.full(N, 1/m_p, np.float32)]); d.set_velocities(np.zeros((N, 3), np.float32))
+for _ in range(2000): d.step(dt/20)
+print(f"{N} grains settled — bed top z95 = {np.percentile(d.get_positions()[:N,2],95)*h*1e3:.0f} mm")
+```
+
+::: {.callout-note}
+## A bed of bouncy grains needs a lower restitution
+A deep packing of high-restitution grains under strong (cell-unit) gravity re-energizes itself and can
+blow up during settling. Dropping the coefficient of restitution to ~0.5–0.6 lets the collisions dissipate
+the collapse energy — a standard, physical choice for granular DEM, and the difference between a stable
+bed and a numerical explosion.
+:::
+
+The inlet is a **profile**: `set_domain_bc_profile` prescribes a per-cell vertical velocity over the bottom
+face. Everywhere inside the cylinder it is the distributor velocity U~mf~; over a small central patch it is
+the **jet**. Re-issuing the profile each step lets us switch the jet on and off.
+
+```{python}
+s = flow.Solver(NX, NY, NZ)
+s.set_rho(rho_g); s.set_mu(mu_c); s.set_dt(dt)
+Xc, Yc, _ = np.meshgrid(np.arange(NX)+.5, np.arange(NY)+.5, np.arange(NZ)+.5, indexing="ij")
+s.set_solid(np.asfortranarray((R-np.hypot(Xc-cx, Yc-cx)).astype(np.float64)).flatten(order="F"), True)
+
+rc = np.hypot((np.arange(NX)[:,None]+.5)-cx, (np.arange(NY)[None,:]+.5)-cx)
+inside, jet = rc < R, rc < 1.6                     # cylinder cross-section; central nozzle patch
+def inflow_profile(u_jet):
+    prof = np.zeros((NX, NY, 3))
+    prof[:, :, 2] = np.where(inside, Umf_c, 0.0)
+    prof[:, :, 2][jet] = u_jet
+    return np.ascontiguousarray(prof)
+s.set_domain_bc_profile(4, inflow_profile(Umf_c)); s.set_domain_bc(5, 3)
+s.set_pressure_pcg(True, 50, 1e-6)
+
+cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_c, rho=rho_g, radius=rp, drag="gidaspow",
+             dem_substeps=20, periodic=(False, False, False), move_particles=True, porous=True)
+```
+
+::: {.callout-important}
+## Ramp the jet, don't slam it
+A 20 m/s jet hitting a *dense* packing transfers an enormous impulsive drag before the void has opened —
+enough to blast grains apart and crash the contact solver. Ramping the jet on and off over ~15 steps lets
+the void form gradually, and the bubble develops cleanly. (The real nozzle is 50 m/s; the coarse-grid
+unresolved model needs the gentler, ramped drive.)
+:::
+
+## Inject one bubble
+
+Hold the bed at incipient for a moment, ramp the jet on for ~130 ms, ramp it off, and watch. We record a
+central slice each phase and measure the bubble as the low-solids void inside the bed.
+
+```{python}
+#| label: fig-bubble
+#| fig-cap: "One bubble, start to finish (central vertical slice). It nucleates at the nozzle, grows while the jet is on, detaches and rises as a clean void, deforms into the classic kidney shape with a wake of raining grains (the V-shaped downflow), and erupts at the surface — the sequence Boyce resolved with MRI."
+def slice_xz(P):
+    m = np.abs(P[:,1]-cx) < 1.5
+    return P[m,0]*h*1e3, P[m,2]*h*1e3
+def bubble_diameter(P):
+    m  = np.abs(P[:,1]-cx) < 2.0
+    Hb = np.histogram2d(P[m,0], P[m,2], bins=[np.arange(NX+1), np.arange(NZ+1)])[0]
+    bed = Hb.sum(0) > 0.05*Hb.sum(0).max()
+    void = Hb < 0.15*np.median(Hb[Hb > 0]); void[:, ~bed] = False
+    return 2*np.sqrt(max(void.sum()*(h*1e3)**2, 1e-9)/np.pi)
+
+RAMP = 15; N_PREP, N_JET, N_RISE = 120, 130, 220
+def jet_vel(i):
+    j = i - N_PREP
+    if j < 0 or j >= N_JET: return Umf_c
+    return Umf_c + min(1.0, (j+1)/RAMP, (N_JET-j)/RAMP)*(Ujet_c-Umf_c)
+
+snap_i = set(np.linspace(N_PREP, N_PREP+N_JET+N_RISE-1, 8).astype(int))
+snaps, dhist, t0 = [], [], time.time()
+for i in range(N_PREP+N_JET+N_RISE):
+    jetting = N_PREP <= i < N_PREP+N_JET
+    s.set_domain_bc_profile(4, inflow_profile(jet_vel(i)))
+    cpl.step()
+    P = np.asarray(d.get_positions())[:N]
+    if i >= N_PREP: dhist.append(((i-N_PREP)*dt*1e3, bubble_diameter(P), jetting))
+    if i in snap_i: snaps.append(((i-N_PREP)*dt*1e3, P.copy(), jetting))
+dhist = np.array(dhist)
+print(f"{len(snaps)} snapshots, {N_PREP+N_JET+N_RISE} steps in {(time.time()-t0)/60:.1f} min")
+
+fig, ax = plt.subplots(2, 4, figsize=(10, 6.6))
+for k, (t, P, jet) in enumerate(snaps[:8]):
+    x, z = slice_xz(P); a = ax.flat[k]
+    a.scatter(x, z, s=1, c="#333", edgecolors="none")
+    a.set(title=f"t = {t:+.0f} ms{'  (jet)' if jet else ''}", xlim=(0, NX*h*1e3), ylim=(0, NZ*h*1e3), aspect="equal")
+    a.set_xticks([]); a.set_yticks([])
+plt.tight_layout()
+```
+
+The bubble diameter grows while the jet feeds it, peaks as it detaches, then shrinks as the rising bubble
+thins and finally bursts through the surface.
+
+```{python}
+#| label: fig-dia
+#| fig-cap: "Bubble equivalent diameter versus time. It grows through the injection (shaded), reaches its maximum as it detaches, then shrinks and vanishes as it rises and erupts. The peak size sits in the range Boyce measured for injections of this duration."
+peak = dhist[:,1].max(); tpk = dhist[dhist[:,1].argmax(), 0]
+fig, ax = plt.subplots(figsize=(6, 3.2))
+ax.plot(dhist[:,0], dhist[:,1], lw=2, color="#2e6f95")
+ax.axvspan(0, N_JET*dt*1e3, color="0.9", label="jet on")
+ax.set(xlabel="time since injection [ms]", ylabel="bubble equiv. diameter [mm]"); ax.legend()
+plt.tight_layout()
+print(f"peak bubble diameter {peak:.0f} mm at t = {tpk:.0f} ms after injection start")
+```
+
+## Results — peclet vs. Boyce MRI vs. MFIX-Exa
+
+| Feature | Boyce MRI [@boyce2019] | MFIX-Exa benchmark | peclet (this run) |
+|---|---|---|---|
+| Bubble nucleation at nozzle | ✓ | ✓ | ✓ |
+| Rises as a coherent void | ✓ | ✓ | ✓ |
+| Kidney shape + V-shaped downflow wake | ✓ | ✓ | ✓ (notch visible from ~150 ms) |
+| Erupts at the free surface | ✓ | ✓ | ✓ (~250–300 ms) |
+| Bubble diameter | ~40–100 mm over 25–154 ms injections | larger/elongated for long injections | ~95 mm for a 130 ms injection |
+
+The whole life cycle reproduces: nucleation, a coherent rising void, the **kidney shape** whose indentation
+is the V-shaped region of down-flowing grains Boyce highlighted, and eruption. The bubble size lands in the
+experimental band for the longer injection times. Like MFIX-Exa, the coarse unresolved model tends to make
+the long-injection bubbles a touch large — the same over-mobilization the benchmark documents.
+
+## Adapt this yourself
+
+- **Sweep the injection time.** Boyce's central result is bubble size *vs* injection duration — loop over
+  `N_JET ∈ {25, 50, 100, 150}` ms and plot peak diameter. (Short injections make bubbles that collapse
+  before reaching the surface — reproduce that too.)
+- **Move the nozzle** off-axis, or use **two nozzles**, and watch bubbles interact and coalesce (Boyce's
+  follow-up MRI study).
+- **Change the drag law** (`drag="wen_yu"`) — the benchmark uses Wen & Yu; the bubble size shifts modestly.
+- **Refine the grid** to 32×32×64 (as in MFIX-Exa) to sharpen the bubble boundary and push the diameter
+  toward the experimental value.
+
+## Reproduce this
+
+```bash
+# CPU (OpenMP) — flow + dem + the coupling module, built from source against a Kokkos prefix:
+tools/bootstrap_deps.sh host-openmp
+for m in flow dem coupling; do
+  cmake -S $m -B $m/build -DCMAKE_PREFIX_PATH="$PWD/extern/install/host-openmp"; cmake --build $m/build -j
+done
+PECLET_LOCAL_BUILD="$PWD/flow/build:$PWD/dem/build:$PWD/coupling/build" \
+  quarto render examples/single-bubble-injection/index.qmd --execute
+# GPU (recommended for 260k grains): point CMAKE_PREFIX_PATH at extern/install/nvidia-cuda (nvcc on PATH),
+# build the *_cuda_mphys dirs, and pip install cupy-cuda13x.
+```

@@ -147,6 +147,16 @@ an MFIX-Exa qualitative benchmark and the Goldschmidt experiment.
 *coupling · cfd-dem · segregation · polydisperse · gidaspow · benchmark · gpu*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Single-bubble injection (a jet, a bubble, an eruption) →](examples/single-bubble-injection/index.qmd)
+Hold a cylindrical bed at incipient fluidization, then punch a short gas jet through
+a central nozzle: a single bubble nucleates, rises as a clean void — kidney-shaped,
+with a wake of raining grains — and erupts. Reproduces the Boyce MRI experiment and
+the MFIX-Exa benchmark.
+
+*coupling · cfd-dem · fluidization · bubble · gidaspow · benchmark · gpu*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with
