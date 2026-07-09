@@ -157,6 +157,16 @@ the MFIX-Exa benchmark.
 *coupling · cfd-dem · fluidization · bubble · gidaspow · benchmark · gpu*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Homogeneous cooling: Haff's law & clustering →](examples/hcs-clustering/index.qmd)
+A periodic box of grains, kicked and left to cool by inelastic collisions: the
+granular temperature obeys Haff's −2 power law (matching Enskog theory to ~8%),
+the gas phase drains it faster, and density fluctuations grow past the homogeneous
+level — the clustering instability the MFIX-Exa benchmark studies at scale.
+
+*coupling · cfd-dem · granular gas · kinetic theory · haff · clustering · gpu*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with

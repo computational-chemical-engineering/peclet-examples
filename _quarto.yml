@@ -57,6 +57,8 @@ website:
             text: "Bidisperse segregation (jetsam/flotsam, MFIX-Exa)"
           - href: examples/single-bubble-injection/index.qmd
             text: "Single-bubble injection (Boyce MRI, MFIX-Exa)"
+          - href: examples/hcs-clustering/index.qmd
+            text: "Homogeneous cooling & clustering (Haff, MFIX-Exa)"
           - href: examples/pore-mesh-voronoi/index.qmd
             text: "Pore-space Voronoi mesh (dem → voro, graded)"
       - text: Benchmarks
