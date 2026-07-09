@@ -59,6 +59,8 @@ website:
             text: "Single-bubble injection (Boyce MRI, MFIX-Exa)"
           - href: examples/hcs-clustering/index.qmd
             text: "Homogeneous cooling & clustering (Haff, MFIX-Exa)"
+          - href: examples/rayleigh-benard/index.qmd
+            text: "Rayleigh–Bénard convection (3-D, Boussinesq, GPU)"
           - href: examples/pore-mesh-voronoi/index.qmd
             text: "Pore-space Voronoi mesh (dem → voro, graded)"
       - text: Benchmarks

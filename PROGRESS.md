@@ -71,3 +71,19 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
 - [~] cylinder-vortex-street (Schafer-Turek 2D-2, Re=100): SHEDS at D=10 with
       deferred-correction advection, St=0.267 (bench ~0.30), dP~2.5. Rendering (~70min).
       C_D/C_L need a force-on-solid binding flow lacks. nav+gallery+ISSUES prepped.
+
+## Rayleigh-Bénard example (2026-07-09)
+
+- [~] `rayleigh-benard`: 3-D RB convection on GPU (scalar transport + Boussinesq
+      closure, both already in peclet-flow — no solver changes needed). Two
+      quantitative benchmarks: (1) onset — growth/decay rates bracket
+      Ra_c = 1707.76 (Chandrasekhar) to ~0.4%; (2) cubic cell at Ra=1e6/3e6,
+      Pr=0.7 vs Xu, Shi & Xi (2019) LBM-DNS (Nu=8.34/11.47) — 96³ prototype gave
+      Nu = 8.37-8.42 ± 0.04. PyVista plume still + mp4 movie. Production render
+      (128³ + 144³, ~4.5 h RTX 5080) in flight; commit after freeze.
+- Solver settings that matter (in-page): explicit TVD advection,
+  `set_velocity_solver_params(12)` (default 200 sweeps is 6x the step cost here),
+  `set_pressure_pcg(True, 60, 1e-2)` + warmstart (36 ms/step at 128³);
+  onset uses capped `pcg(12, 1e-6)` — see the two new flow entries in ISSUES.md
+  (PCG relative stop never fires on near-quiescent fields; standalone V-cycle
+  driver ~30x slow + n_pois not honoured).

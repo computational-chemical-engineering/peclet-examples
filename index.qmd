@@ -167,6 +167,16 @@ level — the clustering instability the MFIX-Exa benchmark studies at scale.
 *coupling · cfd-dem · granular gas · kinetic theory · haff · clustering · gpu*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [3-D Rayleigh–Bénard convection →](examples/rayleigh-benard/index.qmd)
+Heat a box of air from below until it overturns: temperature as a transported
+scalar, a Boussinesq buoyancy closure, the critical Rayleigh number bracketed
+against Chandrasekhar's 1708, and turbulent heat transport matched to published
+DNS — plus the plumes, filmed in 3-D.
+
+*flow · scalar transport · boussinesq · natural convection · benchmark · gpu*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with

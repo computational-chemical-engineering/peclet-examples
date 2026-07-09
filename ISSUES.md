@@ -277,3 +277,36 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   sphere; on the small free-energy gradient this dominates the direction and stalls the step.
   Fix = an exact tessellator-side wall gradient (the tessellator already publishes the wall
   facet area vectors). See suite memory voro-mesh-optimizer-wall-force.
+
+---
+
+## flow: MG-PCG relative stopping test never fires on a near-quiescent field
+
+- **Status:** worked around (cap `max_iter`); open in flow
+- **Package / area:** peclet.flow (pressure MG-PCG driver, all-fluid + domain-BC path)
+- **Found in:** examples/rayleigh-benard (onset-of-convection study)
+- **Observed:** with velocities ~1e-5 (linear-growth regime just above the RB onset),
+  `set_pressure_pcg(True, max_iter, rtol)` runs to `max_iter` on every step regardless
+  of `rtol` (1e-2 … 1e-8 all identical): the relative criterion vs the tiny RHS never
+  triggers, so a 64x64x32 box costs ~800 ms/step at max_iter=100 where ~40 ms is enough.
+  The physics is unaffected (fields bit-identical to a tighter solve; div ~1e-12).
+- **Expected:** an absolute-floor (or RHS-scaled) exit so a near-zero RHS solve is cheap.
+- **Repro:** RB onset config (laterally periodic, rigid z-walls, Boussinesq closure,
+  perturbation 1e-4), watch `last_pressure_iterations()`.
+- **Workaround:** cap the work explicitly — `set_pressure_pcg(True, 12, 1e-6)` +
+  `set_pressure_warmstart(True)` acts as a fixed-work MG solve (divergence ~1e-12 here).
+
+---
+
+## flow: standalone V-cycle driver ~30x slower than capped MG-PCG at small grids
+
+- **Status:** open (not blocking; PCG is the default single-GPU driver anyway)
+- **Package / area:** peclet.flow (standalone V-cycle pressure driver)
+- **Found in:** examples/rayleigh-benard (onset-of-convection study)
+- **Observed:** with neither PCG nor Chebyshev selected, the standalone driver costs
+  ~2.9 s/step on a 64x64x32 all-fluid box (GPU), and `set_pressure_solver_params(6)` vs
+  `(10)` changes neither the cost nor the result — the V-cycle count appears not to be
+  honoured on this path. Capped MG-PCG does the same projection in ~45 ms/step.
+- **Expected:** n_pois fixed V-cycles per step, ~6 ms/cycle at this size.
+- **Repro:** same RB onset config with `set_pressure_multigrid(True, 5)` +
+  `set_pressure_solver_params(6)` and no PCG/Chebyshev call.
