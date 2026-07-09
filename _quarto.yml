@@ -53,6 +53,8 @@ website:
             text: "Tumbling cubes (dem, non-spherical, GPU)"
           - href: examples/fluidized-bed/index.qmd
             text: "Fluidized bed (online CFD–DEM, Gidaspow)"
+          - href: examples/bidisperse-segregation/index.qmd
+            text: "Bidisperse segregation (jetsam/flotsam, MFIX-Exa)"
           - href: examples/pore-mesh-voronoi/index.qmd
             text: "Pore-space Voronoi mesh (dem → voro, graded)"
       - text: Benchmarks

@@ -137,6 +137,16 @@ and boils (Gidaspow drag) — then benchmark the ArborX broadphase to a million 
 *coupling · cfd-dem · dem · flow · fluidization · gidaspow · performance*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Bidisperse segregation (jetsam & flotsam) →](examples/bidisperse-segregation/index.qmd)
+Fluidize a random mix of two grain species — small light nylon and large dense
+ceramic — and watch the bed sort itself: nylon floats into a bubbling top layer,
+ceramic sinks to a near-static base. True per-particle radius and mass, reproducing
+an MFIX-Exa qualitative benchmark and the Goldschmidt experiment.
+
+*coupling · cfd-dem · segregation · polydisperse · gidaspow · benchmark · gpu*
+:::
+
 :::
 
 *(More examples are landing here through the night: cylindrical pipe flow with
