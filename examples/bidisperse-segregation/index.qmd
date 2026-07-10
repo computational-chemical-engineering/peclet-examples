@@ -151,8 +151,37 @@ for f in (0, 1, 2, 3): s.set_domain_bc(f, 1)                  # no-slip sides
 s.set_pressure_pcg(True, 40, 1e-6)
 
 cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_c, rho=rho_g, radius=rad, drag="gidaspow",
-             dem_substeps=20, periodic=(False, False, False), move_particles=True, porous=True)
+             dem_substeps=20, periodic=(False, False, False), move_particles=True, porous=True,
+             eps_min=0.05, smooth_width=1.0)
 ```
+
+::: {.callout-important}
+## Getting the coupling right on a coarse `cell ≈ 2 d` grid
+Three choices here are what make this bed fluidize and sort like the benchmark — each traceable to
+what **MFIX** does:
+
+- **The porous continuity must actually be enforced.** The volume-averaged projection
+  (`∂ε/∂t + ∇·(εu) = 0`) rides the cut-cell pressure operator; a plain box with only domain BCs has
+  none, and older versions *silently* fell back to no continuity constraint at all — the gas never
+  accelerated to the interstitial velocity `U/ε` in the bed, the slip the drag law saw was ~5× too
+  small, and the bed refused to fluidize at any velocity. `CfdDem` now installs an all-fluid
+  pressure geometry automatically (and `flow` raises an error rather than degrade silently). With it,
+  the imposed inlet velocity is the **superficial** velocity exactly: the inflow-face void fraction
+  is pinned to 1 (the distributor contract), and the gas speeds up to `U/ε` inside the packing.
+- **No porosity floor.** The solids fraction is clipped to $[0,1]$ only (`eps_min=0.05` is a
+  divide-by-zero guard, not a physical clamp). A dense packing's true voidage sits near — and locally
+  below — 0.4, and the Ergun drag scales like $1/\varepsilon^{3}$: clamping ε *up* to 0.4 (the old
+  default) under-predicts the drag ≈3× exactly where it must carry the bed. Small physical
+  porosities are kept; if a drag law misbehaves there, change the correlation, not the ε.
+- **Smooth the porosity, not the grid.** With cells only ~2 diameters wide, a point-particle deposit
+  gives a noisy ε. `smooth_width=1.0` applies MFIX's diffusive smoothing (`DES_DIFFUSE_WIDTH`): a
+  volume-conserving Gaussian of ≈1 cell that decouples the porosity smoothing length from the mesh —
+  the recipe the MFIX-Exa papers call *crucial for grid-independent results*.
+
+The drag law itself is **Gidaspow** — exactly what the MFIX-Exa `biseg` benchmark uses, applied
+per-particle with each grain's own diameter. (MFIX-Exa also offers the Beetstra–van der Hoef–Kuipers
+polydisperse correlation, but the benchmark does not use it, so neither do we.)
+:::
 
 ## Fluidize and sort
 

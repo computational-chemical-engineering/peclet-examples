@@ -20,6 +20,32 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 ---
 
+## Bidisperse bed did not fluidize — porous continuity silently disabled on a bare box
+- **Status:** resolved (flow `0e19de4`, coupling `78353b3`)
+- **Package / area:** flow (porous projection) + coupling (CfdDem driver)
+- **Found in:** examples/bidisperse-segregation — the bed refused to fluidize at ANY gas
+  velocity up to 4.5 m/s, while MFIX-Exa fluidizes and segregates it at 2.0 m/s.
+- **Observed:** per-grain drag/weight ≈ 0.03–0.16 (~20–30× too weak); plane-flux probe: the
+  volume-averaged continuity was **never enforced** — `flow`'s porous projection lives on the
+  cut-cell pressure operator, and this example (a plain box, domain BCs only, no
+  `set_solid`/`set_pressure_geometry`) had none, so `step()` ran with **no projection at all**.
+  The gas never accelerated to the interstitial velocity `U/ε` in the bed → the slip the drag law
+  saw was ~5× too small → Gidaspow drag far below grain weight. `max_porous_residual()` returned
+  exactly 0 the whole time (it early-outs on the same flag), masking the failure. Every other
+  porous example (`fluidized-bed`, `single-bubble-injection`) calls `set_solid`, which is why only
+  this one failed. Two earlier suspects were ruled out en route: the ε=0.4 clamp (real, ~3× drag
+  under-prediction, fixed separately — clip to [0,1] only + MFIX-style diffusive porosity
+  smoothing `smooth_width`) and a CUDA/OpenMP discrepancy (a stale OpenMP build of flow predating
+  the 07-09 superficial-velocity fix).
+- **Expected:** imposed inlet velocity = superficial velocity; gas accelerates to `U/ε` inside the
+  packing; Gidaspow drag then exceeds ceramic weight at 2.0 m/s (Ergun ΔP/weight ≈ 1.33).
+- **Resolution:** flow `step()` now **throws** when porous continuity is on without the cut-cell
+  operator (silent wrong physics → loud error), and `CfdDem` auto-installs an all-fluid
+  `set_pressure_geometry` when missing. Validated: synthetic column carries flux = U exactly at
+  every plane with in-bed w = U/ε; the bidisperse bed now sorts like the benchmark (nylon
+  20→31 mm up, ceramic 20→16 mm down, +15 mm separation in 1.2 s); Ergun/terminal-velocity tests
+  and the flow regression suite unchanged.
+
 ## Poiseuille example reported a fake "convergence" — misleading validation metric
 - **Status:** diagnosed (root cause found); fix pending — see Notes
 - **Package / area:** examples (poiseuille-ibm) + flow `scripts/verify_poiseuille_sdflow.py`
