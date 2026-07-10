@@ -1,6 +1,6 @@
 ---
 title: "Gas–solid fluidized bed: online CFD–DEM coupling"
-subtitle: "Blow gas up through a cylinder of grains until the bed unpacks and boils — the two solvers exchanging drag and void fraction every step — then run the real thing: a million 1 mm glass beads in air at 2.5 U~mf~, on the GPU, with a movie."
+subtitle: "Blow gas up through a cylinder of grains until the bed unpacks and boils — the two solvers exchanging drag and void fraction every step — then run the real thing: a million 1 mm glass beads in air at 2.0 U~mf~, on the GPU, with a movie."
 author: "Peclet"
 date: "2026-07-06"
 categories: [coupling, cfd-dem, dem, flow, fluidization, gidaspow, ergun, sdf, gpu, performance]
@@ -27,7 +27,7 @@ stable. You will:
 2. Drive it with a **gas inflow at the bottom** and an **outflow at the top**, close the momentum
    exchange with the **Gidaspow** drag law, and watch the bed **fluidize** once the gas clears
    minimum fluidization.
-3. Run it at engineering conditions: **one million 1 mm glass beads in air at 2.5 U~mf~**, check the
+3. Run it at engineering conditions: **one million 1 mm glass beads in air at 2.0 U~mf~**, check the
    textbook criterion **ΔP ≈ bed weight per area**, and render the boiling bed into a movie —
    everything executes live in this notebook.
 
@@ -178,7 +178,7 @@ a couple of side-view snapshots.
 ```{python}
 #| label: fig-fluidize
 #| fig-cap: "The bed fluidizes: a settled packing (left) expands and boils as gas drives up through it (right); grains coloured by speed."
-s   = make_flow(0.25)
+s   = make_flow(0.12)
 d   = make_dem(pos0)
 cpl = CfdDem(s, d, fluid_dt=0.05, mu=mu_g, rho=rho_g, radius=rp, drag="gidaspow",
              dem_substeps=20, periodic=(False, False, False), move_particles=True, porous=True)
@@ -217,7 +217,7 @@ def final_height(U, steps=80):
     for _ in range(steps): c.step()
     return bed_top(c)
 
-Us = [0.0, 0.05, 0.10, 0.18, 0.30]
+Us = [0.0, 0.04, 0.08, 0.12, 0.16]
 Hs = [final_height(U) for U in Us]
 plt.figure(figsize=(4.6, 3.2))
 plt.plot(Us, Hs, "o-", lw=2); plt.axhline(Hs[0], ls=":", c="0.6", label="fixed-bed height")
@@ -229,7 +229,7 @@ print("bed height vs U:", {U: round(h, 2) for U, h in zip(Us, Hs)})
 ## The real thing: a million 1 mm glass beads in air
 
 Now at engineering conditions. **1 mm glass beads** (ρ~p~ = 2500 kg/m³) in **ambient air**
-(ρ~g~ = 1.2 kg/m³, μ = 1.8·10⁻⁵ Pa·s), driven at **2.5 × U~mf~**. Minimum fluidization from the
+(ρ~g~ = 1.2 kg/m³, μ = 1.8·10⁻⁵ Pa·s), driven at **2.0 × U~mf~**. Minimum fluidization from the
 Archimedes number (the Wen & Yu / Grace correlation):
 
 ```{python}
@@ -237,8 +237,8 @@ dp_m, rho_p_si, rho_g_si, mu_si, g_si = 1.0e-3, 2500.0, 1.2, 1.8e-5, 9.81
 Ar    = rho_g_si * (rho_p_si - rho_g_si) * g_si * dp_m**3 / mu_si**2
 Re_mf = np.sqrt(33.7**2 + 0.0408 * Ar) - 33.7
 U_mf  = Re_mf * mu_si / (rho_g_si * dp_m)
-U_si  = 2.5 * U_mf
-print(f"Ar = {Ar:.3g}   Re_mf = {Re_mf:.1f}   U_mf = {U_mf:.2f} m/s   U = 2.5 U_mf = {U_si:.2f} m/s")
+U_si  = 2.0 * U_mf
+print(f"Ar = {Ar:.3g}   Re_mf = {Re_mf:.1f}   U_mf = {U_mf:.2f} m/s   U = 2.0 U_mf = {U_si:.2f} m/s")
 ```
 
 The solvers run in **cell units** — lengths in cells of `h = 5 d_p = 5 mm`, time in seconds,
@@ -304,7 +304,7 @@ pz = dB.get_positions()[:Nbig, 2]
 print(f"settled in {time.time()-t0:.0f}s: bed top z95 = {np.percentile(pz,95)*h_m*100:.1f} cm")
 ```
 
-Fluidize at 2.5 U~mf~ for **2.0 seconds** of physical time, recording a movie frame every 10 ms and
+Fluidize at 2.0 U~mf~ for **2.0 seconds** of physical time, recording a movie frame every 10 ms and
 the two key diagnostics — the **bed pressure drop** and the **bed height** — as it runs. The textbook
 check for a fluidized bed is `ΔP ≈ M·g/A` — the gas carries the weight of the solids. In a column this
 narrow (H/D ≈ 1, D = 100 d~p~, wall friction 0.3) part of the weight is carried by the **walls**
@@ -319,7 +319,7 @@ W_over_A = Nbig * m_pc * g_c / (np.pi * Rm**2) * h_m**2           # bed weight /
 inside = np.hypot(Xm[:, :, 0] - cxm, Ym[:, :, 0] - cxm) < Rm - 1  # cells inside the vessel
 
 frames, dPs, beds = [], [], []
-steps, every = 2000, 10                                           # 2.0 s, frame every 10 ms
+steps, every = 1500, 10                                           # 1.5 s, frame every 10 ms
 t0 = time.time()
 for i in range(steps):
     cplB.step()
@@ -379,7 +379,7 @@ print(f"{len(frames)} frames -> fluidized_bed_1M.mp4")
   <source src="fluidized_bed_1M.mp4" type="video/mp4">
 </video>
 
-A **D/d~p~ = 100** column at 2.5 U~mf~ is a vigorously bubbling/slugging bed (1 mm glass sits near the
+A **D/d~p~ = 100** column at 2.0 U~mf~ is a vigorously bubbling/slugging bed (1 mm glass sits near the
 Geldart B/D boundary): gas voids nucleate at the distributor, coalesce as they rise, and erupt through
 the surface, raining grains back down the walls. The startup is itself textbook: the packed bed
 unpacks with one violent slug (the ΔP spike), overshoots, and collapses into sustained bubbling.
