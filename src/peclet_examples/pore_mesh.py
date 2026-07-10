@@ -42,23 +42,29 @@ def pack_spheres(n=180, phi_ref=0.63, radius=0.5, seed=3):
     def ofrac():
         return float(s.compute_overlaps()) / max(2 * radius * float(s.get_scales().ravel().mean()), 1e-9)
 
+    # MONOTONIC growth: relax overlaps at the CURRENT size (dt = 0 steps grow nothing) and only slow
+    # the growth rate — never un-grow. The old shrink-on-overlap scheme was a knife-edge that, under
+    # the atomically non-deterministic GPU contact solve, quenched a loose bed on some seeds; growing
+    # one-directionally makes the packing land reproducibly at the box-limited phi_ref (Z ~ 6).
     cool = min(int(5.0 / dt), int(7.0 / dt))
     for step in range(int(7.0 / dt)):
         if step == cool:
             s.set_material_params(0.5, 1.0, 0.0); s.set_thermostat(0.0, 1e4 * dt)
         s.step(dt); mo = ofrac()
+        gf = float(s.get_growth_factor())
         if mo > 5e-3:
-            it = 0
-            while True:
+            it = 0; prev = mo
+            while it < 40:
                 s.step(0.0); it += 1; mn = ofrac()
-                if mn >= 0.95 * mo and it > 6:
+                if mn < 5e-3 or (it > 8 and mn > 0.98 * prev):
                     break
-                mo = mn
-            if mo > 5e-3:
-                s.set_growth_params(gr * 0.85, float(s.get_growth_factor()) * math.exp(-gr * dt))
-                gr *= 0.85
+                prev = mn
+            if ofrac() > 5e-3:
+                gr = max(gr * 0.8, 0.02); s.set_growth_params(gr, gf)   # slow growth, keep size
+        elif gf >= 1.0 - 1e-6:
+            break
         else:
-            gr = min(gr * 1.02, 0.5); s.set_growth_params(gr, float(s.get_growth_factor()))
+            gr = min(gr * 1.02, 0.5); s.set_growth_params(gr, gf)
     s.set_material_params(0.0, 0.0, 0.0); s.set_thermostat(0.0, 10 * dt)
     for _ in range(1200):
         s.step(dt)
