@@ -116,19 +116,29 @@ def pack_ring_bed(N=46, D0=1.0, aspect=1.5, wall_ratio=0.4, target_phi=0.50, see
     s.set_scales(np.full(N, 1.0, np.float32))
     gr = growth; s.set_growth_params(gr, scale0); s.set_thermostat(temp, dt)
     cool = int(cool_frac * steps)
+    # MONOTONIC growth: relax overlaps at the CURRENT size (dt = 0 steps grow nothing) and only slow
+    # the growth rate — never shrink the rings back. Un-growing on every overlap spike made the final
+    # density seed-dependent, because the GPU contact solve is atomically non-deterministic and a
+    # transient spike could trigger a runaway of shrink-steps that quenched a loose bed. One-directional
+    # growth makes each DOE cell reproducible at its target packing.
     for step in range(steps):
-        if step == cool:                                   # anneal: dissipative + thermostat off
+        if step == cool:                                   # anneal: dissipative
             s.set_material_params(0.28, 1.0, 0.0); s.set_thermostat(0.0, 1.8e4 * dt)
         s.step(dt); ov = float(s.get_max_overlap())
-        if ov > jam:                                       # overlaps too big -> back the growth off
-            for _ in range(4):
-                s.step(0.0); ro = float(s.get_max_overlap())
-                if ro >= 0.98 * ov:
+        gf = float(s.get_growth_factor())
+        if ov > jam:                                       # overlaps too big -> relax at CURRENT size
+            it = 0; prev = ov
+            while it < 30:
+                s.step(0.0); it += 1; ro = float(s.get_max_overlap())   # dt = 0: pure overlap removal
+                if ro < jam or (it > 6 and ro > 0.98 * prev):
                     break
-                ov = ro
-            gf = float(s.get_growth_factor()) * math.exp(-gr * dt); gr *= 0.99; s.set_growth_params(gr, gf)
+                prev = ro
+            if float(s.get_max_overlap()) > jam:           # still jammed -> slow growth, never un-grow
+                gr = max(gr * 0.9, 0.02); s.set_growth_params(gr, gf)
+        elif gf >= 1.0 - 1e-6:
+            break                                          # reached full size (box sized for target_phi)
         else:
-            gr = min(gr * 1.02, growth); s.set_growth_params(gr, float(s.get_growth_factor()))
+            gr = min(gr * 1.02, growth); s.set_growth_params(gr, gf)
     return s, dict(N=N, D0=D0, aspect=aspect, wall_ratio=wall_ratio, R=R, Ri=Ri, H=H, t=t, side=side,
                    Sv=ring_specific_surface(R, Ri, H))
 
