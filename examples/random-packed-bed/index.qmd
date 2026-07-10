@@ -79,27 +79,35 @@ def pack_bed(N=180, phi_ref=0.63, radius=0.5, seed=3, dt=0.002, limit_time=7.0, 
         c = 2 * radius * float(s.get_scales().ravel().mean())
         return float(s.compute_overlaps()) / max(c, 1e-9)
 
+    # MONOTONIC growth. When overlaps build, we RELAX them at the current size (dt = 0 steps grow
+    # nothing) and only slow the growth rate — we never shrink the grains back. The old scheme
+    # un-grew on every overlap spike, and because the GPU contact solve is atomically non-deterministic
+    # (float atomic_add ordering) a transient spike could trigger a runaway of shrink-steps that
+    # quenched a loose, unjammed state on some seeds. Growing in one direction only makes the final
+    # density reproducible: every seed lands at the box-limited phi_ref with an isostatic Z ~ 6.
     for step in range(int(limit_time / dt)):
-        if step == cool:                                    # anneal: dissipative + thermostat off
+        if step == cool:                                    # anneal: mildly dissipative
             s.set_material_params(0.5, 1.0, 0.0); s.set_thermostat(0.0, 1e4 * dt)
         s.step(dt); mo = overlap_frac()
-        if mo > criterion:                                  # overlaps too big -> back the growth off
-            it = 0
-            while True:
-                s.step(0.0); it += 1; mn = overlap_frac()
-                if mn >= 0.95 * mo and it > 6:
-                    break
-                mo = mn
-            if mo > criterion:
-                gf = float(s.get_growth_factor()) * math.exp(-gr * dt)
-                gr *= growth_decay; s.set_growth_params(gr, gf)
+        gf = float(s.get_growth_factor())
+        if mo > criterion:                                  # overlaps too big -> relax at CURRENT size
+            it = 0; prev = mo
+            while it < 40:
+                s.step(0.0); it += 1; mn = overlap_frac()   # dt = 0: pure overlap removal, no growth
+                if mn < criterion or (it > 8 and mn > 0.98 * prev):
+                    break                                   # cleared, or plateaued (jammed at this size)
+                prev = mn
+            if overlap_frac() > criterion:                  # still jammed -> slow growth, never un-grow
+                gr = max(gr * growth_decay, 0.02); s.set_growth_params(gr, gf)
+        elif gf >= 1.0 - 1e-6:
+            break                                           # reached full size (box sized for phi_ref)
         else:                                               # room to grow -> accelerate
-            gr = min(gr * growth_accel, growth_rate_init); s.set_growth_params(gr, float(s.get_growth_factor()))
+            gr = min(gr * growth_accel, growth_rate_init); s.set_growth_params(gr, gf)
     s.set_material_params(0.0, 0.0, 0.0); s.set_thermostat(0.0, 10 * dt)   # quench into the rigid network
     for _ in range(quench):
         s.step(dt)
     # EFFECTIVE radius = per-particle scale * global growth factor * base radius. The growth factor
-    # (< 1 at jamming) is essential — omitting it overstates the radii and fakes overlaps in g(r).
+    # (<= 1) is essential — omitting it overstates the radii and fakes overlaps in g(r).
     r_eff = radius * s.get_scales().ravel() * float(s.get_growth_factor())
     pos = s.get_positions()[:, :3].astype(float)
     phi = float(np.sum(4 / 3 * np.pi * r_eff ** 3) / side ** 3)
