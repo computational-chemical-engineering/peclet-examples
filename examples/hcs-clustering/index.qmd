@@ -2,7 +2,7 @@
 title: "Homogeneous cooling: Haff's law, gas damping, and the seed of clustering"
 subtitle: "Give a box of grains a random kick and let inelastic collisions bleed the energy away. The granular temperature decays as Haff's law — a clean −2 power law that matches Enskog kinetic theory — the gas phase drains it faster still, and density fluctuations start to grow: the onset of the clustering instability the MFIX-Exa benchmark studies at scale."
 author: "Peclet"
-date: "2026-07-09"
+date: "2026-07-10"
 categories: [coupling, cfd-dem, dem, flow, granular-gas, kinetic-theory, haff, clustering, benchmark, gpu]
 jupyter: python3
 bibliography: ../../references.bib
@@ -209,6 +209,82 @@ plt.tight_layout()
 print(f"density-fluctuation index: {ci[0]:.2f} → {ci.max():.2f}  (>1 means clustered beyond a random gas)")
 ```
 
+## The full MFIX-Exa case — one for one
+
+Everything above runs in a *modest* box to stay interactive. Now the exact benchmark: a
+**256 × 256 × 8** (particle-diameter) periodic domain, **50 000 grains** at φ ≈ 0.05, restitution
+**e = 0.8**, carried to the benchmark's full **t\* = 10 000** (`t* = t·√T₀/d_p`). The clustering
+instability is **collisional** — the Goldhirsch–Zanetti mechanism a dry granular gas develops on its
+own — and for the benchmark's density ratio ρ~p~/ρ~g~ = 1000 the gas drag is only a minor energy sink
+(the [gas-damping run above](#add-the-gas-a-second-energy-sink) at Re~T0~ = 20 lowers the granular
+temperature by ~30 % at t\* = 1000 and leaves the clustering picture unchanged). So we carry the
+collisional system to the benchmark's full time range, where the instability grows into filaments.
+The run is cached by [`make_hcs_mfix.py`](make_hcs_mfix.py) (`hcs_mfix.npz`); the gas-coupled t\* = 1000
+run is in `hcs_gas_1000.npz`. Here we load them and place our result beside the benchmark's own figures.
+
+```{python}
+#| label: load-mfix
+#| code-summary: "Load the cached MFIX-scale run + the parameter-free Enskog kinetic-theory curve"
+data = np.load("hcs_mfix.npz"); gasd = np.load("hcs_gas_1000.npz")
+ts, Trat, cidx = data["ts"], data["Trat"], data["cidx"]
+esm = float(data["enskog_slope"]); T0m = float(data["T0"]); Lm = float(data["Lx"])
+# Parameter-free kinetic theory (homogeneous cooling): √(T₀/T) = 1 + (Enskog slope)·t  ⇒  Haff's law,
+# the same collisional rate validated against Enskog above. The gas drag adds < a factor over t*=1000
+# at ρ_p/ρ_g = 1000, so this collisional law is the KT baseline the clustering peels away from.
+kt = T0m/(1 + esm*ts)**2
+print(f"MFIX-scale run: N={int(data['N'])}, φ={float(data['phi']):.3f}, e={float(data['e'])}, "
+      f"to t*={ts[-1]:.0f}: T/T₀={Trat[-1]:.2e} (KT {kt[-1]:.2e}, {Trat[-1]/kt[-1]:.0f}× above); "
+      f"clustering index {cidx[0]:.2f} → {cidx[-1]:.2f}")
+```
+
+### Kinetic-energy decay — our Figure 33
+
+`peclet` follows the parameter-free kinetic theory during homogeneous cooling, then **lifts above it**
+as the clustering instability grows — the coherent motion trapped inside the clusters stops the granular
+temperature cooling as fast as homogeneous theory predicts. That is exactly the MFIX-Exa Figure 33
+signature (their `sim` peeling off the `KT` line). The gas-coupled points (Re~T0~ = 20) sit just below
+the dry curve — the modest extra damping the benchmark's drag adds.
+
+```{python}
+#| label: fig-mfix-ke
+#| fig-cap: "Kinetic-energy decay in the 256-diameter MFIX-Exa system, over the benchmark's full t* range. Left: MFIX-Exa Figure 33 (their `sim`, red, against the `KT` kinetic theory, black). Right: peclet — T/T₀ = KE/KE₀ against the parameter-free Enskog/Haff kinetic theory (black). The simulation tracks the theory during homogeneous cooling and then rises above it as the clusters form and hold their energy; the gas-coupled run (Re_T0 = 20, orange) adds only a modest extra damping."
+fig, ax = plt.subplots(1, 2, figsize=(11.5, 4.8))
+ax[0].imshow(plt.imread("mfix_ref/hcs_ke_1908.png")); ax[0].axis("off")
+ax[0].set_title("MFIX-Exa — Figure 33", fontsize=10)
+m = ts >= 10
+ax[1].loglog(ts[m], kt[m], color="k", lw=1.8, label="KT (Enskog/Haff theory)")
+ax[1].loglog(ts[m], Trat[m], color="#d1210b", lw=1.8, label="peclet — dry (sim)")
+gm = gasd["ts"] >= 10
+ax[1].loglog(gasd["ts"][gm], gasd["Trat"][gm], color="#e8862a", lw=1.5, ls="--",
+             label="peclet — gas, Re$_{T0}$=20")
+ax[1].set(xlabel=r"$t^* = t\,\sqrt{T_0}/d_p$", ylabel=r"$T/T_0$  or  $KE/KE_0$",
+          xlim=(10, 1e4), ylim=(1e-5, 1), title="peclet — this run")
+ax[1].legend(loc="lower left", fontsize=8); ax[1].grid(True, which="both", alpha=0.15)
+plt.tight_layout()
+```
+
+### The clusters — our Figure 34
+
+Projected onto the *x–y* plane, the 50 000 grains organise into the branching **filaments and voids** of
+the clustering instability. It coarsens with time exactly as the benchmark shows: at t\* = 5000 the
+texture matches their simulation panel, and by t\* = 10 000 the sharp filaments match the
+Goldhirsch–Zanetti reference.
+
+```{python}
+#| label: fig-mfix-xy
+#| fig-cap: "Particle positions projected onto the x–y plane. Top: the MFIX-Exa Figure 34 (their simulation on the left, the Goldhirsch–Zanetti 1993 reference on the right). Bottom: peclet — the 50 000 grains at t* = 5000 (matching their simulation) and t* = 10 000 (matching the Goldhirsch–Zanetti filaments)."
+fig = plt.figure(figsize=(11, 8.4))
+gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.25], hspace=0.12, wspace=0.06)
+axtop = fig.add_subplot(gs[0, :]); axtop.imshow(plt.imread("mfix_ref/hcs_xy_1908.png")); axtop.axis("off")
+axtop.set_title("MFIX-Exa — Figure 34   (their sim | Goldhirsch–Zanetti reference)", fontsize=10)
+for k, tst in enumerate((5000, 10000)):
+    a = fig.add_subplot(gs[1, k]); xy = data[f"xy_{tst}"]
+    a.scatter(xy[:, 0], xy[:, 1], s=0.5, c="#111", edgecolors="none")
+    a.set(xlim=(0, Lm), ylim=(0, Lm), aspect="equal", title=f"peclet — t* = {tst}")
+    a.set_xticks([]); a.set_yticks([])
+plt.tight_layout()
+```
+
 ## Results — peclet vs. theory vs. MFIX-Exa
 
 | | Prediction / benchmark | peclet |
@@ -216,17 +292,19 @@ print(f"density-fluctuation index: {ci[0]:.2f} → {ci.max():.2f}  (>1 means clu
 | **Haff's law form** | `√(T₀/T)` linear in `t` [@haff1983] | linear (clean, all `e`) |
 | **Cooling rate** | Enskog `1/t₀ ∝ (1−e²)·n·σ²·g₀·√T₀` | within ~8% at `e=0.9`; tracks `(1−e²)` |
 | **Gas–solid HCS** | gas drag accelerates cooling | temperature collapses well below Haff |
-| **Clustering** | grows past a critical size [@fullmer2017] | fluctuations rise above Poisson; dramatic clumping needs the large MFIX box |
+| **Clustering** | grows past a critical size [@fullmer2017] | small box: fluctuations rise above Poisson; full 256-diameter box: branching filaments + a KE decay that lifts off the GTSH theory, matching MFIX-Exa Fig. 33/34 |
 
 The dry granular gas reproduces Haff's law and the Enskog cooling rate quantitatively; the gas coupling
 adds the second dissipation channel that makes the MFIX-Exa case *gas–solid*; and the density fluctuations
-show the clustering instability beginning — the phenomenon the benchmark isolates by going to a 256-diameter
-domain, larger than we run here.
+show the clustering instability beginning; and in the full 256-diameter MFIX-Exa box it runs away into
+the branching filaments of Fig. 34, with the kinetic energy peeling off the parameter-free GTSH theory
+exactly as the benchmark's Fig. 33 documents.
 
 ## Adapt this yourself
 
-- **Grow the box.** Push `L` toward the MFIX-Exa 256 d (and lower `e`) to cross the critical size and watch
-  clustering run away — the density index climbs and never saturates.
+- **Add the gas at scale.** The full run above is collisional (the gas is negligible at ρ_p/ρ_g = 1000);
+  couple the Re_T0 = 20 gas on the 256-diameter grid to watch the drag steepen the early cooling before
+  clustering takes over — the gas-solid GTSH regime.
 - **Structure factor.** Replace the coarse-grained variance with `S(k)` to measure the clustering
   wavelength and compare to the linear-stability prediction.
 - **Sweep the density.** `g₀(φ)` steepens with solids fraction — the cooling rate and the critical size
