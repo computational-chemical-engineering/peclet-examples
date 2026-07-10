@@ -315,11 +315,15 @@ how *developed* the density snapshots are. Working through the possibilities the
   t\* = 10⁴ panel shows. Read that way our coarse filaments and the benchmark's map onto the same stage.
 - **Coarsening sets the filament count.** Early the pattern is many fine filaments (our t\* = 2000);
   it coarsens into fewer, thicker ones (our t\* = 10⁴). The benchmark's *many fine* filaments therefore
-  match our **earlier** snapshots more than our latest. The one genuine physical difference is that our
-  density filaments coarsen somewhat faster / onset a little later in t\* than the benchmark's — a
-  timestep-converged result (finer dt does not change it), most likely the collisional-dissipation
-  detail of the contact solve inside the densifying clusters. The instability, its energy signature, and
-  its filamentary morphology are all reproduced.
+  match our **earlier** snapshots more than our latest. The residual difference — our filaments a touch
+  coarser / later in t\* than GZ's — is dominated by the reference being a 2-D disk gas, not the
+  contact solver: re-running the whole case with a corrected **colored Gauss–Seidel** collision solve
+  (which resolves each contact to the true coupled impulse, conserving linear + angular momentum and
+  removing any multi-contact under-dissipation) leaves the clustering trajectory statistically
+  unchanged (mean Δ in the clustering index ≈ 8 %, within single-realization scatter). The dilute
+  φ ≈ 0.05 gas is collision-dominated by *binary* events, which every consistent scheme integrates
+  identically, so the contact-solve detail does not move the clustering rate here. The instability, its
+  energy signature, and its filamentary morphology are all reproduced.
 :::
 
 ## Results — peclet vs. theory vs. MFIX-Exa
