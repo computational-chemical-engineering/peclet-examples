@@ -260,17 +260,16 @@ The benchmark's black `KT` line is the **GTSH kinetic theory *with the gas drag*
 faster than the collisions-only Haff law, reaching 10⁻⁵ near t\* ≈ 10³ rather than ≈ 7×10³. Built
 with the same (Tang) drag law at the instantaneous thermal Reynolds number, our GTSH curve lands on
 the digitised MFIX `KT` line, and the **one-for-one simulation tracks the digitised MFIX `sim` line
-through the cooling decay** (within ~30 % down to the clustering plateau at t\* ≈ 1500). The dry
-granular system cools visibly slower — the gas is a leading-order energy sink here, not a
-perturbation. Both simulations **lift far above the homogeneous theory** as the instability traps
-energy in coherent motion. Past the plateau the curves part ways: the benchmark's KE keeps decaying
-slowly, while our volume-averaged run's velocity variance *rises* — an identified numerical artifact
-of the porous coupling at late times, documented in the callout below; the physical conclusions live
-in the decay-and-onset range where the two agree.
+through the entire run** — the cooling decay, the clustering plateau, and the slow late-time decline,
+staying within a few tens of percent over five decades of `T/T₀` and ending at 4.1×10⁻⁵ against
+their 6.2×10⁻⁵ at t\* = 10⁴. The dry granular system cools visibly slower — the gas is a
+leading-order energy sink here, not a perturbation. Both simulations **lift far above the
+homogeneous theory** as the instability traps energy in coherent motion that homogeneous cooling
+cannot reach.
 
 ```{python}
 #| label: fig-mfix-ke
-#| fig-cap: "Kinetic-energy decay in the 256-diameter MFIX-Exa system. Left: the benchmark's Figure 33. Right: the lines digitised from it (MFIX sim, red; the benchmark axes span t* = 10–10⁴) plotted together with peclet — the one-for-one gas–solid run at the benchmark's settings (green) and the dry granular run (blue), plus the two analytical kinetic theories. The GTSH theory (black, collisions + drag) reproduces the benchmark's KT line; Haff (grey) is the collisions-only limit. The gas–solid run tracks the digitised MFIX sim through the cooling decay to the clustering plateau; the dry system cools visibly slower. Past the plateau our volume-averaged run's variance rises (late-time coupling artifact — see the callout) while the benchmark's decays slowly."
+#| fig-cap: "Kinetic-energy decay in the 256-diameter MFIX-Exa system. Left: the benchmark's Figure 33. Right: the lines digitised from it (MFIX sim, red; the benchmark axes span t* = 10–10⁴) plotted together with peclet — the one-for-one gas–solid run at the benchmark's settings (green) and the dry granular run (blue), plus the two analytical kinetic theories. The GTSH theory (black, collisions + drag) reproduces the benchmark's KT line; Haff (grey) is the collisions-only limit. The gas–solid run tracks the digitised MFIX sim through the whole run — decay, clustering plateau, and late-time decline; the dry system cools visibly slower. Both lift above the homogeneous theory as clustering develops."
 fig, ax = plt.subplots(1, 2, figsize=(11.5, 4.8))
 ax[0].imshow(plt.imread("mfix_ref/hcs_ke_1908.png")); ax[0].axis("off")
 ax[0].set_title("MFIX-Exa — Figure 33", fontsize=10)
@@ -293,19 +292,19 @@ panel) beside **MFIX-Exa's own gas–solid run** (right panel, labelled t\* = 10
 above says the instability grows on schedule; the *density* pattern lags it: a **velocity-vortex**
 field organises first (that is what lifts the KE off the theory), and only later do the vortices
 sweep grains into **density filaments** [@fullmer2017]. In our one-for-one run the density texture is
-still faint at t\* = 1000 (cluster index ≈ 1.3), sharpens into a many-filament network through
-t\* = 2000–3000 (index 2.2 → 3.0), and peaks near t\* ≈ 5600 (index 3.3) — the same
-branching-filament morphology as the benchmark panel.
+still faint at t\* = 1000 (cluster index ≈ 1.2), sharpens into a many-filament network through
+t\* = 2000–3000 (index 2.0 → 2.8), and keeps developing to a peak near t\* ≈ 8700 (index ≈ 4.5) —
+the same branching-filament morphology as the benchmark panel.
 
 ```{python}
 #| label: fig-mfix-xy
-#| fig-cap: "Particle positions projected onto the x–y plane. Top: the MFIX-Exa Figure 34 — Goldhirsch–Zanetti 1993 (a 2-D hard-disk system) on the left, MFIX-Exa's own gas–solid result (labelled t* = 1000) on the right. Middle: the peclet one-for-one gas–solid run through its development window — the filament network builds from t* = 2000 to its peak near 5000, the benchmark panel's morphology. Bottom: the dry granular run for contrast — the same instability, developing later and coarsening more slowly."
+#| fig-cap: "Particle positions projected onto the x–y plane. Top: the MFIX-Exa Figure 34 — Goldhirsch–Zanetti 1993 (a 2-D hard-disk system) on the left, MFIX-Exa's own gas–solid result (labelled t* = 1000) on the right. Middle: the peclet one-for-one gas–solid run — the filament network builds through t* = 2000–5000 and reaches its developed state by 10⁴, the benchmark panel's morphology. Bottom: the dry granular run for contrast — the same instability, developing later and coarsening more slowly."
 fig = plt.figure(figsize=(12, 11.5))
 gs = fig.add_gridspec(3, 3, height_ratios=[1.05, 1.0, 1.0], hspace=0.16, wspace=0.05)
 axtop = fig.add_subplot(gs[0, :]); axtop.imshow(plt.imread("mfix_ref/hcs_xy_1908.png")); axtop.axis("off")
 axtop.set_title("MFIX-Exa — Figure 34   (Goldhirsch–Zanetti 2-D reference | MFIX-Exa gas–solid result)",
                 fontsize=10)
-for k, tst in enumerate((2000, 3000, 5000)):
+for k, tst in enumerate((2000, 5000, 10000)):
     a = fig.add_subplot(gs[1, k]); xy = gas[f"xy_{tst}"]
     a.scatter(xy[:, 0], xy[:, 1], s=0.4, c="#111", edgecolors="none")
     a.set(xlim=(0, Lm), ylim=(0, Lm), aspect="equal",
@@ -342,24 +341,20 @@ read off them. What the gas–solid run on this page matches, item by item:
 - **Fluid.** A volume-averaged incompressible gas: MFIX-Exa advects with the superficial velocity
   ε·**u** and projects ∇·(ε**u**) = 0, with ε in all fluxes. Our run enforces the same constraint
   (the ∂ε/∂t term of the averaged continuity is optional in both codes and off in both runs — in
-  MFIX-Exa by default, "under development"; here via `set_porous_deps_dt(False)`). CFD grid
-  Δ\* = 2 particle diameters, per their decks and grid heuristic.
+  MFIX-Exa by default, "under development"; here via `set_porous_deps_dt(False)`). The momentum is
+  advanced in its **ε-conservative form** — ερ(∂u/∂t + u·∇u) with the projection pair derived from
+  the same inertia (the flux ε cancels the inertia ε in the Poisson coefficients). This is not a
+  detail: with a plain-u momentum the projection drags gas along with the moving porosity at zero
+  inertia cost and pumps particle kinetic energy without a physical source; energy consistency of
+  the split scheme requires the ε-weighted pair. CFD grid Δ\* = 2 particle diameters, per their
+  decks and grid heuristic.
 - **What remains — a stage offset.** The fully-filamented state in the benchmark's Fig. 34 panel,
-  labelled t\* = 1000, occurs in our run at t\* ≈ 3000–5000, with the same branching morphology.
+  labelled t\* = 1000, occurs in our run at t\* ≈ 5000–10⁴, with the same branching morphology.
   The benchmark's own Fig. 33 shows the KE only *just* plateauing at t\* = 1000, which sits more
   comfortably with a still-developing density field than with a fully-developed network. Whether that
   panel corresponds to a later output or a different replicate cannot be settled from the public
-  material; what the matched cooling history, onset ordering, and morphology establish is that the
-  instability physics is reproduced.
-- **What remains — a late-time energy artifact (open item).** Past the clustering plateau
-  (t\* ≳ 2500) the particle velocity variance in our volume-averaged run *rises* instead of
-  continuing the benchmark's slow decay, eventually re-melting the clusters. The rise has no physical
-  source — it exceeds the *total* gas kinetic energy many times over — so it is numerical energy
-  injection in the porous + implicit-drag exchange, and it is insensitive to the ∂ε/∂t constraint
-  term (both variants measured). The incompressible-gas variant of the same run shows no rise. The
-  energy bookkeeping of the split "advance momentum → project onto the moving ε-constraint" is the
-  suspect and is under investigation; all comparisons above are drawn from t\* ≲ 3000, where the
-  artifact is small.
+  material; what the matched energy history (five decades, end to end), onset ordering, and
+  morphology establish is that the instability physics is reproduced.
 :::
 
 ## Results — peclet vs. theory vs. MFIX-Exa
