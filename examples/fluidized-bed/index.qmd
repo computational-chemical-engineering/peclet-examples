@@ -296,20 +296,22 @@ def wall_big(p):
 build_wall_sdf(wall_big, ((0,0,0), (NXm,NYm,NZm)), resolution=160).add_to(dB, restitution=0.7, friction=0.3)
 dB.set_positions(np.c_[posB, np.full(Nbig, 1.0/m_pc, np.float32)])
 dB.set_velocities(np.zeros((Nbig, 3), np.float32))
+# A static column carries its weight through contact chains, and the position solve propagates a
+# correction roughly one particle layer per sweep — this bed is ~110 layers of d_p deep, so give the
+# solve an iteration budget of that order for the settling transient (the adaptive stop exits early
+# once converged, so the high cap costs little afterwards).
+dB.set_solver_iterations(120, 4)
 
 t0 = time.time()
-for _ in range(2000):                            # 0.1 s of pure DEM settling
+for _ in range(4000):                            # 0.2 s of pure DEM settling
     dB.step(dt / 20)
 pz = dB.get_positions()[:Nbig, 2]
 print(f"settled in {time.time()-t0:.0f}s: bed top z95 = {np.percentile(pz,95)*h_m*100:.1f} cm")
 ```
 
-Fluidize at 2.0 U~mf~ for **2.0 seconds** of physical time, recording a movie frame every 10 ms and
+Fluidize at 2.0 U~mf~ for **1.5 seconds** of physical time, recording a movie frame every 10 ms and
 the two key diagnostics — the **bed pressure drop** and the **bed height** — as it runs. The textbook
-check for a fluidized bed is `ΔP ≈ M·g/A` — the gas carries the weight of the solids. In a column this
-narrow (H/D ≈ 1, D = 100 d~p~, wall friction 0.3) part of the weight is carried by the **walls**
-(the Janssen effect, amplified by slugging), so the measured ΔP settles *below* the ideal line — a
-well-documented feature of narrow laboratory columns, not a numerical artifact.
+check for a fluidized bed is `ΔP ≈ M·g/A` — once fluidized, the gas carries the weight of the solids.
 
 ```{python}
 cplB = CfdDem(sB, dB, fluid_dt=dt, mu=mu_c, rho=rho_g_si, radius=rpc, drag="gidaspow",
@@ -339,7 +341,7 @@ print(f"final dP = {dPs[-1]:.0f} Pa   bed weight/A = {W_over_A:.0f} Pa   ratio =
 
 ```{python}
 #| label: fig-si-diag
-#| fig-cap: "The engineering checks. Left: after the violent unpacking transient (the startup slug spikes ΔP to ~2.4 Mg/A), the bed pressure drop oscillates with the bubbling at ~60% of the bed-weight line — the balance is carried by wall friction in this narrow column. Right: the bed surface bubbles around its working height."
+#| fig-cap: "The engineering checks. Left: after the startup slug's ΔP spike, the bed pressure drop oscillates with the bubbling around the bed-weight line — the gas carries the solids (the printed ratio above is the quantitative check). Right: the bed surface bubbles around its working height."
 fig, ax = plt.subplots(1, 2, figsize=(9, 3.2))
 ax[0].plot(np.arange(len(dPs)) * dt, dPs, lw=1)
 ax[0].axhline(W_over_A, ls="--", c="C3", label="bed weight / area")
