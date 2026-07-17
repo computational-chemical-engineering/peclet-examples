@@ -336,3 +336,47 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 - **Expected:** n_pois fixed V-cycles per step, ~6 ms/cycle at this size.
 - **Repro:** same RB onset config with `set_pressure_multigrid(True, 5)` +
   `set_pressure_solver_params(6)` and no PCG/Chebyshev call.
+
+## DEM benchmark: warm-started PGS silently disabled Coulomb friction
+- **Status:** investigating (fix validated in a benchmark sandbox; to land with the PGS push)
+- **Package / area:** dem (velocity solve / friction cluster)
+- **Found in:** benchmarks/dem-bulk-dosta2024 (Dosta et al. 2024 silo + drum cases)
+- **Observed:** silo discharge identical at mu = 0, 0.3, 0.6, 0.9; drum bed does not circulate
+  (Zone-2 species count dead-flat vs the reference codes' large oscillation).
+- **Expected:** granular discharge and drum circulation depend strongly on friction.
+- **Repro:** any warm-started PGS run; sweep set_material_params friction.
+- **Notes:** the Coulomb bound accumulates contact *approach velocities* per velocity iteration
+  (solver_friction.hpp accumulateNormalImpulseKokkos); the PGS warm start cancels approaches
+  before the loop, so the bound collapses to ~0 for persistent contacts (walls included). Fix
+  validated: bound each contact by its manifold's converged PGS impulse (lambdaAcc via a
+  contact->manifold slot map) — drum circulation returns, shipped silo 18.1 -> 19.4 k/s. The
+  legacy bound was also *inflated* (re-counted the same approach every iteration), so post-fix
+  friction is honestly Coulomb-limited. Periodic-ghost duplicate manifolds carry lambda 0 —
+  handle before enabling on periodic boxes.
+
+## DEM benchmark: grounded one-sided shock branch too strong for ballistic loads
+- **Status:** open (quantified targets from the benchmark)
+- **Package / area:** dem (gravity statics / shock propagation)
+- **Found in:** benchmarks/dem-bulk-dosta2024 (impact + silo cases)
+- **Observed:** 5 m/s steel ball (2880:1 mass ratio) stops ~2 mm into a 25k bed with zero
+  rebound (references: floor contact at displacement -0.14 then rebound); 100k deep bed arrests
+  at -0.023 vs references -0.090; silo discharge ~20% slow (19.4 vs 24.2-24.5 k/s local refs).
+- **Expected:** one-sided grounding should only carry quasi-static loads, not shock loading.
+- **Repro:** benchmarks/dem-bulk-dosta2024/scripts/case3_impact.py --n 25 (default config).
+- **Notes:** disabling the branch (symmetric PGS) restores exact shallow-bed impact but
+  over-penetrates the deep bed (-0.137) and makes silo discharge head-dependent — the references
+  sit between the two configs in every statics-sensitive observable. Needs a ballistic/approach
+  gate (design work, coupled to the tangential-stick item below).
+
+## DEM velocity-level friction lacks tangential stick (sequential impulse)
+- **Status:** open (long-known; now with quantified benchmark targets)
+- **Package / area:** dem (friction)
+- **Found in:** benchmarks/dem-bulk-dosta2024 (drum amplitude, silo arch strength)
+- **Observed:** with the corrected Coulomb bound, drum circulation under-drives (weaker Zone-2
+  oscillation than MUSEN/LIGGGHTS) and the symmetric-PGS silo discharges head-dependently
+  (41 -> 29 k/s as the head drops; Torricelli-like) at +35% mean rate.
+- **Expected:** friction-supported orifice arch => head-independent Beverloo rate (23-25 k/s,
+  large/small ratio 3.1); reference-amplitude drum oscillation.
+- **Repro:** scripts/case1_silo.py with PECLET_DEM_SYMMETRIC_PGS=1; scripts/case2_mixer.py.
+- **Notes:** velocity-level friction needs the accumulated per-contact tangential impulse
+  clamped against mu*lambda_n (sequential impulse) to hold static shear.

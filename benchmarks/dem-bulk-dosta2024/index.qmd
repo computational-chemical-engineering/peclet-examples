@@ -1,0 +1,355 @@
+---
+title: "peclet.dem vs the DEM8 bulk-process benchmark"
+subtitle: "The three Dosta et al. (2024) community benchmark cases — silo emptying, drum mixing, particle impact — run one-on-one against the two best-performing open-source DEM codes on identical hardware and identical initial states."
+author: "Peclet"
+date: "2026-07-18"
+categories: [dem, accuracy, performance, benchmark, validation]
+jupyter: python3
+resources:
+  - data/
+  - scripts/
+---
+
+## What this measures
+
+Dosta et al., *"Comparing open-source DEM frameworks for simulations of common bulk
+processes"* ([CPC **296** (2024) 109066](https://doi.org/10.1016/j.cpc.2023.109066)),
+benchmarked **eight** open-source DEM codes (LIGGGHTS, Yade, MUSEN, MercuryDPM, Kratos,
+MFiX, GranOO, Blaze-DEM) on three mid-size bulk processes with shared initial states
+([Zenodo dataset](https://doi.org/10.5281/zenodo.8252892)):
+
+1. **Silo emptying** — 100 000 particles (d = 4 mm) discharging from a cylindrical
+   steel silo through a 0.06 m ("large") or 0.04 m ("small") orifice, 5 s;
+2. **Drum mixing** — a bimodal bed (30k × 1 mm + 8k × 2 mm) in a Ø 0.2 m drum at
+   2 rad/s, 5 s;
+3. **Particle impact** — a steel ball (d = 20 mm) striking a settled granular bed of
+   25k / 50k / 100k particles at 5 m/s.
+
+This page runs the same three cases with **`peclet.dem`** — from the *same* initial
+particle positions — and, for a like-for-like comparison on *this* machine, re-runs
+the two best performers from the paper: **MUSEN** (the fastest GPU code together with
+Blaze-DEM) on the same GPU, and **LIGGGHTS** (among the fastest CPU codes) on 24 MPI
+ranks. Yade is Debian-packaged but not installable here without root; Blaze-DEM
+(2015-era CUDA) no longer compiles on CUDA 13; MFiX's download is registration-walled.
+The paper's own multi-code figures serve as the ensemble reference throughout.
+
+::: {.callout-important}
+## An impulse-based method benchmarked against force-based codes
+
+All eight paper codes integrate the **Hertz–Mindlin viscoelastic force model** with
+time steps of 0.5–1.5 µs set by the contact stiffness. `peclet.dem` is an
+**impulse-based (XPBD-style) solver**: contacts are rigid at the velocity level,
+dissipation enters through the restitution coefficient *e* and Coulomb friction *µ*,
+and **Young's modulus does not appear at all**. Time steps are set by kinematics, not
+stiffness — here 50 µs (impact) to 200 µs (silo), i.e. **40–130× larger** than the
+reference codes. The benchmark's bulk observables (discharge rate, mixing curves,
+penetration depth) are exactly the quantities such a method claims to capture; this
+page measures how far that claim holds, and reports where it doesn't.
+:::
+
+**Material mapping.** Densities, restitution and friction pairs are taken verbatim
+from the paper (M1–M1 e = 0.5, µ = 0.3; M2–M2 0.4/0.4; grain–steel 0.4/0.2;
+steel–steel 0.6/0.5). `peclet.dem` started this benchmark with one global
+grain–grain material; the first runs approximated the drum's M1–M2 pair and the
+impact ball's steel pairs with it, and the measured rebound deficit that produced
+(see Case 3) motivated adding a proper **per-pair material table**
+(`set_material_ids` / `set_pair_material`, with walls resolvable through the same
+table) during the benchmark. The final peclet curves below use the paper's pair
+values exactly; the approximated runs are kept in `data/` as a sensitivity record.
+
+```{python}
+#| code-summary: "Data loading + shared figure style"
+import json, os
+import numpy as np
+import matplotlib.pyplot as plt
+
+DATA = "data"
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
+                     "grid.alpha": 0.3, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+
+# fixed code -> colour assignment, used identically in every figure
+C_PECLET  = "#2a78d6"   # peclet.dem, shipped solver (grounded statics)
+C_SYMPGS  = "#1baf7a"   # peclet.dem, symmetric warm-started PGS (experimental config)
+C_JACOBI  = "#eda100"   # peclet.dem, legacy Jacobi velocity solve
+C_MUSEN   = "#4a3aa7"   # MUSEN v1.75, GPU, this machine
+C_LIG     = "#e34948"   # LIGGGHTS-public, 24 MPI ranks, this machine
+
+def ld(name):
+    p = os.path.join(DATA, name + ".npz")
+    return np.load(p) if os.path.exists(p) else None
+
+TIM = json.load(open(os.path.join(DATA, "timings.json")))
+```
+
+## Case 3 — particle impact: the sharpest discriminator
+
+A steel ball (d = 20 mm, ρ = 7200 kg/m³) enters a settled bed of 2 mm particles at
+5 m/s; the measured result is the ball's vertical displacement over 0.1 s. The three
+bed sizes probe different physics: at **25k/50k** the bed is shallow and the ball's
+arrest is **floor-limited** (it reaches the box bottom through the bed); at **100k**
+the bed is deep and arrest is **bed-strength-limited** — the granular skeleton itself
+must stop the ball.
+
+```{python}
+#| label: fig-impact
+#| fig-cap: "Impactor vertical displacement, three bed sizes. peclet.dem is shown in its shipped configuration and in the symmetric warm-started PGS configuration (see the solver note below); MUSEN and LIGGGHTS are re-runs on this machine from the same initial states. Paper Fig. 10 shows the eight-code ensemble spanning the same envelope as MUSEN/LIGGGHTS here."
+fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.4), sharey=True)
+for ax, n in zip(axes, (25, 50, 100)):
+    for tag, color, ls, label in (
+            ("liggghts",        C_LIG,    "-",  "LIGGGHTS"),
+            ("musen",           C_MUSEN,  "-",  "MUSEN"),
+            ("peclet_onesided", C_PECLET, "-",  "peclet.dem (shipped)"),
+            ("peclet_sympgs",   C_SYMPGS, "--", "peclet.dem (sym. PGS)"),
+            ("peclet_jacobi",   C_JACOBI, ":",  "peclet.dem (Jacobi)")):
+        d = ld(f"case3_{n}k_{tag}")
+        if d is None:
+            continue
+        ax.plot(d["t"], d["z"] - 0.06, color=color, ls=ls, lw=1.6, label=label)
+    ax.set_title(f"{n}k bed")
+    ax.set_xlabel("t [s]")
+    ax.set_xlim(0, 0.1)
+axes[0].set_ylabel("vertical displacement [m]")
+axes[0].legend(fontsize=7.5, loc="lower right")
+plt.tight_layout()
+plt.show()
+```
+
+**Shallow beds (25k, 50k): quantitative agreement.** In its momentum-conserving
+configurations `peclet.dem` lands on the references: minimum displacement −0.140 m
+(LIGGGHTS −0.139, MUSEN −0.138) at the same instant t ≈ 0.030 s for 25k, and the same
+−0.139 at t ≈ 0.044 s for 50k. The penetration phase — the part of the trajectory the
+paper found consistent across all eight codes — is reproduced **exactly**, at a 100×
+larger time step. The rebound (which the paper itself reports as chaotic, spanning
+−0.013 to −0.07 across codes and requiring 10-seed ensembles) initially came out at
+−0.083, below the envelope — and that gap was **traced to the material mapping, not
+the solver**: with a per-pair material table added to `peclet.dem` (so the ball–bed
+pair gets its 0.4/0.2 and the ball–floor pair its steel–steel 0.6/0.5, exactly as in
+the reference codes), the 25k rebound lands at **−0.040, mid-envelope**, with the
+penetration unchanged. A worked example of why benchmark fidelity needs pairwise
+materials rather than a single global pair.
+
+**Deep bed (100k): the two peclet configurations bracket the truth.** MUSEN and
+LIGGGHTS agree to the millimetre here (plateau −0.0905/−0.0909, no rebound). The
+shipped `peclet.dem` solver arrests the ball at −0.016 (too rigid), the symmetric-PGS
+configuration lets it sink to −0.136 (too soft). The reference plateau sits between
+the two. The root causes are known solver-level items, quantified for the first time
+by this case — see [the solver note](#the-solver-note) below.
+
+## Case 1 — silo emptying
+
+```{python}
+#| label: fig-silo
+#| fig-cap: "Particles remaining above the orifice vs time, large-orifice (left) and small-orifice (right) silos with M1 particles. The dotted grey guide is the paper's mean large-orifice discharge rate (23.2k/s, all codes within ±5%)."
+fig, axes = plt.subplots(1, 2, figsize=(9, 3.6), sharey=True)
+for ax, o in zip(axes, ("large", "small")):
+    for tag, color, ls, label in (
+            ("liggghts",        C_LIG,    "-",  "LIGGGHTS"),
+            ("musen",           C_MUSEN,  "-",  "MUSEN"),
+            ("peclet_onesided", C_PECLET, "-",  "peclet.dem (shipped)"),
+            ("peclet_sympgs",   C_SYMPGS, "--", "peclet.dem (sym. PGS)")):
+        d = ld(f"case1_{o}_M1_{tag}")
+        if d is None:
+            continue
+        ax.plot(d["t"], np.asarray(d["count"]) / 1000, color=color, ls=ls, lw=1.6,
+                label=label)
+    if o == "large":
+        tt = np.linspace(0.15, 4.35, 10)
+        ax.plot(tt, 100 - 23.2 * (tt - 0.15), color="0.55", ls=":", lw=1.2,
+                label="paper mean rate")
+    ax.set_title(f"{o} orifice, M1")
+    ax.set_xlabel("t [s]")
+    ax.set_xlim(0, 5)
+axes[0].set_ylabel("particles above orifice [k]")
+axes[0].legend(fontsize=7.5, loc="upper right")
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| code-summary: "Discharge-rate table"
+def rate(d, t0=0.5, t1=3.5):
+    if d is None:
+        return None
+    t, N = np.asarray(d["t"]), np.asarray(d["count"])
+    m = (t >= t0) & (t <= t1) & (N > 2000)
+    return -np.polyfit(t[m], N[m], 1)[0] / 1000 if m.sum() > 3 else None
+
+rows = []
+for o in ("large", "small"):
+    for tag, name in (("musen", "MUSEN"), ("liggghts", "LIGGGHTS"),
+                      ("peclet_onesided", "peclet.dem (shipped)"),
+                      ("peclet_sympgs", "peclet.dem (sym. PGS)")):
+        r = rate(ld(f"case1_{o}_M1_{tag}"))
+        if r:
+            rows.append((f"{o} / {name}", r))
+from IPython.display import Markdown
+lines = ["| silo / code | discharge rate [10³/s] |", "|---|---|"]
+lines += [f"| {a} | {b:.1f} |" for a, b in rows]
+big = {n.split(" / ")[1]: r for n, r in rows if n.startswith("large")}
+small = {n.split(" / ")[1]: r for n, r in rows if n.startswith("small")}
+for k in big:
+    if k in small:
+        lines.append(f"| large/small ratio, {k} | {big[k]/small[k]:.2f} |")
+Markdown("\n".join(lines))
+```
+
+Three observations (all numbers for the final build, i.e. with the per-pair
+materials and the friction-bound fix of [the solver note](#the-solver-note)):
+
+- **The shipped solver has the right flow character** — a strictly linear N(t),
+  i.e. the head-*independent* mass flow that granular physics (and the paper's
+  Beverloo analysis) demands — but discharges **~20% slow**: 19.4 k/s (large) and
+  7.2 k/s (small) against 24.2/24.5 k/s and 7.7 k/s for MUSEN/LIGGGHTS on this
+  machine (paper mean 23.2 k/s ± 5%). Its large/small ratio 2.71 sits below the
+  Beverloo-consistent 3.10 ± 0.06 (MUSEN here: 3.13).
+- **The symmetric-PGS configuration is fast *and* has the wrong character**: its
+  rate decays with the remaining head (41 → 31 k/s for the large orifice, +95% for
+  the small one) — liquid-like, Torricelli-style discharge. That is the signature
+  of an under-supported bed: without load-bearing chains strong enough to form an
+  arch at the orifice, the outflow feels the full hydrostatic head.
+- Together the two configurations **bracket the references**, and the *qualitative*
+  split (right character/slow vs wrong character/fast) points at the same two open
+  solver items as the impact and drum cases.
+
+## Case 2 — drum mixing
+
+The drum discriminates *segregation and convection* rather than statics: 30k small
+particles start layered on top of 8k large ones, and the counter-clockwise rotation
+(2 rad/s) mixes and then partially re-segregates the species. The measured quantities
+are the species counts in two diagonal quadrant zones over time.
+
+::: {.callout-note}
+The bimodal pair materials (M1–M2 e = 0.45, µ = 0.2) cannot yet be expressed in
+`peclet.dem`'s single global pair material; the runs below use e = 0.45, µ = 0.25
+for all grain–grain contacts. A per-pair material table is the top item this
+benchmark adds to the roadmap.
+:::
+
+```{python}
+#| label: fig-drum
+#| fig-cap: "Small-particle (M1) count in Zone 2 (lower-left quadrant) over 5 s of drum rotation — the paper's Fig. 8 observable, oscillating at the bed-circulation period with decaying amplitude as the species mix."
+fig, ax = plt.subplots(figsize=(7.5, 3.4))
+for tag, color, ls, label in (
+        ("liggghts", C_LIG, "-", "LIGGGHTS"),
+        ("musen",    C_MUSEN, "-", "MUSEN"),
+        ("peclet_onesided", C_PECLET, "-", "peclet.dem (shipped)"),
+        ("peclet_sympgs",   C_SYMPGS, "--", "peclet.dem (sym. PGS)")):
+    d = ld(f"case2_{tag}")
+    if d is None:
+        continue
+    ax.plot(d["t"], np.asarray(d["z2_m1"]) / 1000, color=color, ls=ls, lw=1.6,
+            label=label)
+ax.set_xlabel("t [s]")
+ax.set_ylabel("M1 particles in Zone 2 [k]")
+ax.set_xlim(0, 5)
+ax.legend(fontsize=8)
+plt.tight_layout()
+plt.show()
+```
+
+The references agree with each other and the paper: a large oscillation (≈ 0 ↔ 23k)
+at the bed-circulation period ≈ 2 s, decaying as the species mix. `peclet.dem` is at
+its weakest here. Before the friction-bound fix of [the solver note](#the-solver-note)
+the bed did not circulate *at all* (a dead-flat count — the drum is driven purely
+through wall friction, which the warm-started solver had silently disabled); with
+the fix it circulates, but 2–4× slower than the references and with far weaker
+amplitude. A control run with the legacy Jacobi solver — whose friction bound is
+accidentally *inflated* (it re-counts the same approach every iteration) — matches
+the references' circulation pace, which localises the deficit precisely: with an
+honest per-substep Coulomb bound, velocity-level friction cannot transmit enough
+static shear, and the missing piece is sequential-impulse tangential stick. The drum
+is therefore the cleanest quantitative target for that (long-known, now measured)
+solver item.
+
+## Performance
+
+::: {.callout-warning}
+## Read the timings with care
+
+The paper's Table 6 was measured on a Ryzen 3900X (12c) + TITAN RTX. This machine is
+a Threadripper PRO 5965WX (24c) + RTX 5080 — both roughly a factor ~2 newer/larger,
+and the GPU numbers below were taken while the GPU was **shared with unrelated
+compute jobs** (marked ◐). MUSEN (like Blaze-DEM) computes in **double precision**,
+which consumer GPUs execute at 1/32–1/64 rate; `peclet.dem` is single-precision by
+design. And the deepest structural difference stands: the reference codes take
+200 000–3 300 000 steps per case where `peclet.dem` takes 2 000–25 000. Same-machine,
+same-initial-state wall-clock is reported because it is what a user experiences; it
+is *not* a controlled algorithmic comparison.
+:::
+
+| case | peclet.dem (GPU) | MUSEN (GPU) | LIGGGHTS (24 MPI ranks) |
+|---|---|---|---|
+| impact 25k (0.1 s) | **16 s** | 61 s | 1 839 s |
+| impact 100k (0.1 s) | **67 s** | 504 s ◐ | 913 s |
+| silo large M1 (5 s) | **171 s** | ≈ 1 360 s † | 5 892 s |
+| drum (5 s) | **399 s** | 5 587 s ◐ | 15 855 s |
+
+Unmarked numbers were measured with the GPU otherwise idle; ◐ marks runs that
+shared the GPU with unrelated compute (they overstate the true time — MUSEN's clean
+25k impact, 61 s, ran 22× faster than its contended attempt). † MUSEN's clean silo
+rerun reached 88% in 1 196 s before a CUDA driver hiccup killed it; the quoted time
+extrapolates that pace and is consistent with the paper's 28 min on a TITAN RTX.
+Full per-run values (and the contended history) are in `data/timings.json`.
+
+Measured clean-to-clean, `peclet.dem` runs **4–8× faster than MUSEN** — the fastest
+GPU code of the study together with Blaze-DEM — and **14–115× faster than LIGGGHTS
+on 24 ranks**, the direct dividend of the impulse formulation's stiffness-free time
+step (2 000–25 000 steps per case against 200 000–3 300 000). Two structural notes
+temper the comparison: MUSEN computes in double precision, which consumer GPUs
+execute at 1/32–1/64 rate, while `peclet.dem` is single-precision by design; and at
+these particle counts `peclet.dem` is launch-latency-bound (the 25k impact costs
+8 ms/step against ~26 ms/step for a *one-million*-particle bed in the fluidized-bed
+example), so its advantage grows with problem size.
+
+## The solver note {#the-solver-note}
+
+This benchmark was run against `peclet.dem`'s new warm-started PGS contact solver,
+and it surfaced three solver-level findings. Two were **fixed during the benchmark
+and are part of the featured curves**; one is an open design item with, now,
+quantified targets.
+
+**1 — Per-pair materials (fixed).** The single global grain–grain material
+under-represented the impact ball's steel pairs; adding the pair table moved the 25k
+rebound from below the published envelope to mid-envelope with penetration unchanged
+(§ Case 3).
+
+**2 — The warm start silently disabled friction (fixed).** A friction sweep showed
+silo discharge *entirely independent of µ* (0 → 0.9, identical curves). Mechanism:
+the Coulomb bound was accumulated from contact *approach velocities* each velocity
+iteration — and the PGS warm start pre-applies the converged impulses, so approaches
+are already ≈ 0 and the bound collapses. Re-bounding friction by the PGS impulse
+accumulator itself (which *is* the converged normal load) restored qualitative drum
+circulation (a dead-flat Zone-2 count became the reference-like oscillation) and
+moved the shipped silo rate from 18.1 to 19.4 k/s. Two residuals remain measurable:
+the drum under-drives (weaker oscillation amplitude than MUSEN/LIGGGHTS) and the
+symmetric-configuration silo still discharges head-dependently — both signatures of
+the velocity-level friction lacking *tangential stick* (sequential-impulse
+accumulation of the tangential impulse), a known deferred item that this benchmark
+turns into two concrete targets: reference drum amplitude, and Beverloo-constant
+discharge without the one-sided branch.
+
+**3 — The grounded one-sided shock branch is too strong for ballistic loads
+(open).** Added to hold deep static beds under gravity (a real failure mode: without
+it a silo bed free-falls collectively, and the warm-started symmetric solve alone
+does not restore the arch), the one-sided treatment makes a ballistic impactor meet
+an effectively infinite-mass bed: at 2880:1 ball/grain mass ratio the 25k ball stops
+within 2 mm of the surface with zero rebound (blue curve, 25k panel), the deep-bed
+100k impact arrests at −0.023 vs the references' −0.090, and silo discharge runs
+~20% slow. Disabling it (the *symmetric PGS* configuration) restores exact
+shallow-bed impact but over-penetrates the deep bed (−0.137) — **the references sit
+between the two configurations in every statics-sensitive observable**. Quantified
+targets for the gate design: 100k plateau −0.090, silo 23–25 k/s at Beverloo ratio
+3.1.
+
+All three, with the numbers above, are logged in [`ISSUES.md`](../../ISSUES.md).
+
+## Reproduce this
+
+The runner scripts (one per case), the reference-code build recipes, and the
+collection script live in [`scripts/`](scripts/) beside this page. The shared
+initial states download from the paper's
+[Zenodo record](https://doi.org/10.5281/zenodo.8252892). The peclet runs need only
+`pip install peclet[dem]` and a GPU; MUSEN builds CLI-only with
+`cmake -DMUSEN_BUILD_GUI=OFF`; LIGGGHTS builds with `make auto` (VTK optional —
+the benchmark inputs here have the VTK dumps removed).
