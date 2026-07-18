@@ -1,0 +1,66 @@
+/* Gallery cards on the home page */
+.gallery-card {
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.gallery-card:hover {
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.14);
+  transform: translateY(-2px);
+}
+.gallery-card img {
+  width: 100%;
+  height: 175px;
+  object-fit: cover;
+  object-position: center;
+  margin: 0;
+  display: block;
+}
+.gallery-card .card-body {
+  padding: 0.7rem 0.9rem 0.85rem 0.9rem;
+}
+.gallery-card .card-body p {
+  margin: 0.25rem 0 0.35rem 0;
+  font-size: 0.86rem;
+  color: #444;
+  line-height: 1.35;
+}
+.gallery-card .card-body h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.3;
+}
+.gallery-card .card-body h4 a {
+  text-decoration: none;
+  color: inherit;
+}
+.gallery-card .tags {
+  font-size: 0.72rem;
+  color: #7a7a7a;
+  font-style: italic;
+}
+.hero-band {
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0.4rem 0 1.2rem 0;
+}
+.hero-band img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  object-position: center 40%;
+  display: block;
+  margin: 0;
+}
+.pitch li {
+  margin-bottom: 0.3rem;
+}
+.section-lead {
+  color: #555;
+  margin-top: -0.4rem;
+}

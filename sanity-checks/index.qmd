@@ -1,6 +1,6 @@
 ---
 title: "DEM sanity checks: does the solver obey the textbook?"
-subtitle: "Five small, quantitative validations of peclet.dem against closed-form mechanics — restitution, wall bounce, sliding-to-rolling, static stacks, and friction-driven spin coupling. Each one has a number you can check."
+subtitle: "Six small, quantitative validations of peclet.dem against closed-form mechanics — restitution, wall bounce, sliding-to-rolling, static stacks, friction-driven spin coupling, and a deep layered bed at rest. Each one has a number you can check."
 author: "Peclet"
 date: "2026-07-05"
 categories: [dem, validation, sanity-checks, restitution, friction]
@@ -246,6 +246,76 @@ for ax, spin, ttl in [(axes[0], (10, 10), "co-rotating (both +ωz): slip → def
 axes[0].set_ylabel("y")
 plt.show()
 ```
+
+## 6 — A deep layered bed at rest: deep-stack statics
+
+The hard case for any impulse-based contact solver is not one column of six grains but a **deep bed**:
+a thousand grains in forty touching layers, every contact loaded with the weight of everything above
+it. The static solution demands a complete force network — each contact carrying exactly its share —
+and any defect shows up as one of two failure signatures: grains **interpenetrating** at the bottom
+(the load "carried" by overlap), or a **phantom velocity field** (the bed looks static while the
+solver keeps re-lifting a falling state). Both are ruled out here with one number each: after two
+simulated seconds, the peak grain speed must be ~0, the minimum centre-to-centre spacing must still
+be one diameter, and the top layer must not have sunk.
+
+The bed is a touching simple-cubic lattice (spacing exactly one diameter) on the plate, confined
+laterally by four snug walls so the frictionless-limit stack cannot buckle sideways — the load path
+runs straight down every column, the deepest-chain-per-grain configuration there is.
+
+```{python}
+#| label: fig-bed
+#| fig-cap: "A 40-layer touching bed on a plate goes quiescent and stays exactly packed: peak grain speed decays to ~0 (left, log scale); every grain's nearest neighbour remains at one diameter and the layer structure is preserved (right)."
+from scipy.spatial import cKDTree
+r = 1.0
+nx = nz = 5; nlay = 40
+N = nx * nz * nlay
+s = sim(N + 8, restitution=0.0, friction=0.3, gravity=(0, -9.8, 0))
+s.add_plane((0, 0, 0), (0, 1, 0))                      # bottom plate
+s.add_plane((-r, 0, 0), (1, 0, 0))                     # snug lateral confinement: boundary
+s.add_plane((2 * r * (nx - 1) + r, 0, 0), (-1, 0, 0))  # grains exactly touch the walls
+s.add_plane((0, 0, -r), (0, 0, 1))
+s.add_plane((0, 0, 2 * r * (nz - 1) + r), (0, 0, -1))
+ix, iy, iz = np.meshgrid(np.arange(nx), np.arange(nlay), np.arange(nz), indexing="ij")
+p = np.zeros((N, 4), np.float32)
+p[:, 0] = 2 * r * ix.ravel()
+p[:, 1] = r + 2 * r * iy.ravel()                       # touching layers: centres a diameter apart
+p[:, 2] = 2 * r * iz.ravel()
+p[:, 3] = 1.0
+p[:, [0, 2]] += np.random.default_rng(3).uniform(-1e-3, 1e-3, (N, 2)).astype(np.float32)
+s.set_positions(p)
+top0 = float(p[:, 1].max())
+
+VMAX = []
+for k in range(5000):
+    s.step(0.002)
+    if k % 10 == 0:
+        VMAX.append(float(np.abs(s.get_velocities()).max()))
+P = np.asarray(s.get_positions()).reshape(-1, 3)[:N]
+nn = cKDTree(P).query(P, k=2)[0][:, 1]
+record("bed peak |v|", VMAX[-1], 0.0, 0.15)
+record("bed min spacing", float(nn.min()), 2 * r, 0.1)
+record("bed top settle", float(P[:, 1].max()) - top0, 0.0, 0.3)
+
+fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.6))
+axes[0].plot(np.arange(len(VMAX)) * 10 * 0.002, VMAX, color="#2a6fdb")
+axes[0].set_xlabel("time"); axes[0].set_ylabel("peak grain |v|"); axes[0].set_yscale("log")
+axes[0].set_title("the bed goes quiescent")
+axes[1].plot(P[:, 1], nn, ".", ms=2, color="#2a6fdb", alpha=0.4)
+axes[1].axhline(2 * r, color="crimson", ls="--", lw=1)
+axes[1].set_xlabel("grain height"); axes[1].set_ylabel("nearest-neighbour distance")
+axes[1].set_ylim(1.8, 2.2); axes[1].set_title("exact packing at every depth")
+plt.show()
+print(f"peak |v| = {VMAX[-1]:.4f} (→0);  min spacing = {nn.min():.4f} (diameter {2*r});  "
+      f"top settle = {float(P[:,1].max()) - top0:+.4f}")
+```
+
+::: {.callout-note}
+This check is deliberately the **deep** version of check 4: pairwise, momentum-conserving contact
+impulses alone cannot hold a tall pile (the floor can only drain about one layer's momentum per
+sweep), so the solver's warm-started projected Gauss–Seidel + shock-propagation machinery is what
+is being exercised — and this is the check that trips if it regresses. It runs a thousand grains
+for 5,000 substeps: a couple of minutes on a laptop CPU, seconds on a GPU build.
+:::
 
 ## Scorecard
 

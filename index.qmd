@@ -1,210 +1,422 @@
 ---
 title: "Peclet Examples"
-subtitle: "See what's possible — then copy, run, and adapt."
+subtitle: "GPU-accelerated CFD, granular dynamics, and gas–solid coupling — from Python, validated in the open."
 toc: false
+css: assets/gallery.css
 ---
 
-Worked, **runnable** examples for the [`peclet`](https://pypi.org/project/peclet/)
-simulation suite: GPU-accelerated particle dynamics, CFD, and the spatial-indexing
-primitives they build on. Every example is **self-contained** (it builds its own
-geometry and sets every parameter inline), executed to produce the figures and
-numbers you see, and one click from running in the browser.
+:::::: {.hero-band}
+![](assets/gallery/tumbling-cubes.jpg)
 
-## Gallery
+::::::
 
-::: {.grid}
+[**`peclet`**](https://pypi.org/project/peclet/) is an open-source simulation suite for
+**incompressible CFD** (cut-cell immersed boundaries over signed-distance geometry), **discrete
+element granular dynamics** (spheres and arbitrary SDF shapes), and **coupled gas–solid CFD-DEM**
+— driven entirely from Python, running on one code base from a laptop CPU to multi-GPU clusters
+(Kokkos: CUDA, HIP, OpenMP; MPI for multi-rank).
 
-::: {.g-col-12 .g-col-md-6}
-### [Plane Poiseuille — cut-cell IBM is exact →](examples/poiseuille-ibm/index.qmd)
-Body-force channel flow past immersed no-slip walls, reproduced to machine
-precision — and the validation trap that makes it *look* inexact.
+```bash
+pip install peclet          # CPU wheels — every page here runs from this
+pip install peclet-flow-cu13 peclet-dem-cu13   # CUDA wheels for the GPU sections
+```
 
-*flow · cut-cell IBM · SDF · verification*
-:::
+**Why peclet?**
 
-::: {.g-col-12 .g-col-md-6}
-### [Developing channel flow →](examples/developing-channel/index.qmd)
-A uniform stream enters a channel and relaxes into the parabolic Poiseuille
-profile — the classic entrance region, using inflow/outflow boundaries.
+:::::: {.pitch}
+- **One stack, three physics.** A validated Navier–Stokes solver, an XPBD discrete-element solver,
+  and the volume-averaged coupling between them — the same SDF geometry and the same Python arrays
+  end to end.
+- **Python-first, zero-copy.** Fields and particle states are NumPy/CuPy views into solver memory —
+  no file shuffling, no lock-in, `matplotlib`/`PyVista` straight from the GPU.
+- **Runs where you are.** The identical script runs on a free Colab CPU, a workstation GPU, or an
+  MPI cluster. Every example carries an *Open in Colab* badge.
+- **Evidence, not claims.** Every figure on this site is produced by executing the page against the
+  released package — analytical solutions, published benchmarks (Ghia, Schäfer–Turek, Zick–Homsy,
+  MFIX-Exa, X-ray tomography beds), and textbook checks throughout.
+- **Honest scale.** A million-particle fluidized bed — deposition, drag, projection, collisions —
+  advances in seconds per step on a single GPU.
 
-*flow · inflow/outflow · boundary conditions*
-:::
+::::::
 
-::: {.g-col-12 .g-col-md-6}
-### [Backward-facing step →](examples/backward-facing-step/index.qmd)
-A stream expands over a step, separates, and reattaches downstream: the canonical
-separated-flow benchmark, with the step realized purely as an inlet profile and the
-reattachment length tracked vs Reynolds number.
+---
 
-*flow · inflow/outflow · separation · benchmark*
-:::
+## Single-phase flow
 
-::: {.g-col-12 .g-col-md-6}
-### [Pipe flow — second-order convergence →](examples/pipe-poiseuille/index.qmd)
-The same parabolic flow through a *curved* cylindrical wall, where the cut-cell
-IBM finally shows its genuine O(h²) accuracy — the convergence study the plane
-channel can't give.
+:::::: {.section-lead}
+The `flow` solver: exact and canonical benchmarks for the cut-cell immersed-boundary
+Navier–Stokes core — from machine-precision channel flow to buoyant convection and a turbulent
+channel DNS.
 
-*flow · cut-cell IBM · SDF · convergence*
-:::
+::::::
 
-::: {.g-col-12 .g-col-md-6}
-### [Taylor–Green vortex →](examples/taylor-green/index.qmd)
-An exact unsteady Navier–Stokes solution: advection injects divergence, the
-projection removes it (to ~1e-15), and the kinetic energy decays at exactly the
-analytic viscous rate.
+:::::: {.grid}
 
-*flow · projection · unsteady · verification*
-:::
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/poiseuille-ibm.jpg)](examples/poiseuille-ibm/index.qmd)
 
-::: {.g-col-12 .g-col-md-6}
-### [Lid-driven cavity vs Ghia →](examples/lid-driven-cavity/index.qmd)
-The most-cited wall-bounded benchmark: a moving lid, a primary vortex and corner
-eddies, with centreline profiles matched to the classic Ghia et al. (1982) data.
-
-*flow · boundary conditions · benchmark*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Zick–Homsy sphere arrays →](examples/zick-homsy/index.qmd)
-Creeping flow through periodic sphere packings: the cut-cell drag grid-converges
-to the classic Zick & Homsy (1982) benchmark, across solid fractions and cubic
-lattices (SC/BCC/FCC).
-
-*flow · Stokes · porous media · benchmark*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Cylinder vortex street →](examples/cylinder-vortex-street/index.qmd)
-Unsteady flow past a confined cylinder on the Schäfer–Turek benchmark geometry:
-a periodic Kármán vortex street, with the Strouhal number and pressure drop.
-
-*flow · inflow/outflow · IBM · unsteady · benchmark*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Random packed bed (dem → flow) →](examples/random-packed-bed/index.qmd)
-The first cross-method example: build a random close packing with `peclet.dem`,
-characterise it (porosity, coordination, g(r)), then push Stokes flow through the
-pores with `peclet.flow` and measure permeability vs Carman–Kozeny.
-
-*dem · flow · porous media · multi-method*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [A ring packed-bed permeability study →](examples/ring-packed-bed/index.qmd)
-What a small scientific study looks like end-to-end: pack hollow-cylinder (Raschig)
-rings with `peclet.dem`, run cut-cell Stokes flow with `peclet.flow`, validate
-(grid convergence, resolution guardrail, realization statistics), sweep the shape,
-and collapse every ring onto one Kozeny–Carman law.
-
-*dem · flow · porous media · permeability · study · DOE*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Custom-shaped particles (dem, SDF) →](examples/sdf-particle-packing/index.qmd)
-Beyond spheres: author a particle as a signed distance function (a dumbbell), turn
-it into a DEM particle — surface shell, moment of inertia and all — with
-`build_particle`, and pack a boxful.
-
-*dem · particles · SDF · non-spherical · packing*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Rotating drum (dem, moving SDF walls) →](examples/rotating-drum/index.qmd)
-The *container* is an SDF too: confine grains in a drum written as a signed distance
-function, give the wall a velocity it never actually moves at, and watch friction
-carry the bed up the rising side to a dynamic angle of repose.
-
-*dem · SDF · walls · granular · rotating-drum · friction*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Tumbling cubes (dem, non-spherical, GPU) →](examples/tumbling-cubes/index.qmd)
-Beyond spheres, at scale: fill a drum with tens of thousands of **hard cubes** on a GPU
-and spin it into a cascade. Cubes don't roll — they tumble and interlock — rendered as
-shaded, oriented 3-D cubes.
-
-*dem · non-spherical · cubes · rotating-drum · gpu · visualization*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Gas–solid fluidized bed (online CFD–DEM) →](examples/fluidized-bed/index.qmd)
-The first *online* coupling: gas and grains run together, trading drag and void
-fraction every step. Blow gas up a cylindrical vessel until the packed bed unpacks
-and boils (Gidaspow drag) — then benchmark the ArborX broadphase to a million grains.
-
-*coupling · cfd-dem · dem · flow · fluidization · gidaspow · performance*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Bidisperse segregation (jetsam & flotsam) →](examples/bidisperse-segregation/index.qmd)
-Fluidize a random mix of two grain species — small light nylon and large dense
-ceramic — and watch the bed sort itself: nylon floats into a bubbling top layer,
-ceramic sinks to a near-static base. True per-particle radius and mass, reproducing
-an MFIX-Exa qualitative benchmark and the Goldschmidt experiment.
-
-*coupling · cfd-dem · segregation · polydisperse · gidaspow · benchmark · gpu*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Single-bubble injection (a jet, a bubble, an eruption) →](examples/single-bubble-injection/index.qmd)
-Hold a cylindrical bed at incipient fluidization, then punch a short gas jet through
-a central nozzle: a single bubble nucleates, rises as a clean void — kidney-shaped,
-with a wake of raining grains — and erupts. Reproduces the Boyce MRI experiment and
-the MFIX-Exa benchmark.
-
-*coupling · cfd-dem · fluidization · bubble · gidaspow · benchmark · gpu*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [Homogeneous cooling: Haff's law & clustering →](examples/hcs-clustering/index.qmd)
-A periodic box of grains, kicked and left to cool by inelastic collisions: the
-granular temperature obeys Haff's −2 power law (matching Enskog theory to ~8%),
-the gas phase drains it faster, and density fluctuations grow past the homogeneous
-level — the clustering instability the MFIX-Exa benchmark studies at scale.
-
-*coupling · cfd-dem · granular gas · kinetic theory · haff · clustering · gpu*
-:::
-
-::: {.g-col-12 .g-col-md-6}
-### [3-D Rayleigh–Bénard convection →](examples/rayleigh-benard/index.qmd)
-Heat a box of air from below until it overturns: temperature as a transported
-scalar, a Boussinesq buoyancy closure, the critical Rayleigh number bracketed
-against Chandrasekhar's 1708, and turbulent heat transport matched to published
-DNS — plus the plumes, filmed in 3-D.
-
-*flow · scalar transport · boussinesq · natural convection · benchmark · gpu*
-:::
+::: {.card-body}
+#### [Plane Poiseuille — cut-cell IBM is exact](examples/poiseuille-ibm/index.qmd)
+Channel flow past immersed no-slip walls, reproduced to machine precision — and the validation
+trap that makes it *look* inexact.
+[flow · IBM · verification]{.tags}
 
 :::
+::::
+:::::
 
-*(More examples are landing here through the night: cylindrical pipe flow with
-genuine second-order convergence, Zick–Homsy Stokes drag through sphere arrays,
-flow past a cylinder and its vortex street, the lid-driven cavity vs Ghia, the
-Taylor–Green vortex, packed beds built with `peclet.dem`, and more.)*
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/pipe-poiseuille.jpg)](examples/pipe-poiseuille/index.qmd)
 
-## Characterization & benchmarks
+::: {.card-body}
+#### [Pipe flow — second-order convergence](examples/pipe-poiseuille/index.qmd)
+The same parabolic flow through a *curved* wall, where the cut cells show their genuine O(h²)
+accuracy.
+[flow · IBM · convergence]{.tags}
 
-Beyond *what* the suite can do, a companion set of pages measures *how well* it does
-it — accuracy (order of convergence and discretization bias), performance, and
-parallel scaling. The first: a head-to-head **[staggered vs collocated grid
-convergence](benchmarks/staggered-vs-collocated/index.qmd)** of the Stokes drag
-through a sphere array — same problem, two velocity placements, and the ~1% accuracy
-gap that survives mesh refinement. See the **[benchmarks overview](benchmarks/index.qmd)**.
-
-## Sanity checks
-
-Before a solver earns trust on a hard problem, it should reproduce the collisions that
-have a **closed-form answer**. The **[DEM sanity checks](sanity-checks/index.qmd)** page
-is a fast, self-checking scorecard: coefficient of restitution in a binary collision, the
-$e^2$ bounce-height law off a wall (plane *and* SDF), a sliding grain spinning up to
-$\tfrac57 v_0$ rolling, a static load-bearing column, and friction-driven spin deflection —
-each a measured number against the textbook. They double as a physics-regression tripwire.
-
-::: {.callout-note}
-## How these run
-Each example installs `peclet` from PyPI in its first cell, so it runs on a free
-Colab CPU runtime out of the box. Solver-backed outputs are also **frozen** into
-this site, so the pages always build without a GPU.
 :::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/taylor-green.jpg)](examples/taylor-green/index.qmd)
+
+::: {.card-body}
+#### [Taylor–Green vortex](examples/taylor-green/index.qmd)
+An exact unsteady Navier–Stokes solution: divergence projected to ~10⁻¹⁵, kinetic energy decaying
+at the analytic rate.
+[flow · projection · verification]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/lid-driven-cavity.jpg)](examples/lid-driven-cavity/index.qmd)
+
+::: {.card-body}
+#### [Lid-driven cavity](examples/lid-driven-cavity/index.qmd)
+The classic recirculating benchmark against the Ghia–Ghia–Shin tables, up to Re 1000.
+[flow · benchmark]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/developing-channel.jpg)](examples/developing-channel/index.qmd)
+
+::: {.card-body}
+#### [Developing channel flow](examples/developing-channel/index.qmd)
+A uniform stream relaxes into the parabolic profile — the entrance region with inflow/outflow
+boundaries.
+[flow · boundary conditions]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/backward-facing-step.jpg)](examples/backward-facing-step/index.qmd)
+
+::: {.card-body}
+#### [Backward-facing step](examples/backward-facing-step/index.qmd)
+Separation and reattachment: the canonical separated-flow benchmark, reattachment length tracked
+vs Reynolds number.
+[flow · separation · benchmark]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/cylinder-vortex-street.jpg)](examples/cylinder-vortex-street/index.qmd)
+
+::: {.card-body}
+#### [Cylinder vortex street](examples/cylinder-vortex-street/index.qmd)
+Kármán shedding past an immersed cylinder, drag/lift and Strouhal number vs the Schäfer–Turek
+benchmark.
+[flow · IBM · benchmark]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/rayleigh-benard.jpg)](examples/rayleigh-benard/index.qmd)
+
+::: {.card-body}
+#### [Rayleigh–Bénard convection](examples/rayleigh-benard/index.qmd)
+3-D Boussinesq convection on the GPU: critical Rayleigh number to 0.4%, Nusselt numbers matching
+published DNS.
+[flow · heat transfer · GPU]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/wall-bounded-turbulence.jpg)](examples/wall-bounded-turbulence/index.qmd)
+
+::: {.card-body}
+#### [Wall-bounded turbulence](examples/wall-bounded-turbulence/index.qmd)
+A channel DNS against the Moser–Kim–Mansour data, with the HPC submit scripts to reproduce it.
+[flow · DNS · MPI/HPC]{.tags}
+
+:::
+::::
+:::::
+
+::::::
+
+## Flow through packings & porous media
+
+:::::: {.section-lead}
+Where `dem` meets `flow`: build a packing with the particle solver, hand the geometry to the fluid
+solver as a signed-distance field, and measure drag and permeability against the literature.
+
+::::::
+
+:::::: {.grid}
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/zick-homsy.jpg)](examples/zick-homsy/index.qmd)
+
+::: {.card-body}
+#### [Zick–Homsy sphere arrays](examples/zick-homsy/index.qmd)
+Stokes drag through ordered sphere lattices to <0.5% of the exact series solutions, across the
+full solid-fraction range.
+[flow · IBM · verification]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/random-packed-bed.jpg)](examples/random-packed-bed/index.qmd)
+
+::: {.card-body}
+#### [Random packed bed](examples/random-packed-bed/index.qmd)
+Pour a packing with `dem`, solve the flow through it, recover Kozeny–Carman/Ergun permeability.
+[dem → flow · permeability]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/ring-packed-bed.jpg)](examples/ring-packed-bed/index.qmd)
+
+::: {.card-body}
+#### [Ring packed-bed permeability](examples/ring-packed-bed/index.qmd)
+A parametric ΔP study over beds of Raschig rings — non-spherical packing to pressure drop in one
+pipeline.
+[dem → flow · non-spherical]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/pore-mesh-voronoi.jpg)](examples/pore-mesh-voronoi/index.qmd)
+
+::: {.card-body}
+#### [Pore-space Voronoi mesh](examples/pore-mesh-voronoi/index.qmd)
+Tessellate the void space of a packing into a graded polyhedral mesh with the `voro` engine.
+[dem → voro · meshing]{.tags}
+
+:::
+::::
+:::::
+
+::::::
+
+## Granular dynamics
+
+:::::: {.section-lead}
+The `dem` solver on its own: dense packings of spheres and arbitrary SDF shapes, moving container
+geometry, and hundred-thousand-particle scale on one GPU.
+
+::::::
+
+:::::: {.grid}
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/sdf-particle-packing.jpg)](examples/sdf-particle-packing/index.qmd)
+
+::: {.card-body}
+#### [Custom-shaped particles](examples/sdf-particle-packing/index.qmd)
+Pack arbitrary shapes — capsules, stars, imported meshes — via signed-distance collision.
+[dem · SDF shapes]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/rotating-drum.jpg)](examples/rotating-drum/index.qmd)
+
+::: {.card-body}
+#### [Rotating drum](examples/rotating-drum/index.qmd)
+A moving SDF wall drives continuous avalanching at a steady dynamic angle of repose.
+[dem · moving walls]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/tumbling-cubes.jpg)](examples/tumbling-cubes/index.qmd)
+
+::: {.card-body}
+#### [Tumbling cubes](examples/tumbling-cubes/index.qmd)
+100,000 sharp-edged cubes cascading in a drum at ~10 ms per step on one GPU — with the movie.
+[dem · non-spherical · GPU]{.tags}
+
+:::
+::::
+:::::
+
+::::::
+
+## Gas–solid CFD-DEM
+
+:::::: {.section-lead}
+The `coupling` module runs both solvers together — volume-averaged gas, per-particle drag,
+momentum-conserving feedback — and reproduces published gas–solid benchmarks one-to-one.
+
+::::::
+
+:::::: {.grid}
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/fluidized-bed.jpg)](examples/fluidized-bed/index.qmd)
+
+::: {.card-body}
+#### [Fluidized bed at engineering scale](examples/fluidized-bed/index.qmd)
+One million 1 mm glass beads in air: the bed unpacks, bubbles, and carries its weight in the
+pressure drop — live CFD-DEM on one GPU.
+[coupling · 10⁶ particles · GPU]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/single-bubble-injection.jpg)](examples/single-bubble-injection/index.qmd)
+
+::: {.card-body}
+#### [Single-bubble injection](examples/single-bubble-injection/index.qmd)
+An injected bubble rises through an incipient bed — shape and rise velocity against MRI
+measurements and MFIX-Exa.
+[coupling · validation]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/bidisperse-segregation.jpg)](examples/bidisperse-segregation/index.qmd)
+
+::: {.card-body}
+#### [Bidisperse segregation](examples/bidisperse-segregation/index.qmd)
+Jetsam sinks, flotsam floats: species segregation in a bubbling bed, following the MFIX-Exa
+configuration.
+[coupling · segregation]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/hcs-clustering.jpg)](examples/hcs-clustering/index.qmd)
+
+::: {.card-body}
+#### [Homogeneous cooling & clustering](examples/hcs-clustering/index.qmd)
+Haff's law, the clustering instability, and a one-to-one energy-decay overlay with the MFIX-Exa
+benchmark.
+[coupling · benchmark]{.tags}
+
+:::
+::::
+:::::
+
+::::::
+
+---
+
+## Trust, but verify
+
+The examples above *show* what the suite does; two growing collections *prove* it stays correct:
+
+:::::: {.grid}
+
+::::: {.g-col-12 .g-col-md-6}
+:::: {.gallery-card}
+::: {.card-body}
+#### [Sanity checks →](sanity-checks/index.qmd)
+Small problems with closed-form answers — restitution, wall bounce, sliding-to-rolling, static
+stacks, spin–friction coupling, and a deep layered bed at rest. Each check records a number
+against theory in a pass/fail scorecard; together they are the regression tripwire run against
+every solver change. New checks are added as new physics lands.
+[dem · regression · scorecard]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-md-6}
+:::: {.gallery-card}
+::: {.card-body}
+#### [Benchmarks →](benchmarks/index.qmd)
+Quantitative characterization where there is a trade-off to measure, not just a pass to record —
+discretization variants, convergence orders, accuracy-versus-cost. Start with
+[staggered vs collocated](benchmarks/staggered-vs-collocated/index.qmd) Stokes-drag convergence.
+This collection grows as design decisions get measured.
+[flow · convergence · characterization]{.tags}
+
+:::
+::::
+:::::
+
+::::::
+
+## Run any of this yourself
+
+Every page is a self-contained notebook: it builds its geometry and sets every parameter inline.
+Click the *Open in Colab* badge on any example to run it on a free CPU runtime, or:
+
+```bash
+pip install peclet && git clone https://github.com/computational-chemical-engineering/peclet-examples
+quarto render peclet-examples/examples/taylor-green/index.qmd --execute
+```
+
+The GPU sections (million-particle beds, cube drums, DNS) need the CUDA wheels or a local build —
+each page's *Reproduce this* section gives the exact commands.
+
+:::::: {.callout-note}
+## How these pages build
+Solver-backed outputs are executed by the authors and **frozen** into the repository, so the site
+always builds without a GPU — and what you read is exactly what the released code produced.
+
+::::::

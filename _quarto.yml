@@ -23,63 +23,65 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - text: Examples
+      - text: "Single-phase flow"
         menu:
           - href: examples/poiseuille-ibm/index.qmd
             text: "Plane Poiseuille (cut-cell IBM, exact)"
-          - href: examples/developing-channel/index.qmd
-            text: "Developing channel (inflow/outflow)"
-          - href: examples/backward-facing-step/index.qmd
-            text: "Backward-facing step (separation)"
           - href: examples/pipe-poiseuille/index.qmd
             text: "Pipe Poiseuille (curved wall, 2nd order)"
           - href: examples/taylor-green/index.qmd
             text: "Taylor–Green vortex"
           - href: examples/lid-driven-cavity/index.qmd
             text: "Lid-driven cavity (vs Ghia)"
-          - href: examples/zick-homsy/index.qmd
-            text: "Zick–Homsy sphere arrays"
+          - href: examples/developing-channel/index.qmd
+            text: "Developing channel (inflow/outflow)"
+          - href: examples/backward-facing-step/index.qmd
+            text: "Backward-facing step (separation)"
           - href: examples/cylinder-vortex-street/index.qmd
             text: "Cylinder vortex street (Schäfer–Turek)"
+          - href: examples/rayleigh-benard/index.qmd
+            text: "Rayleigh–Bénard convection (3-D, GPU)"
+          - href: examples/wall-bounded-turbulence/index.qmd
+            text: "Wall-bounded turbulence (DNS vs MKM, HPC)"
+      - text: "Packings & porous"
+        menu:
+          - href: examples/zick-homsy/index.qmd
+            text: "Zick–Homsy sphere arrays"
           - href: examples/random-packed-bed/index.qmd
             text: "Random packed bed (dem → flow)"
           - href: examples/ring-packed-bed/index.qmd
-            text: "Ring packed-bed permeability study (dem → flow)"
-          - href: examples/sdf-particle-packing/index.qmd
-            text: "Custom-shaped particles (dem, SDF)"
-          - href: examples/rotating-drum/index.qmd
-            text: "Rotating drum (dem, moving SDF walls)"
-          - href: examples/tumbling-cubes/index.qmd
-            text: "Tumbling cubes (dem, non-spherical, GPU)"
-          - href: examples/fluidized-bed/index.qmd
-            text: "Fluidized bed (online CFD–DEM, Gidaspow)"
-          - href: examples/bidisperse-segregation/index.qmd
-            text: "Bidisperse segregation (jetsam/flotsam, MFIX-Exa)"
-          - href: examples/single-bubble-injection/index.qmd
-            text: "Single-bubble injection (Boyce MRI, MFIX-Exa)"
-          - href: examples/hcs-clustering/index.qmd
-            text: "Homogeneous cooling & clustering (Haff, MFIX-Exa)"
-          - href: examples/rayleigh-benard/index.qmd
-            text: "Rayleigh–Bénard convection (3-D, Boussinesq, GPU)"
-          - href: examples/wall-bounded-turbulence/index.qmd
-            text: "Wall-bounded turbulence (channel DNS vs MKM, HPC)"
+            text: "Ring packed-bed permeability (dem → flow)"
           - href: examples/pore-mesh-voronoi/index.qmd
-            text: "Pore-space Voronoi mesh (dem → voro, graded)"
-      - text: Benchmarks
+            text: "Pore-space Voronoi mesh (dem → voro)"
+      - text: "Granular (DEM)"
         menu:
-          - href: benchmarks/index.qmd
-            text: "Characterization & benchmarks (overview)"
-          - href: benchmarks/staggered-vs-collocated/index.qmd
-            text: "Staggered vs collocated (Stokes-drag convergence)"
-      - text: Sanity checks
+          - href: examples/sdf-particle-packing/index.qmd
+            text: "Custom-shaped particles (SDF)"
+          - href: examples/rotating-drum/index.qmd
+            text: "Rotating drum (moving SDF walls)"
+          - href: examples/tumbling-cubes/index.qmd
+            text: "Tumbling cubes (non-spherical, GPU)"
+      - text: "CFD-DEM"
+        menu:
+          - href: examples/fluidized-bed/index.qmd
+            text: "Fluidized bed (1M particles, GPU)"
+          - href: examples/single-bubble-injection/index.qmd
+            text: "Single-bubble injection (MRI, MFIX-Exa)"
+          - href: examples/bidisperse-segregation/index.qmd
+            text: "Bidisperse segregation (MFIX-Exa)"
+          - href: examples/hcs-clustering/index.qmd
+            text: "Homogeneous cooling & clustering (MFIX-Exa)"
+      - text: "Validation"
         menu:
           - href: sanity-checks/index.qmd
-            text: "DEM sanity checks (restitution, friction, stacks)"
+            text: "DEM sanity checks (scorecard)"
+          - href: benchmarks/index.qmd
+            text: "Benchmarks (overview)"
+          - href: benchmarks/staggered-vs-collocated/index.qmd
+            text: "Staggered vs collocated (convergence)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"
-      - icon: youtube
-        href: "https://www.youtube.com/"      # -> Peclet channel
 
 format:
   html:
