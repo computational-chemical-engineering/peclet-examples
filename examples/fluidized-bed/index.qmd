@@ -1,9 +1,9 @@
 ---
 title: "Gas–solid fluidized bed: online CFD–DEM coupling"
-subtitle: "Blow gas up through a cylinder of grains until the bed unpacks and boils — the two solvers exchanging drag and void fraction every step — then run the real thing: a million 1 mm glass beads in air at 2.0 U~mf~, on the GPU, with a movie."
+subtitle: "Blow gas up through a cylinder of grains until the bed unpacks and boils — the two solvers exchanging drag and void fraction every step — then reproduce a million-particle X-ray tomography benchmark, bubble by bubble, on one GPU."
 author: "Peclet"
 date: "2026-07-06"
-categories: [coupling, cfd-dem, dem, flow, fluidization, gidaspow, ergun, sdf, gpu, performance]
+categories: [coupling, cfd-dem, dem, flow, fluidization, beetstra, x-ray, validation, sdf, gpu, performance]
 jupyter: python3
 ---
 
@@ -27,9 +27,9 @@ stable. You will:
 2. Drive it with a **gas inflow at the bottom** and an **outflow at the top**, close the momentum
    exchange with the **Gidaspow** drag law, and watch the bed **fluidize** once the gas clears
    minimum fluidization.
-3. Run it at engineering conditions: **one million 1 mm glass beads in air at 2.0 U~mf~**, check the
-   textbook criterion **ΔP ≈ bed weight per area**, and render the boiling bed into a movie —
-   everything executes live in this notebook.
+3. Reproduce a **published X-ray tomography benchmark** at full experimental scale — the
+   0.1 m cylindrical bed of Verma et al. (2014), one million 1 mm glass beads at 1.5 U~mf~ —
+   and compare bubble sizes, rise velocities, and porosity distributions plane by plane.
 
 ```{python}
 #| label: bootstrap
@@ -226,182 +226,164 @@ plt.title("fluidization curve"); plt.legend(); plt.tight_layout()
 print("bed height vs U:", {U: round(h, 2) for U, h in zip(Us, Hs)})
 ```
 
-## The real thing: a million 1 mm glass beads in air
+## The real thing: reproducing an X-ray tomography benchmark with a million beads
 
-Now at engineering conditions. **1 mm glass beads** (ρ~p~ = 2500 kg/m³) in **ambient air**
-(ρ~g~ = 1.2 kg/m³, μ = 1.8·10⁻⁵ Pa·s), driven at **2.0 × U~mf~**. Minimum fluidization from the
-Archimedes number (the Wen & Yu / Grace correlation):
+For the engineering-scale run we reproduce a **published, experimentally measured** system:
+the cylindrical gas-fluidized bed of [Verma et al. (2014)](https://doi.org/10.1002/aic.14393),
+imaged at Helmholtz-Zentrum Dresden-Rossendorf with **ultrafast electron-beam X-ray tomography**
+(1000 cross-sections per second, two planes 11 mm apart) and simulated by the authors with a
+two-fluid model. Their glass case at bed aspect ratio 1.0 is, fortuitously, an almost exactly
+**one-million-particle** system — and every parameter is documented:
+
+| | Verma et al. (Tables 5–6) | here |
+|---|---|---|
+| column | D = 0.1 m cylinder, 0.36 m simulated | cut-cell IBM cylinder, 32 cells across (h = 3.1 mm ≈ 3.1 d~p~), 0.36 m |
+| particles | glass, d~p~ = 1.0 mm, ρ = 2526 kg/m³ | 965,000 spheres → H₀ = 0.10 m (AR = 1.0) |
+| collisions | e~n~ = 0.86 (their calibrated value) | e = 0.86, μ = 0.1 (glass–glass) |
+| gas | air, uniform inflow through a porous plate | inflow floor at the superficial velocity, outflow roof |
+| velocity | U = 1.5 U~mf~, U~mf~ = 0.68 m/s | identical |
+| drag | van der Hoef / Beetstra lattice-Boltzmann closure | `drag="beetstra"` |
+| duration | 20 s, first 1 s discarded | 6.5 s, first 1 s discarded |
+
+The canonical run lives in
+[`make_verma_bed.py`](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/fluidized-bed/make_verma_bed.py)
+(a ~20 h single-GPU job: settle, then 16,250 coupled steps of 0.4 ms with 20 DEM substeps each).
+It writes the porosity time series at the paper's measurement planes plus full 3-D porosity
+frames; the cells below post-process them **exactly the way the paper post-processes its
+tomograms** — bubbles are connected ε > 0.7 regions in a horizontal plane (with linear sub-grid
+interpolation), the equivalent diameter is the number average of $\sqrt{4A/\pi}$, and the rise
+velocity comes from cross-correlating the two planes of a pair.
 
 ```{python}
-dp_m, rho_p_si, rho_g_si, mu_si, g_si = 1.0e-3, 2500.0, 1.2, 1.8e-5, 9.81
-Ar    = rho_g_si * (rho_p_si - rho_g_si) * g_si * dp_m**3 / mu_si**2
-Re_mf = np.sqrt(33.7**2 + 0.0408 * Ar) - 33.7
-U_mf  = Re_mf * mu_si / (rho_g_si * dp_m)
-U_si  = 2.0 * U_mf
-print(f"Ar = {Ar:.3g}   Re_mf = {Re_mf:.1f}   U_mf = {U_mf:.2f} m/s   U = 2.0 U_mf = {U_si:.2f} m/s")
+#| code-summary: "Load the run and detect bubbles at the paper's measurement planes"
+from scipy import ndimage
+fb = np.load("verma_bed.npz")
+planes, kzv, h_m = fb["planes"], fb["kz"], float(fb["h_m"])
+dt_frame = float(fb["dt"]) * int(fb["sample_every"])
+inmask = fb["inmask"]
+Pn = planes[int(round(1.0 / dt_frame)):]              # discard t < 1 s, like the paper
+mz = ndimage.zoom(inmask.astype(float), 4, order=1) > 0.5
+cell_area, min_area = (h_m / 4) ** 2, 2 * h_m ** 2
+
+def bubbles(plane):
+    z = ndimage.zoom(plane, 4, order=1)               # their linear boundary interpolation
+    lab, n = ndimage.label((z > 0.7) & mz)
+    if n == 0: return []
+    A = ndimage.sum_labels(np.ones_like(z), lab, np.arange(1, n + 1)) * cell_area
+    return list(np.sqrt(4 * A[A >= min_area] / np.pi))
+
+De_planes, vb = {}, {}
+for jlo, jhi, H in [(0, 1, 0.05), (2, 3, 0.10)]:
+    allD = [d for fr in Pn for d in bubbles(fr[jlo])]
+    De_planes[H] = (np.mean(allD), np.std(allD), len(allD))
+    a = Pn[:, jlo][:, inmask]; b = Pn[:, jhi][:, inmask]
+    a = a - a.mean(axis=0); b = b - b.mean(axis=0)    # their Eq 7, area-weighted CCF
+    R = np.array([np.mean(np.sum(a[:len(a)-n] * b[n:], axis=1)) for n in range(40)])
+    n0 = int(np.argmax(R[1:]) + 1)
+    num, den = R[n0-1] - R[n0+1], 2 * (R[n0-1] - 2*R[n0] + R[n0+1])
+    n0 = n0 + max(-0.5, min(0.5, num/den if den else 0.0))
+    vb[H] = (kzv[jhi] - kzv[jlo]) * h_m / (n0 * dt_frame)
+for H in (0.05, 0.10):
+    De, sd, n = De_planes[H]
+    print(f"H = {H*100:.0f} cm:  De = {De*1e3:4.1f} mm (±{sd*1e3:.0f}, n={n})   "
+          f"bubble rise = {vb[H]:.2f} m/s")
 ```
 
-The solvers run in **cell units** — lengths in cells of `h = 5 d_p = 5 mm`, time in seconds,
-densities in kg/m³. That one substitution (`x → x/h`, so `velocity/h`, `gravity/h`, `μ/h²`) preserves
-every dimensionless group (Ar, Re, Froude), and the dictionary back to SI is just `length × h`,
-`velocity × h`, `pressure × h²`. The vessel is **D = 10 cm** (100 grain diameters across), **40 cm**
-tall; a million beads settle into a bed about **10 cm** deep (H/D ≈ 1).
+The bubble-size *profile* — the paper's central figure — comes from the stored 3-D frames
+(precomputed by
+[`compute_verma_profile.py`](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/fluidized-bed/compute_verma_profile.py)),
+with their X-ray measurements and TFM digitized from their Figure 14 and the two literature
+correlations they compare against:
 
 ```{python}
-h_m = 5 * dp_m                                   # cell size, m
-NXm = NYm = 22; NZm = 80                         # 11 x 11 x 40 cm box
-Rm, cxm   = 10.0, 11.0                           # vessel R = 5 cm
-H_lid     = 64.0                                 # grain lid (gas leaves above it)
-Nbig      = 1_000_000
-dpc, rpc  = dp_m / h_m, dp_m / h_m / 2           # grain: 0.2 cells
-mu_c, g_c, U_c = mu_si / h_m**2, g_si / h_m, U_si / h_m
-m_pc      = rho_p_si * (4/3) * np.pi * rpc**3
-dt        = 1.0e-3                               # fluid step, s (20 DEM substeps of 50 us)
-print(f"grid {NXm}x{NYm}x{NZm} = {NXm*NYm*NZm:,} cells   U = {U_c:.0f} cells/s   g = {g_c:.0f} cells/s^2")
-```
+#| label: fig-verma-profile
+#| fig-cap: "Equivalent bubble diameter vs height for glass at 1.5 U~mf~: this CFD-DEM (line, cut at the bed surface; circles mark the paper's two AR = 1.0 measurement planes) against Verma et al.'s X-ray measurements and two-fluid model (digitized from their Fig. 14) and the Darton and Werther correlations. CFD-DEM sits on the large side where their TFM sits on the small side; the measurements lie between, closest to CFD-DEM higher in the bed."
+prof = np.load("verma_profile.npz")
+Hp, Dep = prof["H"], prof["De"]
+sel = Hp <= 0.115                                     # our AR = 1.0 bed surface; above is freeboard
+Hexp = np.array([0.040, 0.050, 0.095, 0.100, 0.190, 0.200])
+Dexp = np.array([0.022, 0.026, 0.032, 0.038, 0.039, 0.040])
+Htfm = np.array([0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20])
+Dtfm = np.array([0.015, 0.019, 0.024, 0.028, 0.033, 0.036, 0.040, 0.043, 0.044, 0.045])
+Hc = np.linspace(0.01, 0.20, 60); Uex = 0.5 * 0.68
+Darton  = 0.54 * Uex**0.4 * Hc**0.8 * 9.81**-0.2
+Werther = 0.00853 * (1 + 27*Uex)**(1/3) * (1 + 6.4*Hc)**1.21
 
-```{python}
-#| code-summary: "Build the SI vessel + pour and settle a million beads"
-sB = flow.Solver(NXm, NYm, NZm)
-sB.set_rho(rho_g_si); sB.set_mu(mu_c); sB.set_dt(dt)
-sB.set_domain_bc(4, 2, 0.0, 0.0, U_c); sB.set_domain_bc(5, 3)
-for f in (0, 1, 2, 3): sB.set_domain_bc(f, 1)
-sB.set_pressure_pcg(True, 50, 1e-6)
-Xm, Ym, _ = np.meshgrid(np.arange(NXm)+.5, np.arange(NYm)+.5, np.arange(NZm)+.5, indexing="ij")
-sB.set_solid(np.asfortranarray((Rm - np.hypot(Xm-cxm, Ym-cxm)).astype(np.float64)).flatten(order="F"), True)
-
-# pour: a jittered near-dense lattice inside the cylinder, then let the DEM settle it under gravity
-sp = 1.05 * dpc
-nxy = int(2*(Rm - 2*rpc)/sp)
-xs = cxm - (nxy/2)*sp + (np.arange(nxy)+0.5)*sp
-posB, k = [], 0
-while len(posB) < Nbig:
-    z = 2*rpc + (k + 0.5) * sp
-    for ix in range(nxy):
-        for iy in range(nxy):
-            if (xs[ix]-cxm)**2 + (xs[iy]-cxm)**2 < (Rm-1.5*rpc)**2:
-                posB.append((xs[ix], xs[iy], z))
-    k += 1
-posB = np.array(posB[:Nbig], np.float32)
-posB[:, :2] += np.random.default_rng(7).uniform(-0.01, 0.01, (Nbig, 2)).astype(np.float32)
-
-dB = dem.Simulation(int(1.15*Nbig) + 256)
-dB.initialize(shape_type=1, radius=rpc)
-dB.set_domain((0, 0, 0), (NXm, NYm, NZm)); dB.enable_periodicity(False, False, False)
-dB.set_gravity(0, 0, -g_c)
-dB.set_material_params(0.8, 0.0, 0.2)
-dB.set_dt(dt / 20)
-def wall_big(p):
-    return np.minimum.reduce([Rm - np.hypot(p[:,0]-cxm, p[:,1]-cxm), p[:,2], H_lid - p[:,2]])
-build_wall_sdf(wall_big, ((0,0,0), (NXm,NYm,NZm)), resolution=160).add_to(dB, restitution=0.7, friction=0.3)
-dB.set_positions(np.c_[posB, np.full(Nbig, 1.0/m_pc, np.float32)])
-dB.set_velocities(np.zeros((Nbig, 3), np.float32))
-# A static column carries its weight through contact chains, and the position solve propagates a
-# correction roughly one particle layer per sweep — this bed is ~110 layers of d_p deep, so give the
-# solve an iteration budget of that order for the settling transient (the adaptive stop exits early
-# once converged, so the high cap costs little afterwards).
-dB.set_solver_iterations(120, 4)
-
-t0 = time.time()
-for _ in range(4000):                            # 0.2 s of pure DEM settling
-    dB.step(dt / 20)
-pz = dB.get_positions()[:Nbig, 2]
-print(f"settled in {time.time()-t0:.0f}s: bed top z95 = {np.percentile(pz,95)*h_m*100:.1f} cm")
-```
-
-Fluidize at 2.0 U~mf~ for **1.5 seconds** of physical time, recording a movie frame every 10 ms and
-the two key diagnostics — the **bed pressure drop** and the **bed height** — as it runs. The textbook
-check for a fluidized bed is `ΔP ≈ M·g/A` — once fluidized, the gas carries the weight of the solids.
-
-```{python}
-cplB = CfdDem(sB, dB, fluid_dt=dt, mu=mu_c, rho=rho_g_si, radius=rpc, drag="gidaspow",
-              dem_substeps=20, periodic=(False, False, False), move_particles=True, porous=True)
-
-W_over_A = Nbig * m_pc * g_c / (np.pi * Rm**2) * h_m**2           # bed weight / area, Pa
-inside = np.hypot(Xm[:, :, 0] - cxm, Ym[:, :, 0] - cxm) < Rm - 1  # cells inside the vessel
-
-frames, dPs, beds = [], [], []
-steps, every = 1500, 10                                           # 1.5 s, frame every 10 ms
-t0 = time.time()
-for i in range(steps):
-    cplB.step()
-    p = sB.get_p()
-    dPs.append((np.nanmean(p[:, :, 1][inside]) - np.nanmean(p[:, :, -2][inside])) * h_m**2)
-    if i % every == 0:
-        pp, vv = cplB._particles()
-        pp, vv = to_np(pp), to_np(vv)
-        front = pp[:, 1] <= cxm                                   # front-half cutaway
-        frames.append((pp[front].copy(), (np.linalg.norm(vv[front], axis=1) * h_m).astype(np.float32)))
-        beds.append(np.percentile(pp[:, 2], 95) * h_m)
-wall = time.time() - t0
-print(f"{steps} coupled steps ({steps*dt:.1f} s physical) in {wall/60:.1f} min "
-      f"({wall/steps*1e3:.0f} ms/step at {Nbig:,} grains)")
-print(f"final dP = {dPs[-1]:.0f} Pa   bed weight/A = {W_over_A:.0f} Pa   ratio = {dPs[-1]/W_over_A:.2f}")
+fig, ax = plt.subplots(figsize=(6.4, 4.2))
+ax.plot(Hp[sel], Dep[sel]*1e3, color="#2a6fdb", lw=2, label="peclet CFD-DEM (1M particles)")
+for H in (0.05, 0.10):
+    ax.plot(H, De_planes[H][0]*1e3, "o", color="#2a6fdb", ms=8)
+ax.plot(Hexp, Dexp*1e3, "s", color="k", ms=6, label="X-ray experiment (Verma et al.)")
+ax.plot(Htfm, Dtfm*1e3, "^-", color="0.55", ms=4, lw=1, label="their TFM")
+ax.plot(Hc, Darton*1e3, "--", color="crimson", lw=1, label="Darton et al.")
+ax.plot(Hc, Werther*1e3, "-", color="crimson", lw=1, label="Werther")
+ax.set(xlabel="height above distributor H [m]", ylabel="equivalent bubble diameter $D_e$ [mm]",
+       xlim=(0, 0.21), ylim=(0, 60))
+ax.legend(fontsize=8); plt.show()
 ```
 
 ```{python}
-#| label: fig-si-diag
-#| fig-cap: "The engineering checks. Left: after the startup slug's ΔP spike, the bed pressure drop oscillates with the bubbling around the bed-weight line — the gas carries the solids (the printed ratio above is the quantitative check). Right: the bed surface bubbles around its working height."
-fig, ax = plt.subplots(1, 2, figsize=(9, 3.2))
-ax[0].plot(np.arange(len(dPs)) * dt, dPs, lw=1)
-ax[0].axhline(W_over_A, ls="--", c="C3", label="bed weight / area")
-ax[0].set(xlabel="time [s]", ylabel="ΔP over the bed [Pa]"); ax[0].legend()
-ax[1].plot(np.arange(len(beds)) * every * dt, np.array(beds) * 100, lw=1.5, color="C1")
-ax[1].set(xlabel="time [s]", ylabel="bed height z95 [cm]")
-plt.tight_layout()
+#| label: fig-verma-pdf
+#| fig-cap: "Left: porosity PDFs at the two measurement planes (0.04 bins, their convention) — a dense emulsion peak near ε~mf~ ≈ 0.40 and a bubble-phase peak at ε ≈ 0.92 (the X-ray calibration puts their emulsion peak at ≈ 0.56 with the bubble peak at ≈ 0.88). Right: the bed pressure drop oscillates about the bed weight per area — time-mean 0.92 W/A — while the bed surface breathes around 14–15 cm."
+bins = np.arange(0.30, 1.02, 0.04)
+fig, axs = plt.subplots(1, 2, figsize=(9, 3.4))
+for j, H, c in [(0, 0.05, "#2a6fdb"), (2, 0.10, "#e08a1e")]:
+    hist, _ = np.histogram(Pn[:, j][:, inmask].ravel(), bins=bins, density=True)
+    axs[0].plot(bins[:-1] + 0.02, hist, "-o", ms=3, color=c, label=f"H = {H*100:.0f} cm")
+axs[0].set(xlabel="porosity ε", ylabel="PDF"); axs[0].legend()
+dPs, W_A = fb["dPs"], float(fb["W_over_A"])
+td = np.arange(len(dPs)) * dt_frame
+axs[1].plot(td, dPs, lw=0.8)
+axs[1].axhline(W_A, color="crimson", ls="--", label="bed weight / area")
+i0d = int(round(1.0 / dt_frame))
+axs[1].set(xlabel="time [s]", ylabel="ΔP [Pa]"); axs[1].legend()
+plt.tight_layout(); plt.show()
+print(f"<dP>/(W/A) over t = 1–6.5 s: {dPs[i0d:].mean()/W_A:.2f}")
 ```
 
-Render the recorded front-half cutaways with [PyVista](https://pyvista.org) — half a million visible
-grains per frame, coloured by speed — and write the movie:
+And the bubbles themselves, rendered as the ε = 0.7 isosurface — the same contour the paper
+draws in its Figure 6: small bubbles emerge near the distributor, coalesce into large central
+bubbles, and erupt through the domed, breathing bed surface.
 
-```{python}
-#| code-summary: "PyVista offscreen renderer -> fluidized_bed_1M.mp4"
-import pyvista as pv, imageio.v2 as imageio
-pv.OFF_SCREEN = True
-writer = imageio.get_writer("fluidized_bed_1M.mp4", fps=20, quality=8)
-for pts, spd in frames:
-    cloud = pv.PolyData(pts.astype(np.float32))
-    cloud["speed [m/s]"] = spd
-    pl = pv.Plotter(off_screen=True, window_size=(560, 912))
-    pl.background_color = "white"
-    pl.add_mesh(cloud, scalars="speed [m/s]", cmap="turbo", clim=(0.0, 1.5),
-                point_size=2.4, render_points_as_spheres=True,
-                scalar_bar_args=dict(vertical=True, position_x=0.86, position_y=0.30,
-                                     height=0.45, width=0.07, title="speed [m/s]"))
-    pl.add_mesh(pv.Cylinder(center=(cxm, cxm, 20), direction=(0, 0, 1),
-                            radius=Rm, height=40), color="gray", opacity=0.05)
-    pl.camera_position = [(cxm, -50, 21), (cxm, cxm, 14), (0, 0, 1)]
-    pl.hide_axes()
-    writer.append_data(pl.screenshot(return_img=True)); pl.close()
-writer.close()
-print(f"{len(frames)} frames -> fluidized_bed_1M.mp4")
-```
+{{< video verma_bubbles.mp4 >}}
 
-<video controls autoplay loop muted playsinline width="100%" style="max-width:560px;display:block;margin:0 auto;border-radius:6px;">
-  <source src="fluidized_bed_1M.mp4" type="video/mp4">
-</video>
+**How close is the reproduction?** With *no tuned parameters* — geometry, material, restitution,
+velocity, and drag closure all taken from their tables, plus this suite's documented defaults —
+the comparison stands as:
 
-A **D/d~p~ = 100** column at 2.0 U~mf~ is a vigorously bubbling/slugging bed (1 mm glass sits near the
-Geldart B/D boundary): gas voids nucleate at the distributor, coalesce as they rise, and erupt through
-the surface, raining grains back down the walls. The startup is itself textbook: the packed bed
-unpacks with one violent slug (the ΔP spike), overshoots, and collapses into sustained bubbling.
+| quantity | CFD-DEM (here) | X-ray | their TFM |
+|---|---|---|---|
+| D~e~ at H = 10 cm | 41.5 mm | ≈ 38 mm | ≈ 33 mm |
+| D~e~ at H = 5 cm | 35 mm | ≈ 26 mm | ≈ 20 mm |
+| bubble rise at 5 cm | 0.63 m/s | ≈ 0.55 m/s | ≈ 0.45 m/s |
+| bubble rise at 10 cm | 0.89 m/s | ≈ 0.60 m/s | ≈ 0.62 m/s |
+| ⟨ΔP⟩ / (W/A) | 0.92 | — | — |
+
+Higher in the bed the bubble size lands within ~10% of the measurement — from the *large* side,
+where the TFM approaches from the small side. Near the distributor we over-predict: the vigorous
+coalescence region produces many mid-size detections that the X-ray processing partially merges
+into its larger bubbles. The 10-cm rise velocity is high — 1 mm glass sits on the Geldart B/D
+border, where gas *through-flow* in large bubbles (which a discrete drag model resolves per
+particle) raises the apparent void propagation speed. The porosity PDFs agree on the bubble
+phase; the emulsion peak sits at our physically packed ε ≈ 0.40 versus ≈ 0.56 from their
+attenuation calibration. For a first-shot, no-tuning reproduction across five measured
+quantities, this is the kind of agreement that makes the benchmark worth keeping in the suite.
 
 ## Performance
 
-The numbers above are the honest, *dense-bed*, fully-coupled cost on one RTX 5080: a **million-grain
-coupled step in ~1.2 s** — 20 XPBD substeps on a packed, contact-rich bed (ArborX broad-phase +
-narrow-phase + constraint solve, ~58 ms per substep ≈ 17 M grain-substeps/s at packing fraction ~0.6)
-plus the volume-averaged fluid solve on the 39k-cell grid; a loosely packed bed steps in half that.
-The whole 2-second movie run is ~40 minutes of wall clock. The
-coupling itself stays on-device end to end (void-fraction deposit, drag, reaction, and the DEM force
-buffer are all zero-copy device views); the only per-frame host traffic is the ~12 MB of positions the
-renderer needs.
+The full benchmark run — 965,000 grains, 119k fluid cells, 16,250 coupled steps of 0.4 ms with
+20 XPBD substeps each — took **20.8 h on one RTX 5080**, i.e. ~4.8 s per coupled step with a
+contact-rich packed bed and the cut-cell projection at every step. The coupling is device-resident
+end to end (void-fraction deposit, drag, reaction, and the DEM force buffer are zero-copy device
+views); the recorded diagnostics (two plane pairs at 2 ms, full 3-D porosity at 10 ms) are the only
+host traffic.
 
 ## Adapt this yourself
 
-- **Change the drag law.** `drag="wen_yu"`, `"di_felice"`, `"schiller_naumann"`, `"stokes"` — or
-  `"gidaspow"` here. Each is a device-inline correlation in `coupling/src/drag.hpp`; the porous mode
-  applies the Model-B `β/ε` conversion to any of them.
+- **Change the drag law.** `drag="wen_yu"`, `"di_felice"`, `"schiller_naumann"`, `"stokes"`,
+  `"gidaspow"` (the demo above), `"beetstra"`, `"tang"` (the benchmarks). Each is a device-inline
+  correlation in `coupling/src/drag.hpp`; the porous mode applies the Model-B `β/ε` conversion to
+  any of them.
 - **Change the vessel.** The wall SDFs are ordinary functions — swap the cylinder for a cone (spouted
   bed), add a draft tube, or make the distributor a perforated plate.
 - **Go multi-rank.** Build the `peclet-*-mpi` modules, pass `flow.init_mpi` / `dem.init_mpi` the same

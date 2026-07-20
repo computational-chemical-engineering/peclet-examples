@@ -64,7 +64,7 @@ website:
       - text: "CFD-DEM"
         menu:
           - href: examples/fluidized-bed/index.qmd
-            text: "Fluidized bed (1M particles, GPU)"
+            text: "Fluidized bed (X-ray benchmark, 1M, GPU)"
           - href: examples/single-bubble-injection/index.qmd
             text: "Single-bubble injection (MRI, MFIX-Exa)"
           - href: examples/bidisperse-segregation/index.qmd
@@ -79,6 +79,8 @@ website:
             text: "Benchmarks (overview)"
           - href: benchmarks/staggered-vs-collocated/index.qmd
             text: "Staggered vs collocated (convergence)"
+          - href: benchmarks/dem-bulk-dosta2024/index.qmd
+            text: "DEM8 bulk benchmark (Dosta et al. 2024)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

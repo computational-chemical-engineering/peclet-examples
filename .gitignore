@@ -30,3 +30,4 @@ dist/
 /site_libs/
 
 **/*.quarto_ipynb
+examples/fluidized-bed/verma_frames/
