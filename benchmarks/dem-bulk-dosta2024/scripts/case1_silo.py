@@ -13,7 +13,6 @@ Geometry read off the benchmark wall meshes:
   small orifice: lip z0 = -0.0593008, r_orif = 0.02, cone height 0.08, top z = 0.3207
 """
 import argparse
-import os
 import time
 
 import numpy as np
@@ -21,7 +20,7 @@ import numpy as np
 from peclet import dem
 from peclet.dem import build_wall_sdf
 
-IC_DIR = os.environ.get("DOSTA_IC") or (
+IC_DIR = (
     "/tmp/claude-1003/-home-frankp-Codes-suite/9e9b807a-7a8a-4948-a080-545a0f831797/"
     "scratchpad/dosta2024/SupplementaryMaterial/InitialCoordinates/Case 1 - SiloFlow"
 )

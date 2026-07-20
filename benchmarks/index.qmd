@@ -32,10 +32,12 @@ benchmark), the characterization is measured *against it*.
 The three Dosta et al. (2024) community benchmark cases — silo emptying (100k),
 drum mixing (38k bimodal), and ball impact on 25–100k beds — run from the paper's
 shared initial states, head-to-head against **MUSEN** (GPU) and **LIGGGHTS** (24 MPI
-ranks) re-run on the same machine. Shallow-bed impact matches the references exactly
-at a 100× larger time step and a fraction of the wall-clock; silo, drum, and
-deep-bed impact bracket them and pin three solver-level findings (two fixed during
-the benchmark, one open with quantified targets).
+ranks) re-run on the same machine. The first run found real gaps and drove a
+three-day solver campaign (per-pair materials, friction-cone tangential impulses,
+a staged stabilization pass); the final solver sits inside or at the reference
+envelope on silo rate and Beverloo ratio, drum amplitude, and impact penetration —
+at a 100× larger time step and 2.5–7× less GPU wall-clock than the study's fastest
+code. Every intermediate configuration is kept as the diagnostic record.
 
 *dem · accuracy · performance · benchmark · validation*
 :::

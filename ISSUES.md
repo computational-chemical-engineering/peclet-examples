@@ -338,7 +338,7 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   `set_pressure_solver_params(6)` and no PCG/Chebyshev call.
 
 ## DEM benchmark: warm-started PGS silently disabled Coulomb friction
-- **Status:** investigating (fix validated in a benchmark sandbox; to land with the PGS push)
+- **Status:** resolved (dem `b00c518` interim bound; superseded by cone friction in `f6fb7d2`)
 - **Package / area:** dem (velocity solve / friction cluster)
 - **Found in:** benchmarks/dem-bulk-dosta2024 (Dosta et al. 2024 silo + drum cases)
 - **Observed:** silo discharge identical at mu = 0, 0.3, 0.6, 0.9; drum bed does not circulate
@@ -355,7 +355,9 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   handle before enabling on periodic boxes.
 
 ## DEM benchmark: grounded one-sided shock branch too strong for ballistic loads
-- **Status:** open (quantified targets from the benchmark)
+- **Status:** resolved (dem `f6fb7d2` — staged solve: momentum-conserving sweeps + residual-triggered
+  stabilization pass; silo 22.9 k/s, 100k plateau -0.084..-0.091 vs refs -0.090. Residual: the 25k
+  floor-limited rebound is suppressed unless `set_stabilization(False)`; see the benchmark entry)
 - **Package / area:** dem (gravity statics / shock propagation)
 - **Found in:** benchmarks/dem-bulk-dosta2024 (impact + silo cases)
 - **Observed:** 5 m/s steel ball (2880:1 mass ratio) stops ~2 mm into a 25k bed with zero
@@ -369,7 +371,9 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   gate (design work, coupled to the tangential-stick item below).
 
 ## DEM velocity-level friction lacks tangential stick (sequential impulse)
-- **Status:** open (long-known; now with quantified benchmark targets)
+- **Status:** resolved (dem `f6fb7d2` — friction-cone PGS: accumulated tangential impulse, cone
+  projection, warm-started; slab stick + 5/7 roll exact; silo head-independent 22.9 k/s; drum
+  amplitude matches refs. Residual: drum circulation period ~1.3-1.5x long — tracked below)
 - **Package / area:** dem (friction)
 - **Found in:** benchmarks/dem-bulk-dosta2024 (drum amplitude, silo arch strength)
 - **Observed:** with the corrected Coulomb bound, drum circulation under-drives (weaker Zone-2
@@ -380,3 +384,18 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 - **Repro:** scripts/case1_silo.py with PECLET_DEM_SYMMETRIC_PGS=1; scripts/case2_mixer.py.
 - **Notes:** velocity-level friction needs the accumulated per-contact tangential impulse
   clamped against mu*lambda_n (sequential impulse) to hold static shear.
+
+
+## DEM drum-mixing circulation period ~1.3-1.5x too long
+- **Status:** open
+- **Package / area:** dem (friction / free-surface avalanching)
+- **Found in:** benchmarks/dem-bulk-dosta2024 (case 2)
+- **Observed:** with the cone-friction solver the Zone-2 oscillation reaches reference amplitude
+  (23.1k vs 22.9-23.1k) but the first peak arrives at ~0.9-1.1 s vs the references' ~0.6 s and the
+  second cycle is delayed/damped further.
+- **Expected:** bed-circulation period ~2 s matching MUSEN/LIGGGHTS at 2 rad/s.
+- **Repro:** benchmarks/dem-bulk-dosta2024/scripts/case2_mixer.py
+- **Notes:** amplitude is right, so the bulk is carried; the lag points at the avalanching free
+  surface (tangential warm-start strength / manifold-level friction arms on the dilated flowing
+  layer). Candidate probes: per-contact (not manifold-averaged) tangential arms; tangential
+  warm-start decay on separating-reforming contacts.

@@ -15,7 +15,6 @@ M2-M2 0.4/0.4); until peclet-dem grows a pair table this uses one global (e, mu)
 Wall (steel) material: e = 0.4, mu = 0.2 (per-wall binary material, exact).
 """
 import argparse
-import os
 import time
 
 import numpy as np
@@ -23,7 +22,7 @@ import numpy as np
 from peclet import dem
 from peclet.dem import build_wall_sdf
 
-IC = os.environ.get("DOSTA_IC_MIXER") or ("/tmp/claude-1003/-home-frankp-Codes-suite/9e9b807a-7a8a-4948-a080-545a0f831797/"
+IC = ("/tmp/claude-1003/-home-frankp-Codes-suite/9e9b807a-7a8a-4948-a080-545a0f831797/"
       "scratchpad/dosta2024/SupplementaryMaterial/InitialCoordinates/Case 2 - Mixer/"
       "PartCoordinates.txt")
 

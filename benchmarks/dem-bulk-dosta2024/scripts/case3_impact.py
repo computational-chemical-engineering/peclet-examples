@@ -23,7 +23,7 @@ import numpy as np
 from peclet import dem
 from peclet.dem import build_wall_sdf
 
-IC_DIR = os.environ.get("DOSTA_IC") or (
+IC_DIR = (
     "/tmp/claude-1003/-home-frankp-Codes-suite/9e9b807a-7a8a-4948-a080-545a0f831797/"
     "scratchpad/dosta2024/SupplementaryMaterial/InitialCoordinates/Case 3 - Impact"
 )
@@ -107,6 +107,8 @@ def main():
     sim.set_thermostat(0.0, 0.0)
     if args.jacobi:
         sim.set_velocity_use_gs(False)
+    if os.environ.get("NOSTAB"):
+        sim.set_stabilization(False)
 
     nsteps = int(round(args.tend / args.dt))
     rec_every = max(1, int(round(1e-3 / args.dt)))
