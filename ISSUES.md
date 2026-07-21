@@ -387,7 +387,13 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 
 ## DEM drum-mixing circulation period ~1.3-1.5x too long
-- **Status:** open
+- **Status:** diagnosed (geometry fidelity, 2026-07-21) — beta and bulk-mu are null levers; wall-mu
+  0.2->0.4 recovers period+cycles and saturates (0.8 == 0.4). The references rotate the benchmark's
+  FACETED 200-gon wall (3.1mm chords ~ 3 grain radii); a grid-sampled smooth SDF cannot represent
+  it, and a rotating faceted shape cannot be a static SDF + velocity field. Fix = a rotating-frame
+  wall (sample the SDF at the query point rotated by the accumulated wall angle; gradient rotated
+  back) — a contained narrowphase feature. Until then the benchmark entry shows verbatim (smooth,
+  mu=0.2) plus the measured faceted-equivalent (mu=0.4) companion.
 - **Package / area:** dem (friction / free-surface avalanching)
 - **Found in:** benchmarks/dem-bulk-dosta2024 (case 2)
 - **Observed:** with the cone-friction solver the Zone-2 oscillation reaches reference amplitude

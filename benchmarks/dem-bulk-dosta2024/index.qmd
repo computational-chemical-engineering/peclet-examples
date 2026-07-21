@@ -227,12 +227,13 @@ benchmark adds to the roadmap.
 
 ```{python}
 #| label: fig-drum
-#| fig-cap: "Small-particle (M1) count in Zone 2 (lower-left quadrant) over 5 s of drum rotation — the paper's Fig. 8 observable, oscillating at the bed-circulation period with decaying amplitude as the species mix."
+#| fig-cap: "Small-particle (M1) count in Zone 2 over 5 s of drum rotation — the paper's Fig. 8 observable. Solid blue: the benchmark taken verbatim (smooth wall, µ_wall = 0.2). Dashed: the same run with wall friction raised to 0.4, the measured smooth-wall equivalent of the references' faceted rotating wall (see text) — it tracks the references' period, phase and second/third cycles."
 fig, ax = plt.subplots(figsize=(7.5, 3.4))
 for tag, color, ls, label in (
         ("liggghts", C_LIG, "-", "LIGGGHTS"),
         ("musen", C_MUSEN, "-", "MUSEN"),
-        ("peclet", C_PECLET, "-", "peclet.dem")):
+        ("peclet", C_PECLET, "-", "peclet.dem (benchmark wall, µ=0.2)"),
+        ("peclet_wmu04", C_SYMPGS, "--", "peclet.dem (faceted-equiv., µ=0.4)")):
     d = ld(f"case2_{tag}")
     if d is None:
         continue
@@ -248,18 +249,38 @@ plt.show()
 
 The references agree with each other and the paper: a large oscillation (≈ 0 ↔ 23k)
 at the bed-circulation period ≈ 2 s, decaying as the species mix. This case was
-`peclet.dem`'s hardest journey. The original solver did not circulate the bed *at
-all* (a dead-flat count — the drum is driven purely through wall friction, which a
-warm-start bookkeeping bug had silently disabled); fixing the friction bound
-restored circulation but 2–4× too slow, because velocity-level kinetic friction
-cannot transmit static shear. With the **friction-cone tangential impulses** the
-final solver reaches the references' full amplitude — first peak 23.1k vs
-LIGGGHTS/MUSEN's 22.9/23.1k — with one residual: the circulation period runs
-~1.3–1.5× long (peclet's first peak at ≈ 0.9 s vs ≈ 0.6 s, and the second upswing
-correspondingly delayed), so mixing is qualitatively right and quantitatively
-slightly lagged. The lag is the remaining quantitative target for the friction
-model (candidate: tangential warm-start strength across the avalanching free
-surface).
+`peclet.dem`'s hardest journey — dead-flat before the friction-bound fix, 2–4×
+too slow before the friction cone — and the final solver reaches the references'
+full amplitude (first peak 23.2k vs 22.9/23.1k) but runs the cycle ~1.3–1.5× long
+with a damped second upswing (solid blue curve).
+
+That residual was then hunted down with a sensitivity study (all runs in `data/`):
+
+- **Tangential restitution β is a null lever.** Implementing Walton's (e, µ, β)
+  impact law (validated to the closed forms — see the solver note) and running the
+  drum at β = 0.4 leaves the curve unchanged: the dense flowing layer's contacts
+  are normally *sustained*, so a collisional tangential restitution never engages
+  there. The references' Hertz–Mindlin tangential *spring* acts on sustained
+  contacts — a different object than β.
+- **Bulk friction is a null lever**: all grain–grain µ × 1.5 leaves the period
+  unchanged.
+- **Wall coupling is the lever, and it saturates**: raising wall µ from the
+  benchmark's 0.2 to 0.4 recovers the references' period, phase and the
+  second/third cycles almost point-for-point (dashed curve; µ = 0.8 gives the same
+  answer as 0.4, so the drum is then no longer wall-limited).
+
+The geometric root: the reference codes rotate the benchmark's **faceted wall
+mesh** — a 200-gon whose 3.1 mm facet chords are ~3 small-grain radii — while
+`peclet.dem`'s wall is a grid-sampled *smooth* cylinder (the 12 µm facet
+corrugation is far below any feasible SDF grid, and a rotating faceted shape
+cannot be represented by a static SDF plus a surface-velocity field at all). The
+paper itself observes that codes using analytic primitives instead of the faceted
+meshes deviate visibly. So the verbatim-benchmark curve (solid) carries a
+geometry-fidelity gap, not a contact-physics gap; the µ_wall = 0.4 companion is
+the measured smooth-wall equivalent of the faceted wall, shown dashed and clearly
+labelled rather than silently substituted. A rotating-geometry wall (SDF sampled
+in the wall's rotating frame) is the clean future fix and is logged in
+[`ISSUES.md`](../../ISSUES.md).
 
 ## Performance
 
@@ -346,10 +367,22 @@ the 60-layer column and a violent pour hold at nn ≈ 0.98 d_p while the 100k im
 plateau stays on the references). In dynamic scenes the pass never fires;
 `set_stabilization(False)` disables it outright.
 
+**5 — Walton tangential restitution β** (landed last, as instrumentation for the
+drum analysis). The velocity solve now implements the full (e, µ, β) impact law:
+the tangential target for a *colliding* contact is −β·u_t⁰, cone-clamped, gated by
+the same event classification as e (sustained contacts and stabilization contacts
+run β = 0), correct for arbitrary inertia tensors through the directional
+effective mass, with an isotropy fast path for spheres. Validated against the
+closed-form oblique-impact laws to three digits in both stick and slide regimes.
+For this benchmark it is a *null* lever (the paper's materials define no β and the
+drum probe shows no sensitivity) — but it is now available as a physical material
+parameter (`set_material_params`'s tangential-restitution argument).
+
 Result: silo, drum amplitude, deep-bed impact and statics all inside or at the
 reference envelope. Two residuals stand, both documented above: the 25k
-floor-limited rebound (a stabilization trade-off with an API switch) and the drum's
-~1.3–1.5× period lag.
+floor-limited rebound (a stabilization trade-off with an API switch) and the drum
+period under the verbatim smooth wall (a geometry-fidelity gap, bounded by the
+faceted-equivalent companion run).
 
 ## Reproduce this
 
