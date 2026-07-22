@@ -45,6 +45,7 @@ def main():
     ap.add_argument("--iters", type=int, nargs=2, default=[12, 8])
     ap.add_argument("--tend", type=float, default=5.0)
     ap.add_argument("--jacobi", action="store_true")
+    ap.add_argument("--hertz", action="store_true")
     ap.add_argument("--mu", type=float, default=None,
                     help="override grain-grain friction (diagnostic)")
     ap.add_argument("--out", type=str, default=None)
@@ -97,15 +98,25 @@ def main():
     sim.set_thermostat(0.0, 0.0)
     if args.jacobi:
         sim.set_velocity_use_gs(False)
+    if args.hertz:
+        sim.set_hertz_material(0, 1.0e9 if args.mat == "M1" else 0.5e9, 0.2)
+        sim.set_hertz_material(1, 210.0e9, 0.2)  # steel silo wall
+        sim.set_wall_material_id(0, 1)
+        sim.set_pair_material(0, 0, m["e"], m["mu"])
+        sim.set_pair_material(0, 1, 0.4, 0.2)
+        sim.set_material_ids([0] * n0)
 
     nsteps = int(round(args.tend / args.dt))
     rec_every = max(1, int(round(0.1 / args.dt)))     # count every 0.1 s
     del_every = max(1, int(round(0.01 / args.dt)))    # delete every 0.01 s
+    if args.hertz:
+        rec_every = del_every * 10  # keep the record cadence a multiple of the hertz stride
+    stride = del_every if args.hertz else 1
     ts, counts = [], []
     vel_snapshot = None
 
     t0 = time.perf_counter()
-    for i in range(nsteps + 1):
+    for i in range(0, nsteps + 1, stride):
         t = i * args.dt
         if i % del_every == 0 or i % rec_every == 0:
             p = sim.get_positions()
@@ -132,7 +143,10 @@ def main():
                     sim.set_velocities(np.ascontiguousarray(v[alive]))
                     sim.set_angular_velocities(np.ascontiguousarray(av[alive]))
         if i < nsteps:
-            sim.step(args.dt)
+            if args.hertz:
+                sim.step_hertz(args.dt, min(del_every, nsteps - i))
+            else:
+                sim.step(args.dt)
     wall_s = time.perf_counter() - t0
 
     out = args.out or (f"case1_{args.orifice}_{args.mat}_peclet"

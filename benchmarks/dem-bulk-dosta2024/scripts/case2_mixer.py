@@ -39,10 +39,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--e", type=float, default=0.45)
     ap.add_argument("--mu", type=float, default=0.25)
+    ap.add_argument("--beta", type=float, default=0.0)
+    ap.add_argument("--wall-mu", type=float, default=0.2)
+    ap.add_argument("--gg-scale", type=float, default=1.0, help="scale all grain-grain mu")
     ap.add_argument("--dt", type=float, default=1e-4)
     ap.add_argument("--iters", type=int, nargs=2, default=[12, 8])
     ap.add_argument("--tend", type=float, default=5.0)
     ap.add_argument("--jacobi", action="store_true")
+    ap.add_argument("--hertz", action="store_true",
+                    help="soft-sphere Hertz-Mindlin engine with the paper's stiffnesses")
     ap.add_argument("--out", type=str, default=None)
     args = ap.parse_args()
 
@@ -61,17 +66,18 @@ def main():
     sim.set_domain(lo, hi)
     sim.enable_periodicity(False, False, False)
     wall = build_wall_sdf(drum_sdf, (lo, hi), resolution=(192, 72, 192))
-    wid = wall.add_to(sim, restitution=0.4, friction=0.2)
+    wid = wall.add_to(sim, restitution=0.4, friction=args.wall_mu)
     # wall surface moves +z at +x  <=>  omega_y = -2 rad/s about the drum centre
     sim.set_wall_velocity(wid, (0.0, 0.0, 0.0), (0.0, -OMEGA, 0.0), (0.0, 0.0, 0.0))
     # exact benchmark pair materials when supported: 0 = M1, 1 = M2, 2 = steel drum
     per_pair = hasattr(sim, "set_pair_material")
     if per_pair:
-        sim.set_pair_material(0, 0, 0.5, 0.3)    # M1-M1
-        sim.set_pair_material(0, 1, 0.45, 0.2)   # M1-M2
-        sim.set_pair_material(1, 1, 0.4, 0.4)    # M2-M2
-        sim.set_pair_material(0, 2, 0.4, 0.2)    # M1-steel
-        sim.set_pair_material(1, 2, 0.4, 0.2)    # M2-steel
+        g = args.gg_scale
+        sim.set_pair_material(0, 0, 0.5, 0.3 * g)   # M1-M1
+        sim.set_pair_material(0, 1, 0.45, 0.2 * g)  # M1-M2
+        sim.set_pair_material(1, 1, 0.4, 0.4 * g)   # M2-M2
+        sim.set_pair_material(0, 2, 0.4, args.wall_mu)  # M1-steel
+        sim.set_pair_material(1, 2, 0.4, args.wall_mu)  # M2-steel
         sim.set_wall_material_id(wid, 2)
 
     sim.set_positions(pos.astype(np.float32))
@@ -85,11 +91,15 @@ def main():
         sim.set_material_ids(np.where(is_m1, 0, 1).astype(np.int32).tolist())
 
     sim.set_gravity(0.0, 0.0, -9.81)
-    sim.set_material_params(args.e, 0.0, args.mu)
+    sim.set_material_params(args.e, args.beta, args.mu)
     sim.set_solver_iterations(args.iters[0], args.iters[1])
     sim.set_thermostat(0.0, 0.0)
     if args.jacobi:
         sim.set_velocity_use_gs(False)
+    if args.hertz:
+        sim.set_hertz_material(0, 1.0e9, 0.2)    # M1
+        sim.set_hertz_material(1, 0.5e9, 0.2)    # M2
+        sim.set_hertz_material(2, 210.0e9, 0.2)  # steel drum
 
     nsteps = int(round(args.tend / args.dt))
     rec_every = max(1, int(round(0.1 / args.dt)))
@@ -100,7 +110,8 @@ def main():
     mass2 = m[~is_m1].sum()
 
     t0 = time.perf_counter()
-    for i in range(nsteps + 1):
+    stride = rec_every if args.hertz else 1
+    for i in range(0, nsteps + 1, stride):
         if i % rec_every == 0:
             p = sim.get_positions()
             in1 = (p[:, 0] > 0) & (p[:, 2] > 0)
@@ -113,7 +124,10 @@ def main():
             com_m1.append(p[is_m1].mean(axis=0))
             com_m2.append(p[~is_m1].mean(axis=0))
         if i < nsteps:
-            sim.step(args.dt)
+            if args.hertz:
+                sim.step_hertz(args.dt, min(rec_every, nsteps - i))
+            else:
+                sim.step(args.dt)
     wall_s = time.perf_counter() - t0
 
     out = args.out or f"case2_peclet{'_jac' if args.jacobi else ''}.npz"

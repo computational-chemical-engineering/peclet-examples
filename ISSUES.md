@@ -386,14 +386,17 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   clamped against mu*lambda_n (sequential impulse) to hold static shear.
 
 
-## DEM drum-mixing circulation period ~1.3-1.5x too long
-- **Status:** diagnosed (geometry fidelity, 2026-07-21) — beta and bulk-mu are null levers; wall-mu
-  0.2->0.4 recovers period+cycles and saturates (0.8 == 0.4). The references rotate the benchmark's
-  FACETED 200-gon wall (3.1mm chords ~ 3 grain radii); a grid-sampled smooth SDF cannot represent
-  it, and a rotating faceted shape cannot be a static SDF + velocity field. Fix = a rotating-frame
-  wall (sample the SDF at the query point rotated by the accumulated wall angle; gradient rotated
-  back) — a contained narrowphase feature. Until then the benchmark entry shows verbatim (smooth,
-  mu=0.2) plus the measured faceted-equivalent (mu=0.4) companion.
+## DEM drum-mixing circulation period ~1.3-1.5x too long (impulse solver)
+- **Status:** root-caused (2026-07-22): missing SUSTAINED-CONTACT tangential elasticity in the
+  impulse contact model. The interim geometry-fidelity diagnosis (faceted vs smooth wall) was
+  FALSIFIED by a controlled experiment: the new soft-sphere Hertz-Mindlin engine (step_hertz, dem
+  915839f — the paper's exact contact model) phase-locks with the references on the SAME smooth
+  SDF drum at the verbatim mu_wall=0.2 (and GranOO matched the references with primitive geometry
+  in the study itself). beta (collisional tangential restitution) and bulk-mu are null levers; the
+  earlier wall-mu=0.4 companion was compensation, not diagnosis. Open design question for the
+  impulse model: represent Mindlin-like finite tangential compliance of ENDURING contacts (the
+  cone gives rigid stick / kinetic slide only). The Hertz engine remains in-suite as the reference
+  physics and as a fast benchmark representation (drum 9.4 min vs LIGGGHTS-24 4.4 h).
 - **Package / area:** dem (friction / free-surface avalanching)
 - **Found in:** benchmarks/dem-bulk-dosta2024 (case 2)
 - **Observed:** with the cone-friction solver the Zone-2 oscillation reaches reference amplitude

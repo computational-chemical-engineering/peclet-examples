@@ -54,6 +54,7 @@ def main():
     ap.add_argument("--out", type=str, default=None)
     ap.add_argument("--seed-shift", type=float, default=0.0,
                     help="tiny z-shift of the ball start (repeatability ensembles)")
+    ap.add_argument("--hertz", action="store_true")
     ap.add_argument("--jacobi", action="store_true",
                     help="legacy count-averaged Jacobi velocity solve (disables GS/PGS statics)")
     args = ap.parse_args()
@@ -109,19 +110,26 @@ def main():
         sim.set_velocity_use_gs(False)
     if os.environ.get("NOSTAB"):
         sim.set_stabilization(False)
+    if args.hertz:
+        sim.set_hertz_material(0, 1.0e9, 0.2)    # M1 bed
+        sim.set_hertz_material(1, 210.0e9, 0.2)  # steel ball + walls
 
     nsteps = int(round(args.tend / args.dt))
     rec_every = max(1, int(round(1e-3 / args.dt)))
     ts, zs = [], []
 
     t0 = time.perf_counter()
-    for i in range(nsteps + 1):
+    stride = rec_every if args.hertz else 1
+    for i in range(0, nsteps + 1, stride):
         if i % rec_every == 0:
             z = float(sim.get_positions()[ball, 2])
             ts.append(i * args.dt)
             zs.append(z)
         if i < nsteps:
-            sim.step(args.dt)
+            if args.hertz:
+                sim.step_hertz(args.dt, min(rec_every, nsteps - i))
+            else:
+                sim.step(args.dt)
     wall_s = time.perf_counter() - t0
 
     out = args.out or f"case3_{args.n}k_peclet{'_jac' if args.jacobi else ''}.npz"

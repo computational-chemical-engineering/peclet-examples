@@ -33,12 +33,16 @@ ranks. Yade is Debian-packaged but not installable here without root; Blaze-DEM
 (2015-era CUDA) no longer compiles on CUDA 13; MFiX's download is registration-walled.
 The paper's own multi-code figures serve as the ensemble reference throughout.
 
-This page had two lives. The first run (2026-07-18) benchmarked `peclet.dem`
+This page had three lives. The first run (2026-07-18) benchmarked `peclet.dem`
 as it stood and found real gaps; those measurements drove a solver upgrade —
 a per-pair material table, true friction-cone (sequential-impulse) tangential
-friction, and a staged one-sided stabilization pass — all landed in `peclet.dem`
-within three days. The curves below are the **final solver**; the intermediate
-configurations that localized each defect are kept in `data/` and summarized in
+friction, and a staged one-sided stabilization pass. The third pass added a
+second, independent representation: a GPU **soft-sphere Hertz–Mindlin engine**
+(`step_hertz`) implementing the paper's exact contact model, run on the *same*
+smooth SDF geometry — both a controlled experiment that separates contact-model
+effects from geometry effects, and a benchmark entry in its own right. Figures
+show both: the impulse solver (blue) and the Hertz engine (green); the
+intermediate diagnostic configurations are kept in `data/` and summarized in
 [the solver note](#the-solver-note).
 
 ::: {.callout-important}
@@ -79,7 +83,7 @@ plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
 # fixed code -> colour assignment, used identically in every figure
 C_PECLET  = "#2a78d6"   # peclet.dem, shipped solver (grounded statics)
 C_SYMPGS  = "#1baf7a"   # peclet.dem, symmetric warm-started PGS (experimental config)
-C_JACOBI  = "#eda100"   # peclet.dem, legacy Jacobi velocity solve
+C_HERTZ   = "#008300"   # peclet.dem Hertz-Mindlin soft-sphere engine (step_hertz)
 C_MUSEN   = "#4a3aa7"   # MUSEN v1.75, GPU, this machine
 C_LIG     = "#e34948"   # LIGGGHTS-public, 24 MPI ranks, this machine
 
@@ -106,9 +110,10 @@ fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.4), sharey=True)
 for ax, n in zip(axes, (25, 50, 100)):
     series = [("liggghts", C_LIG, "-", "LIGGGHTS"),
               ("musen", C_MUSEN, "-", "MUSEN"),
-              ("peclet", C_PECLET, "-", "peclet.dem")]
+              ("peclet", C_PECLET, "-", "peclet.dem (impulse)"),
+              ("peclet_hertz", C_HERTZ, "-", "peclet.dem (Hertz)")]
     if n == 25:  # the stabilization trade-off, visible only in the floor-limited case
-        series.append(("peclet_nostab", C_SYMPGS, "--", "peclet.dem (no stab.)"))
+        series.append(("peclet_nostab", C_SYMPGS, "--", "impulse, no stab."))
     for tag, color, ls, label in series:
         d = ld(f"case3_{n}k_{tag}")
         if d is None:
@@ -152,7 +157,8 @@ for ax, o in zip(axes, ("large", "small")):
     for tag, color, ls, label in (
             ("liggghts", C_LIG, "-", "LIGGGHTS"),
             ("musen", C_MUSEN, "-", "MUSEN"),
-            ("peclet", C_PECLET, "-", "peclet.dem")):
+            ("peclet", C_PECLET, "-", "peclet.dem (impulse)"),
+            ("peclet_hertz", C_HERTZ, "-", "peclet.dem (Hertz)")):
         d = ld(f"case1_{o}_M1_{tag}")
         if d is None:
             continue
@@ -183,7 +189,8 @@ def rate(d, t0=0.5, t1=3.5):
 rows = []
 for o in ("large", "small"):
     for tag, name in (("musen", "MUSEN"), ("liggghts", "LIGGGHTS"),
-                      ("peclet", "peclet.dem")):
+                      ("peclet", "peclet.dem (impulse)"),
+                      ("peclet_hertz", "peclet.dem (Hertz)")):
         r = rate(ld(f"case1_{o}_M1_{tag}"))
         if r:
             rows.append((f"{o} / {name}", r))
@@ -227,13 +234,13 @@ benchmark adds to the roadmap.
 
 ```{python}
 #| label: fig-drum
-#| fig-cap: "Small-particle (M1) count in Zone 2 over 5 s of drum rotation — the paper's Fig. 8 observable. Solid blue: the benchmark taken verbatim (smooth wall, µ_wall = 0.2). Dashed: the same run with wall friction raised to 0.4, the measured smooth-wall equivalent of the references' faceted rotating wall (see text) — it tracks the references' period, phase and second/third cycles."
+#| fig-cap: "Small-particle (M1) count in Zone 2 over 5 s of drum rotation — the paper's Fig. 8 observable. The Hertz–Mindlin engine (green), running the paper's exact contact model on the SAME smooth SDF drum, phase-locks with the references — the controlled experiment that pins the impulse solver's period lag on the contact model, not the geometry."
 fig, ax = plt.subplots(figsize=(7.5, 3.4))
 for tag, color, ls, label in (
         ("liggghts", C_LIG, "-", "LIGGGHTS"),
         ("musen", C_MUSEN, "-", "MUSEN"),
-        ("peclet", C_PECLET, "-", "peclet.dem (benchmark wall, µ=0.2)"),
-        ("peclet_wmu04", C_SYMPGS, "--", "peclet.dem (faceted-equiv., µ=0.4)")):
+        ("peclet", C_PECLET, "-", "peclet.dem (impulse)"),
+        ("peclet_hertz", C_HERTZ, "-", "peclet.dem (Hertz)")):
     d = ld(f"case2_{tag}")
     if d is None:
         continue
@@ -249,38 +256,35 @@ plt.show()
 
 The references agree with each other and the paper: a large oscillation (≈ 0 ↔ 23k)
 at the bed-circulation period ≈ 2 s, decaying as the species mix. This case was
-`peclet.dem`'s hardest journey — dead-flat before the friction-bound fix, 2–4×
-too slow before the friction cone — and the final solver reaches the references'
-full amplitude (first peak 23.2k vs 22.9/23.1k) but runs the cycle ~1.3–1.5× long
-with a damped second upswing (solid blue curve).
+`peclet.dem`'s hardest journey, and it ended in a diagnosis this page initially got
+wrong and then corrected by experiment — the record is kept because the method is
+the point:
 
-That residual was then hunted down with a sensitivity study (all runs in `data/`):
+- The impulse solver was dead-flat before the friction-bound fix, 2–4× too slow
+  before the friction cone, and with the final solver reaches full amplitude but
+  runs the cycle ~1.3–1.5× long with a damped second upswing (blue curve).
+- A sensitivity study found tangential restitution β and bulk friction to be null
+  levers, while raising *wall* friction 0.2 → 0.4 recovered the period. Combined
+  with the fact that the reference codes rotate the benchmark's faceted wall mesh,
+  this page briefly attributed the lag to **geometry fidelity**. That explanation
+  had a hole: GranOO used primitive (smooth) geometry in this study and still
+  matched the reference drum.
+- The decisive control: a **soft-sphere Hertz–Mindlin engine** (`step_hertz`,
+  the paper's exact contact model — viscoelastic Hertz normal force + Mindlin
+  shear-history spring) run on the *same smooth SDF drum* with verbatim
+  materials. It **phase-locks with the references** (green curve: troughs at
+  1.5/3.5 s vs LIGGGHTS 1.4/3.4 s, peaks 16.9k/12.7k vs 17.0k/12.2k). Same
+  geometry, same µ_wall = 0.2 — reference dynamics.
 
-- **Tangential restitution β is a null lever.** Implementing Walton's (e, µ, β)
-  impact law (validated to the closed forms — see the solver note) and running the
-  drum at β = 0.4 leaves the curve unchanged: the dense flowing layer's contacts
-  are normally *sustained*, so a collisional tangential restitution never engages
-  there. The references' Hertz–Mindlin tangential *spring* acts on sustained
-  contacts — a different object than β.
-- **Bulk friction is a null lever**: all grain–grain µ × 1.5 leaves the period
-  unchanged.
-- **Wall coupling is the lever, and it saturates**: raising wall µ from the
-  benchmark's 0.2 to 0.4 recovers the references' period, phase and the
-  second/third cycles almost point-for-point (dashed curve; µ = 0.8 gives the same
-  answer as 0.4, so the drum is then no longer wall-limited).
-
-The geometric root: the reference codes rotate the benchmark's **faceted wall
-mesh** — a 200-gon whose 3.1 mm facet chords are ~3 small-grain radii — while
-`peclet.dem`'s wall is a grid-sampled *smooth* cylinder (the 12 µm facet
-corrugation is far below any feasible SDF grid, and a rotating faceted shape
-cannot be represented by a static SDF plus a surface-velocity field at all). The
-paper itself observes that codes using analytic primitives instead of the faceted
-meshes deviate visibly. So the verbatim-benchmark curve (solid) carries a
-geometry-fidelity gap, not a contact-physics gap; the µ_wall = 0.4 companion is
-the measured smooth-wall equivalent of the faceted wall, shown dashed and clearly
-labelled rather than silently substituted. A rotating-geometry wall (SDF sampled
-in the wall's rotating frame) is the clean future fix and is logged in
-[`ISSUES.md`](../../ISSUES.md).
+So the impulse solver's period lag is a **contact-model property, not a geometry
+artifact**: what the flowing layer misses is the *sustained-contact tangential
+elasticity* of the Mindlin spring (finite tangential compliance during enduring
+contacts), which neither collisional tangential restitution nor a stiffer Coulomb
+cone can represent. The earlier wall-µ companion was compensation, not diagnosis.
+This is now the sharpest open question for the impulse contact model, and the
+Hertz engine stays in the suite both as the reference physics and as a fast
+benchmark entry in its own right (this drum: 9.4 min on the GPU vs 4.4 h for
+LIGGGHTS on 24 ranks).
 
 ## Performance
 
@@ -298,12 +302,12 @@ same-initial-state wall-clock is reported because it is what a user experiences;
 is *not* a controlled algorithmic comparison.
 :::
 
-| case | peclet.dem (GPU) | MUSEN (GPU) | LIGGGHTS (24 MPI ranks) |
-|---|---|---|---|
-| impact 25k (0.1 s) | **24 s** | 61 s | 1 839 s |
-| impact 100k (0.1 s) | **77 s** | 504 s ◐ | 913 s |
-| silo large M1 (5 s) | **217 s** | ≈ 1 360 s † | 5 892 s |
-| drum (5 s) | **519 s** | 5 587 s ◐ | 15 855 s |
+| case | peclet impulse | peclet Hertz | MUSEN (GPU) | LIGGGHTS (24 ranks) |
+|---|---|---|---|---|
+| impact 25k (0.1 s) | **24 s** | 80 s | 61 s | 1 839 s |
+| impact 100k (0.1 s) | **77 s** | 354 s | 504 s ◐ | 913 s |
+| silo large M1 (5 s) | **217 s** | 303 s | ≈ 1 360 s † | 5 892 s |
+| drum (5 s) | **519 s** | 562 s | 5 587 s ◐ | 15 855 s |
 
 Unmarked numbers were measured with the GPU otherwise idle; ◐ marks runs that
 shared the GPU with unrelated compute (they overstate the true time — MUSEN's clean
@@ -312,9 +316,12 @@ rerun reached 88% in 1 196 s before a CUDA driver hiccup killed it; the quoted t
 extrapolates that pace and is consistent with the paper's 28 min on a TITAN RTX.
 Full per-run values (and the contended history) are in `data/timings.json`.
 
-The peclet times are for the **final solver** (the friction cone and staged
-stabilization cost ~25–30% over the pre-upgrade solver — the earlier run's 16 s /
-171 s / 399 s are in `data/timings.json`). Measured clean-to-clean, `peclet.dem`
+The impulse-solver times are for the **final solver** (the friction cone and
+staged stabilization cost ~25–30% over the pre-upgrade solver; earlier runs in
+`data/timings.json`). The **Hertz engine** — taking the references' own 0.5–1.5 µs
+steps, 200k–6.25M per case — still lands within ~1–4× of the impulse solver and
+**10–28× faster than LIGGGHTS on 24 ranks**, because each explicit step is three
+cheap kernels on a cached pair list. Measured clean-to-clean, `peclet.dem`
 runs **2.5–7× faster than MUSEN** — the fastest GPU code of the study together
 with Blaze-DEM — and **11–77× faster than LIGGGHTS on 24 ranks**, the direct
 dividend of the impulse formulation's stiffness-free time step (2 000–25 000 steps
@@ -378,11 +385,25 @@ For this benchmark it is a *null* lever (the paper's materials define no β and 
 drum probe shows no sensitivity) — but it is now available as a physical material
 parameter (`set_material_params`'s tangential-restitution argument).
 
-Result: silo, drum amplitude, deep-bed impact and statics all inside or at the
-reference envelope. Two residuals stand, both documented above: the 25k
-floor-limited rebound (a stabilization trade-off with an API switch) and the drum
-period under the verbatim smooth wall (a geometry-fidelity gap, bounded by the
-faceted-equivalent companion run).
+**6 — The Hertz–Mindlin control engine** (`step_hertz`). To separate contact-model
+effects from geometry effects, the paper's exact soft-sphere model (viscoelastic
+Hertz + Mindlin shear-history spring, LIGGGHTS formulas) was implemented as a
+second GPU engine on the same SDF geometry: cached Verlet pair list with
+key-carried shear history, device-side inner loop, stiffness per material id.
+Validated to the same closed-form battery (restitution 0.198/0.500/0.801 for
+e = 0.2/0.5/0.8; stick; exact Coulomb slides; exact 5/7 roll-up). It reproduces
+the references on **every** benchmark case — including the drum period and the
+25k rebound — on the smooth SDF walls, which falsified this page's interim
+geometry explanation of the drum lag and localized it in the impulse model's
+missing sustained-contact tangential elasticity.
+
+Result: with the impulse solver, silo, drum amplitude, deep-bed impact and
+statics are all inside or at the reference envelope; with the Hertz engine,
+everything is. Two impulse-solver residuals stand, both documented above and both reproduced
+correctly by the in-suite Hertz engine: the 25k floor-limited rebound (a
+stabilization trade-off with an API switch) and the drum circulation period
+(missing sustained-contact tangential elasticity — the sharpest open question for
+the impulse contact model).
 
 ## Reproduce this
 
