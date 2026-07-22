@@ -387,7 +387,15 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 
 ## DEM drum-mixing circulation period ~1.3-1.5x too long (impulse solver)
-- **Status:** root-caused (2026-07-22): missing SUSTAINED-CONTACT tangential elasticity in the
+- **Status:** RESOLVED (dem `eb89790`, 2026-07-23): the position projection was a second
+  normal-force channel invisible to the Coulomb bound, so a jostled bed's friction saturated at a
+  fraction of mu*N (wall layer slid 99% of the time at 27-66% of wall speed; Hertz reference
+  sticks). Fix: carry the position solve's per-contact normal corrections (impulse units, by pair
+  key, quasi-static-gated) into the cone bound. Drum period now matches the references; wall
+  co-rotation 0.93-0.97 with 2-4% slip; statics improved. Residual (new, minor): drum peak
+  amplitude ~25% low with correct period (rigid stick vs Hertz elastic microslip). The 2026-07-22
+  interim analysis below is kept as the record:
+- **Old analysis:** missing SUSTAINED-CONTACT tangential elasticity in the
   impulse contact model. The interim geometry-fidelity diagnosis (faceted vs smooth wall) was
   FALSIFIED by a controlled experiment: the new soft-sphere Hertz-Mindlin engine (step_hertz, dem
   915839f — the paper's exact contact model) phase-locks with the references on the SAME smooth

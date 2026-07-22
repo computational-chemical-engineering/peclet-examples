@@ -2,7 +2,7 @@
 title: "peclet.dem vs the DEM8 bulk-process benchmark"
 subtitle: "The three Dosta et al. (2024) community benchmark cases — silo emptying, drum mixing, particle impact — run one-on-one against the two best-performing open-source DEM codes on identical hardware and identical initial states."
 author: "Peclet"
-date: "2026-07-21"
+date: "2026-07-23"
 categories: [dem, accuracy, performance, benchmark, validation]
 jupyter: python3
 resources:
@@ -133,7 +133,7 @@ references in all three beds: 25k minimum displacement −0.137 at t ≈ 0.030 s
 (LIGGGHTS −0.139, MUSEN −0.138), 50k inside the reference span (end −0.125 between
 LIGGGHTS's −0.108 and MUSEN's −0.132), and the deep 100k bed — where arrest is pure
 bed strength and the references agree to the millimetre (−0.0905/−0.0909) — at
-**−0.084 to −0.091** across runs. That last number is the headline: before the
+**−0.085** (the Hertz engine: −0.097). That last number is the headline: before the
 solver upgrade the two available configurations bracketed it at −0.02 and −0.14.
 
 **The one remaining trade-off: the 25k rebound.** The references punch through the
@@ -212,10 +212,10 @@ With the final solver the silo is simply *right*:
   the friction-cone upgrade this was the sharpest diagnostic: the solver without
   its stabilization pass discharged Torricelli-style (41 → 29 k/s as the head
   dropped), the signature of a bed with no orifice arch.
-- **Rate**: 22.9 k/s (large/M1) and 7.7 k/s (small/M1) against 24.2/24.5 and
+- **Rate**: 22.5 k/s (large/M1) and 7.5 k/s (small/M1) against 24.2/24.5 and
   7.7 k/s for MUSEN/LIGGGHTS on this machine and the paper mean of 23.2 ± 5%;
-  M2 gives 22.1/7.4. The large/small ratio lands at **2.97** against the
-  Beverloo-consistent 3.10 ± 0.06 (MUSEN here: 3.13).
+  M2 gives 21.7/7.2; the Hertz engine lands at 24.4/8.3. The large/small ratio is
+  **3.00** against the Beverloo-consistent 3.10 ± 0.06 (MUSEN here: 3.13).
 - The empty times (≈ 4.4 s large) match the references' 4.2–4.4 s.
 
 ## Case 2 — drum mixing
@@ -255,36 +255,40 @@ plt.show()
 ```
 
 The references agree with each other and the paper: a large oscillation (≈ 0 ↔ 23k)
-at the bed-circulation period ≈ 2 s, decaying as the species mix. This case was
-`peclet.dem`'s hardest journey, and it ended in a diagnosis this page initially got
-wrong and then corrected by experiment — the record is kept because the method is
-the point:
+at the bed-circulation period ≈ 2 s, decaying as the species mix. This case was the
+impulse solver's hardest journey, and it ends resolved. The path — kept visible
+because the method is the point:
 
-- The impulse solver was dead-flat before the friction-bound fix, 2–4× too slow
-  before the friction cone, and with the final solver reaches full amplitude but
-  runs the cycle ~1.3–1.5× long with a damped second upswing (blue curve).
-- A sensitivity study found tangential restitution β and bulk friction to be null
-  levers, while raising *wall* friction 0.2 → 0.4 recovered the period. Combined
-  with the fact that the reference codes rotate the benchmark's faceted wall mesh,
-  this page briefly attributed the lag to **geometry fidelity**. That explanation
-  had a hole: GranOO used primitive (smooth) geometry in this study and still
-  matched the reference drum.
-- The decisive control: a **soft-sphere Hertz–Mindlin engine** (`step_hertz`,
-  the paper's exact contact model — viscoelastic Hertz normal force + Mindlin
-  shear-history spring) run on the *same smooth SDF drum* with verbatim
-  materials. It **phase-locks with the references** (green curve: troughs at
-  1.5/3.5 s vs LIGGGHTS 1.4/3.4 s, peaks 16.9k/12.7k vs 17.0k/12.2k). Same
-  geometry, same µ_wall = 0.2 — reference dynamics.
+1. Dead-flat (a warm-start bug had disabled friction) → fixed.
+2. Full amplitude but the cycle 1.3–1.5× slow → a sensitivity study found β and
+   bulk µ null and wall µ decisive, briefly (and wrongly) blaming wall-geometry
+   fidelity.
+3. The **Hertz–Mindlin control** (green) on the same smooth SDF drum phase-locked
+   with the references, falsifying the geometry story and proving the contact
+   model was at fault.
+4. Kinematic diagnostics then localized it: the impulse solver's **wall layer slid
+   99% of the time at 27–66% of the wall speed** (Hertz: sticking, 6–15% microslip)
+   — the bed was never carried. The stick wasn't missing physics; it was a
+   **discretization bookkeeping hole**: the position projection is a second
+   normal-force channel (whatever load the velocity sweeps don't converge
+   de-penetrates positionally), and it was invisible to the Coulomb bound, so
+   friction in any jostled bed saturated at a fraction of µN.
+5. The fix: the position solve's per-contact normal corrections are converted to
+   impulse units and carried (by pair key, one substep) into the friction cone's
+   bound — µ × (velocity-impulse channel + position channel) = µ × the *total*
+   transmitted normal load, gated to quasi-static contacts (the same event
+   classification as restitution) so violent transients don't double-count.
 
-So the impulse solver's period lag is a **contact-model property, not a geometry
-artifact**: what the flowing layer misses is the *sustained-contact tangential
-elasticity* of the Mindlin spring (finite tangential compliance during enduring
-contacts), which neither collisional tangential restitution nor a stiffer Coulomb
-cone can represent. The earlier wall-µ companion was compensation, not diagnosis.
-This is now the sharpest open question for the impulse contact model, and the
-Hertz engine stays in the suite both as the reference physics and as a fast
-benchmark entry in its own right (this drum: 9.4 min on the GPU vs 4.4 h for
-LIGGGHTS on 24 ranks).
+With the carry, at the default 8 sweeps, the wall layer co-rotates at 0.93–0.97 of
+the drum with 2–4% slip — reference kinematics — and the blue curve now cycles at
+the references' ≈ 2 s period (troughs at 1.5 / 3.0–3.5 / 5.0 s). The remaining gap
+is quantitative: peak amplitudes run ~25% below the references and the first
+half-cycle phases differently — the rigid-stick contact is slightly *stickier* than
+Hertz's elastic microslip, which changes how sharply the initial M1 band is swept
+around. Statics simultaneously improved (the truer bound helps piles too). The
+sequence from "no circulation" to "reference period" was driven entirely by
+measurement — and by the observation that set-valued Coulomb *stick*, not
+tangential elasticity, is what a rigid-contact method needs to get right.
 
 ## Performance
 
@@ -304,10 +308,10 @@ is *not* a controlled algorithmic comparison.
 
 | case | peclet impulse | peclet Hertz | MUSEN (GPU) | LIGGGHTS (24 ranks) |
 |---|---|---|---|---|
-| impact 25k (0.1 s) | **24 s** | 80 s | 61 s | 1 839 s |
-| impact 100k (0.1 s) | **77 s** | 354 s | 504 s ◐ | 913 s |
-| silo large M1 (5 s) | **217 s** | 303 s | ≈ 1 360 s † | 5 892 s |
-| drum (5 s) | **519 s** | 562 s | 5 587 s ◐ | 15 855 s |
+| impact 25k (0.1 s) | **26 s** | 80 s | 61 s | 1 839 s |
+| impact 100k (0.1 s) | **81 s** | 354 s | 504 s ◐ | 913 s |
+| silo large M1 (5 s) | **220 s** | 303 s | ≈ 1 360 s † | 5 892 s |
+| drum (5 s) | **498 s** | 562 s | 5 587 s ◐ | 15 855 s |
 
 Unmarked numbers were measured with the GPU otherwise idle; ◐ marks runs that
 shared the GPU with unrelated compute (they overstate the true time — MUSEN's clean
@@ -397,13 +401,23 @@ the references on **every** benchmark case — including the drum period and the
 geometry explanation of the drum lag and localized it in the impulse model's
 missing sustained-contact tangential elasticity.
 
-Result: with the impulse solver, silo, drum amplitude, deep-bed impact and
-statics are all inside or at the reference envelope; with the Hertz engine,
-everything is. Two impulse-solver residuals stand, both documented above and both reproduced
+**7 — The position-channel Coulomb-bound carry** (the drum resolution). Kinematic
+diagnostics against the Hertz control showed the impulse solver's wall layer
+sliding 99% of the time: the position projection was transmitting part of the
+normal load invisibly to the friction bound. The fix feeds the position solve's
+per-contact normal corrections (as impulses, carried one substep by pair key,
+quasi-static-gated) into the cone bound. Wall kinematics snapped to the reference
+(co-rotation 0.93–0.97, slip 2–4%), the drum period matches, and statics improved.
+This closes the "sustained-contact tangential elasticity" question of finding 6 in
+an unexpected way: the impulse solver did not need elasticity — it needed its
+Coulomb bound to see the whole normal force.
+
+Result: with the impulse solver, silo, drum period, deep-bed impact and statics
+are all inside or at the reference envelope (drum peak amplitude ~25% low); with
+the Hertz engine, everything is. Two impulse-solver residuals stand, both documented above and both reproduced
 correctly by the in-suite Hertz engine: the 25k floor-limited rebound (a
-stabilization trade-off with an API switch) and the drum circulation period
-(missing sustained-contact tangential elasticity — the sharpest open question for
-the impulse contact model).
+stabilization trade-off with an API switch) and the drum's peak amplitude
+(~25% low with the correct period — rigid stick vs elastic microslip).
 
 ## Reproduce this
 
