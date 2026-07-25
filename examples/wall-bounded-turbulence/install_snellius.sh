@@ -22,12 +22,15 @@ module load OpenMPI/4.1.5-GCC-12.3.0         # GCC 12.3 + OpenMPI 4.1.5
 # --- 1. clone (or update) the suite + submodules ----------------------------------------------
 #   flow now consumes core/scheme headers, so core and flow MUST be at matching (umbrella-pinned)
 #   commits -- always update submodules together before building.
+#   The umbrella's .gitmodules use SSH URLs (git@github.com:); compute nodes have no GitHub SSH key,
+#   so rewrite SSH->HTTPS for the (public) repos. Harmless + idempotent.
+git config --global url."https://github.com/".insteadOf "git@github.com:"
 if [ ! -d "$SUITE/.git" ]; then
   git clone --recurse-submodules https://github.com/computational-chemical-engineering/peclet.git "$SUITE"
 fi
 cd "$SUITE"
 git pull --ff-only || true
-git submodule update --init --recursive       # <-- keeps core + flow in lockstep
+git submodule update --init --recursive       # <-- keeps core + flow in lockstep (now over HTTPS)
 
 # --- 2. python venv (nanobind via the active interpreter; mpi4py built against the loaded OpenMPI)
 python3 -m venv flow/.venv
