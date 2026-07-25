@@ -54,9 +54,13 @@ case "$TARGET" in
 esac
 
 # --- 4. build the flow module WITH the distributed (MPI) step ----------------------------------
+#   A venv has no Python.h; point CMake at the base install's headers so FindPython's
+#   Development.Module component resolves (INCLUDEPY is correct even from inside the venv).
+PYINC=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
 cmake -S flow -B "$BUILD" -DCMAKE_BUILD_TYPE=Release \
   -DPECLET_FLOW_MPI=ON \
   -DPython_EXECUTABLE="$PWD/flow/.venv/bin/python" \
+  -DPython_INCLUDE_DIR="$PYINC" \
   -DCMAKE_PREFIX_PATH="$PWD/extern/install/$BACKEND" \
   -DMPIEXEC_EXECUTABLE="$(which mpirun)"
 cmake --build "$BUILD" -j"$(nproc)"

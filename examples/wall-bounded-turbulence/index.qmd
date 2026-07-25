@@ -202,6 +202,7 @@ module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4
 KOKKOS_ARCH=HOPPER90 CUDA_ARCH=90 CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda
 cmake -S flow -B flow/build_cuda_mpi -DPECLET_FLOW_MPI=ON \
       -DPython_EXECUTABLE=$PWD/flow/.venv/bin/python \
+      -DPython_INCLUDE_DIR=$(python3 -c 'import sysconfig;print(sysconfig.get_config_var("INCLUDEPY"))') \
       -DCMAKE_PREFIX_PATH=$PWD/extern/install/nvidia-cuda \
       -DMPIEXEC_EXECUTABLE=$(which mpirun)
 cmake --build flow/build_cuda_mpi -j
