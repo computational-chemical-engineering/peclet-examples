@@ -2,11 +2,12 @@
 # ==========================================================================================
 # Turbulent channel-flow DNS (Re_tau=180) on Snellius CPU (Genoa) nodes — MPI + OpenMP.
 #
-#   NOTE: needs a CPU allocation (genoa/rome product). Project tes24005/prjs1022 is GPU-only
-#   (products: gpu_a100/gpu_h100/... , no genoa) — use snellius_gpu.slurm there; this script is for
-#   a project that has a CPU budget. Set --account below to such a project.
+#   NOTE: needs a CPU allocation (genoa/rome product). On this account that is the NWO-2024.005
+#   project (~4M SBU on genoa); the GPU project (2307092_26) has no CPU product. `--account` below
+#   is the login account (tes24005) — SURF routes to the budget whose product matches the partition
+#   (genoa -> NWO-2024.005). If a job is rejected for accounting, set --account to the project code.
 #
-#   Same physics as the GPU script; use when no GPU allocation is available. CPU is memory-cheap
+#   Same physics as the GPU script; the GPU path is recommended (far cheaper wall-clock). CPU is memory-cheap
 #   (218 GB for the 182M case fits in one 336 GiB-usable Genoa node) but compute-bound: you need
 #   many nodes for a reasonable wall-clock, and the global pressure solve limits scaling past ~a
 #   few thousand cores. Run a scaling test (1/2/4/8 nodes, few hundred steps) before a big job.
@@ -17,13 +18,13 @@
 #   so the rank grid stays coarse and y is never split.
 # ==========================================================================================
 #SBATCH --job-name=chan-dns-cpu
-#SBATCH --partition=genoa            # 192 cores, 384 GB/node
+#SBATCH --partition=genoa            # 192 cores, 336 GiB usable/node
 #SBATCH --nodes=16
 #SBATCH --ntasks-per-node=2          # 2 MPI ranks/node ...
 #SBATCH --cpus-per-task=96           # ... x 96 OpenMP threads = 192 cores/node
 #SBATCH --time=15:00:00
 #SBATCH --output=chan-dns-cpu-%j.out
-##SBATCH --account=your_project
+#SBATCH --account=tes24005
 set -euo pipefail
 
 module purge
