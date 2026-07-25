@@ -26,7 +26,7 @@
 #SBATCH --cpus-per-task=16            # 64 cores / 4 (gpu_h100).  Use 18 on gpu_a100 (72/4).
 #SBATCH --time=08:00:00               # max 120:00:00
 #SBATCH --output=chan-dns-%j.out
-##SBATCH --account=your_project       # <-- REQUIRED on most SURF projects (run: accinfo)
+#SBATCH --account=tes24005
 set -euo pipefail
 
 # --- environment: MUST match the toolchain used to BUILD (see install_snellius.sh) -------------
@@ -35,7 +35,7 @@ module load 2023
 module load OpenMPI/4.1.5-GCC-12.3.0   # the suite's reference stack; `module avail 2023` to confirm
 module load CUDA/12.4.0
 
-SUITE="${SUITE:-$HOME/peclet/suite}"
+SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"            # the PECLET_FLOW_MPI=ON CUDA build
 VENV="${VENV:-$SUITE/flow/.venv}"
 export PYTHONPATH="$BUILD:${PYTHONPATH:-}"

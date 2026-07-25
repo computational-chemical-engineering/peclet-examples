@@ -2,6 +2,10 @@
 # ==========================================================================================
 # Turbulent channel-flow DNS (Re_tau=180) on Snellius CPU (Genoa) nodes — MPI + OpenMP.
 #
+#   NOTE: needs a CPU allocation (genoa/rome product). Project tes24005/prjs1022 is GPU-only
+#   (products: gpu_a100/gpu_h100/... , no genoa) — use snellius_gpu.slurm there; this script is for
+#   a project that has a CPU budget. Set --account below to such a project.
+#
 #   Same physics as the GPU script; use when no GPU allocation is available. CPU is memory-cheap
 #   (218 GB for the 182M case fits in one 336 GiB-usable Genoa node) but compute-bound: you need
 #   many nodes for a reasonable wall-clock, and the global pressure solve limits scaling past ~a
@@ -26,7 +30,7 @@ module purge
 module load 2023
 module load OpenMPI/4.1.5-GCC-12.3.0   # suite reference stack; `module avail 2023` to confirm
 
-SUITE="${SUITE:-$HOME/peclet/suite}"
+SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 BUILD="${BUILD:-$SUITE/flow/build_omp_mpi}"             # PECLET_FLOW_MPI=ON, host-openmp prefix
 VENV="${VENV:-$SUITE/flow/.venv}"
 export PYTHONPATH="$BUILD:${PYTHONPATH:-}"

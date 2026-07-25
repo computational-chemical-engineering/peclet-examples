@@ -13,7 +13,7 @@
 # ==========================================================================================
 set -euo pipefail
 TARGET="${1:-h100}"
-SUITE="${SUITE:-$HOME/peclet/suite}"
+SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 
 module purge
 module load 2023

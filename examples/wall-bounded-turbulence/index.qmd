@@ -173,12 +173,23 @@ never silently get a wrong answer. Need more than ~32 ranks? Lengthen the box or
 ### Install on Snellius
 
 One script, [`install_snellius.sh`](install_snellius.sh), clones the suite, bootstraps the pinned Kokkos
-for the right GPU arch, and builds the MPI-enabled `flow` module:
+for the right GPU arch, and builds the MPI-enabled `flow` module. Install into your **project space**
+(bigger quota + faster GPFS than `$HOME`) — the scripts default to `/projects/0/<projectspace>/peclet`;
+edit that and the `--account` at the top of each script for your allocation:
 
 ```bash
-# on a login node (or an interactive build node):
-./install_snellius.sh h100     # HOPPER90/sm90  (or: a100 -> AMPERE80/sm80 ; cpu -> OpenMP)
+# best on an interactive GPU node so the final import check (needs a GPU) passes:
+srun -p gpu_h100 --gpus=1 -c16 -t2:00:00 --account=<project> --pty bash
+./install_snellius.sh h100     # HOPPER90/sm90  (or: a100 -> AMPERE80/sm80)
 ```
+
+::: {.callout-note}
+## Cost (SBU) and CPU availability
+Snellius bills **192 SBU/GPU-hour on `gpu_h100`** (768/node-hour) and **128 on `gpu_a100`** (512/node-h).
+So the scaling test ≈ 1.5k SBU, the production 182 M run ≈ 5.4k SBU, the hero 614 M run ≈ 18k SBU — small
+against a typical grant. The CPU (`genoa`) path only works if your project includes a CPU product; a
+GPU-only project (e.g. one whose `accinfo` products are `gpu_a100/gpu_h100/...`) must use the GPU scripts.
+:::
 
 Under the hood it is the standard suite build with the distributed step turned on. Two things that bit
 between suite versions and are handled by the script: **keep `core` and `flow` submodules in lockstep**
