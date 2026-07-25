@@ -18,6 +18,7 @@ SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 module purge
 module load 2023
 module load OpenMPI/4.1.5-GCC-12.3.0         # GCC 12.3 + OpenMPI 4.1.5
+module load Python/3.11.3-GCCcore-12.3.0     # >=3.10 required (system python3 is 3.9); `module avail 2023 Python`
 
 # --- 1. clone (or update) the suite + submodules ----------------------------------------------
 #   flow now consumes core/scheme headers, so core and flow MUST be at matching (umbrella-pinned)
@@ -33,7 +34,9 @@ git pull --ff-only || true
 git submodule update --init --recursive       # <-- keeps core + flow in lockstep (now over HTTPS)
 
 # --- 2. python venv (nanobind via the active interpreter; mpi4py built against the loaded OpenMPI)
-python3 -m venv flow/.venv
+#   --clear rebuilds the venv with the CURRENT python3 (3.11) even if a stale 3.9 venv exists.
+python3 -c 'import sys; assert sys.version_info[:2]>=(3,10), f"need Python>=3.10, got {sys.version}"'
+python3 -m venv --clear flow/.venv
 source flow/.venv/bin/activate
 pip install -U pip nanobind numpy mpi4py matplotlib
 

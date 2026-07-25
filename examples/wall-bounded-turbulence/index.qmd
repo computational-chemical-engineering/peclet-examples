@@ -198,7 +198,7 @@ recently gained `Kokkos_ENABLE_CUDA_CONSTEXPR`, without which device code can si
 
 ```bash
 git submodule update --init --recursive                  # core + flow at matching commits
-module load 2023 OpenMPI/4.1.5-GCC-12.3.0 CUDA/12.4.0     # confirm versions: module avail 2023
+module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4.0     # confirm versions: module avail 2023
 KOKKOS_ARCH=HOPPER90 CUDA_ARCH=90 CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda
 cmake -S flow -B flow/build_cuda_mpi -DPECLET_FLOW_MPI=ON \
       -DPython_EXECUTABLE=$PWD/flow/.venv/bin/python \
@@ -232,7 +232,7 @@ importing the solver:
 #SBATCH --ntasks-per-node=4        # one rank per GPU
 #SBATCH --cpus-per-task=16         # 64c/4 on gpu_h100
 ##SBATCH --account=your_project    # required on most SURF projects (run: accinfo)
-module load 2023 OpenMPI/4.1.5-GCC-12.3.0 CUDA/12.4.0
+module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4.0
 export GNY=240 GNX=1508 GNZ=503 CFR=15.68 NSTEPS=50000 PECLET_BIND_GPU=1
 srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py    # driver binds + prints rank->GPU at startup
 ```

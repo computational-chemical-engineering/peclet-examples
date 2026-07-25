@@ -20,7 +20,7 @@
 #SBATCH --output=chan-scale-%j.out
 #SBATCH --account=tes24005
 set -euo pipefail
-module purge; module load 2023 OpenMPI/4.1.5-GCC-12.3.0 CUDA/12.4.0
+module purge; module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4.0
 
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"; BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"
 VENV="${VENV:-$SUITE/flow/.venv}"; export PYTHONPATH="$BUILD:${PYTHONPATH:-}" PECLET_BIND_GPU=1

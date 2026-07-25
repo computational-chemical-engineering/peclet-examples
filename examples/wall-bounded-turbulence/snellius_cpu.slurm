@@ -30,6 +30,7 @@ set -euo pipefail
 module purge
 module load 2023
 module load OpenMPI/4.1.5-GCC-12.3.0   # suite reference stack; `module avail 2023` to confirm
+module load Python/3.11.3-GCCcore-12.3.0   # must match the Python the venv was built with
 
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 BUILD="${BUILD:-$SUITE/flow/build_omp_mpi}"             # PECLET_FLOW_MPI=ON, host-openmp prefix
