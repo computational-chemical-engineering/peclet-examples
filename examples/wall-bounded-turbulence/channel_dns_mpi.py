@@ -62,8 +62,16 @@ p0(f"[cfg] global {GNX}x{GNY}x{GNZ} = {GNX*GNY*GNZ/1e6:.1f}M cells  nu={nu:.4f} 
    f"Delta+={Dplus:.3f} Lx+={GNX*Dplus:.0f} Ly+={GNY*Dplus:.0f} Lz+={GNZ*Dplus:.0f}  "
    f"ranks={NP}  backend={flow.execution_space}  dt={DT} adv={'SOU' if ADV==0 else 'Koren'}")
 for r in range(NP):
-    if r == RANK: print(f"  rank {r}: block origin=({ox},{oy},{oz}) size=({lnx},{lny},{lnz})", flush=True)
+    if r == RANK:
+        print(f"  rank {r}: local#{_local.rank} CUDA_VISIBLE_DEVICES="
+              f"{os.environ.get('CUDA_VISIBLE_DEVICES','<unset>')} "
+              f"block origin=({ox},{oy},{oz}) size=({lnx},{lny},{lnz})", flush=True)
     world.Barrier()
+# Verify GPU binding: node-local ranks must hold DISTINCT devices, else all land on device 0 (no speedup).
+_cvds = world.gather(os.environ.get("CUDA_VISIBLE_DEVICES"), root=0)
+if RANK == 0 and flow.execution_space == "Cuda":
+    print(f"  [gpu-bind] CUDA_VISIBLE_DEVICES per rank = {_cvds}  "
+          f"(check: distinct within each node)", flush=True)
 
 # ---- local initial condition: global Reichardt mean (global y) + per-rank low-pass noise --------
 kap = 0.41

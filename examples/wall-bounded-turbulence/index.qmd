@@ -114,10 +114,19 @@ is $\approx 13.2\,n_y^3$:
 | fine | 1.25 | $1810\times288\times603$ | 314 M | 377 GB |
 | hero | 1.0 | $2262\times360\times754$ | 614 M | 737 GB |
 
-[Snellius](https://www.surf.nl/en/services/compute/snellius-the-national-supercomputer) (SURF) has AMD
-Genoa CPU nodes (192 cores, 384 GB) and GPU nodes with **4× NVIDIA H100 (94 GB)** or **4× A100 (40 GB)**
-per node, on InfiniBand. `peclet.flow` runs distributed on the shared `core` ORB block decomposition with
-asynchronous halo exchange, bit-exact to single-rank.
+[Snellius](https://www.surf.nl/en/services/compute/snellius-the-national-supercomputer) (SURF) has, as
+of mid-2025, these relevant SLURM partitions (confirm with `sinfo -s` — names and versions drift):
+
+| partition | per node | cores | RAM (usable) | max walltime |
+|---|---|---|---|---|
+| `gpu_h100` | 4× NVIDIA H100 (94 GB) | 64 | 720 GiB | 120 h |
+| `gpu_a100` | 4× NVIDIA A100 (40 GB) | 72 | 480 GiB | 120 h |
+| `genoa` | CPU only | 192 | 336 GiB | 120 h |
+| `rome` | CPU only | 128 | 224 GiB | 120 h |
+
+(The bare `gpu` partition used in older docs is gone — use `gpu_a100`/`gpu_h100`.) `peclet.flow` runs
+distributed on the shared `core` ORB block decomposition with asynchronous, GPU-aware halo exchange,
+**bit-exact to single-rank** (validated in the suite's `tests/kokkos_mpi`, np=1,2,4).
 
 ### Recommended: multi-GPU
 
@@ -133,9 +142,23 @@ The 182 M-cell **production** run ($\Delta^+=1.5$) is the sweet spot — it fits
 
 The **hero** 614 M-cell run ($\Delta^+=1.0$) needs **3 H100 nodes (12 GPUs)** for memory and lands around
 **7–9 h**. Estimates assume ~50 000 steps (≈5–10 eddy-turnovers for converged statistics) and a memory-
-bandwidth extrapolation from the single-GPU measurement at ~70 % parallel efficiency — **treat them as
-order-of-magnitude and confirm with a scaling test** (below), since at-scale multi-GPU is the solver's
-active tuning frontier.
+bandwidth extrapolation from the single-GPU measurement at ~70 % parallel efficiency.
+
+::: {.callout-warning}
+## These runtimes are extrapolations — validate on the machine first
+The distributed **step** is verified bit-exact to single-rank in the suite's CI (np=1,2,4), and the
+channel driver here is re-checked on the current build (periodic-direction splits bit-exact; the
+wall-normal-split failure mode is guarded — see below). But **on-cluster multi-node timing has not been
+measured** — the suite's own CHANGELOG states multi-node runs on Snellius are not yet cluster-validated.
+So the table is order-of-magnitude, not a promise. **Run [`scaling_test.sh`](scaling_test.sh) first**
+(1→2→4→8 GPUs, ~1 h): it prints ms/step per GPU count and the per-rank `CUDA_VISIBLE_DEVICES` so you can
+confirm (a) real strong scaling and (b) that each rank actually got a **distinct** GPU — the classic
+multi-GPU footgun is all ranks silently landing on device 0 (correct answer, zero speedup). The driver
+binds one GPU per node-local rank *before* importing the solver and prints the mapping at startup; check
+it. Also confirm the exact **partition names, module versions, and `--account`** on the machine
+(`sinfo -s`, `module avail 2023`, `accinfo`) — these drift and are the most likely reason a copied
+script won't run as-is.
+:::
 
 ::: {.callout-important}
 ## Keep the decomposition off the wall-normal axis
@@ -157,10 +180,14 @@ for the right GPU arch, and builds the MPI-enabled `flow` module:
 ./install_snellius.sh h100     # HOPPER90/sm90  (or: a100 -> AMPERE80/sm80 ; cpu -> OpenMP)
 ```
 
-Under the hood it is the standard suite build with the distributed step turned on:
+Under the hood it is the standard suite build with the distributed step turned on. Two things that bit
+between suite versions and are handled by the script: **keep `core` and `flow` submodules in lockstep**
+(`flow` now `#include`s `core/scheme` headers) and **re-run the Kokkos bootstrap** (the CUDA bootstrap
+recently gained `Kokkos_ENABLE_CUDA_CONSTEXPR`, without which device code can silently miscompile):
 
 ```bash
-module load 2023 foss/2023a CUDA/12.4.0
+git submodule update --init --recursive                  # core + flow at matching commits
+module load 2023 OpenMPI/4.1.5-GCC-12.3.0 CUDA/12.4.0     # confirm versions: module avail 2023
 KOKKOS_ARCH=HOPPER90 CUDA_ARCH=90 CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda
 cmake -S flow -B flow/build_cuda_mpi -DPECLET_FLOW_MPI=ON \
       -DPython_EXECUTABLE=$PWD/flow/.venv/bin/python \
@@ -171,8 +198,9 @@ cmake --build flow/build_cuda_mpi -j
 
 `flow.has_mpi` must print `True` (that is what `-DPECLET_FLOW_MPI=ON` adds; `flow.mpi_block` /
 `Solver.init_mpi` are the distributed entry points). SURF also publishes prebuilt Apptainer images
-(`ghcr.io/computational-chemical-engineering/peclet-cuda:0.1.0-sm90`) if you prefer containers — see
-`suite/containers/README.md`.
+(`ghcr.io/computational-chemical-engineering/peclet-cuda:*-sm90` for H100, `-sm80` for A100) if you
+prefer containers — see `suite/containers/README.md`; note the suite marks those `.def`-built images as
+not-yet-cluster-validated, so the source build above is the surer path today.
 
 ### Launch
 
@@ -187,14 +215,15 @@ The heart of it — one MPI rank per GPU, the driver binds each rank to its node
 importing the solver:
 
 ```bash
-#SBATCH --partition=gpu_h100
+#SBATCH --partition=gpu_h100       # A100 instead: gpu_a100 (then --cpus-per-task=18, 72c/4)
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=4
 #SBATCH --ntasks-per-node=4        # one rank per GPU
-#SBATCH --cpus-per-task=16
-module load 2023 foss/2023a CUDA/12.4.0
-export GNY=240 GNX=1508 GNZ=503 CFR=15.68 NSTEPS=50000
-srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py
+#SBATCH --cpus-per-task=16         # 64c/4 on gpu_h100
+##SBATCH --account=your_project    # required on most SURF projects (run: accinfo)
+module load 2023 OpenMPI/4.1.5-GCC-12.3.0 CUDA/12.4.0
+export GNY=240 GNX=1508 GNZ=503 CFR=15.68 NSTEPS=50000 PECLET_BIND_GPU=1
+srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py    # driver binds + prints rank->GPU at startup
 ```
 
 For CPU, [`snellius_cpu.slurm`](snellius_cpu.slurm) uses few fat MPI ranks × many OpenMP threads
@@ -202,18 +231,17 @@ For CPU, [`snellius_cpu.slurm`](snellius_cpu.slurm) uses few fat MPI ranks × ma
 
 ### Do a scaling test first
 
-Before spending a big allocation, measure the actual throughput and parallel efficiency:
+Before spending a big allocation, measure the actual throughput and parallel efficiency with the bundled
+[`scaling_test.sh`](scaling_test.sh) (a fixed ~77 M-cell problem, 300 steps, swept over 1→2→4→8 GPUs):
 
 ```bash
-# fixed problem, 200 steps, 1 -> 2 -> 4 -> 8 GPUs; watch ms/step and efficiency
-for N in 1 2 4 8; do
-  srun -n $N --mpi=pmix python channel_dns_mpi.py   # GNX/GNY/GNZ fixed, NSTEPS=200, STATSTART huge
-done
+sbatch --nodes=2 scaling_test.sh     # 2 H100 nodes give up to 8 GPUs to sweep
 ```
 
 If ms/step halves each time you double the GPUs you have near-ideal strong scaling; where it flattens is
-your efficient node count. This also validates the rank→GPU binding (each rank should report a distinct
-device) and that the ORB kept $y$ whole.
+your efficient node count. The script also prints the per-rank `CUDA_VISIBLE_DEVICES` — confirm each rank
+got a **distinct** device (all-on-device-0 is the silent multi-GPU failure) — and verifies the ORB kept
+$y$ whole (the driver aborts otherwise).
 
 ## Adapt this yourself
 

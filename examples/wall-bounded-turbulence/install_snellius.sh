@@ -3,8 +3,13 @@
 # Build the peclet `flow` solver (Kokkos + MPI) from source on Snellius.
 #   GPU (default):  ./install_snellius.sh h100      # or a100
 #   CPU:            ./install_snellius.sh cpu
-# Run this on a LOGIN node (compiling), or better an interactive build node:
+# Run on a login node, or better an interactive build node:
 #   srun -p gpu_h100 --gpus=1 -n1 -c16 -t2:00:00 --pty bash   # then ./install_snellius.sh h100
+#
+# NOTE (verified 2026-07-25): module versions on Snellius drift. The lines below are the suite's
+# reference stack; if `module avail 2023` shows a version is gone, load the nearest one -- the only
+# hard requirement is that this OpenMPI is the SAME one mpi4py links against (pip builds mpi4py
+# against whatever `mpicc` is on PATH here).
 # ==========================================================================================
 set -euo pipefail
 TARGET="${1:-h100}"
@@ -12,20 +17,26 @@ SUITE="${SUITE:-$HOME/peclet/suite}"
 
 module purge
 module load 2023
-module load foss/2023a                       # GCC 12.3 + OpenMPI 4.1.x
+module load OpenMPI/4.1.5-GCC-12.3.0         # GCC 12.3 + OpenMPI 4.1.5
 
-# --- 1. clone the suite (submodules: flow, dem, core, voro, morton) ----------------------------
+# --- 1. clone (or update) the suite + submodules ----------------------------------------------
+#   flow now consumes core/scheme headers, so core and flow MUST be at matching (umbrella-pinned)
+#   commits -- always update submodules together before building.
 if [ ! -d "$SUITE/.git" ]; then
   git clone --recurse-submodules https://github.com/computational-chemical-engineering/peclet.git "$SUITE"
 fi
 cd "$SUITE"
+git pull --ff-only || true
+git submodule update --init --recursive       # <-- keeps core + flow in lockstep
 
-# --- 2. python venv (nanobind found via the active interpreter; mpi4py for the driver) ---------
+# --- 2. python venv (nanobind via the active interpreter; mpi4py built against the loaded OpenMPI)
 python3 -m venv flow/.venv
 source flow/.venv/bin/activate
 pip install -U pip nanobind numpy mpi4py matplotlib
 
-# --- 3. bootstrap the pinned Kokkos for the right backend/arch ---------------------------------
+# --- 3. (re)bootstrap the pinned Kokkos for the right backend/arch ------------------------------
+#   Re-run even if you bootstrapped before: the nvidia-cuda bootstrap gained Kokkos_ENABLE_CUDA_CONSTEXPR
+#   (2026-07-23) -- an old prefix can silently miscompile device code. It's cheap; just do it.
 case "$TARGET" in
   h100) module load CUDA/12.4.0; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi
         KOKKOS_ARCH=HOPPER90 CUDA_ARCH=90 CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda ;;
@@ -47,4 +58,4 @@ cmake --build "$BUILD" -j"$(nproc)"
 echo
 echo "Built $BUILD/peclet/flow/_flow*.so"
 PYTHONPATH="$PWD/$BUILD" python -c "from peclet import flow; print('backend:', flow.execution_space, '| has_mpi:', flow.has_mpi)"
-echo "Set in the SLURM script:  SUITE=$SUITE  BUILD=$PWD/$BUILD"
+echo "-> has_mpi must be True. In the SLURM script set:  SUITE=$SUITE  BUILD=$PWD/$BUILD"

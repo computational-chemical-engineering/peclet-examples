@@ -3,9 +3,9 @@
 # Turbulent channel-flow DNS (Re_tau=180) on Snellius CPU (Genoa) nodes — MPI + OpenMP.
 #
 #   Same physics as the GPU script; use when no GPU allocation is available. CPU is memory-cheap
-#   (218 GB for the 182M case fits in one 384 GB Genoa node) but compute-bound: you need many
-#   nodes for a reasonable wall-clock, and the global pressure solve limits scaling past ~a few
-#   thousand cores. Run a scaling test (1/2/4/8 nodes, few hundred steps) before a big job.
+#   (218 GB for the 182M case fits in one 336 GiB-usable Genoa node) but compute-bound: you need
+#   many nodes for a reasonable wall-clock, and the global pressure solve limits scaling past ~a
+#   few thousand cores. Run a scaling test (1/2/4/8 nodes, few hundred steps) before a big job.
 #
 #   Rule of thumb (Delta+=1.5, 182M cells): ~16 Genoa nodes ~ 13 h ; ~32 nodes ~ 6 h.
 #   Keep the ORB from splitting the wall-normal y: <= ~32 ranks-in-y is safe (the driver aborts
@@ -24,7 +24,7 @@ set -euo pipefail
 
 module purge
 module load 2023
-module load foss/2023a               # GCC + OpenMPI
+module load OpenMPI/4.1.5-GCC-12.3.0   # suite reference stack; `module avail 2023` to confirm
 
 SUITE="${SUITE:-$HOME/peclet/suite}"
 BUILD="${BUILD:-$SUITE/flow/build_omp_mpi}"             # PECLET_FLOW_MPI=ON, host-openmp prefix
