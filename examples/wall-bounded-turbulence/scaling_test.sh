@@ -25,10 +25,22 @@ module purge; module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"; BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"
 VENV="${VENV:-$SUITE/flow/.venv}"; export PYTHONPATH="$BUILD:${PYTHONPATH:-}" PECLET_BIND_GPU=1
 
-# fixed medium problem (Delta+=2.0, ~77M cells) that fits from 1 GPU up; no stats, just timing.
-export GNY=180 GNX=1131 GNZ=377 CFR=15.68 NSTEPS=300 STATSTART=100000000 DIAG=50 DT=0.02
+# Fixed problem that MUST fit on ONE GPU (strong scaling). ~27.6M cells (~40 GB) fits 1 H100 (94 GB)
+# with margin. On gpu_a100 (40 GB) use GNY=112 (~18.5M) instead — a full 27.6M won't fit one A100.
+export GNY="${GNY:-128}"
+export GNX="${GNX:-$(python3 -c "import math;print(round(2*math.pi*$GNY))")}"
+export GNZ="${GNZ:-$(python3 -c "import math;print(round(2*math.pi/3*$GNY))")}"
+export CFR=15.68 NSTEPS=300 STATSTART=100000000 DIAG=50 DT=0.02   # STATSTART huge -> pure timing, no stats
+echo "scaling problem: ${GNX}x${GNY}x${GNZ} = $(python3 -c "print(f'{$GNX*$GNY*$GNZ/1e6:.0f}')")M cells (fixed; strong scaling)"
 for N in 1 2 4 8; do
   echo "=================  $N GPU(s)  ================="
-  srun --mpi=pmix --ntasks=$N --gpus=$N "$VENV/bin/python" channel_dns_mpi.py 2>&1 | grep -E "gpu-bind|it=|FATAL|done"
+  # full output -> per-N log (so OOM/tracebacks are preserved); if handles non-zero so set -e won't abort.
+  if srun --mpi=pmix --ntasks=$N --gpus=$N "$VENV/bin/python" channel_dns_mpi.py > "scale_N${N}.log" 2>&1; then
+    grep -E "gpu-bind|it=|done" "scale_N${N}.log" || echo "  (ran but no timing lines — see scale_N${N}.log)"
+  else
+    echo "  [FAILED N=$N] tail of scale_N${N}.log:"; tail -25 "scale_N${N}.log" | sed 's/^/    /'
+  fi
 done
-echo "Read the ms/step from each block; plot ms/step vs N to find the efficient node count."
+echo
+echo "From each block: the '[NN.N it/s]' at the end of the it= lines is the throughput."
+echo "ms/step = 1000 / it_per_s.  Ideal strong scaling: it/s roughly doubles 1->2->4->8 GPUs."
