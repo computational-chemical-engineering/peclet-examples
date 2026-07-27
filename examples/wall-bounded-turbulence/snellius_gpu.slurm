@@ -34,8 +34,7 @@ module purge
 module load 2023
 module load OpenMPI/4.1.5-GCC-12.3.0   # the suite's reference stack; `module avail 2023` to confirm
 module load Python/3.11.3-GCCcore-12.3.0   # must match the Python the venv was built with
-module load CUDA/12.1.1                 # 12.1.1 (not 12.4) so the GPU-aware UCX-CUDA below loads
-module load UCX-CUDA/1.14.1-GCCcore-12.3.0-CUDA-12.1.1   # adds cuda_copy/cuda_ipc/gdr halo transports
+module load CUDA/12.4.0                 # >=12.2 required by Kokkos 5.1.1
 
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"            # the PECLET_FLOW_MPI=ON CUDA build
@@ -55,11 +54,10 @@ export OUT="${OUT:-chan_${GNY}_${SLURM_JOB_ID}}"
 # rank->GPU binding is done inside the driver (node-local rank picks its GPU BEFORE import); the
 # driver prints CUDA_VISIBLE_DEVICES per rank at startup -- CHECK they are distinct within a node.
 export PECLET_BIND_GPU=1
-# GPU-aware MPI: pass device pointers straight into the halo (validated on Snellius with the UCX-CUDA
-# module above -- see check_gpu_aware_mpi.sh). pml=ucx forces the CUDA-capable path; MEMTYPE_CACHE=n
-# makes UCX detect device memory reliably. Fall back to =0 (host-staging) if you change the MPI stack.
-export OMPI_MCA_pml=ucx UCX_MEMTYPE_CACHE=n
-export PECLET_CORE_GPU_AWARE_MPI=1
+# Host-staged halo (device->host->MPI->device): correct everywhere, small copy per halo. GPU-aware MPI
+# (device pointers straight to MPI) is blocked on the 2023 stack -- its UCX-CUDA is built for CUDA 12.1.1,
+# which is too old for Kokkos (>=12.2). See the page's GPU-aware callout for the paths to enable it.
+export PECLET_CORE_GPU_AWARE_MPI=0
 
 echo "grid ${GNX}x${GNY}x${GNZ}  ranks=$SLURM_NTASKS  nodes=$SLURM_NNODES"
 srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py

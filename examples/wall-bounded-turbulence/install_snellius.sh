@@ -58,8 +58,8 @@ pip install -U pip nanobind numpy mpi4py matplotlib
 #   Re-run even if you bootstrapped before: the nvidia-cuda bootstrap gained Kokkos_ENABLE_CUDA_CONSTEXPR
 #   (2026-07-23) -- an old prefix can silently miscompile device code. It's cheap; just do it.
 case "$TARGET" in
-  h100) module load CUDA/12.1.1; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=HOPPER90; CA=90 ;;
-  a100) module load CUDA/12.1.1; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=AMPERE80; CA=80 ;;
+  h100) module load CUDA/12.4.0; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=HOPPER90; CA=90 ;;
+  a100) module load CUDA/12.4.0; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=AMPERE80; CA=80 ;;
   cpu)  BACKEND=host-openmp;      BUILD=flow/build_omp_mpi; KA=; CA= ;;
   *) echo "usage: $0 [h100|a100|cpu]"; exit 1 ;;
 esac
