@@ -36,12 +36,15 @@ echo "############ 1. UCX-CUDA modules available ############"
 module -t avail UCX-CUDA 2>&1 | sed 's/^/  /'
 echo
 echo "############ 2. loading the matching UCX-CUDA ############"
-module load UCX-CUDA/1.14.1-GCCcore-12.3.0-CUDA-12.1.1 2>&1 | sed 's/^/  /' \
-  || { echo "  !! could not load UCX-CUDA -- check the list above for the exact name"; }
-echo "  loaded UCX-related modules:"; module -t list 2>&1 | grep -iE "ucx|openmpi|cuda" | sed 's/^/    /'
+# NB: do NOT pipe `module load` (it's a shell function; a pipe runs it in a subshell and the
+# environment change is discarded -- the load silently has no effect). Run it bare.
+module load UCX-CUDA/1.14.1-GCCcore-12.3.0-CUDA-12.1.1
+echo "  loaded modules (ucx/openmpi/cuda) -- UCX-CUDA MUST appear here:"
+module -t list 2>&1 | grep -iE "ucx|openmpi|cuda" | sed 's/^/    /'
 echo
 echo "############ 3. does UCX now expose CUDA transports? ############"
-ucx_info -d 2>/dev/null | grep -iE "Transport: (cuda|gdr)" | sed 's/^/  /' || echo "  (ucx_info not found or no cuda transports)"
+command -v ucx_info >/dev/null && ucx_info -d 2>&1 | grep -iE "Transport:.*cuda|cuda_copy|cuda_ipc|gdr" | sed 's/^/  /' \
+  || echo "  (no cuda transports found)"
 echo
 echo "############ 4. build the device-pointer MPI check ############"
 export OMPI_MCA_pml=ucx           # force the UCX pml (carries cuda_copy/cuda_ipc); the key setting
