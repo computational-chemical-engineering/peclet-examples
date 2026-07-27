@@ -28,14 +28,16 @@ CHECK="$SUITE/core/tools/cuda_aware_mpi_check.cpp"
 module purge
 module load 2023
 module load OpenMPI/4.1.5-GCC-12.3.0
-module load CUDA/12.4.0
+# Snellius' only GPU-aware UCX is built for CUDA 12.1.1, so the WHOLE stack must be 12.1.1
+# (Lmod refuses UCX-CUDA against CUDA/12.4.0). CUDA 12.1 still supports Hopper (sm_90).
+module load CUDA/12.1.1
 
 echo "############ 1. UCX-CUDA modules available ############"
 module -t avail UCX-CUDA 2>&1 | sed 's/^/  /'
 echo
-echo "############ 2. loading UCX-CUDA (default) ############"
-# bare name loads the default; if it conflicts, the list above shows the exact GCCcore-12.3.0 one to use.
-module load UCX-CUDA 2>&1 | sed 's/^/  /' || { echo "  !! could not load UCX-CUDA -- pick one from the list above and edit this script"; }
+echo "############ 2. loading the matching UCX-CUDA ############"
+module load UCX-CUDA/1.14.1-GCCcore-12.3.0-CUDA-12.1.1 2>&1 | sed 's/^/  /' \
+  || { echo "  !! could not load UCX-CUDA -- check the list above for the exact name"; }
 echo "  loaded UCX-related modules:"; module -t list 2>&1 | grep -iE "ucx|openmpi|cuda" | sed 's/^/    /'
 echo
 echo "############ 3. does UCX now expose CUDA transports? ############"
