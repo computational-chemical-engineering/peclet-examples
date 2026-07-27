@@ -1,0 +1,69 @@
+############ 1. UCX-CUDA modules available ############
+  /sw/arch/RHEL8/EB_production/2023/modulefiles/lib:
+  UCX-CUDA/1.14.1-GCCcore-12.3.0-CUDA-12.1.1
+
+############ 2. loading the matching UCX-CUDA ############
+  loaded UCX-related modules:
+    UCX/1.14.1-GCCcore-12.3.0
+    OpenMPI/4.1.5-GCC-12.3.0
+    CUDA/12.1.1
+
+############ 3. does UCX now expose CUDA transports? ############
+  (ucx_info not found or no cuda transports)
+
+############ 4. build the device-pointer MPI check ############
+  built /tmp/cudampicheck
+
+############ 5. run it on 2 ranks / 2 GPUs (DEVICE pointers) ############
+  compile-time MPIX_CUDA_AWARE_SUPPORT = 1
+  runtime  MPIX_Query_cuda_support()  = 1
+  [gcn139:568380:0:568380] Caught signal 11 (Segmentation fault: invalid permissions for mapped object at address 0x14bc6de00000)
+  ==== backtrace (tid: 568380) ====
+   0 0x000000000003fc60 __GI___sigaction()  :0
+   1 0x000000000019194d __memmove_avx512_unaligned_erms()  :0
+   2 0x000000000004d141 ucp_dt_pack()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/ucp/dt/dt.c:118
+   3 0x0000000000087e82 ucp_tag_pack_eager_common()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/ucp/tag/eager_snd.c:31
+   4 0x000000000001c287 uct_mm_ep_am_common_send()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/uct/sm/mm/base/mm_ep.c:326
+   5 0x000000000001c287 uct_mm_ep_am_bcopy()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/uct/sm/mm/base/mm_ep.c:416
+   6 0x000000000008734d uct_ep_am_bcopy()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/uct/api/uct.h:3020
+   7 0x000000000008734d ucp_tag_eager_bcopy_multi()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/ucp/tag/eager_snd.c:140
+   8 0x0000000000092f3b ucp_request_try_send()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/ucp/core/ucp_request.inl:334
+   9 0x0000000000092f3b ucp_request_send()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/ucp/core/ucp_request.inl:357
+  10 0x0000000000092f3b ucp_tag_send_req()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/ucp/tag/tag_send.c:116
+  11 0x0000000000092f3b ucp_tag_send_nbx()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/ucp/tag/tag_send.c:298
+  12 0x0000000000006099 mca_pml_ucx_send()  ???:0
+  13 0x00000000000963f3 MPI_Send()  ???:0
+  14 0x00000000004013e6 main()  ???:0
+  15 0x000000000002a610 __libc_start_call_main()  ???:0
+  16 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+  17 0x0000000000401175 _start()  ???:0
+  =================================
+  [gcn139:568380] *** Process received signal ***
+  [gcn139:568380] Signal: Segmentation fault (11)
+  [gcn139:568380] Signal code:  (-6)
+  [gcn139:568380] Failing at address: 0xafe60008ac3c
+  [gcn139:568380] [ 0] /lib64/libc.so.6(+0x3fc60)[0x14bebd526c60]
+  [gcn139:568380] [ 1] /lib64/libc.so.6(+0x19194d)[0x14bebd67894d]
+  [gcn139:568380] [ 2] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libucp.so.0(ucp_dt_pack+0x61)[0x14beb7b76141]
+  [gcn139:568380] [ 3] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libucp.so.0(+0x87e82)[0x14beb7bb0e82]
+  [gcn139:568380] [ 4] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libuct.so.0(uct_mm_ep_am_bcopy+0x127)[0x14bebc028287]
+  [gcn139:568380] [ 5] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libucp.so.0(+0x8734d)[0x14beb7bb034d]
+  [gcn139:568380] [ 6] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libucp.so.0(ucp_tag_send_nbx+0x75b)[0x14beb7bbbf3b]
+  [gcn139:568380] [ 7] /sw/arch/RHEL8/EB_production/2023/software/OpenMPI/4.1.5-GCC-12.3.0/lib/openmpi/mca_pml_ucx.so(mca_pml_ucx_send+0xf9)[0x14bebc057099]
+  [gcn139:568380] [ 8] /sw/arch/RHEL8/EB_production/2023/software/OpenMPI/4.1.5-GCC-12.3.0/lib/libmpi.so.40(PMPI_Send+0x123)[0x14bebdac33f3]
+  [gcn139:568380] [ 9] /tmp/cudampicheck[0x4013e6]
+  [gcn139:568380] [10] /lib64/libc.so.6(+0x2a610)[0x14bebd511610]
+  [gcn139:568380] [11] /lib64/libc.so.6(__libc_start_main+0x80)[0x14bebd5116c0]
+  [gcn139:568380] [12] /tmp/cudampicheck[0x401175]
+  [gcn139:568380] *** End of error message ***
+  --------------------------------------------------------------------------
+  Primary job  terminated normally, but 1 process returned
+  a non-zero exit code. Per user-direction, the job has been aborted.
+  --------------------------------------------------------------------------
+  --------------------------------------------------------------------------
+  mpirun noticed that process rank 0 with PID 568380 on node gcn139 exited on signal 11 (Segmentation fault).
+  --------------------------------------------------------------------------
+
+############ verdict ############
+  If you saw 'device recv CORRECT -- CUDA-aware MPI works' above, GPU-aware MPI is functional.
+  Then the run scripts can set PECLET_CORE_GPU_AWARE_MPI=1 + these module/env lines.
