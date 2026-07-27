@@ -1,0 +1,45 @@
+#!/bin/bash
+# ==========================================================================================
+# Discover + validate CUDA-aware (GPU-aware) MPI on Snellius, so the halo can pass device
+# pointers straight to MPI (drops the host-staging copies). Run inside a 2-GPU allocation:
+#
+#   srun -p gpu_h100 --gpus=2 --ntasks=2 --cpus-per-task=16 -t0:30:00 --account=tes24005 --pty bash
+#   ./check_gpu_aware_mpi.sh
+#
+# It loads the same OpenMPI the solver was built against, adds the UCX-CUDA transports, and runs
+# the suite's device-pointer MPI check. If it prints "CUDA-aware MPI works", we enable it in the
+# run scripts. Paste the whole output back.
+# ==========================================================================================
+set -uo pipefail
+SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
+CHECK="$SUITE/core/tools/cuda_aware_mpi_check.cpp"
+
+module purge
+module load 2023
+module load OpenMPI/4.1.5-GCC-12.3.0
+module load CUDA/12.4.0
+
+echo "############ 1. UCX-CUDA modules available ############"
+module -t avail UCX-CUDA 2>&1 | sed 's/^/  /'
+echo
+echo "############ 2. loading UCX-CUDA (default) ############"
+# bare name loads the default; if it conflicts, the list above shows the exact GCCcore-12.3.0 one to use.
+module load UCX-CUDA 2>&1 | sed 's/^/  /' || { echo "  !! could not load UCX-CUDA -- pick one from the list above and edit this script"; }
+echo "  loaded UCX-related modules:"; module -t list 2>&1 | grep -iE "ucx|openmpi|cuda" | sed 's/^/    /'
+echo
+echo "############ 3. does UCX now expose CUDA transports? ############"
+ucx_info -d 2>/dev/null | grep -iE "Transport: (cuda|gdr)" | sed 's/^/  /' || echo "  (ucx_info not found or no cuda transports)"
+echo
+echo "############ 4. build the device-pointer MPI check ############"
+export OMPI_MCA_pml=ucx           # force the UCX pml (carries cuda_copy/cuda_ipc); the key setting
+export UCX_MEMTYPE_CACHE=n        # recommended with CUDA (avoids a known UCX memtype bug)
+# export UCX_TLS=self,sm,cuda_copy,cuda_ipc,rc,gdr_copy   # uncomment if auto-selection misses cuda
+mpic++ "$CHECK" -I"${CUDA_HOME:-$EBROOTCUDA}/include" -L"${CUDA_HOME:-$EBROOTCUDA}/lib64" -lcudart -o /tmp/cudampicheck \
+  && echo "  built /tmp/cudampicheck" || { echo "  BUILD FAILED"; exit 1; }
+echo
+echo "############ 5. run it on 2 ranks / 2 GPUs (DEVICE pointers) ############"
+mpirun -np 2 /tmp/cudampicheck 2>&1 | sed 's/^/  /'
+echo
+echo "############ verdict ############"
+echo "  If you saw 'device recv CORRECT -- CUDA-aware MPI works' above, GPU-aware MPI is functional."
+echo "  Then the run scripts can set PECLET_CORE_GPU_AWARE_MPI=1 + these module/env lines."
