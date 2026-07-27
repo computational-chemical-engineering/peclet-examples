@@ -235,6 +235,7 @@ importing the solver:
 ##SBATCH --account=your_project    # required on most SURF projects (run: accinfo)
 module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4.0
 export GNY=240 GNX=1508 GNZ=503 CFR=15.68 NSTEPS=50000 PECLET_BIND_GPU=1
+export PECLET_CORE_GPU_AWARE_MPI=0   # Snellius OpenMPI segfaults on device pointers; host-stage the halo
 srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py    # driver binds + prints rank->GPU at startup
 ```
 

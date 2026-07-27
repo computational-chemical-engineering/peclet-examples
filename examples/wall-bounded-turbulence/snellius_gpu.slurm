@@ -54,8 +54,10 @@ export OUT="${OUT:-chan_${GNY}_${SLURM_JOB_ID}}"
 # rank->GPU binding is done inside the driver (node-local rank picks its GPU BEFORE import); the
 # driver prints CUDA_VISIBLE_DEVICES per rank at startup -- CHECK they are distinct within a node.
 export PECLET_BIND_GPU=1
-# GPU-aware MPI for the halo is auto-enabled by core now; force off with PECLET_CORE_GPU_AWARE_MPI=0
-# if your site OpenMPI is not CUDA-aware and you see halo errors.
+# Snellius' host OpenMPI/UCX reports CUDA-aware but SEGFAULTS on device pointers in the halo, so
+# force host-staging (device->host->MPI->device). Correct everywhere; small copy overhead per halo.
+# Only set =1 if you have a CONFIRMED CUDA-aware MPI (see core/docs/cuda-aware-mpi.md).
+export PECLET_CORE_GPU_AWARE_MPI=0
 
 echo "grid ${GNX}x${GNY}x${GNZ}  ranks=$SLURM_NTASKS  nodes=$SLURM_NNODES"
 srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py

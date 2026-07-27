@@ -1,0 +1,112 @@
+scaling problem: 804x128x268 = 28M cells (fixed; strong scaling)
+=================  1 GPU(s)  =================
+  [FAILED N=1] tail of scale_N1.log:
+    [gcn106:2451614] [ 3] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libucp.so.0(ucp_tag_send_nbx+0x9e)[0x14e86d80887e]
+    [gcn106:2451614] [ 4] /sw/arch/RHEL8/EB_production/2023/software/OpenMPI/4.1.5-GCC-12.3.0/lib/openmpi/mca_pml_ucx.so(mca_pml_ucx_send+0xf9)[0x14e86d852099]
+    [gcn106:2451614] [ 5] /sw/arch/RHEL8/EB_production/2023/software/OpenMPI/4.1.5-GCC-12.3.0/lib/libmpi.so(MPI_Sendrecv+0x15c)[0x14e86e331a9c]
+    [gcn106:2451614] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x186bb3)[0x14e846c49bb3]
+    [gcn106:2451614] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x18a50a)[0x14e846c4d50a]
+    [gcn106:2451614] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1e82dc)[0x14e846cab2dc]
+    [gcn106:2451614] [ 9] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1eeef7)[0x14e846cb1ef7]
+    [gcn106:2451614] [10] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x21a540)[0x14e846cdd540]
+    [gcn106:2451614] [11] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyObject_Vectorcall+0x33)[0x14e8a0f16193]
+    [gcn106:2451614] [12] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyEval_EvalFrameDefault+0x754)[0x14e8a0f05574]
+    [gcn106:2451614] [13] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2c1625)[0x14e8a0fc1625]
+    [gcn106:2451614] [14] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyEval_EvalCode+0xa1)[0x14e8a0fc10a1]
+    [gcn106:2451614] [15] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2e0a43)[0x14e8a0fe0a43]
+    [gcn106:2451614] [16] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2dc84a)[0x14e8a0fdc84a]
+    [gcn106:2451614] [17] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2f1a01)[0x14e8a0ff1a01]
+    [gcn106:2451614] [18] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_SimpleFileObject+0x19b)[0x14e8a0ff11db]
+    [gcn106:2451614] [19] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_AnyFileObject+0x44)[0x14e8a0ff09e4]
+    [gcn106:2451614] [20] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_RunMain+0x2c0)[0x14e8a0feb2c0]
+    [gcn106:2451614] [21] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_BytesMain+0x27)[0x14e8a0fb07a7]
+    [gcn106:2451614] [22] /lib64/libc.so.6(+0x2a610)[0x14e8a0a2c610]
+    [gcn106:2451614] [23] /lib64/libc.so.6(__libc_start_main+0x80)[0x14e8a0a2c6c0]
+    [gcn106:2451614] [24] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+    [gcn106:2451614] *** End of error message ***
+    srun: error: gcn106: task 0: Segmentation fault (core dumped)
+    srun: Terminating StepId=24929860.0
+=================  2 GPU(s)  =================
+  [FAILED N=2] tail of scale_N2.log:
+    [gcn106:2451708] [20] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_RunMain+0x2c0)[0x1552dd1942c0]
+    [gcn114:3664991] [12] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyEval_EvalFrameDefault+0x754)[0x1510998c5574]
+    [gcn106:2451708] [21] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_BytesMain+0x27)[0x1552dd1597a7]
+    [gcn114:3664991] [13] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2c1625)[0x151099981625]
+    [gcn106:2451708] [22] /lib64/libc.so.6(+0x2a610)[0x1552dcbd5610]
+    [gcn114:3664991] [14] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyEval_EvalCode+0xa1)[0x1510999810a1]
+    [gcn106:2451708] [23] /lib64/libc.so.6(__libc_start_main+0x80)[0x1552dcbd56c0]
+    [gcn106:2451708] [24] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+    [gcn114:3664991] [15] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2e0a43)[0x1510999a0a43]
+    [gcn106:2451708] *** End of error message ***
+    [gcn114:3664991] [16] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2dc84a)[0x15109999c84a]
+    [gcn114:3664991] [17] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2f1a01)[0x1510999b1a01]
+    [gcn114:3664991] [18] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_SimpleFileObject+0x19b)[0x1510999b11db]
+    [gcn114:3664991] [19] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_AnyFileObject+0x44)[0x1510999b09e4]
+    [gcn114:3664991] [20] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_RunMain+0x2c0)[0x1510999ab2c0]
+    [gcn114:3664991] [21] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_BytesMain+0x27)[0x1510999707a7]
+    [gcn114:3664991] [22] /lib64/libc.so.6(+0x2a610)[0x1510993ec610]
+    [gcn114:3664991] [23] /lib64/libc.so.6(__libc_start_main+0x80)[0x1510993ec6c0]
+    [gcn114:3664991] [24] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+    [gcn114:3664991] *** End of error message ***
+    srun: error: gcn114: task 1: Segmentation fault (core dumped)
+    srun: Terminating StepId=24929860.1
+    [2026-07-26T21:38:27.014] error: *** STEP 24929860.1 ON gcn106 CANCELLED AT 2026-07-26T21:38:27 DUE TO TASK FAILURE ***
+    [2026-07-26T21:38:27.015] error: --task-epilog failed status=15
+    srun: error: gcn106: task 0: Segmentation fault (core dumped)
+=================  4 GPU(s)  =================
+  [FAILED N=4] tail of scale_N4.log:
+    [gcn106:2451792] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x186bb3)[0x1499809adbb3]
+    [gcn106:2451792] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x18a50a)[0x1499809b150a]
+    [gcn106:2451792] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1e82dc)[0x149980a0f2dc]
+    [gcn106:2451792] [ 9] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1eeef7)[0x149980a15ef7]
+    [gcn106:2451792] [10] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x21a540)[0x149980a41540]
+    [gcn106:2451792] [11] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyObject_Vectorcall+0x33)[0x1499b6ec7193]
+    [gcn106:2451792] [12] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyEval_EvalFrameDefault+0x754)[0x1499b6eb6574]
+    [gcn106:2451792] [13] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2c1625)[0x1499b6f72625]
+    [gcn106:2451792] [14] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyEval_EvalCode+0xa1)[0x1499b6f720a1]
+    [gcn106:2451792] [15] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2e0a43)[0x1499b6f91a43]
+    [gcn106:2451792] [16] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2dc84a)[0x1499b6f8d84a]
+    [gcn106:2451792] [17] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2f1a01)[0x1499b6fa2a01]
+    [gcn106:2451792] [18] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_SimpleFileObject+0x19b)[0x1499b6fa21db]
+    [gcn106:2451792] [19] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_AnyFileObject+0x44)[0x1499b6fa19e4]
+    [gcn106:2451792] [20] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_RunMain+0x2c0)[0x1499b6f9c2c0]
+    [gcn106:2451792] [21] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_BytesMain+0x27)[0x1499b6f617a7]
+    [gcn106:2451792] [22] /lib64/libc.so.6(+0x2a610)[0x1499b69dd610]
+    [gcn106:2451792] [23] /lib64/libc.so.6(__libc_start_main+0x80)[0x1499b69dd6c0]
+    [gcn106:2451792] [24] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+    [gcn106:2451792] *** End of error message ***
+    srun: error: gcn106: task 1: Segmentation fault (core dumped)
+    srun: Terminating StepId=24929860.2
+    [2026-07-26T21:38:37.782] error: *** STEP 24929860.2 ON gcn106 CANCELLED AT 2026-07-26T21:38:37 DUE TO TASK FAILURE ***
+    srun: error: gcn114: tasks 2-3: Segmentation fault (core dumped)
+    srun: error: gcn106: task 0: Segmentation fault (core dumped)
+=================  8 GPU(s)  =================
+  [FAILED N=8] tail of scale_N8.log:
+    [gcn114:3665186] [ 5] /sw/arch/RHEL8/EB_production/2023/software/OpenMPI/4.1.5-GCC-12.3.0/lib/libmpi.so(MPI_Sendrecv+0x15c)[0x1514781e0a9c]
+    [gcn114:3665186] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x186bb3)[0x151474485bb3]
+    [gcn114:3665186] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x18a50a)[0x15147448950a]
+    [gcn114:3665186] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1e82dc)[0x1514744e72dc]
+    [gcn114:3665186] [ 9] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1eeef7)[0x1514744edef7]
+    [gcn114:3665186] [10] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x21a540)[0x151474519540]
+    [gcn114:3665186] [11] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyObject_Vectorcall+0x33)[0x1514aadb7193]
+    [gcn114:3665186] [12] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyEval_EvalFrameDefault+0x754)[0x1514aada6574]
+    [gcn114:3665186] [13] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2c1625)[0x1514aae62625]
+    [gcn114:3665186] [14] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyEval_EvalCode+0xa1)[0x1514aae620a1]
+    [gcn114:3665186] [15] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2e0a43)[0x1514aae81a43]
+    [gcn114:3665186] [16] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2dc84a)[0x1514aae7d84a]
+    [gcn114:3665186] [17] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2f1a01)[0x1514aae92a01]
+    [gcn114:3665186] [18] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_SimpleFileObject+0x19b)[0x1514aae921db]
+    [gcn114:3665186] [19] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_AnyFileObject+0x44)[0x1514aae919e4]
+    [gcn114:3665186] [20] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_RunMain+0x2c0)[0x1514aae8c2c0]
+    [gcn114:3665186] [21] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_BytesMain+0x27)[0x1514aae517a7]
+    [gcn114:3665186] [22] /lib64/libc.so.6(+0x2a610)[0x1514aa8cd610]
+    [gcn114:3665186] [23] /lib64/libc.so.6(__libc_start_main+0x80)[0x1514aa8cd6c0]
+    [gcn114:3665186] [24] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+    [gcn114:3665186] *** End of error message ***
+    srun: error: gcn106: tasks 0-3: Segmentation fault (core dumped)
+    srun: Terminating StepId=24929860.3
+    [2026-07-26T21:38:48.356] error: --task-epilog failed status=15
+    srun: error: gcn114: tasks 4-7: Segmentation fault (core dumped)
+
+From each block: the '[NN.N it/s]' at the end of the it= lines is the throughput.
+ms/step = 1000 / it_per_s.  Ideal strong scaling: it/s roughly doubles 1->2->4->8 GPUs.

@@ -24,6 +24,8 @@ module purge; module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12
 
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"; BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"
 VENV="${VENV:-$SUITE/flow/.venv}"; export PYTHONPATH="$BUILD:${PYTHONPATH:-}" PECLET_BIND_GPU=1
+# Snellius' host OpenMPI/UCX reports CUDA-aware but SEGFAULTS on device pointers -> force host-staging.
+export PECLET_CORE_GPU_AWARE_MPI=0
 
 # Fixed problem that MUST fit on ONE GPU (strong scaling). ~27.6M cells (~40 GB) fits 1 H100 (94 GB)
 # with margin. On gpu_a100 (40 GB) use GNY=112 (~18.5M) instead — a full 27.6M won't fit one A100.

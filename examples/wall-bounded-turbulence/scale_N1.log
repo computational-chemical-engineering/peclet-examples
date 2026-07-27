@@ -1,0 +1,73 @@
+srun: warning: can't run 1 processes on 2 nodes, setting nnodes to 1
+[cfg] global 804x128x268 = 27.6M cells  nu=0.3556 f=0.015625 Delta+=2.812 Lx+=2261 Ly+=360 Lz+=754  ranks=1  backend=Cuda  dt=0.02 adv=SOU
+  rank 0: local#0 CUDA_VISIBLE_DEVICES=0 block origin=(0,0,0) size=(804,128,268)
+  [gpu-bind] CUDA_VISIBLE_DEVICES per rank = ['0']  (check: distinct within each node)
+[gcn106:2451614:0:2451614] Caught signal 11 (Segmentation fault: invalid permissions for mapped object at address 0x14e62bf9ae80)
+==== backtrace (tid:2451614) ====
+ 0 0x000000000003fc60 __GI___sigaction()  :0
+ 1 0x000000000019194d __memmove_avx512_unaligned_erms()  :0
+ 2 0x000000000001eb0a uct_am_short_fill_data()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/uct/base/uct_iface.h:957
+ 3 0x000000000001eb0a uct_self_iface_sendrecv_am()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/uct/sm/self/self.c:161
+ 4 0x000000000001eb0a uct_self_ep_am_short()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/uct/sm/self/self.c:310
+ 5 0x000000000009287e uct_ep_am_short()  /tmp/jenkins/build/UCX/1.14.1/GCCcore-12.3.0/ucx-1.14.1/src/uct/api/uct.h:2971
+ 6 0x0000000000006099 mca_pml_ucx_send()  ???:0
+ 7 0x0000000000096a9c PMPI_Sendrecv()  ???:0
+ 8 0x0000000000186bb3 std::_Rb_tree<int, std::pair<int const, unsigned long>, std::_Select1st<std::pair<int const, unsigned long> >, std::less<int>, std::allocator<std::pair<int const, unsigned long> > >::_M_get_insert_hint_unique_pos()  ???:0
+ 9 0x000000000018a50a std::_Rb_tree<int, std::pair<int const, unsigned long>, std::_Select1st<std::pair<int const, unsigned long> >, std::less<int>, std::allocator<std::pair<int const, unsigned long> > >::_M_get_insert_hint_unique_pos()  ???:0
+10 0x00000000001e82dc std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::swap()  ???:0
+11 0x00000000001eeef7 std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::swap()  ???:0
+12 0x000000000021a540 std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::swap()  ???:0
+13 0x0000000000216193 _PyObject_VectorcallTstate()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/./Include/internal/pycore_call.h:92
+14 0x0000000000216193 _PyObject_VectorcallTstate()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/./Include/internal/pycore_call.h:93
+15 0x0000000000216193 PyObject_Vectorcall()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Objects/call.c:299
+16 0x0000000000205574 _PyEval_EvalFrameDefault()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/ceval.c:4773
+17 0x00000000002c1625 _PyEval_EvalFrame()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/./Include/internal/pycore_ceval.h:73
+18 0x00000000002c1625 _PyEval_Vector()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/ceval.c:6438
+19 0x00000000002c10a1 PyEval_EvalCode()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/ceval.c:1154
+20 0x00000000002e0a43 run_eval_code_obj()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/pythonrun.c:1714
+21 0x00000000002dc84a run_mod()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/pythonrun.c:1735
+22 0x00000000002dc84a run_mod()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/pythonrun.c:1736
+23 0x00000000002f1a01 pyrun_file()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/pythonrun.c:1630
+24 0x00000000002f11db _PyRun_SimpleFileObject()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/pythonrun.c:440
+25 0x00000000002f09e4 _PyRun_AnyFileObject()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Python/pythonrun.c:79
+26 0x00000000002eb2c0 pymain_run_file_obj()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Modules/main.c:360
+27 0x00000000002eb2c0 pymain_run_file()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Modules/main.c:379
+28 0x00000000002eb2c0 pymain_run_python()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Modules/main.c:601
+29 0x00000000002eb2c0 Py_RunMain()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Modules/main.c:680
+30 0x00000000002b07a7 Py_BytesMain()  /gpfs/scratch1/nodespecific/gcn105/jenkins/build/Python/3.11.3/GCCcore-12.3.0/Python-3.11.3/Modules/main.c:734
+31 0x000000000002a610 __libc_start_call_main()  ???:0
+32 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+33 0x0000000000401065 _start()  ???:0
+=================================
+[gcn106:2451614] *** Process received signal ***
+[gcn106:2451614] Signal: Segmentation fault (11)
+[gcn106:2451614] Signal code:  (-6)
+[gcn106:2451614] Failing at address: 0xafe60025689e
+[gcn106:2451614] [ 0] /lib64/libc.so.6(+0x3fc60)[0x14e8a0a41c60]
+[gcn106:2451614] [ 1] /lib64/libc.so.6(+0x19194d)[0x14e8a0b9394d]
+[gcn106:2451614] [ 2] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libuct.so.0(uct_self_ep_am_short+0x5a)[0x14e86cc22b0a]
+[gcn106:2451614] [ 3] /sw/arch/RHEL8/EB_production/2023/software/UCX/1.14.1-GCCcore-12.3.0/lib64/libucp.so.0(ucp_tag_send_nbx+0x9e)[0x14e86d80887e]
+[gcn106:2451614] [ 4] /sw/arch/RHEL8/EB_production/2023/software/OpenMPI/4.1.5-GCC-12.3.0/lib/openmpi/mca_pml_ucx.so(mca_pml_ucx_send+0xf9)[0x14e86d852099]
+[gcn106:2451614] [ 5] /sw/arch/RHEL8/EB_production/2023/software/OpenMPI/4.1.5-GCC-12.3.0/lib/libmpi.so(MPI_Sendrecv+0x15c)[0x14e86e331a9c]
+[gcn106:2451614] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x186bb3)[0x14e846c49bb3]
+[gcn106:2451614] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x18a50a)[0x14e846c4d50a]
+[gcn106:2451614] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1e82dc)[0x14e846cab2dc]
+[gcn106:2451614] [ 9] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x1eeef7)[0x14e846cb1ef7]
+[gcn106:2451614] [10] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-311-x86_64-linux-gnu.so(+0x21a540)[0x14e846cdd540]
+[gcn106:2451614] [11] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyObject_Vectorcall+0x33)[0x14e8a0f16193]
+[gcn106:2451614] [12] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyEval_EvalFrameDefault+0x754)[0x14e8a0f05574]
+[gcn106:2451614] [13] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2c1625)[0x14e8a0fc1625]
+[gcn106:2451614] [14] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(PyEval_EvalCode+0xa1)[0x14e8a0fc10a1]
+[gcn106:2451614] [15] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2e0a43)[0x14e8a0fe0a43]
+[gcn106:2451614] [16] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2dc84a)[0x14e8a0fdc84a]
+[gcn106:2451614] [17] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(+0x2f1a01)[0x14e8a0ff1a01]
+[gcn106:2451614] [18] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_SimpleFileObject+0x19b)[0x14e8a0ff11db]
+[gcn106:2451614] [19] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(_PyRun_AnyFileObject+0x44)[0x14e8a0ff09e4]
+[gcn106:2451614] [20] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_RunMain+0x2c0)[0x14e8a0feb2c0]
+[gcn106:2451614] [21] /sw/arch/RHEL8/EB_production/2023/software/Python/3.11.3-GCCcore-12.3.0/lib/libpython3.11.so.1.0(Py_BytesMain+0x27)[0x14e8a0fb07a7]
+[gcn106:2451614] [22] /lib64/libc.so.6(+0x2a610)[0x14e8a0a2c610]
+[gcn106:2451614] [23] /lib64/libc.so.6(__libc_start_main+0x80)[0x14e8a0a2c6c0]
+[gcn106:2451614] [24] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn106:2451614] *** End of error message ***
+srun: error: gcn106: task 0: Segmentation fault (core dumped)
+srun: Terminating StepId=24929860.0
