@@ -10,7 +10,21 @@
 # reference stack; if `module avail 2023` shows a version is gone, load the nearest one -- the only
 # hard requirement is that this OpenMPI is the SAME one mpi4py links against (pip builds mpi4py
 # against whatever `mpicc` is on PATH here).
+#
+# Run as a batch job (recommended -- no terminal to babysit; import check runs on the GPU):
+#   sbatch install_snellius.sh h100                    # -> peclet-build-<jobid>.out
+#   FRESH=1 sbatch install_snellius.sh h100            # clean rebuild -- REQUIRED when switching CUDA
+#                                                      #   version/arch (CMake caches the compiler)
+# For a100:  sbatch -p gpu_a100 --cpus-per-task=18 install_snellius.sh a100
 # ==========================================================================================
+#SBATCH --job-name=peclet-build
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=02:00:00
+#SBATCH --output=peclet-build-%j.out
+#SBATCH --account=tes24005
 set -euo pipefail
 TARGET="${1:-h100}"
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
@@ -44,19 +58,28 @@ pip install -U pip nanobind numpy mpi4py matplotlib
 #   Re-run even if you bootstrapped before: the nvidia-cuda bootstrap gained Kokkos_ENABLE_CUDA_CONSTEXPR
 #   (2026-07-23) -- an old prefix can silently miscompile device code. It's cheap; just do it.
 case "$TARGET" in
-  h100) module load CUDA/12.1.1; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi
-        KOKKOS_ARCH=HOPPER90 CUDA_ARCH=90 CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda ;;
-  a100) module load CUDA/12.1.1; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi
-        KOKKOS_ARCH=AMPERE80 CUDA_ARCH=80 CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda ;;
-  cpu)  BACKEND=host-openmp; BUILD=flow/build_omp_mpi
-        tools/bootstrap_deps.sh host-openmp ;;
+  h100) module load CUDA/12.1.1; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=HOPPER90; CA=90 ;;
+  a100) module load CUDA/12.1.1; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=AMPERE80; CA=80 ;;
+  cpu)  BACKEND=host-openmp;      BUILD=flow/build_omp_mpi; KA=; CA= ;;
   *) echo "usage: $0 [h100|a100|cpu]"; exit 1 ;;
 esac
+# FRESH=1 wipes the cached Kokkos build/install -- REQUIRED when the CUDA version/arch changed, because
+# CMake caches CMAKE_CUDA_COMPILER and a plain reconfigure keeps the OLD nvcc.
+if [ "${FRESH:-0}" = "1" ]; then
+  echo "FRESH: removing extern/{build,install}/$BACKEND"
+  rm -rf "extern/build/$BACKEND" "extern/install/$BACKEND"
+fi
+if [ "$BACKEND" = "nvidia-cuda" ]; then
+  KOKKOS_ARCH=$KA CUDA_ARCH=$CA CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda
+else
+  tools/bootstrap_deps.sh host-openmp
+fi
 
 # --- 4. build the flow module WITH the distributed (MPI) step ----------------------------------
 #   A venv has no Python.h; point CMake at the base install's headers so FindPython's
 #   Development.Module component resolves (INCLUDEPY is correct even from inside the venv).
 PYINC=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
+rm -rf "$BUILD"   # always reconfigure flow from scratch (picks up the current nvcc / prefix)
 cmake -S flow -B "$BUILD" -DCMAKE_BUILD_TYPE=Release \
   -DPECLET_FLOW_MPI=ON \
   -DPython_EXECUTABLE="$PWD/flow/.venv/bin/python" \
