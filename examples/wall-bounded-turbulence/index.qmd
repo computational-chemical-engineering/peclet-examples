@@ -198,7 +198,7 @@ recently gained `Kokkos_ENABLE_CUDA_CONSTEXPR`, without which device code can si
 
 ```bash
 git submodule update --init --recursive                  # core + flow at matching commits
-module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4.0     # confirm versions: module avail 2023
+source snellius_env.sh          # 2024a GPU-aware stack: module load 2024 + gompi/2024a + CUDA/12.6.0 + UCX-CUDA/1.16.0 + Python
 KOKKOS_ARCH=HOPPER90 CUDA_ARCH=90 CUDA_COMPILER=$(which nvcc) tools/bootstrap_deps.sh nvidia-cuda
 cmake -S flow -B flow/build_cuda_mpi -DPECLET_FLOW_MPI=ON \
       -DPython_EXECUTABLE=$PWD/flow/.venv/bin/python \
@@ -214,22 +214,26 @@ cmake --build flow/build_cuda_mpi -j
 prefer containers — see `suite/containers/README.md`; note the suite marks those `.def`-built images as
 not-yet-cluster-validated, so the source build above is the surer path today.
 
-::: {.callout-note}
-## GPU-aware MPI on Snellius — possible, but a version knot (default here is host-staging)
-The halo can pass **device pointers straight to MPI** (dropping the host-staging copies) — a real win
-for multi-node runs. We proved it *works* on Snellius: with `CUDA/12.1.1` + `UCX-CUDA/1.14.1-...-CUDA-12.1.1`
-+ `OMPI_MCA_pml=ucx` + `UCX_MEMTYPE_CACHE=n`, the suite's device-pointer send/recv check
-([`check_gpu_aware_mpi.sh`](check_gpu_aware_mpi.sh)) passes. **But there's a knot:** the *only* GPU-aware
-`UCX-CUDA` on the 2023 module stack is built for **CUDA 12.1.1**, and **Kokkos 5.1.1 requires CUDA ≥ 12.2**
-— so you can't build the solver and load that UCX-CUDA at the same time. Hence the scripts default to
-**host-staging** (`PECLET_CORE_GPU_AWARE_MPI=0`), which is always correct. To actually enable GPU-aware you
-need a stack where *both* hold: either a newer module set (`module -r spider UCX-CUDA` / `module avail
-2024` for a `UCX-CUDA` built against CUDA ≥ 12.2 with a matching OpenMPI, then rebuild against it), or a
-**user-space CUDA-aware OpenMPI** (UCX 1.20 + OpenMPI 5.0.7 `--with-cuda` against CUDA 12.4, recipe in
-`suite/core/docs/cuda-aware-mpi.md`) built in your project space. Two gotchas that cost us time and are
-worth remembering: **never pipe `module load`** (it's a shell function; a pipe runs it in a subshell and
-the load silently vanishes), and `MPIX_Query_cuda_support()` **over-reports** on this stack — trust the
-device send/recv check, not the query.
+::: {.callout-tip}
+## GPU-aware MPI on Snellius — enabled via the 2024a toolchain
+The halo passes **device pointers straight to MPI** (dropping the host-staging copies) — a real win for
+multi-node runs. The trick is picking a toolchain where **both** constraints hold at once: Kokkos 5.1.1
+needs **CUDA ≥ 12.2**, and you need a **`UCX-CUDA`** module (the CUDA transports) for that same CUDA. The
+2023 stack can't do both (its `UCX-CUDA` is CUDA-12.1.1 only), but the **2024a** stack can:
+
+```
+module load 2024
+gompi/2024a  (GCC 13.3 + OpenMPI + UCX 1.16)  +  CUDA/12.6.0  +  UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0
+OMPI_MCA_pml=ucx   UCX_MEMTYPE_CACHE=n   PECLET_CORE_GPU_AWARE_MPI=1
+```
+
+All the scripts source this from a single [`snellius_env.sh`](snellius_env.sh) (fails fast if a module name
+drifts). **Validate before trusting it:** [`check_gpu_aware_mpi.sh`](check_gpu_aware_mpi.sh) runs the suite's
+device-pointer send/recv and must print *"CUDA-aware MPI works"*. Set `PECLET_CORE_GPU_AWARE_MPI=0` to fall
+back to host-staging (always correct) on any stack. Two gotchas that cost us time: **never pipe `module
+load`** (it's a shell function; a pipe runs it in a subshell and the load silently vanishes), and Snellius'
+modules are **hierarchical** — `OpenMPI/…-GCC-13.3.0` and `Python/…-GCCcore-13.3.0` are hidden from `module
+avail` until their toolchain is loaded (`module spider <full-name>` shows the exact prerequisite line).
 :::
 
 ### Launch
@@ -251,9 +255,9 @@ importing the solver:
 #SBATCH --ntasks-per-node=4        # one rank per GPU
 #SBATCH --cpus-per-task=16         # 64c/4 on gpu_h100
 ##SBATCH --account=your_project    # required on most SURF projects (run: accinfo)
-module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4.0
+source snellius_env.sh          # 2024a GPU-aware stack: module load 2024 + gompi/2024a + CUDA/12.6.0 + UCX-CUDA/1.16.0 + Python
 export GNY=240 GNX=1508 GNZ=503 CFR=15.68 NSTEPS=50000 PECLET_BIND_GPU=1
-export PECLET_CORE_GPU_AWARE_MPI=0   # host-staged halo (GPU-aware blocked on 2023 stack; see callout)
+export PECLET_CORE_GPU_AWARE_MPI=1   # device-pointer halo (snellius_env.sh set OMPI_MCA_pml=ucx); =0 host-stages
 srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py    # driver binds + prints rank->GPU at startup
 ```
 

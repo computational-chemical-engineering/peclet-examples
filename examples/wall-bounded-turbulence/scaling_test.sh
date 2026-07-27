@@ -20,13 +20,11 @@
 #SBATCH --output=chan-scale-%j.out
 #SBATCH --account=tes24005
 set -euo pipefail
-module purge; module load 2023 OpenMPI/4.1.5-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 CUDA/12.4.0
+source "${SLURM_SUBMIT_DIR:-$PWD}/snellius_env.sh"   # 2024a GPU-aware stack
 
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"; BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"
 VENV="${VENV:-$SUITE/flow/.venv}"; export PYTHONPATH="$BUILD:${PYTHONPATH:-}" PECLET_BIND_GPU=1
-# Host-staged halo (device->host->MPI->device): correct everywhere. GPU-aware MPI is blocked on the
-# 2023 stack (its UCX-CUDA is CUDA-12.1.1 only, too old for Kokkos>=12.2) -- see the page's callout.
-export PECLET_CORE_GPU_AWARE_MPI=0
+export PECLET_CORE_GPU_AWARE_MPI=1   # device-pointer halo (validated); =0 host-stages
 
 # Fixed problem that MUST fit on ONE GPU (strong scaling). ~27.6M cells (~40 GB) fits 1 H100 (94 GB)
 # with margin. On gpu_a100 (40 GB) use GNY=112 (~18.5M) instead — a full 27.6M won't fit one A100.

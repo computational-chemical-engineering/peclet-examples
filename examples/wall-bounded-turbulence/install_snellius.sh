@@ -29,10 +29,10 @@ set -euo pipefail
 TARGET="${1:-h100}"
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 
-module purge
-module load 2023
-module load OpenMPI/4.1.5-GCC-12.3.0         # GCC 12.3 + OpenMPI 4.1.5
-module load Python/3.11.3-GCCcore-12.3.0     # >=3.10 required (system python3 is 3.9); `module avail 2023 Python`
+# GPU-aware 2024a toolchain (GCC 13.3 + OpenMPI + CUDA 12.6 + UCX-CUDA 1.16 + Python). One shared
+# definition so build and run agree; it fails fast if a Snellius module name has drifted.
+ENVDIR="${SLURM_SUBMIT_DIR:-$PWD}"
+source "$ENVDIR/snellius_env.sh"
 
 # --- 1. clone (or update) the suite + submodules ----------------------------------------------
 #   flow now consumes core/scheme headers, so core and flow MUST be at matching (umbrella-pinned)
@@ -58,9 +58,9 @@ pip install -U pip nanobind numpy mpi4py matplotlib
 #   Re-run even if you bootstrapped before: the nvidia-cuda bootstrap gained Kokkos_ENABLE_CUDA_CONSTEXPR
 #   (2026-07-23) -- an old prefix can silently miscompile device code. It's cheap; just do it.
 case "$TARGET" in
-  h100) module load CUDA/12.4.0; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=HOPPER90; CA=90 ;;
-  a100) module load CUDA/12.4.0; BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=AMPERE80; CA=80 ;;
-  cpu)  BACKEND=host-openmp;      BUILD=flow/build_omp_mpi; KA=; CA= ;;
+  h100) BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=HOPPER90; CA=90 ;;   # CUDA 12.6 from snellius_env
+  a100) BACKEND=nvidia-cuda; BUILD=flow/build_cuda_mpi; KA=AMPERE80; CA=80 ;;
+  cpu)  BACKEND=host-openmp;  BUILD=flow/build_omp_mpi; KA=; CA= ;;
   *) echo "usage: $0 [h100|a100|cpu]"; exit 1 ;;
 esac
 # FRESH=1 wipes the cached Kokkos build/install -- REQUIRED when the CUDA version/arch changed, because

@@ -30,11 +30,7 @@
 set -euo pipefail
 
 # --- environment: MUST match the toolchain used to BUILD (see install_snellius.sh) -------------
-module purge
-module load 2023
-module load OpenMPI/4.1.5-GCC-12.3.0   # the suite's reference stack; `module avail 2023` to confirm
-module load Python/3.11.3-GCCcore-12.3.0   # must match the Python the venv was built with
-module load CUDA/12.4.0                 # >=12.2 required by Kokkos 5.1.1
+source "${SLURM_SUBMIT_DIR:-$PWD}/snellius_env.sh"   # 2024a GPU-aware stack; sets OMPI_MCA_pml=ucx etc.
 
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"            # the PECLET_FLOW_MPI=ON CUDA build
@@ -54,10 +50,10 @@ export OUT="${OUT:-chan_${GNY}_${SLURM_JOB_ID}}"
 # rank->GPU binding is done inside the driver (node-local rank picks its GPU BEFORE import); the
 # driver prints CUDA_VISIBLE_DEVICES per rank at startup -- CHECK they are distinct within a node.
 export PECLET_BIND_GPU=1
-# Host-staged halo (device->host->MPI->device): correct everywhere, small copy per halo. GPU-aware MPI
-# (device pointers straight to MPI) is blocked on the 2023 stack -- its UCX-CUDA is built for CUDA 12.1.1,
-# which is too old for Kokkos (>=12.2). See the page's GPU-aware callout for the paths to enable it.
-export PECLET_CORE_GPU_AWARE_MPI=0
+# GPU-aware MPI: device pointers straight into the halo (2024a stack has CUDA-aware UCX-CUDA, validated
+# by check_gpu_aware_mpi.sh). snellius_env.sh already set OMPI_MCA_pml=ucx + UCX_MEMTYPE_CACHE=n.
+# Set =0 to fall back to host-staging (always correct) if you ever change the MPI stack.
+export PECLET_CORE_GPU_AWARE_MPI=1
 
 echo "grid ${GNX}x${GNY}x${GNZ}  ranks=$SLURM_NTASKS  nodes=$SLURM_NNODES"
 srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py

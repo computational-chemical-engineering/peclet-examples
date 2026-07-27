@@ -25,21 +25,9 @@ set -uo pipefail
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 CHECK="$SUITE/core/tools/cuda_aware_mpi_check.cpp"
 
-module purge
-module load 2023
-module load OpenMPI/4.1.5-GCC-12.3.0
-# Snellius' only GPU-aware UCX is built for CUDA 12.1.1, so the WHOLE stack must be 12.1.1
-# (Lmod refuses UCX-CUDA against CUDA/12.4.0). CUDA 12.1 still supports Hopper (sm_90).
-module load CUDA/12.1.1
-
-echo "############ 1. UCX-CUDA modules available ############"
-module -t avail UCX-CUDA 2>&1 | sed 's/^/  /'
-echo
-echo "############ 2. loading the matching UCX-CUDA ############"
-# NB: do NOT pipe `module load` (it's a shell function; a pipe runs it in a subshell and the
-# environment change is discarded -- the load silently has no effect). Run it bare.
-module load UCX-CUDA/1.14.1-GCCcore-12.3.0-CUDA-12.1.1
-echo "  loaded modules (ucx/openmpi/cuda) -- UCX-CUDA MUST appear here:"
+echo "############ 1-2. load the GPU-aware toolchain (snellius_env.sh) ############"
+source "${SLURM_SUBMIT_DIR:-$PWD}/snellius_env.sh"   # 2024a: gompi + CUDA 12.6 + UCX-CUDA 1.16
+echo "  loaded modules -- UCX-CUDA MUST appear here:"
 module -t list 2>&1 | grep -iE "ucx|openmpi|cuda" | sed 's/^/    /'
 echo
 echo "############ 3. does UCX now expose CUDA transports? ############"
