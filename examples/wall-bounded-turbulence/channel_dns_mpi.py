@@ -111,7 +111,14 @@ if CFR > 0:
     if isinstance(cap, np.ndarray):
         uview = cap
     else:
-        import cupy as cp; uview = cp.from_dlpack(cap)
+        try:
+            import cupy as cp; uview = cp.from_dlpack(cap)
+        except Exception as e:
+            if RANK == 0:
+                sys.stderr.write(f"\nCFR-ERROR: constant-flow-rate needs CuPy for the on-device shift, "
+                                 f"but it is unavailable: {type(e).__name__}: {e}\n"
+                                 f"  fix:  pip install cupy-cuda12x   (into {sys.prefix})\n\n")
+            world.Barrier(); sys.exit(2)
     g = (uview.shape[0] - lnx)//2
     inner = uview[g:g+lnx, g:g+lny, g:g+lnz]
     gcells = GNX*GNY*GNZ

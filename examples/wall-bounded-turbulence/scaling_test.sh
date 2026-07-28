@@ -36,10 +36,16 @@ echo "scaling problem: ${GNX}x${GNY}x${GNZ} = $(python3 -c "print(f'{$GNX*$GNY*$
 for N in 1 2 4 8; do
   echo "=================  $N GPU(s)  ================="
   # full output -> per-N log (so OOM/tracebacks are preserved); if handles non-zero so set -e won't abort.
-  if srun --mpi=pmix --ntasks=$N --gpus=$N "$VENV/bin/python" channel_dns_mpi.py > "scale_N${N}.log" 2>&1; then
-    grep -E "gpu-bind|it=|done" "scale_N${N}.log" || echo "  (ran but no timing lines — see scale_N${N}.log)"
+  srun --mpi=pmix --ntasks=$N --gpus=$N "$VENV/bin/python" channel_dns_mpi.py > "scale_N${N}.log" 2>&1 || true
+  if grep -q "it=" "scale_N${N}.log"; then
+    grep -E "gpu-bind|it=|done" "scale_N${N}.log"
   else
-    echo "  [FAILED N=$N] tail of scale_N${N}.log:"; tail -25 "scale_N${N}.log" | sed 's/^/    /'
+    # no timing -> real error. Filter out the benign Kokkos-finalize teardown backtrace to show the CAUSE.
+    echo "  [FAILED N=$N] real error (teardown noise filtered):"
+    grep -iE "error|traceback|no module|module.*not|exception|assert|cuda|cupy|out of memory|cannot|fatal|FAILED" \
+         "scale_N${N}.log" \
+      | grep -viE "Kokkos4Impl|host_abort|SharedAllocation|save_stacktrace|Backtrace|^\s*\[0x|\[gcn|libpython|libc\.so|_start|__libc|task-epilog" \
+      | head -12 | sed 's/^/    /'
   fi
 done
 echo
