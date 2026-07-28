@@ -19,17 +19,22 @@ import os, sys, time
 import numpy as np
 from mpi4py import MPI
 
-# ---- one GPU per node-local rank: set visibility BEFORE importing peclet -----------------------
-# Kokkos::initialize() takes default device 0, so each rank must see exactly ONE distinct GPU.
-# Pick the node-local-rank-th of whatever GPUs are visible (works whether SLURM exposed all 4 to
-# every task, or none). Set PECLET_BIND_GPU=0 to disable (CPU runs, or if the launcher already binds).
+# ---- one GPU per rank -------------------------------------------------------------------------
+# PREFERRED: let SLURM bind one GPU per task (srun --gpus-per-task=1 --gpu-bind=per_task:1). Then
+# each task is cgroup-isolated to its own GPU (which it sees as device 0) and we must NOT touch
+# CUDA_VISIBLE_DEVICES -- Kokkos::initialize() picks device 0 = the right GPU. This is the robust path.
+# LEGACY: PECLET_BIND_GPU=1 hand-picks the node-local-rank-th visible GPU (only for launchers that
+# expose ALL GPUs to every task and do NOT cgroup-isolate). Default is now 0 (trust SLURM).
 world = MPI.COMM_WORLD
 _local = world.Split_type(MPI.COMM_TYPE_SHARED)
-if os.environ.get("PECLET_BIND_GPU", "1") == "1":
+if os.environ.get("PECLET_BIND_GPU", "0") == "1":
     _vis = os.environ.get("CUDA_VISIBLE_DEVICES")
     _devs = _vis.split(",") if _vis else None
-    os.environ["CUDA_VISIBLE_DEVICES"] = (_devs[_local.rank % len(_devs)] if _devs
-                                          else str(_local.rank))
+    # only remap when MORE than one GPU is visible to this task; a single visible GPU is already isolated
+    if _devs and len(_devs) > 1:
+        os.environ["CUDA_VISIBLE_DEVICES"] = _devs[_local.rank % len(_devs)]
+    elif not _devs:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(_local.rank)
 RANK, NP = world.rank, world.size
 
 def p0(*a):
@@ -61,17 +66,29 @@ if _ysplit:
 p0(f"[cfg] global {GNX}x{GNY}x{GNZ} = {GNX*GNY*GNZ/1e6:.1f}M cells  nu={nu:.4f} f={fbody:.5g} "
    f"Delta+={Dplus:.3f} Lx+={GNX*Dplus:.0f} Ly+={GNY*Dplus:.0f} Lz+={GNZ*Dplus:.0f}  "
    f"ranks={NP}  backend={flow.execution_space}  dt={DT} adv={'SOU' if ADV==0 else 'Koren'}")
-for r in range(NP):
-    if r == RANK:
-        print(f"  rank {r}: local#{_local.rank} CUDA_VISIBLE_DEVICES="
-              f"{os.environ.get('CUDA_VISIBLE_DEVICES','<unset>')} "
-              f"block origin=({ox},{oy},{oz}) size=({lnx},{lny},{lnz})", flush=True)
-    world.Barrier()
-# Verify GPU binding: node-local ranks must hold DISTINCT devices, else all land on device 0 (no speedup).
-_cvds = world.gather(os.environ.get("CUDA_VISIBLE_DEVICES"), root=0)
-if RANK == 0 and flow.execution_space == "Cuda":
-    print(f"  [gpu-bind] CUDA_VISIBLE_DEVICES per rank = {_cvds}  "
-          f"(check: distinct within each node)", flush=True)
+# Report the TRUE physical GPU per rank (host + PCI bus id) -- CUDA_VISIBLE_DEVICES is ambiguous under
+# cgroup isolation (every isolated task shows "0"). Two ranks on the same host+bus = oversubscription.
+import socket
+_host = socket.gethostname()
+_bus = "?"
+if flow.execution_space == "Cuda":
+    try:
+        import cupy as cp
+        _bus = cp.cuda.runtime.deviceGetPCIBusId(cp.cuda.runtime.getDevice())
+    except Exception as e:
+        _bus = f"<unknown:{type(e).__name__}>"
+_gpumap = world.gather((RANK, _host, _bus), root=0)
+if RANK == 0:
+    print(f"  [gpu-bind] rank -> (host, GPU PCI bus):", flush=True)
+    seen = {}
+    for rr, hh, bb in _gpumap:
+        print(f"    rank {rr}: {hh}  {bb}", flush=True)
+        seen.setdefault((hh, bb), []).append(rr)
+    dups = {k: v for k, v in seen.items() if len(v) > 1 and flow.execution_space == "Cuda"}
+    if dups:
+        print(f"  [gpu-bind] WARNING: GPUs shared by >1 rank (oversubscription -> bad scaling): {dups}", flush=True)
+    else:
+        print(f"  [gpu-bind] OK: every rank on a distinct physical GPU", flush=True)
 
 # ---- local initial condition: global Reichardt mean (global y) + per-rank low-pass noise --------
 kap = 0.41

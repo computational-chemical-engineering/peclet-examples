@@ -47,14 +47,15 @@ export STATSTART="${STATSTART:-20000}" ; export STATEVERY="${STATEVERY:-25}"
 export DT="${DT:-0.02}" ; export DIAG="${DIAG:-500}" ; export ADV=0
 export OUT="${OUT:-chan_${GNY}_${SLURM_JOB_ID}}"
 
-# rank->GPU binding is done inside the driver (node-local rank picks its GPU BEFORE import); the
-# driver prints CUDA_VISIBLE_DEVICES per rank at startup -- CHECK they are distinct within a node.
-export PECLET_BIND_GPU=1
+# GPU binding: SLURM cgroup-isolates one GPU per task via the srun flags below, so the driver must
+# NOT remap CUDA_VISIBLE_DEVICES. It prints each rank's TRUE physical GPU (host + PCI bus) at startup
+# and WARNS if any GPU is shared -- check that line: every rank must be on a distinct GPU.
+export PECLET_BIND_GPU=0
 # GPU-aware MPI: device pointers straight into the halo (2024a stack has CUDA-aware UCX-CUDA, validated
 # by check_gpu_aware_mpi.sh). snellius_env.sh already set OMPI_MCA_pml=ucx + UCX_MEMTYPE_CACHE=n.
 # Set =0 to fall back to host-staging (always correct) if you ever change the MPI stack.
 export PECLET_CORE_GPU_AWARE_MPI=1
 
 echo "grid ${GNX}x${GNY}x${GNZ}  ranks=$SLURM_NTASKS  nodes=$SLURM_NNODES"
-srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py
+srun --mpi=pmix --gpus-per-task=1 --gpu-bind=per_task:1 "$VENV/bin/python" channel_dns_mpi.py
 echo "done -> ${OUT}_stats.npz  (post-process: python analyze_channel.py ${OUT}_stats.npz out.png)"
