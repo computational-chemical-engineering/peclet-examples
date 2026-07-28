@@ -53,6 +53,9 @@ python3 -c 'import sys; assert sys.version_info[:2]>=(3,10), f"need Python>=3.10
 python3 -m venv --clear flow/.venv
 source flow/.venv/bin/activate
 pip install -U pip nanobind numpy mpi4py matplotlib
+# CuPy: the driver's constant-flow-rate forcing shifts the velocity field on-device (zero-copy).
+# cupy-cuda12x matches the CUDA 12.x runtime. Skip only for the cpu backend.
+[ "$TARGET" = cpu ] || pip install cupy-cuda12x
 
 # --- 3. (re)bootstrap the pinned Kokkos for the right backend/arch ------------------------------
 #   Re-run even if you bootstrapped before: the nvidia-cuda bootstrap gained Kokkos_ENABLE_CUDA_CONSTEXPR

@@ -1,0 +1,10 @@
+# transient Snellius job logs (regenerated on every run; not results)
+peclet-build-*.out
+chan-scale-*.out
+chan-dns-*.out
+chan-dns-cpu-*.out
+gpuaware-check-*.out
+scale_N*.log
+# large restart fields (results go to Zenodo/Releases, not git)
+*_restart.npz
+__pycache__/

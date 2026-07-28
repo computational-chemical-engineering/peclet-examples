@@ -175,3 +175,7 @@ except Exception as e:
     print("restart save failed:", e, flush=True)
 print(f"[done] {NSTEPS} steps, {NX*NY*NZ/1e6:.1f}M cells, "
       f"{(time.time()-t0)/NSTEPS*1e3:.0f} ms/step, nacc={nacc}. wrote {OUT}_stats.npz", flush=True)
+# Exit hard after outputs are written: skips the Kokkos-finalize teardown abort (benign but poisons
+# the exit code). Any real error above crashes before here, so this only fires on success.
+sys.stdout.flush(); sys.stderr.flush()
+os._exit(0 if not nan else 1)

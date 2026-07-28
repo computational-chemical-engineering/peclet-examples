@@ -193,3 +193,7 @@ if RANK == 0:
     print(f"[done] {NSTEPS} steps, {GNX*GNY*GNZ/1e6:.0f}M cells, {NP} ranks, "
           f"{(time.time()-t0)/NSTEPS*1e3:.0f} ms/step, nacc={nacc}. wrote {OUT}_stats.npz", flush=True)
 world.Barrier()
+# Exit hard AFTER outputs are written: skips Python/Kokkos finalize, which otherwise aborts with
+# "Kokkos allocation deallocated after Kokkos::finalize" (poisons the exit code even on success).
+sys.stdout.flush(); sys.stderr.flush()
+os._exit(0 if not nan else 1)
