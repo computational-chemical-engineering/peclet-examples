@@ -8,3 +8,4 @@ scale_N*.log
 # large restart fields (results go to Zenodo/Releases, not git)
 *_restart.npz
 __pycache__/
+weak_N*.log

@@ -264,19 +264,30 @@ srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py    # driver binds + prints
 For CPU, [`snellius_cpu.slurm`](snellius_cpu.slurm) uses few fat MPI ranks × many OpenMP threads
 (so the rank grid stays coarse and $y$ is never split).
 
-### Do a scaling test first
+### Scaling: measure weak, not strong
 
-Before spending a big allocation, measure the actual throughput and parallel efficiency with the bundled
-[`scaling_test.sh`](scaling_test.sh) (a fixed ~77 M-cell problem, 300 steps, swept over 1→2→4→8 GPUs):
+Both tests bind **one GPU per task** via SLURM (`srun --gpus-per-task=1 --gpu-bind=per_task:1`; the driver
+prints each rank's **physical GPU PCI bus** and warns on any sharing — the silent multi-GPU killer is two
+ranks on one GPU) and check the ORB kept $y$ whole. But which test you read matters:
+
+- **Weak scaling** ([`weak_scaling.sh`](weak_scaling.sh)) — cells-*per-GPU* held fixed at the production
+  ~45 M/GPU, problem grows with GPU count. **This is the metric that matters** ("a 4× bigger DNS on 4×
+  GPUs in the same wall-clock?"). Ideal = flat ms/step vs $N$.
+- **Strong scaling** ([`scaling_test.sh`](scaling_test.sh)) — a fixed ~28 M box split over more GPUs. This
+  **collapses fast** here, and that's expected physics, not a bug: the incompressible **pressure Poisson
+  solve does a global all-reduce every Krylov iteration**, so once each GPU holds only a few M cells the
+  reduction latency (worst across nodes) dominates the compute. Measured on 1 H100 node: ~2.7→3.9→4.2 it/s
+  for 1→2→4 GPUs at 28 M total, then *down* at 8 (2 nodes). Don't size the production run from this.
 
 ```bash
-sbatch --nodes=2 scaling_test.sh     # 2 H100 nodes give up to 8 GPUs to sweep
+sbatch --nodes=2 weak_scaling.sh     # the meaningful curve; then strong: sbatch --nodes=2 scaling_test.sh
 ```
 
-If ms/step halves each time you double the GPUs you have near-ideal strong scaling; where it flattens is
-your efficient node count. The script also prints the per-rank `CUDA_VISIBLE_DEVICES` — confirm each rank
-got a **distinct** device (all-on-device-0 is the silent multi-GPU failure) — and verifies the ORB kept
-$y$ whole (the driver aborts otherwise).
+The practical consequence: **the production 182 M run on 4 GPUs (single node, 45 M/GPU) is the sweet
+spot** — big enough per GPU to stay compute-bound, and single-node so it pays no inter-node reduction
+cost. The hero 614 M run spans 3 nodes and *will* lose efficiency to the multi-node pressure solve (the
+suite's known at-scale-tuning frontier). Both drivers now report a **warmup-excluded steady ms/step** and
+Mcell-updates/s, so you compare like-for-like.
 
 ## Adapt this yourself
 

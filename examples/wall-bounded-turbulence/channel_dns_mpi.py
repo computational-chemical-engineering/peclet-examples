@@ -178,8 +178,11 @@ def accumulate():
     return mU, mUU - mU*mU, mVV - mVS*mVS, mUV - mU*mVS
 
 # ---- time loop --------------------------------------------------------------------------------
-ts = []; t0 = time.time()
+WARMUP = int(os.environ.get("WARMUP", 50))   # steps to exclude from the steady-state timing
+ts = []; t0 = time.time(); t_warm = None; it_warm = 0
 for it in range(1, NSTEPS+1):
+    if it == WARMUP + 1:
+        world.Barrier(); t_warm = time.time(); it_warm = it - 1   # start steady clock after warmup
     s.step()
     if CFR > 0:
         dd = apply_cfr()
@@ -200,6 +203,15 @@ for it in range(1, NSTEPS+1):
                 tp = it*DT/nu; rate = it/(time.time()-t0)
                 print(f"  it={it:6d} t+={tp:7.1f} Ub+={Ub:5.2f} u_tau~{utau:.3f} nacc={nacc} [{rate:.1f} it/s]", flush=True)
                 ts.append([it, tp, Ub, utau, nacc])
+
+# ---- steady-state timing (exclude warmup) -----------------------------------------------------
+world.Barrier(); t_end = time.time()
+steady_ms = (t_end - t_warm)/(NSTEPS - it_warm)*1e3 if (t_warm and NSTEPS > it_warm) else float('nan')
+mcells = GNX*GNY*GNZ/1e6
+if RANK == 0:
+    print(f"[timing] steady {steady_ms:.1f} ms/step over {NSTEPS-it_warm} steps (warmup {WARMUP} excluded) | "
+          f"{mcells:.0f}M cells, {NP} GPU(s) = {mcells/NP:.1f}M/GPU | "
+          f"{mcells*1e6/(steady_ms*1e-3)/1e6:.0f} Mcell-updates/s", flush=True)
 
 # ---- save (rank 0) ----------------------------------------------------------------------------
 if RANK == 0:

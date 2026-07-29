@@ -42,7 +42,7 @@ for N in 1 2 4 8; do
   srun --mpi=pmix --ntasks=$N --gpus-per-task=1 --gpu-bind=per_task:1 \
        "$VENV/bin/python" channel_dns_mpi.py > "scale_N${N}.log" 2>&1 || true
   if grep -q "it=" "scale_N${N}.log"; then
-    grep -E "gpu-bind|it=|done" "scale_N${N}.log"
+    grep -E "gpu-bind\]|WARNING|OK: every|it=|timing|done" "scale_N${N}.log"
   else
     # no timing -> real error. Filter out the benign Kokkos-finalize teardown backtrace to show the CAUSE.
     echo "  [FAILED N=$N] real error (teardown noise filtered):"
