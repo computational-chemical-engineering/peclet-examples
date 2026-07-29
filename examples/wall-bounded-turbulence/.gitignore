@@ -9,3 +9,6 @@ scale_N*.log
 *_restart.npz
 __pycache__/
 weak_N*.log
+diag*.log
+chan-weak-*.out
+chan-diag-*.out
