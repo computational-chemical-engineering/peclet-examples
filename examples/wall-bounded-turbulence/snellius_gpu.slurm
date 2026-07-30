@@ -18,9 +18,13 @@
 #   Submit:  sbatch snellius_gpu.slurm            # 1 H100 node, Delta+=1.5 (182M)
 #            GNY=360 sbatch --nodes=3 snellius_gpu.slurm   # hero, Delta+=1.0 (614M)
 # ==========================================================================================
+# NOTE: run with per-rank blocks <= ~14M cells. There is a known distributed-solver bug that throws
+# cudaErrorIllegalAddress at large per-rank blocks (~45M): the 182M grid on 4 GPUs (45M/rank) CRASHES,
+# but on 16 GPUs (11M/rank) it is in the tested-good regime. So the default here is 4 NODES (16 GPUs)
+# for the 182M production grid. (Root-cause diagnosis: diag_sanitizer.sh.)
 #SBATCH --job-name=chan-dns
 #SBATCH --partition=gpu_h100          # H100 (4x94GB, 64c). A100: --partition=gpu_a100 (4x40GB, 72c).
-#SBATCH --nodes=1                     # 1 H100 node = 4 GPUs, fits the 182M (Delta+=1.5) case.
+#SBATCH --nodes=4                     # 16 H100 GPUs -> 182M/16 = 11M/rank (safe regime)
 #SBATCH --gpus-per-node=4
 #SBATCH --ntasks-per-node=4           # one MPI rank per GPU
 #SBATCH --cpus-per-task=16            # 64 cores / 4 (gpu_h100).  Use 18 on gpu_a100 (72/4).

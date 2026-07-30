@@ -12,3 +12,4 @@ weak_N*.log
 diag*.log
 chan-weak-*.out
 chan-diag-*.out
+chan-san-*.out
