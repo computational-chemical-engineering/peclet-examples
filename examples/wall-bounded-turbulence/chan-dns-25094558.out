@@ -1,0 +1,47 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+grid 1508x240x503  ranks=4  nodes=1
+[cfg] global 1508x240x503 = 182.0M cells  nu=0.6667 f=0.0083333 Delta+=1.500 Lx+=2262 Ly+=360 Lz+=754  ranks=4  backend=Cuda  dt=0.02 adv=SOU
+  [gpu-bind] rank -> (host, GPU PCI bus):
+    rank 0: gcn113.local.snellius.surf.nl  0000:26:00.0
+    rank 1: gcn113.local.snellius.surf.nl  0000:06:00.0
+    rank 2: gcn113.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: gcn113.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.68 u_tau~1.105 nacc=0 [0.3 it/s]
+  it=   500 t+=   15.0 Ub+=15.68 u_tau~1.019 nacc=0 [0.6 it/s]
+  it=  1000 t+=   30.0 Ub+=15.68 u_tau~0.978 nacc=0 [0.6 it/s]
+  it=  1500 t+=   45.0 Ub+=15.68 u_tau~0.937 nacc=0 [0.6 it/s]
+  it=  2000 t+=   60.0 Ub+=15.68 u_tau~0.903 nacc=0 [0.6 it/s]
+  it=  2500 t+=   75.0 Ub+=15.68 u_tau~0.875 nacc=0 [0.6 it/s]
+  it=  3000 t+=   90.0 Ub+=15.68 u_tau~0.851 nacc=0 [0.6 it/s]
+  it=  3500 t+=  105.0 Ub+=15.68 u_tau~0.831 nacc=0 [0.6 it/s]
+  it=  4000 t+=  120.0 Ub+=15.68 u_tau~0.813 nacc=0 [0.6 it/s]
+  it=  4500 t+=  135.0 Ub+=15.68 u_tau~0.797 nacc=0 [0.6 it/s]
+  it=  5000 t+=  150.0 Ub+=15.68 u_tau~0.784 nacc=0 [0.6 it/s]
+  it=  5500 t+=  165.0 Ub+=15.68 u_tau~0.771 nacc=0 [0.6 it/s]
+  it=  6000 t+=  180.0 Ub+=15.68 u_tau~0.760 nacc=0 [0.6 it/s]
+  it=  6500 t+=  195.0 Ub+=15.68 u_tau~0.750 nacc=0 [0.6 it/s]
+  it=  7000 t+=  210.0 Ub+=15.68 u_tau~0.741 nacc=0 [0.6 it/s]
+  it=  7500 t+=  225.0 Ub+=15.68 u_tau~0.733 nacc=0 [0.6 it/s]
+  it=  8000 t+=  240.0 Ub+=15.68 u_tau~0.725 nacc=0 [0.6 it/s]
+  it=  8500 t+=  255.0 Ub+=15.68 u_tau~0.718 nacc=0 [0.6 it/s]
+  it=  9000 t+=  270.0 Ub+=15.68 u_tau~0.712 nacc=0 [0.6 it/s]
+  it=  9500 t+=  285.0 Ub+=15.68 u_tau~0.706 nacc=0 [0.6 it/s]
+  it= 10000 t+=  300.0 Ub+=15.68 u_tau~0.700 nacc=0 [0.6 it/s]
+  it= 10500 t+=  315.0 Ub+=15.68 u_tau~0.695 nacc=0 [0.6 it/s]
+  it= 11000 t+=  330.0 Ub+=15.68 u_tau~0.690 nacc=0 [0.6 it/s]
+  it= 11500 t+=  345.0 Ub+=15.68 u_tau~0.685 nacc=0 [0.6 it/s]
+  it= 12000 t+=  360.0 Ub+=15.68 u_tau~0.680 nacc=0 [0.6 it/s]
+  it= 12500 t+=  375.0 Ub+=15.68 u_tau~0.676 nacc=0 [0.6 it/s]
+  it= 13000 t+=  390.0 Ub+=15.68 u_tau~0.672 nacc=0 [0.6 it/s]
+  it= 13500 t+=  405.0 Ub+=15.68 u_tau~0.668 nacc=0 [0.6 it/s]
+  it= 14000 t+=  420.0 Ub+=15.68 u_tau~0.665 nacc=0 [0.6 it/s]
+  it= 14500 t+=  435.0 Ub+=15.68 u_tau~0.661 nacc=0 [0.6 it/s]
+  it= 15000 t+=  450.0 Ub+=15.68 u_tau~0.658 nacc=0 [0.6 it/s]
+  it= 15500 t+=  465.0 Ub+=15.68 u_tau~0.655 nacc=0 [0.6 it/s]
+  it= 16000 t+=  480.0 Ub+=15.68 u_tau~0.652 nacc=0 [0.6 it/s]
+  it= 16500 t+=  495.0 Ub+=15.68 u_tau~0.649 nacc=0 [0.6 it/s]
+  it= 17000 t+=  510.0 Ub+=15.68 u_tau~0.646 nacc=0 [0.6 it/s]
+[2026-07-31T21:01:36.023] error: *** JOB 25094558 ON gcn113 CANCELLED AT 2026-07-31T21:01:36 DUE TO TIME LIMIT ***
+[2026-07-31T21:01:36.023] error: *** STEP 25094558.0 ON gcn113 CANCELLED AT 2026-07-31T21:01:36 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.

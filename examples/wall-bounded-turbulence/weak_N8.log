@@ -1,0 +1,417 @@
+[cfg] global 3016x240x503 = 364.1M cells  nu=0.6667 f=0.0083333 Delta+=1.500 Lx+=4524 Ly+=360 Lz+=754  ranks=8  backend=Cuda  dt=0.02 adv=SOU
+  [gpu-bind] rank -> (host, GPU PCI bus):
+    rank 0: gcn75.local.snellius.surf.nl  0000:26:00.0
+    rank 1: gcn75.local.snellius.surf.nl  0000:06:00.0
+    rank 2: gcn75.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: gcn75.local.snellius.surf.nl  0000:A6:00.0
+    rank 4: gcn101.local.snellius.surf.nl  0000:26:00.0
+    rank 5: gcn101.local.snellius.surf.nl  0000:06:00.0
+    rank 6: gcn101.local.snellius.surf.nl  0000:C6:00.0
+    rank 7: gcn101.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.68 u_tau~1.105 nacc=0 [0.3 it/s]
+  it=    50 t+=    1.5 Ub+=15.68 u_tau~1.053 nacc=0 [0.3 it/s]
+  it=   100 t+=    3.0 Ub+=15.68 u_tau~1.041 nacc=0 [0.3 it/s]
+  it=   150 t+=    4.5 Ub+=15.68 u_tau~1.037 nacc=0 [0.3 it/s]
+  it=   200 t+=    6.0 Ub+=15.68 u_tau~1.034 nacc=0 [0.3 it/s]
+  it=   250 t+=    7.5 Ub+=15.68 u_tau~1.032 nacc=0 [0.3 it/s]
+[timing] steady 2942.3 ms/step over 200 steps (warmup 50 excluded) | 364M cells, 8 GPU(s) = 45.5M/GPU | 124 Mcell-updates/s
+[done] 250 steps, 364M cells, 8 ranks, 2943 ms/step, nacc=0. wrote chan_mpi_stats.npz
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+    os._exit(0 if not nan else 1)
+    os._exit(0 if not nan else 1)
+                      ^^^
+    os._exit(0 if not nan else 1)
+                      ^^^
+NameError: name 'nan' is not defined
+NameError: name 'nan' is not defined
+    os._exit(0 if not nan else 1)
+                      ^^^
+NameError: name 'nan' is not defined
+                      ^^^
+    os._exit(0 if not nan else 1)
+NameError: name 'nan' is not defined
+                      ^^^
+    os._exit(0 if not nan else 1)
+                      ^^^
+    os._exit(0 if not nan else 1)
+                      ^^^
+    os._exit(0 if not nan else 1)
+                      ^^^
+NameError: name 'nan' is not defined
+NameError: name 'nan' is not defined
+NameError: name 'nan' is not defined
+NameError: name 'nan' is not defined
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+[0x151a14cd5065] Kokkos::Impl::save_stacktrace()
+[0x151a14cb53bc] Kokkos::Impl::host_abort(char const*)
+[0x151a14cd5027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x151a14b70025] 
+[0x151a14bbe6af] 
+[0x151a14cabe95] 
+[0x151c6340c02f] 
+[0x151c634e0046] 
+[0x151c634195aa] 
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+[0x151c634fc0fc] 
+[0x151c634fb9ed] 
+[0x151c634e5795] Py_FinalizeEx
+[0x151c634f38d0] Py_RunMain
+[0x151c634ae1f7] Py_BytesMain
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+[0x151c62f34610] 
+[0x151c62f346c0] __libc_start_main
+[0x401065] _start
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+[gcn75:106386] *** Process received signal ***
+[0x154560cd5065] Kokkos::Impl::save_stacktrace()
+[gcn75:106386] Signal: Aborted (6)
+[gcn75:106386] Signal code:  (-6)
+[0x154560cb53bc] Kokkos::Impl::host_abort(char const*)
+[0x14bbdd0ee065] Kokkos::Impl::save_stacktrace()
+[0x154560cd5027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x154560b70025] 
+[0x154560bbe6af] 
+[0x154560cabe95] 
+[0x14bbdd0ce3bc] Kokkos::Impl::host_abort(char const*)
+[0x1547af14e02f] 
+[0x1547af222046] 
+[0x1547af15b5aa] 
+[0x1547af23e0fc] 
+[0x14bbdd0ee027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x14bbdcf89025] 
+[0x1547af23d9ed] 
+[0x14bbdcfd76af] 
+[0x14bbdd0c4e95] 
+[0x14be2b13002f] 
+[0x14be2b204046] 
+[0x1547af227795] Py_FinalizeEx
+[0x1547af2358d0] Py_RunMain
+[0x14be2b13d5aa] 
+[0x14be2b2200fc] 
+[0x14be2b21f9ed] 
+[0x1547af1f01f7] Py_BytesMain
+[0x1547aec76610] 
+[gcn75:106386] [ 0] /lib64/libc.so.6(+0x3fc60)[0x151c62f49c60]
+[0x1547aec766c0] __libc_start_main
+[0x14be2b209795] Py_FinalizeEx
+[0x14be2b2178d0] Py_RunMain
+[0x14be2b1d21f7] Py_BytesMain
+[0x14be2ac58610] 
+[0x14be2ac586c0] __libc_start_main
+[0x401065] _start
+[0x401065] _start
+[gcn101:268286] *** Process received signal ***
+[gcn101:268286] Signal: Aborted (6)
+[gcn101:268286] Signal code:  (-6)
+[gcn75:106386] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x151c62f974bc]
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+[gcn75:106387] *** Process received signal ***
+
+Backtrace:
+[gcn75:106387] Signal: Aborted (6)
+[gcn75:106387] Signal code:  (-6)
+[gcn101:268286] [ 0] /lib64/libc.so.6(+0x3fc60)[0x1547aec8bc60]
+[gcn75:106386] [ 2] /lib64/libc.so.6(raise+0x16)[0x151c62f49bb6]
+[gcn101:268286] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x1547aecd94bc]
+[gcn75:106386] [ 3] /lib64/libc.so.6(abort+0xd3)[0x151c62f33873]
+[gcn101:268286] [ 2] /lib64/libc.so.6(raise+0x16)[0x1547aec8bbb6]
+[gcn75:106386] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x151a14cb53c9]
+[gcn101:268286] [ 3] /lib64/libc.so.6(abort+0xd3)[0x1547aec75873]
+[gcn75:106386] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x151a14cd5027]
+[gcn101:268286] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x154560cb53c9]
+[gcn75:106386] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x151a14b70025]
+[gcn75:106386] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x151a14bbe6af]
+[gcn101:268286] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x154560cd5027]
+[gcn75:106387] [ 0] /lib64/libc.so.6(+0x3fc60)[0x14be2ac6dc60]
+[gcn101:268286] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x154560b70025]
+[gcn75:106386] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x151a14cabe95]
+[gcn101:268286] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x154560bbe6af]
+[gcn101:268286] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x154560cabe95]
+[gcn75:106386] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x151c6340c02f]
+[gcn101:268286] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x1547af14e02f]
+[gcn75:106387] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x14be2acbb4bc]
+[gcn75:106387] [ 2] /lib64/libc.so.6(raise+0x16)[0x14be2ac6dbb6]
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+[gcn75:106386] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x151c634e0046]
+
+Backtrace:
+[gcn75:106387] [ 3] /lib64/libc.so.6(abort+0xd3)[0x14be2ac57873]
+[gcn101:268286] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x1547af222046]
+[gcn75:106386] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x151c634195aa]
+[gcn101:268286] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x1547af15b5aa]
+[gcn75:106387] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x14bbdd0ce3c9]
+[gcn101:268286] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x1547af23e0fc]
+[gcn101:268286] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x1547af23d9ed]
+[gcn75:106386] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x151c634fc0fc]
+[gcn101:268286] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x1547af227795]
+[gcn75:106387] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x14bbdd0ee027]
+[gcn75:106387] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x14bbdcf89025]
+[0x148710ae7065] Kokkos::Impl::save_stacktrace()
+[gcn75:106386] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x151c634fb9ed]
+[gcn101:268286] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x1547af2358d0]
+[gcn75:106387] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x14bbdcfd76af]
+[gcn75:106387] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x14bbdd0c4e95]
+[0x148710ac73bc] Kokkos::Impl::host_abort(char const*)
+[gcn75:106386] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x151c634e5795]
+[0x148710ae7027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x148710982025] 
+[0x1487109d06af] 
+[gcn75:106386] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x151c634f38d0]
+[gcn101:268286] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x1547af1f01f7]
+[gcn75:106387] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x14be2b13002f]
+[0x148710abde95] 
+[0x1489717fc02f] 
+[0x1489718d0046] 
+[0x1489718095aa] 
+[gcn75:106386] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x151c634ae1f7]
+[0x1489718ec0fc] 
+[gcn75:106387] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x14be2b204046]
+[gcn101:268286] [17] /lib64/libc.so.6(+0x2a610)[0x1547aec76610]
+[gcn75:106386] [17] /lib64/libc.so.6(+0x2a610)[0x151c62f34610]
+[0x1489718eb9ed] 
+[0x1489718d5795] Py_FinalizeEx
+[0x1489718e38d0] Py_RunMain
+[gcn75:106386] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x151c62f346c0]
+[gcn75:106386] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn75:106386] *** End of error message ***
+[gcn101:268286] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x1547aec766c0]
+[gcn101:268286] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn101:268286] *** End of error message ***
+[gcn75:106387] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x14be2b13d5aa]
+[0x14897189e1f7] Py_BytesMain
+[0x148971324610] 
+[0x1489713246c0] __libc_start_main
+[gcn75:106387] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x14be2b2200fc]
+[0x401065] _start
+[gcn75:106387] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x14be2b21f9ed]
+[gcn101:268285] *** Process received signal ***
+[gcn75:106387] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x14be2b209795]
+[gcn101:268285] Signal: Aborted (6)
+[gcn101:268285] Signal code:  (-6)
+[0x14d6f3701065] Kokkos::Impl::save_stacktrace()
+[gcn101:268285] [ 0] /lib64/libc.so.6(+0x3fc60)[0x148971339c60]
+[gcn75:106387] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x14be2b2178d0]
+[0x14e1e491e065] Kokkos::Impl::save_stacktrace()
+[0x14e1e48fe3bc] Kokkos::Impl::host_abort(char const*)
+[0x14e1e491e027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x14e1e47b9025] 
+[0x14e1e48076af] 
+[0x14e1e48f4e95] 
+[0x14e226b8b02f] 
+[0x14e226c5f046] 
+[0x14e226b985aa] 
+[0x14e226c7b0fc] 
+[0x14e226c7a9ed] 
+[0x14e226c64795] Py_FinalizeEx
+[0x14e226c728d0] Py_RunMain
+[0x14e226c2d1f7] Py_BytesMain
+[0x14e2266b3610] 
+[0x14d6f36e13bc] Kokkos::Impl::host_abort(char const*)
+[0x14d6f3701027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[gcn75:106387] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x14be2b1d21f7]
+[gcn101:268285] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x1489713874bc]
+[gcn101:268285] [ 2] /lib64/libc.so.6(raise+0x16)[0x148971339bb6]
+[gcn101:268285] [ 3] /lib64/libc.so.6(abort+0xd3)[0x148971323873]
+[gcn101:268285] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x148710ac73c9]
+[0x14d6f359c025] 
+[0x14d6f35ea6af] 
+[0x14d6f36d7e95] 
+[0x14d953fa502f] 
+[0x14e2266b36c0] __libc_start_main
+[0x401065] _start
+[0x14d954079046] 
+[gcn101:268285] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x148710ae7027]
+[gcn101:268285] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x148710982025]
+[gcn101:268285] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x1487109d06af]
+[gcn101:268285] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x148710abde95]
+[gcn101:268285] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x1489717fc02f]
+[gcn75:106387] [17] /lib64/libc.so.6(+0x2a610)[0x14be2ac58610]
+[gcn101:268287] *** Process received signal ***
+[gcn101:268287] Signal: Aborted (6)
+[gcn101:268287] Signal code:  (-6)
+[0x14d953fb25aa] 
+[0x14d9540950fc] 
+[0x14d9540949ed] 
+[gcn101:268285] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x1489718d0046]
+[gcn75:106387] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x14be2ac586c0]
+[gcn75:106387] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn75:106387] *** End of error message ***
+[0x14d95407e795] Py_FinalizeEx
+[0x14d95408c8d0] Py_RunMain
+[gcn101:268287] [ 0] /lib64/libc.so.6(+0x3fc60)[0x14e2266c8c60]
+[0x14d9540471f7] Py_BytesMain
+[0x14d953acd610] 
+[0x14d953acd6c0] __libc_start_main
+[gcn101:268285] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x1489718095aa]
+[0x401065] _start
+[gcn75:106388] *** Process received signal ***
+[gcn75:106388] Signal: Aborted (6)
+[gcn75:106388] Signal code:  (-6)
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+[gcn101:268287] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x14e2267164bc]
+[gcn75:106388] [ 0] /lib64/libc.so.6(+0x3fc60)[0x14d953ae2c60]
+[gcn75:106388] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x14d953b304bc]
+[gcn75:106388] [ 2] /lib64/libc.so.6(raise+0x16)[0x14d953ae2bb6]
+[gcn75:106388] [ 3] /lib64/libc.so.6(abort+0xd3)[0x14d953acc873]
+[gcn75:106388] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x14d6f36e13c9]
+[gcn75:106388] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x14d6f3701027]
+[gcn75:106388] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x14d6f359c025]
+[gcn101:268285] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x1489718ec0fc]
+[gcn101:268285] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x1489718eb9ed]
+[gcn75:106388] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x14d6f35ea6af]
+[gcn75:106388] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x14d6f36d7e95]
+[gcn101:268287] [ 2] /lib64/libc.so.6(raise+0x16)[0x14e2266c8bb6]
+[gcn75:106388] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x14d953fa502f]
+[gcn75:106388] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x14d954079046]
+[gcn75:106388] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x14d953fb25aa]
+[gcn75:106388] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x14d9540950fc]
+[gcn75:106388] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x14d9540949ed]
+[gcn75:106388] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x14d95407e795]
+[gcn101:268285] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x1489718d5795]
+[gcn75:106388] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x14d95408c8d0]
+[gcn101:268287] [ 3] /lib64/libc.so.6(abort+0xd3)[0x14e2266b2873]
+[gcn75:106388] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x14d9540471f7]
+[0x154923701065] Kokkos::Impl::save_stacktrace()
+[0x1549236e13bc] Kokkos::Impl::host_abort(char const*)
+[gcn75:106388] [17] /lib64/libc.so.6(+0x2a610)[0x14d953acd610]
+[gcn101:268285] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x1489718e38d0]
+[gcn75:106388] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x14d953acd6c0]
+[gcn75:106388] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn101:268287] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x14e1e48fe3c9]
+[gcn101:268287] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x14e1e491e027]
+[gcn75:106388] *** End of error message ***
+[0x154923701027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x15492359c025] 
+[0x1549235ea6af] 
+[0x1549236d7e95] 
+[0x154b843bd02f] 
+[0x154b84491046] 
+[0x154b843ca5aa] 
+[0x154b844ad0fc] 
+[0x14bdd0ae7065] Kokkos::Impl::save_stacktrace()
+[gcn101:268285] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x14897189e1f7]
+[gcn101:268285] [17] /lib64/libc.so.6(+0x2a610)[0x148971324610]
+[gcn101:268285] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x1489713246c0]
+[gcn101:268285] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn101:268285] *** End of error message ***
+[0x14bdd0ac73bc] Kokkos::Impl::host_abort(char const*)
+[0x14bdd0ae7027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x14bdd0982025] 
+[0x14bdd09d06af] 
+[0x14bdd0abde95] 
+[0x14c031d2f02f] 
+[0x14c031e03046] 
+[0x14c031d3c5aa] 
+[0x14c031e1f0fc] 
+[0x14c031e1e9ed] 
+[0x14c031e08795] Py_FinalizeEx
+[0x14c031e168d0] Py_RunMain
+[gcn101:268287] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x14e1e47b9025]
+[gcn101:268287] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x14e1e48076af]
+[gcn101:268287] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x14e1e48f4e95]
+[gcn101:268287] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x14e226b8b02f]
+[0x14c031dd11f7] Py_BytesMain
+[0x14c031857610] 
+[0x14c0318576c0] __libc_start_main
+[0x401065] _start
+[gcn75:106389] *** Process received signal ***
+[gcn75:106389] Signal: Aborted (6)
+[gcn75:106389] Signal code:  (-6)
+[0x154b844ac9ed] 
+[0x154b84496795] Py_FinalizeEx
+[0x154b844a48d0] Py_RunMain
+[0x154b8445f1f7] Py_BytesMain
+[0x154b83ee5610] 
+[0x154b83ee56c0] __libc_start_main
+[0x401065] _start
+[gcn75:106389] [ 0] /lib64/libc.so.6(+0x3fc60)[0x14c03186cc60]
+[gcn101:268288] *** Process received signal ***
+[gcn75:106389] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x14c0318ba4bc]
+[gcn101:268287] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x14e226c5f046]
+[gcn75:106389] [ 2] /lib64/libc.so.6(raise+0x16)[0x14c03186cbb6]
+[gcn101:268288] Signal: Aborted (6)
+[gcn101:268288] Signal code:  (-6)
+[gcn75:106389] [ 3] /lib64/libc.so.6(abort+0xd3)[0x14c031856873]
+[gcn101:268287] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x14e226b985aa]
+[gcn75:106389] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x14bdd0ac73c9]
+[gcn101:268287] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x14e226c7b0fc]
+[gcn75:106389] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x14bdd0ae7027]
+[gcn101:268287] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x14e226c7a9ed]
+[gcn75:106389] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x14bdd0982025]
+[gcn75:106389] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x14bdd09d06af]
+[gcn101:268287] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x14e226c64795]
+[gcn75:106389] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x14bdd0abde95]
+[gcn101:268288] [ 0] /lib64/libc.so.6(+0x3fc60)[0x154b83efac60]
+[gcn75:106389] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x14c031d2f02f]
+[gcn101:268287] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x14e226c728d0]
+[gcn75:106389] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x14c031e03046]
+[gcn101:268287] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x14e226c2d1f7]
+[gcn75:106389] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x14c031d3c5aa]
+[gcn101:268288] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x154b83f484bc]
+[gcn75:106389] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x14c031e1f0fc]
+[gcn101:268287] [17] /lib64/libc.so.6(+0x2a610)[0x14e2266b3610]
+[gcn101:268287] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x14e2266b36c0]
+[gcn101:268287] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn101:268287] *** End of error message ***
+[gcn75:106389] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x14c031e1e9ed]
+[gcn101:268288] [ 2] /lib64/libc.so.6(raise+0x16)[0x154b83efabb6]
+[gcn75:106389] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x14c031e08795]
+[gcn101:268288] [ 3] /lib64/libc.so.6(abort+0xd3)[0x154b83ee4873]
+[gcn75:106389] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x14c031e168d0]
+[gcn101:268288] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x1549236e13c9]
+[gcn75:106389] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x14c031dd11f7]
+[gcn101:268288] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x154923701027]
+[gcn75:106389] [17] /lib64/libc.so.6(+0x2a610)[0x14c031857610]
+[gcn75:106389] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x14c0318576c0]
+[gcn101:268288] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x15492359c025]
+[gcn101:268288] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x1549235ea6af]
+[gcn75:106389] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn75:106389] *** End of error message ***
+[gcn101:268288] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x1549236d7e95]
+[gcn101:268288] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x154b843bd02f]
+[gcn101:268288] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x154b84491046]
+[gcn101:268288] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x154b843ca5aa]
+[gcn101:268288] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x154b844ad0fc]
+[gcn101:268288] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x154b844ac9ed]
+[gcn101:268288] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x154b84496795]
+[gcn101:268288] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x154b844a48d0]
+[gcn101:268288] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x154b8445f1f7]
+[gcn101:268288] [17] /lib64/libc.so.6(+0x2a610)[0x154b83ee5610]
+[gcn101:268288] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x154b83ee56c0]
+[gcn101:268288] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn101:268288] *** End of error message ***
+srun: error: gcn101: tasks 6-7: Aborted (core dumped)
+srun: Terminating StepId=25094513.3
+[2026-07-31T14:53:59.320] error: *** STEP 25094513.3 ON gcn75 CANCELLED AT 2026-07-31T14:53:59 DUE TO TASK FAILURE ***
+srun: error: gcn75: tasks 0-1: Aborted (core dumped)
+srun: error: gcn101: tasks 4-5: Aborted (core dumped)
+srun: error: gcn75: tasks 2-3: Aborted (core dumped)

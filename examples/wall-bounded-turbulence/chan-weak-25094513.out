@@ -1,0 +1,21 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+weak scaling: ~46M cells/GPU fixed; GNX grows with N
+=================  1 GPU(s) : 377x240x503 = 46M cells  =================
+  [gpu-bind] rank -> (host, GPU PCI bus):
+  [gpu-bind] OK: every rank on a distinct physical GPU
+[timing] steady 1369.2 ms/step over 200 steps (warmup 50 excluded) | 46M cells, 1 GPU(s) = 45.5M/GPU | 33 Mcell-updates/s
+=================  2 GPU(s) : 754x240x503 = 91M cells  =================
+  [gpu-bind] rank -> (host, GPU PCI bus):
+  [gpu-bind] OK: every rank on a distinct physical GPU
+[timing] steady 1299.8 ms/step over 200 steps (warmup 50 excluded) | 91M cells, 2 GPU(s) = 45.5M/GPU | 70 Mcell-updates/s
+=================  4 GPU(s) : 1508x240x503 = 182M cells  =================
+  [gpu-bind] rank -> (host, GPU PCI bus):
+  [gpu-bind] OK: every rank on a distinct physical GPU
+[timing] steady 1712.6 ms/step over 200 steps (warmup 50 excluded) | 182M cells, 4 GPU(s) = 45.5M/GPU | 106 Mcell-updates/s
+=================  8 GPU(s) : 3016x240x503 = 364M cells  =================
+  [gpu-bind] rank -> (host, GPU PCI bus):
+  [gpu-bind] OK: every rank on a distinct physical GPU
+[timing] steady 2942.3 ms/step over 200 steps (warmup 50 excluded) | 364M cells, 8 GPU(s) = 45.5M/GPU | 124 Mcell-updates/s
+
+Ideal weak scaling: steady ms/step stays ~CONSTANT as N grows. Rising ms/step = the pressure-solve
+communication tax (global reductions), worst across nodes (N=4->8 crosses from 1 to 2 nodes).

@@ -1,0 +1,115 @@
+[cfg] global 754x240x503 = 91.0M cells  nu=0.6667 f=0.0083333 Delta+=1.500 Lx+=1131 Ly+=360 Lz+=754  ranks=2  backend=Cuda  dt=0.02 adv=SOU
+  [gpu-bind] rank -> (host, GPU PCI bus):
+    rank 0: gcn75.local.snellius.surf.nl  0000:26:00.0
+    rank 1: gcn101.local.snellius.surf.nl  0000:26:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.68 u_tau~1.105 nacc=0 [0.3 it/s]
+  it=    50 t+=    1.5 Ub+=15.68 u_tau~1.054 nacc=0 [0.7 it/s]
+  it=   100 t+=    3.0 Ub+=15.68 u_tau~1.042 nacc=0 [0.7 it/s]
+  it=   150 t+=    4.5 Ub+=15.68 u_tau~1.038 nacc=0 [0.7 it/s]
+  it=   200 t+=    6.0 Ub+=15.68 u_tau~1.035 nacc=0 [0.7 it/s]
+  it=   250 t+=    7.5 Ub+=15.68 u_tau~1.033 nacc=0 [0.7 it/s]
+[timing] steady 1299.8 ms/step over 200 steps (warmup 50 excluded) | 91M cells, 2 GPU(s) = 45.5M/GPU | 70 Mcell-updates/s
+[done] 250 steps, 91M cells, 2 ranks, 1346 ms/step, nacc=0. wrote chan_mpi_stats.npz
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+Traceback (most recent call last):
+  File "/gpfs/work4/0/prjs1022/peclet/peclet-examples/examples/wall-bounded-turbulence/channel_dns_mpi.py", line 235, in <module>
+    os._exit(0 if not nan else 1)
+                      ^^^
+NameError: name 'nan' is not defined
+    os._exit(0 if not nan else 1)
+                      ^^^
+NameError: name 'nan' is not defined
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+[0x1507b4f00065] Kokkos::Impl::save_stacktrace()
+[0x1507b4ee03bc] Kokkos::Impl::host_abort(char const*)
+[0x1507b4f00027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[0x1507b4d9b025] 
+[0x1507b4de96af] 
+[0x1507b4ed6e95] 
+[0x150a15c0d02f] 
+[0x150a15ce1046] 
+[0x150a15c1a5aa] 
+[0x150a15cfd0fc] 
+[0x150a15cfc9ed] 
+[0x150a15ce6795] Py_FinalizeEx
+[0x150a15cf48d0] Py_RunMain
+[0x150a15caf1f7] Py_BytesMain
+[0x150a15735610] 
+[0x150a157356c0] __libc_start_main
+[0x401065] _start
+[gcn75:102541] *** Process received signal ***
+[gcn75:102541] Signal: Aborted (6)
+[gcn75:102541] Signal code:  (-6)
+[gcn75:102541] [ 0] /lib64/libc.so.6(+0x3fc60)[0x150a1574ac60]
+[gcn75:102541] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x150a157984bc]
+[gcn75:102541] [ 2] /lib64/libc.so.6(raise+0x16)[0x150a1574abb6]
+[gcn75:102541] [ 3] /lib64/libc.so.6(abort+0xd3)[0x150a15734873]
+[gcn75:102541] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x1507b4ee03c9]
+[gcn75:102541] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x1507b4f00027]
+[gcn75:102541] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x1507b4d9b025]
+[gcn75:102541] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x1507b4de96af]
+[gcn75:102541] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x1507b4ed6e95]
+[gcn75:102541] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x150a15c0d02f]
+[gcn75:102541] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x150a15ce1046]
+[gcn75:102541] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x150a15c1a5aa]
+[gcn75:102541] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x150a15cfd0fc]
+[gcn75:102541] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x150a15cfc9ed]
+Kokkos allocation "cnt" is being deallocated after Kokkos::finalize was called
+
+Backtrace:
+[gcn75:102541] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x150a15ce6795]
+[0x1476a483b065] Kokkos::Impl::save_stacktrace()
+[gcn75:102541] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x150a15cf48d0]
+[0x1476a481b3bc] Kokkos::Impl::host_abort(char const*)
+[gcn75:102541] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x150a15caf1f7]
+[0x1476a483b027] Kokkos::Impl::SharedAllocationRecord<void, void>::decrement(Kokkos::Impl::SharedAllocationRecord<void, void>*)
+[gcn75:102541] [17] /lib64/libc.so.6(+0x2a610)[0x150a15735610]
+[gcn75:102541] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x150a157356c0]
+[gcn75:102541] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn75:102541] *** End of error message ***
+[0x1476a46d6025] 
+[0x1476a47246af] 
+[0x1476a4811e95] 
+[0x1476e625b02f] 
+[0x1476e632f046] 
+[0x1476e62685aa] 
+[0x1476e634b0fc] 
+[0x1476e634a9ed] 
+[0x1476e6334795] Py_FinalizeEx
+[0x1476e63428d0] Py_RunMain
+[0x1476e62fd1f7] Py_BytesMain
+[0x1476e5d83610] 
+[0x1476e5d836c0] __libc_start_main
+[0x401065] _start
+[gcn101:264389] *** Process received signal ***
+[gcn101:264389] Signal: Aborted (6)
+[gcn101:264389] Signal code:  (-6)
+[gcn101:264389] [ 0] /lib64/libc.so.6(+0x3fc60)[0x1476e5d98c60]
+[gcn101:264389] [ 1] /lib64/libc.so.6(+0x8d4bc)[0x1476e5de64bc]
+[gcn101:264389] [ 2] /lib64/libc.so.6(raise+0x16)[0x1476e5d98bb6]
+[gcn101:264389] [ 3] /lib64/libc.so.6(abort+0xd3)[0x1476e5d82873]
+[gcn101:264389] [ 4] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl10host_abortEPKc+0x49)[0x1476a481b3c9]
+[gcn101:264389] [ 5] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(_ZN6Kokkos4Impl22SharedAllocationRecordIvvE9decrementEPS2_+0xf7)[0x1476a483b027]
+[gcn101:264389] [ 6] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0xe5025)[0x1476a46d6025]
+[gcn101:264389] [ 7] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x1336af)[0x1476a47246af]
+[gcn101:264389] [ 8] /projects/0/prjs1022/peclet/suite/flow/build_cuda_mpi/peclet/flow/_flow.cpython-312-x86_64-linux-gnu.so(+0x220e95)[0x1476a4811e95]
+[gcn101:264389] [ 9] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x20602f)[0x1476e625b02f]
+[gcn101:264389] [10] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2da046)[0x1476e632f046]
+[gcn101:264389] [11] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2135aa)[0x1476e62685aa]
+[gcn101:264389] [12] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f60fc)[0x1476e634b0fc]
+[gcn101:264389] [13] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(+0x2f59ed)[0x1476e634a9ed]
+[gcn101:264389] [14] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_FinalizeEx+0x185)[0x1476e6334795]
+[gcn101:264389] [15] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_RunMain+0x380)[0x1476e63428d0]
+[gcn101:264389] [16] /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0(Py_BytesMain+0x27)[0x1476e62fd1f7]
+[gcn101:264389] [17] /lib64/libc.so.6(+0x2a610)[0x1476e5d83610]
+[gcn101:264389] [18] /lib64/libc.so.6(__libc_start_main+0x80)[0x1476e5d836c0]
+[gcn101:264389] [19] /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python(_start+0x25)[0x401065]
+[gcn101:264389] *** End of error message ***
+srun: error: gcn101: task 1: Aborted (core dumped)
+srun: Terminating StepId=25094513.1
+[2026-07-31T14:33:30.901] error: *** STEP 25094513.1 ON gcn75 CANCELLED AT 2026-07-31T14:33:30 DUE TO TASK FAILURE ***
+srun: error: gcn75: task 0: Aborted (core dumped)
