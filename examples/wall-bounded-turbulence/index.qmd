@@ -1,8 +1,8 @@
 ---
 title: "Wall-bounded turbulence: channel-flow DNS vs Moser–Kim–Mansour"
-subtitle: "Drive a plane channel with a mean pressure gradient until it goes turbulent, gather the mean profile and Reynolds stresses in wall units, benchmark against the classic MKM 1999 DNS — and scale the full-resolution run out to a national supercomputer."
+subtitle: "Drive a plane channel with a mean pressure gradient until it goes turbulent, gather the mean profile and Reynolds stresses in wall units, benchmark against the classic MKM 1999 DNS — and scale the full-resolution run out to a national supercomputer (measured multi-GPU weak scaling on Snellius H100, plus the distributed-multigrid fix that made it run)."
 author: "Peclet"
-date: "2026-07-10"
+date: "2026-08-01"
 categories: [flow, turbulence, DNS, benchmark, HPC, MPI, multi-GPU, gpu]
 jupyter: python3
 ---
@@ -13,9 +13,10 @@ How to run a **direct numerical simulation (DNS) of turbulent plane-channel flow
 `peclet.flow` solver — the canonical wall-bounded-turbulence testbed — and benchmark it against the
 reference database of Moser, Kim & Mansour (@mkm1999) at $Re_\tau = 180$. You'll see how to drive the
 channel (constant pressure gradient vs constant flow rate), how the statistics are gathered in **wall
-units**, and — the focus of the second half — **how to size and launch the full-resolution run on the
-Snellius supercomputer**, multi-GPU or multi-core, including install, job scripts, and how many
-nodes/GPUs it takes and for how long.
+units**, and — the focus of the second half — **how to run the full-resolution DNS on the Snellius
+supercomputer**: install, GPU-aware MPI, job scripts, and a **measured multi-GPU weak-scaling study** on
+H100 (46 M cells/GPU, up to 364 M cells / 8 GPUs). Along the way we hit — and fix — a real
+distributed-multigrid bug, a worked example of the kind of debugging a device+MPI code needs at scale.
 
 This example is also honest about a solver limitation and turns it into the physics lesson: `peclet.flow`
 uses **upwind advection on an isotropic grid**, so on a coarse grid numerical dissipation damps the
@@ -128,36 +129,48 @@ of mid-2025, these relevant SLURM partitions (confirm with `sinfo -s` — names 
 distributed on the shared `core` ORB block decomposition with asynchronous, GPU-aware halo exchange,
 **bit-exact to single-rank** (validated in the suite's `tests/kokkos_mpi`, np=1,2,4).
 
-### Recommended: multi-GPU
+### Measured weak scaling on Snellius
 
-The 182 M-cell **production** run ($\Delta^+=1.5$) is the sweet spot — it fits **one H100 node**:
+We ran the weak-scaling sweep on Snellius `gpu_h100` (NVIDIA H100, GPU-aware MPI halo), holding the
+per-GPU load fixed at **46 M cells** (the production $\Delta^+=1.5$ cross-section, growing the box with
+GPU count) — the metric that answers "can I run a proportionally bigger DNS on more GPUs in the same
+wall-clock?" These are **real numbers, not extrapolations**:
 
-| hardware | GPUs (nodes) | est. wall-clock (50 k steps) |
-|---|---|---|
-| **H100** | **4 (1 node)** | **~6–7 h** |
-| H100 | 8 (2 nodes) | ~3–4 h |
-| A100 | 8 (2 nodes) | ~7 h |
-| Genoa CPU | 16 nodes (3072 c) | ~13 h |
-| Genoa CPU | 32 nodes (6144 c) | ~6 h |
+![Weak scaling on Snellius H100 (46 M cells/GPU fixed). On-node scaling is near-ideal; the drop from 4→8 GPUs is the inter-node pressure-solve reduction tax.](weak_scaling.png)
 
-The **hero** 614 M-cell run ($\Delta^+=1.0$) needs **3 H100 nodes (12 GPUs)** for memory and lands around
-**7–9 h**. Estimates assume ~50 000 steps (≈5–10 eddy-turnovers for converged statistics) and a memory-
-bandwidth extrapolation from the single-GPU measurement at ~70 % parallel efficiency.
+| GPUs | box | cells | ms/step | weak-scaling eff. | throughput |
+|---|---|---|---|---|---|
+| 1 | $377\times240\times503$ | 46 M | 1369 | 100 % | 33 Mcell/s |
+| 2 (1 node) | $754\times240\times503$ | 91 M | 1300 | **105 %** | 70 Mcell/s |
+| **4 (1 node)** | $1508\times240\times503$ | **182 M** | 1713 | **80 %** | 106 Mcell/s |
+| 8 (2 nodes) | $3016\times240\times503$ | 364 M | 2942 | 47 % | 124 Mcell/s |
 
-::: {.callout-warning}
-## These runtimes are extrapolations — validate on the machine first
-The distributed **step** is verified bit-exact to single-rank in the suite's CI (np=1,2,4), and the
-channel driver here is re-checked on the current build (periodic-direction splits bit-exact; the
-wall-normal-split failure mode is guarded — see below). But **on-cluster multi-node timing has not been
-measured** — the suite's own CHANGELOG states multi-node runs on Snellius are not yet cluster-validated.
-So the table is order-of-magnitude, not a promise. **Run [`scaling_test.sh`](scaling_test.sh) first**
-(1→2→4→8 GPUs, ~1 h): it prints ms/step per GPU count and the per-rank `CUDA_VISIBLE_DEVICES` so you can
-confirm (a) real strong scaling and (b) that each rank actually got a **distinct** GPU — the classic
-multi-GPU footgun is all ranks silently landing on device 0 (correct answer, zero speedup). The driver
-binds one GPU per node-local rank *before* importing the solver and prints the mapping at startup; check
-it. Also confirm the exact **partition names, module versions, and `--account`** on the machine
-(`sinfo -s`, `module avail 2023`, `accinfo`) — these drift and are the most likely reason a copied
-script won't run as-is.
+The story is exactly what the physics predicts. **On a single node scaling is near-ideal** (2 GPUs is
+even marginally faster per step than 1 — the intra-node `cuda_ipc` halo is essentially free), and the
+full **182 M production run on 4 GPUs sits at 80 % weak efficiency**. Crossing to a second node (8 GPUs)
+drops efficiency to ~47 %: the incompressible **pressure Poisson solve does a global all-reduce every
+Krylov iteration**, and those reductions become latency-bound over InfiniBand — the suite's known
+at-scale frontier. So for one converged DNS, **4 H100s on a single node is the sweet spot**; the hero
+614 M run spans nodes and pays that tax.
+
+At the measured **~1.7 s/step** for the 182 M run, a fully converged average (≈5–10 eddy-turnovers of
+transient + a comparable averaging window, ~40–50 k steps) is a **~20–24 h** job — request the walltime
+accordingly (the `gpu_h100` limit is 120 h) and set `STATSTART` to begin averaging only once $u_\tau$
+plateaus.
+
+::: {.callout-important}
+## Enabling this: a distributed-multigrid fix (why the production run works at all)
+The 182 M-on-4-GPU run initially **crashed** with `cudaErrorIllegalAddress`. Root cause (found by
+reproducing it at tiny scale under `compute-sanitizer`, then confirmed in code): the distributed
+cut-cell pressure **multigrid decomposed each level with an independent ORB**, so coarse blocks did not
+*nest* in fine ones. When coarsening changed the longest axis — here x halves (754→377) while $z=503$ is
+odd and cannot coarsen, so z becomes longest and the coarse level split **z** instead of **x** — the
+`prolong`/`restrict` transfers, which assume coarse-local $i\leftrightarrow$ fine-local $2i$, read across
+the misaligned block boundary out of bounds. The fix (peclet `core`+`flow`) builds each coarse level as
+the fine decomposition **coarsened in place** (aligned ORB splits + a nested `coarsened()` derivation),
+so transfers stay communication-free and every rank nests. Verified: the reproduction goes from 7
+sanitizer errors to **0**, the distributed result is **bit-exact to single-rank** (`max|ΔU|` ≈ 4e-14),
+and the full `flow` (33/33) and `dem` (24/24) MPI test suites stay green.
 :::
 
 ::: {.callout-important}
@@ -280,14 +293,24 @@ ranks on one GPU) and check the ORB kept $y$ whole. But which test you read matt
   for 1→2→4 GPUs at 28 M total, then *down* at 8 (2 nodes). Don't size the production run from this.
 
 ```bash
-sbatch --nodes=2 weak_scaling.sh     # the meaningful curve; then strong: sbatch --nodes=2 scaling_test.sh
+sbatch --nodes=2 weak_scaling.sh     # reproduces the measured curve above; strong: sbatch scaling_test.sh
 ```
 
-The practical consequence: **the production 182 M run on 4 GPUs (single node, 45 M/GPU) is the sweet
-spot** — big enough per GPU to stay compute-bound, and single-node so it pays no inter-node reduction
-cost. The hero 614 M run spans 3 nodes and *will* lose efficiency to the multi-node pressure solve (the
-suite's known at-scale-tuning frontier). Both drivers now report a **warmup-excluded steady ms/step** and
-Mcell-updates/s, so you compare like-for-like.
+The measured weak-scaling curve is in the section above; the practical consequence is that **the
+production 182 M run on 4 GPUs (single node) is the sweet spot** at 80 % weak efficiency, while the hero
+614 M run spans nodes and pays the pressure-solve reduction tax.
+
+::: {.callout-note}
+## Production statistical benchmark — status
+The 182 M / $\Delta^+=1.5$ run **executes correctly and efficiently on 4 H100s** (the distributed-MG fix
+above), and the scaling is measured. The remaining piece is a **fully time-averaged** statistical
+profile to overlay on MKM at this resolution: at ~1.7 s/step that is a ~20–24 h job (transient +
+averaging window), so it needs a walltime request to match — it is the natural next run, not a solver
+limitation. Until then, the **single-GPU coarse benchmark above** already shows the near-wall agreement
+with MKM and the resolution trend that finer $\Delta^+$ closes. The averaging machinery
+(`STATSTART`/`STATEVERY` → `prof_*` in the stats file → `analyze_channel.py`) is in place and validated
+at small scale.
+:::
 
 ## Adapt this yourself
 

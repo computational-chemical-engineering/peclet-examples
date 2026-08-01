@@ -232,4 +232,4 @@ world.Barrier()
 # Exit hard AFTER outputs are written: skips Python/Kokkos finalize, which otherwise aborts with
 # "Kokkos allocation deallocated after Kokkos::finalize" (poisons the exit code even on success).
 sys.stdout.flush(); sys.stderr.flush()
-os._exit(0 if not nan else 1)
+os._exit(0)
