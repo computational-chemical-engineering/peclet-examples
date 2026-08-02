@@ -46,6 +46,9 @@ DIAG = int(os.environ.get("DIAG", 500)); STATSTART = int(os.environ.get("STATSTA
 STATEVERY = int(os.environ.get("STATEVERY", 25)); ADV = int(os.environ.get("ADV", 0))
 CFR = float(os.environ.get("CFR", 0.0)); OUT = os.environ.get("OUT", "chan_mpi")
 RE_TAU = float(os.environ.get("RE_TAU", 180.0)); SEED = int(os.environ.get("SEED", 1234))
+CKPT = int(os.environ.get("CKPT", 0))   # checkpoint every N steps -> restart-on-resubmit (0 = off)
+_ckpt_field = f"{OUT}_ckpt_r{RANK}.npz"  # this rank's local (u,v,w) block
+_ckpt_meta = f"{OUT}_ckpt_meta.npz"      # rank-0 step counter + accumulators (the restart "commit")
 
 nu = (GNY/2.0)/RE_TAU; H = GNY/2.0; fbody = 2.0/GNY; Dplus = 1.0/nu
 
@@ -119,7 +122,18 @@ s.set_pressure_multigrid(True, 5); s.set_pressure_pcg(True, 80, 1e-4); s.set_pre
 s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)          # no-slip walls on -y,+y ; x,z periodic
 s.set_body_force(0.0 if CFR > 0 else fbody, 0.0, 0.0)
 s.set_pressure_geometry(np.asfortranarray(np.full((lnx, lny, lnz), 1e30)))
-s.set_state(u0, v0, w0)
+
+# ---- restart (resume fields) or fresh IC --------------------------------------------------------
+# On resubmit, pick up this rank's checkpointed block instead of the Reichardt IC. The accumulators
+# and step counter are restored below (after they are defined). Requires the SAME grid + rank count.
+it0 = 0
+_restarting = CKPT > 0 and os.path.exists(_ckpt_meta) and os.path.exists(_ckpt_field)
+if _restarting:
+    ck = np.load(_ckpt_field)
+    s.set_state(np.asfortranarray(ck["u"]), np.asfortranarray(ck["v"]), np.asfortranarray(ck["w"]))
+    p0(f"[restart] resumed fields from {OUT}_ckpt_r*.npz")
+else:
+    s.set_state(u0, v0, w0)
 
 # ---- constant-flow-rate forcing: global bulk via Allreduce, uniform shift on every rank ---------
 apply_cfr = None; dsum = 0.0; ndsum = 0
@@ -177,10 +191,36 @@ def accumulate():
     nacc += 1
     return mU, mUU - mU*mU, mVV - mVS*mVS, mUV - mU*mVS
 
+# ---- restore accumulators on restart, and define the checkpoint writer -------------------------
+ts = []
+if _restarting:
+    meta = np.load(_ckpt_meta, allow_pickle=True)
+    it0 = int(meta["it"]); nacc = int(meta["nacc"]); dsum = float(meta["dsum"]); ndsum = int(meta["ndsum"])
+    for k in gkeys:
+        gacc[k] = meta["gacc_" + k].copy()
+    ts = [list(r) for r in meta["ts"]] if meta["ts"].size else []
+    p0(f"[restart] resumed at step {it0}, nacc={nacc}, ndsum={ndsum}")
+
+def checkpoint(it):
+    # Each rank writes its local block; rank 0 then writes the meta (the commit). Atomic replace so a
+    # kill mid-write can't corrupt a checkpoint. Restart replays from the last committed meta.
+    # NB: tmp names end in .npz because np.savez appends .npz to a name that lacks it.
+    tmp = _ckpt_field[:-4] + ".tmp.npz"
+    np.savez(tmp, u=s.get_u(), v=s.get_v(), w=s.get_w()); os.replace(tmp, _ckpt_field)
+    world.Barrier()
+    if RANK == 0:
+        mtmp = _ckpt_meta[:-4] + ".tmp.npz"
+        np.savez(mtmp, it=it, nacc=nacc, dsum=dsum, ndsum=ndsum, ts=np.array(ts, dtype=object),
+                 **{f"gacc_{k}": gacc[k] for k in gkeys})
+        os.replace(mtmp, _ckpt_meta)
+    world.Barrier()
+
 # ---- time loop --------------------------------------------------------------------------------
 WARMUP = int(os.environ.get("WARMUP", 50))   # steps to exclude from the steady-state timing
-ts = []; t0 = time.time(); t_warm = None; it_warm = 0
-for it in range(1, NSTEPS+1):
+t0 = time.time(); t_warm = None; it_warm = 0
+if _restarting:
+    t_warm = t0; it_warm = it0   # timing is meaningless across a restart; anchor it here
+for it in range(it0 + 1, NSTEPS+1):
     if it == WARMUP + 1:
         world.Barrier(); t_warm = time.time(); it_warm = it - 1   # start steady clock after warmup
     s.step()
@@ -203,6 +243,8 @@ for it in range(1, NSTEPS+1):
                 tp = it*DT/nu; rate = it/(time.time()-t0)
                 print(f"  it={it:6d} t+={tp:7.1f} Ub+={Ub:5.2f} u_tau~{utau:.3f} nacc={nacc} [{rate:.1f} it/s]", flush=True)
                 ts.append([it, tp, Ub, utau, nacc])
+    if CKPT > 0 and it % CKPT == 0:
+        checkpoint(it)   # survive the SLURM walltime limit -> resubmit resumes from here
 
 # ---- steady-state timing (exclude warmup) -----------------------------------------------------
 world.Barrier(); t_end = time.time()

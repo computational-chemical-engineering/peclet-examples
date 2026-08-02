@@ -1,8 +1,8 @@
 ---
 title: "Wall-bounded turbulence: channel-flow DNS vs Moser–Kim–Mansour"
-subtitle: "Drive a plane channel with a mean pressure gradient until it goes turbulent, gather the mean profile and Reynolds stresses in wall units, benchmark against the classic MKM 1999 DNS — and scale the full-resolution run out to a national supercomputer (measured multi-GPU weak scaling on Snellius H100, plus the distributed-multigrid fix that made it run)."
+subtitle: "Direct numerical simulation of turbulent plane-channel flow, validated against the classic Moser–Kim–Mansour 1999 DNS: mean-velocity profile, Reynolds stresses and friction velocity in wall units — run efficiently multi-GPU on the Snellius supercomputer, with a resolution ladder toward quantitative agreement."
 author: "Peclet"
-date: "2026-08-01"
+date: "2026-08-02"
 categories: [flow, turbulence, DNS, benchmark, HPC, MPI, multi-GPU, gpu]
 jupyter: python3
 ---
@@ -10,13 +10,14 @@ jupyter: python3
 ## What you'll learn
 
 How to run a **direct numerical simulation (DNS) of turbulent plane-channel flow** with the
-`peclet.flow` solver — the canonical wall-bounded-turbulence testbed — and benchmark it against the
-reference database of Moser, Kim & Mansour (@mkm1999) at $Re_\tau = 180$. You'll see how to drive the
-channel (constant pressure gradient vs constant flow rate), how the statistics are gathered in **wall
-units**, and — the focus of the second half — **how to run the full-resolution DNS on the Snellius
-supercomputer**: install, GPU-aware MPI, job scripts, and a **measured multi-GPU weak-scaling study** on
-H100 (46 M cells/GPU, up to 364 M cells / 8 GPUs). Along the way we hit — and fix — a real
-distributed-multigrid bug, a worked example of the kind of debugging a device+MPI code needs at scale.
+`peclet.flow` solver — the canonical wall-bounded-turbulence testbed — and **validate it against the
+reference database of Moser, Kim & Mansour (@mkm1999)** at $Re_\tau = 180$: the mean-velocity profile,
+the Reynolds stresses, and the friction velocity, all in **wall units**. You'll see how the channel is
+driven (constant pressure gradient vs constant flow rate), how the statistics are gathered, why matching
+MKM quantitatively is a **resolution** question, and **how to run the full-resolution DNS efficiently on
+the Snellius supercomputer** (multi-GPU, GPU-aware MPI, checkpoint/restart job scripts). The multi-GPU
+*performance* — a measured weak-scaling study — is split into a companion
+[scaling benchmark](../../benchmarks/channel-scaling/index.qmd).
 
 This example is also honest about a solver limitation and turns it into the physics lesson: `peclet.flow`
 uses **upwind advection on an isotropic grid**, so on a coarse grid numerical dissipation damps the
@@ -82,12 +83,13 @@ from momentum balance, $u_\tau^2 = H\langle\delta\rangle/\Delta t$. The driver d
 (zero-copy CuPy) when `CFR=<bulk>` is set. Both are in the script.
 :::
 
-## Single-GPU result — and why it needs more resolution
+## Validation against MKM 1999 — the resolution ladder
 
-On one RTX 5080, a coarse run (reduced box, $\Delta^+\approx2.8$) driven at the MKM bulk
-$U_b^+=15.68$ gives:
+The benchmark is the mean-velocity profile and Reynolds stresses in wall units. As a first point, a
+coarse single-GPU run (reduced box, $\Delta^+\approx2.8$, driven at the MKM bulk $U_b^+=15.68$) already
+reproduces the near-wall structure and shows exactly where the error lives:
 
-![Coarse-grid channel DNS ($\Delta^+\!=\!2.8$) vs MKM 1999. Near-wall structure is captured; the outer layer and Reynolds shear stress are damped by numerical dissipation.](c128_benchmark.png)
+![Coarse-grid channel DNS ($\Delta^+\!=\!2.8$) vs MKM 1999. Near-wall structure is captured; the outer layer and Reynolds shear stress are damped by numerical dissipation — closed by finer resolution.](c128_benchmark.png)
 
 | quantity | flow ($\Delta^+\!=\!2.8$) | MKM 178 | |
 |---|---|---|---|
@@ -96,81 +98,38 @@ $U_b^+=15.68$ gives:
 | $-\langle u'v'\rangle^+$ peak | 0.43 | 0.72 | 59 % |
 | centreline $U^+$ | 24.4 | 18.3 | log law shifted up |
 
-Turbulence **sustains** — it does not relaminarise — and the near-wall streak peak is captured well.
-But the **outer layer collapses** and the shear stress is weak: the second-order upwind advection acts
-like an eddy viscosity, and at $\Delta^+\approx2.8$ that is a large effect. Second-order codes are known
-to need $2$–$4\times$ finer grids than spectral methods; the cure here is simply **more resolution** —
-which, at the full box, is a supercomputer-sized problem. That is the rest of this page.
+Turbulence **sustains** and the near-wall streak peak lands at the right $y^+$, but the **outer layer is
+damped**: the second-order upwind advection acts like an eddy viscosity, and at $\Delta^+\approx2.8$ that
+is a large effect. Second-order codes need $2$–$4\times$ finer grids than spectral methods to match, so
+the route to quantitative MKM agreement is **resolution** — and at the full box that is a
+supercomputer-scale run. That is what the production benchmark below delivers.
 
-## Scaling to a full DNS on Snellius
+## The production benchmark run on Snellius
 
-A production channel DNS in the full MKM box $4\pi H\times 2H\times \tfrac{4}{3}\pi H$ at a resolution
-that beats the numerical dissipation is far past a single GPU. On the **isotropic** grid the cell count
-is $\approx 13.2\,n_y^3$:
+A DNS in the full MKM box $4\pi H\times 2H\times \tfrac{4}{3}\pi H$ at a resolution that beats the
+numerical dissipation is multi-GPU work. On the **isotropic** grid the cell count is $\approx
+13.2\,n_y^3$, and **finer $\Delta^+$ (larger $n_y$) means less numerical dissipation → closer to MKM**:
 
-| target | $\Delta^+$ | grid $n_x\times n_y\times n_z$ | cells | memory (~1.2 KB/cell) |
+| resolution | $\Delta^+$ | grid $n_x\times n_y\times n_z$ | cells | H100s (nodes) |
 |---|---|---|---|---|
-| moderate | 2.0 | $1131\times180\times377$ | 77 M | 92 GB |
-| **production** | **1.5** | $1508\times240\times503$ | **182 M** | **218 GB** |
-| fine | 1.25 | $1810\times288\times603$ | 314 M | 377 GB |
-| hero | 1.0 | $2262\times360\times754$ | 614 M | 737 GB |
+| **production** | **1.5** | $1508\times240\times503$ | **182 M** | 4 (1 node) |
+| fine | 1.25 | $1810\times288\times603$ | 314 M | 8 (2 nodes) |
+| hero | 1.0 | $2262\times360\times754$ | 614 M | 12 (3 nodes) |
 
-[Snellius](https://www.surf.nl/en/services/compute/snellius-the-national-supercomputer) (SURF) has, as
-of mid-2025, these relevant SLURM partitions (confirm with `sinfo -s` — names and versions drift):
+These run on Snellius' `gpu_h100` partition (4× H100 94 GB, 64 cores/node; confirm with `sinfo -s`), one
+MPI rank cgroup-bound per GPU, with the **GPU-aware MPI** halo. `peclet.flow` is distributed on the
+shared `core` ORB decomposition, **bit-exact to single-rank** (suite `tests/kokkos_mpi`, np=1,2,4). The
+182 M production run executes at ~1.7 s/step on 4 H100s; a converged time-average (≈5–10 eddy-turnovers
+of transient + a comparable averaging window) is ~40–50 k steps, so the job **checkpoints and resumes on
+resubmit** (`snellius_gpu.slurm` sets `CKPT`) — a walltime limit just means you `sbatch` again and it
+continues.
 
-| partition | per node | cores | RAM (usable) | max walltime |
-|---|---|---|---|---|
-| `gpu_h100` | 4× NVIDIA H100 (94 GB) | 64 | 720 GiB | 120 h |
-| `gpu_a100` | 4× NVIDIA A100 (40 GB) | 72 | 480 GiB | 120 h |
-| `genoa` | CPU only | 192 | 336 GiB | 120 h |
-| `rome` | CPU only | 128 | 224 GiB | 120 h |
-
-(The bare `gpu` partition used in older docs is gone — use `gpu_a100`/`gpu_h100`.) `peclet.flow` runs
-distributed on the shared `core` ORB block decomposition with asynchronous, GPU-aware halo exchange,
-**bit-exact to single-rank** (validated in the suite's `tests/kokkos_mpi`, np=1,2,4).
-
-### Measured weak scaling on Snellius
-
-We ran the weak-scaling sweep on Snellius `gpu_h100` (NVIDIA H100, GPU-aware MPI halo), holding the
-per-GPU load fixed at **46 M cells** (the production $\Delta^+=1.5$ cross-section, growing the box with
-GPU count) — the metric that answers "can I run a proportionally bigger DNS on more GPUs in the same
-wall-clock?" These are **real numbers, not extrapolations**:
-
-![Weak scaling on Snellius H100 (46 M cells/GPU fixed). On-node scaling is near-ideal; the drop from 4→8 GPUs is the inter-node pressure-solve reduction tax.](weak_scaling.png)
-
-| GPUs | box | cells | ms/step | weak-scaling eff. | throughput |
-|---|---|---|---|---|---|
-| 1 | $377\times240\times503$ | 46 M | 1369 | 100 % | 33 Mcell/s |
-| 2 (1 node) | $754\times240\times503$ | 91 M | 1300 | **105 %** | 70 Mcell/s |
-| **4 (1 node)** | $1508\times240\times503$ | **182 M** | 1713 | **80 %** | 106 Mcell/s |
-| 8 (2 nodes) | $3016\times240\times503$ | 364 M | 2942 | 47 % | 124 Mcell/s |
-
-The story is exactly what the physics predicts. **On a single node scaling is near-ideal** (2 GPUs is
-even marginally faster per step than 1 — the intra-node `cuda_ipc` halo is essentially free), and the
-full **182 M production run on 4 GPUs sits at 80 % weak efficiency**. Crossing to a second node (8 GPUs)
-drops efficiency to ~47 %: the incompressible **pressure Poisson solve does a global all-reduce every
-Krylov iteration**, and those reductions become latency-bound over InfiniBand — the suite's known
-at-scale frontier. So for one converged DNS, **4 H100s on a single node is the sweet spot**; the hero
-614 M run spans nodes and pays that tax.
-
-At the measured **~1.7 s/step** for the 182 M run, a fully converged average (≈5–10 eddy-turnovers of
-transient + a comparable averaging window, ~40–50 k steps) is a **~20–24 h** job — request the walltime
-accordingly (the `gpu_h100` limit is 120 h) and set `STATSTART` to begin averaging only once $u_\tau$
-plateaus.
-
-::: {.callout-important}
-## Enabling this: a distributed-multigrid fix (why the production run works at all)
-The 182 M-on-4-GPU run initially **crashed** with `cudaErrorIllegalAddress`. Root cause (found by
-reproducing it at tiny scale under `compute-sanitizer`, then confirmed in code): the distributed
-cut-cell pressure **multigrid decomposed each level with an independent ORB**, so coarse blocks did not
-*nest* in fine ones. When coarsening changed the longest axis — here x halves (754→377) while $z=503$ is
-odd and cannot coarsen, so z becomes longest and the coarse level split **z** instead of **x** — the
-`prolong`/`restrict` transfers, which assume coarse-local $i\leftrightarrow$ fine-local $2i$, read across
-the misaligned block boundary out of bounds. The fix (peclet `core`+`flow`) builds each coarse level as
-the fine decomposition **coarsened in place** (aligned ORB splits + a nested `coarsened()` derivation),
-so transfers stay communication-free and every rank nests. Verified: the reproduction goes from 7
-sanitizer errors to **0**, the distributed result is **bit-exact to single-rank** (`max|ΔU|` ≈ 4e-14),
-and the full `flow` (33/33) and `dem` (24/24) MPI test suites stay green.
+::: {.callout-note}
+## Performance & the fix that enabled it → the scaling benchmark
+`peclet.flow` scales near-ideally on a single node (80 % weak efficiency at the full 182 M / 4 GPUs) and
+the large runs required a distributed-multigrid correctness fix along the way. The measured multi-GPU
+**weak-scaling study** and that debugging story live in the companion benchmark:
+[**Multi-GPU weak scaling: channel DNS on Snellius H100**](../../benchmarks/channel-scaling/index.qmd).
 :::
 
 ::: {.callout-important}
@@ -277,39 +236,16 @@ srun --mpi=pmix "$VENV/bin/python" channel_dns_mpi.py    # driver binds + prints
 For CPU, [`snellius_cpu.slurm`](snellius_cpu.slurm) uses few fat MPI ranks × many OpenMP threads
 (so the rank grid stays coarse and $y$ is never split).
 
-### Scaling: measure weak, not strong
-
-Both tests bind **one GPU per task** via SLURM (`srun --gpus-per-task=1 --gpu-bind=per_task:1`; the driver
-prints each rank's **physical GPU PCI bus** and warns on any sharing — the silent multi-GPU killer is two
-ranks on one GPU) and check the ORB kept $y$ whole. But which test you read matters:
-
-- **Weak scaling** ([`weak_scaling.sh`](weak_scaling.sh)) — cells-*per-GPU* held fixed at the production
-  ~45 M/GPU, problem grows with GPU count. **This is the metric that matters** ("a 4× bigger DNS on 4×
-  GPUs in the same wall-clock?"). Ideal = flat ms/step vs $N$.
-- **Strong scaling** ([`scaling_test.sh`](scaling_test.sh)) — a fixed ~28 M box split over more GPUs. This
-  **collapses fast** here, and that's expected physics, not a bug: the incompressible **pressure Poisson
-  solve does a global all-reduce every Krylov iteration**, so once each GPU holds only a few M cells the
-  reduction latency (worst across nodes) dominates the compute. Measured on 1 H100 node: ~2.7→3.9→4.2 it/s
-  for 1→2→4 GPUs at 28 M total, then *down* at 8 (2 nodes). Don't size the production run from this.
-
-```bash
-sbatch --nodes=2 weak_scaling.sh     # reproduces the measured curve above; strong: sbatch scaling_test.sh
-```
-
-The measured weak-scaling curve is in the section above; the practical consequence is that **the
-production 182 M run on 4 GPUs (single node) is the sweet spot** at 80 % weak efficiency, while the hero
-614 M run spans nodes and pays the pressure-solve reduction tax.
-
 ::: {.callout-note}
 ## Production statistical benchmark — status
-The 182 M / $\Delta^+=1.5$ run **executes correctly and efficiently on 4 H100s** (the distributed-MG fix
-above), and the scaling is measured. The remaining piece is a **fully time-averaged** statistical
-profile to overlay on MKM at this resolution: at ~1.7 s/step that is a ~20–24 h job (transient +
-averaging window), so it needs a walltime request to match — it is the natural next run, not a solver
-limitation. Until then, the **single-GPU coarse benchmark above** already shows the near-wall agreement
-with MKM and the resolution trend that finer $\Delta^+$ closes. The averaging machinery
-(`STATSTART`/`STATEVERY` → `prof_*` in the stats file → `analyze_channel.py`) is in place and validated
-at small scale.
+The 182 M / $\Delta^+=1.5$ run **executes correctly and efficiently on 4 H100s** (bit-exact to
+single-rank; the enabling distributed-multigrid fix is written up in the
+[scaling benchmark](../../benchmarks/channel-scaling/index.qmd)). The remaining piece is a **fully
+time-averaged** profile to overlay on MKM at this resolution: at ~1.7 s/step that is ~40–50 k steps, run
+across one or more resumes via the checkpoint/restart above. Until that lands, the **single-GPU coarse
+benchmark above** shows the near-wall agreement and the resolution trend; finer $\Delta^+$ (the
+`compare_resolutions.py` overlay) closes the outer layer. The averaging machinery
+(`STATSTART`/`STATEVERY` → `prof_*` → `analyze_channel.py`) is in place and validated at small scale.
 :::
 
 ## Adapt this yourself
@@ -330,11 +266,13 @@ at small scale.
 CFR=15.68 NSTEPS=2500 STATSTART=700 python channel_dns.py          # -> smoke_stats.npz
 python analyze_channel.py c128_stats.npz c128_benchmark.png
 
-# Snellius full run:
+# Snellius production run (converged MKM benchmark):
 ./install_snellius.sh h100
-sbatch snellius_gpu.slurm
-# copy chan_*_stats.npz back, then:
-python analyze_channel.py chan_240_<jobid>_stats.npz result.png
+OUT=chan240 sbatch snellius_gpu.slurm      # 182M / 4 H100; resubmit the SAME line to resume on timeout
+# once it reaches NSTEPS, copy chan240_stats.npz back, then:
+python analyze_channel.py chan240_stats.npz result.png
+# finer resolutions toward exact MKM agreement:
+OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm    # 614M / 12 H100 (hero, Delta+=1.0)
 ```
 
 The MKM $Re_\tau=180$ reference profiles are bundled under `mkm/` (from @mkm1999, via the

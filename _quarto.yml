@@ -81,6 +81,8 @@ website:
             text: "Staggered vs collocated (convergence)"
           - href: benchmarks/dem-bulk-dosta2024/index.qmd
             text: "DEM8 bulk benchmark (Dosta et al. 2024)"
+          - href: benchmarks/channel-scaling/index.qmd
+            text: "Channel DNS multi-GPU scaling (Snellius H100)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

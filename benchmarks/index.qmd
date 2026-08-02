@@ -54,6 +54,17 @@ trade is.
 *flow · accuracy · staggered vs collocated · Stokes · verification*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Channel DNS multi-GPU scaling on Snellius H100 →](channel-scaling/index.qmd)
+The performance companion to the [wall-bounded turbulence](../examples/wall-bounded-turbulence/index.qmd)
+DNS: measured **weak scaling** of the distributed incompressible solver on NVIDIA H100 with GPU-aware
+MPI (46 M cells/GPU fixed, 1→8 GPUs / up to 364 M cells) — near-ideal on-node (80 % at the 182 M
+production point), with the inter-node pressure-solve reduction tax quantified. Includes the
+distributed-multigrid correctness fix that made the large runs possible.
+
+*flow · HPC · MPI · multi-GPU · weak scaling · Snellius*
+:::
+
 :::
 
 ## How to read these

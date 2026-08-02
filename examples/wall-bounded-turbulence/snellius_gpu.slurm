@@ -1,30 +1,32 @@
 #!/bin/bash
 # ==========================================================================================
-# Turbulent channel-flow DNS (Re_tau=180) on Snellius GPU nodes — multi-GPU, one MPI rank per GPU.
+# Turbulent channel-flow DNS (Re_tau=180) on Snellius GPU nodes — a converged MKM-1999 benchmark run.
 #
-#   Full MKM box 4piH x 2H x (4/3)piH, isotropic grid.  Delta+ = 360/GNY.
-#   Recommended production point:  Delta+=1.5  ->  GNY=240, GNX=1508, GNZ=503  (~182 M cells).
-#     - fits 1 H100 node (4 x 94 GB) with headroom, or 2 A100 nodes (8 x 40 GB).
-#   Hero point:  Delta+=1.0  ->  GNY=360, GNX=2262, GNZ=754  (~614 M cells)  -> 3 H100 nodes.
+#   Full MKM box 4piH x 2H x (4/3)piH, isotropic grid.  Delta+ = 360/GNY.  Resolution presets:
+#     GNY=240  Delta+=1.5  1508x240x503  = 182M cells  -> 1 H100 node (4 GPU, 45M/rank)   [default]
+#     GNY=288  Delta+=1.25 1810x288x603  = 314M cells  -> 2 H100 nodes (8 GPU, 39M/rank)
+#     GNY=360  Delta+=1.0  2262x360x754  = 614M cells  -> 3 H100 nodes (12 GPU, 51M/rank)  [hero]
+#   Higher resolution => less numerical dissipation => closer to MKM (see the example page). Pick a
+#   preset with GNY=... and match --nodes so per-rank cells stay <~50M (94GB H100).
 #
-#   >>> BEFORE YOU SUBMIT (verified 2026-07-25 against SURF docs; confirm on the machine): <<<
-#     - Partitions (run `sinfo -s`):  gpu_h100 (4x H100 94GB, 64 cores)  |  gpu_a100 (4x A100 40GB, 72 cores).
-#       (The bare `gpu` partition no longer exists.)  Set --cpus-per-task = cores_per_node / 4.
-#     - Modules (run `module avail 2023`): the versions below match the suite's reference build; if a
-#       version is gone, pick the nearest and rebuild with install_snellius.sh so mpi4py/OpenMPI agree.
-#     - Set your accounting project below (run `accinfo` to see yours).  Max walltime is 120 h.
-#     - On-cluster multi-node has NOT been validated by the suite — run scaling_test.sh first (see the page).
+#   CONVERGED STATISTICS: this is a long run. It CHECKPOINTS every CKPT steps and RESUMES on resubmit
+#   (channel_dns_mpi.py restart) — so a walltime limit is not fatal: just `sbatch` again with the SAME
+#   OUT and it continues (fields + accumulators + step counter restored). Averaging (prof_*) begins at
+#   STATSTART; set it past the u_tau plateau (~5 eddy-turnovers). At ~1.7 s/step for 182M/4GPU a
+#   converged average is ~40-50k steps (~20-24h) -> either one long job (max 120h) or several resumes.
 #
-#   Submit:  sbatch snellius_gpu.slurm            # 1 H100 node, Delta+=1.5 (182M)
-#            GNY=360 sbatch --nodes=3 snellius_gpu.slurm   # hero, Delta+=1.0 (614M)
+#   Submit:  OUT=chan240 sbatch snellius_gpu.slurm                    # 182M, 1 node
+#            OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm  # 614M hero, 3 nodes
+#            (resubmit the SAME line after a timeout — it resumes from the checkpoint)
+#   Confirm on the machine: `sinfo -s` (partitions), `module avail 2024` (versions), `accinfo` (account).
 # ==========================================================================================
 #SBATCH --job-name=chan-dns
 #SBATCH --partition=gpu_h100          # H100 (4x94GB, 64c). A100: --partition=gpu_a100 (4x40GB, 72c).
-#SBATCH --nodes=1                     # 1 H100 node = 4 GPUs, fits the 182M (Delta+=1.5) case (45M/rank)
+#SBATCH --nodes=1                     # match to the resolution preset above (per-rank <~50M cells)
 #SBATCH --gpus-per-node=4
 #SBATCH --ntasks-per-node=4           # one MPI rank per GPU
 #SBATCH --cpus-per-task=16            # 64 cores / 4 (gpu_h100).  Use 18 on gpu_a100 (72/4).
-#SBATCH --time=08:00:00               # max 120:00:00
+#SBATCH --time=24:00:00               # long averaging run; max 120:00:00. Resubmit resumes on timeout.
 #SBATCH --output=chan-dns-%j.out
 #SBATCH --account=tes24005
 set -euo pipefail
@@ -42,10 +44,13 @@ export GNY="${GNY:-240}"
 export GNX="${GNX:-$(python3 -c "import math;print(round(2*math.pi*$GNY))")}"   # 4piH -> 2pi*GNY
 export GNZ="${GNZ:-$(python3 -c "import math;print(round(2*math.pi/3*$GNY))")}" # (4/3)piH -> (2pi/3)*GNY
 export CFR="${CFR:-15.68}"            # hold bulk U+ (MKM value) -> emergent u_tau/Re_tau
-export NSTEPS="${NSTEPS:-50000}"     # ~5-10 eddy-turnovers for converged statistics
-export STATSTART="${STATSTART:-20000}" ; export STATEVERY="${STATEVERY:-25}"
+export NSTEPS="${NSTEPS:-50000}"     # total steps to reach (across resubmits); ~5-10 eddy-turnovers
+export STATSTART="${STATSTART:-25000}" # begin time-averaging only after u_tau plateaus (~5 turnovers)
+export STATEVERY="${STATEVERY:-25}"
+export CKPT="${CKPT:-2000}"          # checkpoint every N steps -> resubmit resumes (survive walltime)
 export DT="${DT:-0.02}" ; export DIAG="${DIAG:-500}" ; export ADV=0
-export OUT="${OUT:-chan_${GNY}_${SLURM_JOB_ID}}"
+# NB: keep OUT STABLE across resubmits so the run resumes from its checkpoint (do NOT use $SLURM_JOB_ID).
+export OUT="${OUT:-chan_${GNY}}"
 
 # GPU binding: SLURM cgroup-isolates one GPU per task via the srun flags below, so the driver must
 # NOT remap CUDA_VISIBLE_DEVICES. It prints each rank's TRUE physical GPU (host + PCI bus) at startup
