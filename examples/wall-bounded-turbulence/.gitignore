@@ -13,3 +13,5 @@ diag*.log
 chan-weak-*.out
 chan-diag-*.out
 chan-san-*.out
+*_ckpt_*.npz
+*.done

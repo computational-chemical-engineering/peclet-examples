@@ -9,15 +9,18 @@
 #   Higher resolution => less numerical dissipation => closer to MKM (see the example page). Pick a
 #   preset with GNY=... and match --nodes so per-rank cells stay <~50M (94GB H100).
 #
-#   CONVERGED STATISTICS: this is a long run. It CHECKPOINTS every CKPT steps and RESUMES on resubmit
-#   (channel_dns_mpi.py restart) — so a walltime limit is not fatal: just `sbatch` again with the SAME
-#   OUT and it continues (fields + accumulators + step counter restored). Averaging (prof_*) begins at
-#   STATSTART; set it past the u_tau plateau (~5 eddy-turnovers). At ~1.7 s/step for 182M/4GPU a
-#   converged average is ~40-50k steps (~20-24h) -> either one long job (max 120h) or several resumes.
+#   CONVERGED STATISTICS: this is a long run. It CHECKPOINTS every CKPT steps and AUTO-RESUMES: the job
+#   queues its own successor (SLURM afterany dependency) before running, so when the walltime limit hits,
+#   a new job automatically starts from the checkpoint (fields + accumulators + step counter restored).
+#   The chain stops itself when the driver reaches NSTEPS (writes ${OUT}.done) or after CHAIN resubmits.
+#   So you submit ONCE and walk away. Averaging (prof_*) begins at STATSTART (set past the u_tau plateau,
+#   ~5 eddy-turnovers); at ~1.7 s/step for 182M/4GPU a converged average is ~40-50k steps (~20-24h),
+#   spread over however many walltime windows it takes.
 #
-#   Submit:  OUT=chan240 sbatch snellius_gpu.slurm                    # 182M, 1 node
-#            OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm  # 614M hero, 3 nodes
-#            (resubmit the SAME line after a timeout — it resumes from the checkpoint)
+#   Submit ONCE:  OUT=chan240 sbatch snellius_gpu.slurm                    # 182M, 1 node
+#                 OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm  # 614M hero, 3 nodes
+#   Watch:  squeue --me   (you'll see the running job + a PENDING successor with dependency)
+#   Stop early:  scancel the pending successor, or `touch ${OUT}.done`.  Manual mode: CHAIN=0.
 #   Confirm on the machine: `sinfo -s` (partitions), `module avail 2024` (versions), `accinfo` (account).
 # ==========================================================================================
 #SBATCH --job-name=chan-dns
@@ -51,6 +54,24 @@ export CKPT="${CKPT:-2000}"          # checkpoint every N steps -> resubmit resu
 export DT="${DT:-0.02}" ; export DIAG="${DIAG:-500}" ; export ADV=0
 # NB: keep OUT STABLE across resubmits so the run resumes from its checkpoint (do NOT use $SLURM_JOB_ID).
 export OUT="${OUT:-chan_${GNY}}"
+
+# --- auto-resubmit chain: continue across walltime limits with no manual action ------------------
+# If the run already finished (driver wrote ${OUT}.done), stop. Otherwise queue a successor that runs
+# AFTER this job ends (afterany) with the SAME allocation + environment, so on a walltime kill it
+# resumes from the checkpoint. CHAIN caps the number of auto-resubmits (crash-loop guard).
+# Disable with CHAIN=0 (then resubmit by hand). The successor's first action is this same check, so a
+# normal completion just makes it exit immediately.
+export CHAIN="${CHAIN:-12}"
+if [ -f "${OUT}.done" ]; then
+  echo "[chain] ${OUT} already complete ($(cat ${OUT}.done)); not resubmitting."; exit 0
+fi
+if [ "${CHAIN}" -gt 0 ]; then
+  nxt=$(sbatch --parsable --dependency=afterany:${SLURM_JOB_ID} \
+        --nodes=${SLURM_NNODES} --partition=${SLURM_JOB_PARTITION} \
+        --export=ALL,CHAIN=$((CHAIN-1)) "${SLURM_SUBMIT_DIR}/snellius_gpu.slurm" 2>/dev/null) \
+    && echo "[chain] queued successor job ${nxt} (starts after ${SLURM_JOB_ID}; ${CHAIN} resubmits left)" \
+    || echo "[chain] WARNING: could not queue successor (submit by hand to resume)"
+fi
 
 # GPU binding: SLURM cgroup-isolates one GPU per task via the srun flags below, so the driver must
 # NOT remap CUDA_VISIBLE_DEVICES. It prints each rank's TRUE physical GPU (host + PCI bus) at startup

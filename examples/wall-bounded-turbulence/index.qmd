@@ -120,9 +120,11 @@ These run on Snellius' `gpu_h100` partition (4× H100 94 GB, 64 cores/node; conf
 MPI rank cgroup-bound per GPU, with the **GPU-aware MPI** halo. `peclet.flow` is distributed on the
 shared `core` ORB decomposition, **bit-exact to single-rank** (suite `tests/kokkos_mpi`, np=1,2,4). The
 182 M production run executes at ~1.7 s/step on 4 H100s; a converged time-average (≈5–10 eddy-turnovers
-of transient + a comparable averaging window) is ~40–50 k steps, so the job **checkpoints and resumes on
-resubmit** (`snellius_gpu.slurm` sets `CKPT`) — a walltime limit just means you `sbatch` again and it
-continues.
+of transient + a comparable averaging window) is ~40–50 k steps — more than one walltime window. So
+`snellius_gpu.slurm` **checkpoints and auto-resumes**: the job queues its own successor (a SLURM
+`afterany` dependency) before running, so when the walltime limit hits, a new job automatically restarts
+from the last checkpoint (fields + averaging accumulators + step counter restored) and the chain stops
+itself once the run reaches `NSTEPS`. **You submit once and walk away** — no manual resubmission.
 
 ::: {.callout-note}
 ## Performance & the fix that enabled it → the scaling benchmark
@@ -268,8 +270,8 @@ python analyze_channel.py c128_stats.npz c128_benchmark.png
 
 # Snellius production run (converged MKM benchmark):
 ./install_snellius.sh h100
-OUT=chan240 sbatch snellius_gpu.slurm      # 182M / 4 H100; resubmit the SAME line to resume on timeout
-# once it reaches NSTEPS, copy chan240_stats.npz back, then:
+OUT=chan240 sbatch snellius_gpu.slurm      # 182M / 4 H100; auto-resumes across walltime limits (submit once)
+# it finishes when it writes chan240.done; copy chan240_stats.npz back, then:
 python analyze_channel.py chan240_stats.npz result.png
 # finer resolutions toward exact MKM agreement:
 OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm    # 614M / 12 H100 (hero, Delta+=1.0)

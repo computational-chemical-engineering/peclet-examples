@@ -268,8 +268,12 @@ if RANK == 0:
         utau2 = H*(dsum/ndsum)/DT; out["utau_cfr"] = float(np.sqrt(max(utau2, 0.0))); out["CFR"] = CFR
         print(f"[utau] momentum-balance u_tau = {out['utau_cfr']:.4f}  Re_tau = {out['utau_cfr']*H/nu:.1f}", flush=True)
     np.savez(f"{OUT}_stats.npz", **out)
+    # Completion sentinel: we only reach here if the full loop ran to NSTEPS (a SLURM walltime kill
+    # terminates the process mid-loop, before this). An auto-resubmit chain checks this to stop.
+    with open(f"{OUT}.done", "w") as f:
+        f.write(f"NSTEPS={NSTEPS} nacc={nacc}\n")
     print(f"[done] {NSTEPS} steps, {GNX*GNY*GNZ/1e6:.0f}M cells, {NP} ranks, "
-          f"{(time.time()-t0)/NSTEPS*1e3:.0f} ms/step, nacc={nacc}. wrote {OUT}_stats.npz", flush=True)
+          f"{(time.time()-t0)/NSTEPS*1e3:.0f} ms/step, nacc={nacc}. wrote {OUT}_stats.npz + {OUT}.done", flush=True)
 world.Barrier()
 # Exit hard AFTER outputs are written: skips Python/Kokkos finalize, which otherwise aborts with
 # "Kokkos allocation deallocated after Kokkos::finalize" (poisons the exit code even on success).
