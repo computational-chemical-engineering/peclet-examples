@@ -46,7 +46,11 @@ export PYTHONPATH="$BUILD:${PYTHONPATH:-}"
 export GNY="${GNY:-240}"
 export GNX="${GNX:-$(python3 -c "import math;print(round(2*math.pi*$GNY))")}"   # 4piH -> 2pi*GNY
 export GNZ="${GNZ:-$(python3 -c "import math;print(round(2*math.pi/3*$GNY))")}" # (4/3)piH -> (2pi/3)*GNY
-export CFR="${CFR:-15.68}"            # hold bulk U+ (MKM value) -> emergent u_tau/Re_tau
+# Forcing: CPG (constant pressure gradient, body force) is the DEFAULT for the production/spin-up —
+# it pins u_tau=1 exactly (Re_tau=180 by construction, matching MKM) and robustly sustains transition.
+# Under CPG a laminarizing flow shows as the bulk U_b+ climbing toward ~60 (turbulent ~15.7). Set
+# CFR=15.68 instead to hold the bulk (constant flow rate) once the flow is turbulent.
+export CFR="${CFR:-0}"
 export NSTEPS="${NSTEPS:-50000}"     # total steps to reach (across resubmits); ~5-10 eddy-turnovers
 export STATSTART="${STATSTART:-25000}" # begin time-averaging only after u_tau plateaus (~5 turnovers)
 export STATEVERY="${STATEVERY:-25}"

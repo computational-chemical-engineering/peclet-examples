@@ -93,24 +93,37 @@ if RANK == 0:
     else:
         print(f"  [gpu-bind] OK: every rank on a distinct physical GPU", flush=True)
 
-# ---- local initial condition: global Reichardt mean (global y) + per-rank low-pass noise --------
+# ---- initial condition designed to TRIGGER + SUSTAIN transition at low Re_tau ------------------
+# Reichardt mean + streamwise ROLLS (x-invariant vortices) that lift up STREAKS via the
+# self-sustaining cycle, + broadband noise. All perturbation scales are set in WALL UNITS
+# (resolution-independent), so refining the grid does not shrink the seeded structures into the
+# viscous range (the old cell-scale noise decayed at fine dx -> relaminarization). Streaks are
+# seeded at spanwise wavelength LAMZ+ ~ 110 (the observed streak spacing); a strong amplitude and
+# a constant-pressure-gradient (CPG) drive make transition robust — see the run scripts.
 kap = 0.41
 def reichardt(yp):
     return (1/kap)*np.log1p(kap*yp) + 7.8*(1 - np.exp(-yp/11) - (yp/11)*np.exp(-0.33*yp))
 gy = (np.arange(oy, oy+lny) + 0.5)                    # global cell-center y of this block
 dwall = np.minimum(gy, GNY - gy); yp = dwall/nu
 rng = np.random.default_rng(SEED + 100*RANK)
-def lp(shape, cutoff=0.06):
+def lp(shape, lmin_plus=40.0):
+    # keep only wavelengths > lmin_plus WALL UNITS (cutoff in cycles/cell = Dplus/lmin_plus).
+    cut = min(Dplus/lmin_plus, 0.45)
     g = rng.standard_normal(shape); G = np.fft.rfftn(g, axes=(0, 1, 2))
     kx = np.fft.fftfreq(shape[0])[:, None, None]; ky = np.fft.fftfreq(shape[1])[None, :, None]
     kz = np.fft.rfftfreq(shape[2])[None, None, :]
-    G[np.sqrt(kx*kx+ky*ky+kz*kz) > cutoff] = 0.0
+    G[np.sqrt(kx*kx+ky*ky+kz*kz) > cut] = 0.0
     o = np.fft.irfftn(G, s=shape, axes=(0, 1, 2)); return o/(o.std()+1e-12)
-env = ((dwall/nu/15.0)*np.exp(1 - dwall/nu/15.0))[None, :, None]
-A = float(os.environ.get("NOISE", 1.0))               # NOISE=0 -> deterministic Reichardt IC (validation)
-u0 = np.asfortranarray(reichardt(yp)[None, :, None] + A*2.6*env*lp((lnx, lny, lnz)))
-v0 = np.asfortranarray(A*1.1*env*lp((lnx, lny, lnz)))
-w0 = np.asfortranarray(A*1.5*env*lp((lnx, lny, lnz)))
+# near-wall envelope peaking at y+~20 (where streaks/rolls live), zero at wall + centre
+fy = ((dwall/nu/20.0)*np.exp(1 - dwall/nu/20.0))[None, :, None]
+# streamwise rolls: x-invariant, spanwise-periodic. u-streak ~ cos(kz z), roll v ~ sin(kz z).
+zc = (np.arange(oz, oz + lnz) + 0.5)[None, None, :]
+phase = 2*np.pi*zc / max(110.0/Dplus, 4.0)            # spanwise wavelength ~110 wall units
+streak = np.cos(phase); roll = np.sin(phase)
+A = float(os.environ.get("NOISE", 1.0))               # 0 -> mean only (validation); scales the perturbation
+u0 = np.asfortranarray(reichardt(yp)[None, :, None] + A*(4.0*fy*streak + 2.0*fy*lp((lnx, lny, lnz))))
+v0 = np.asfortranarray(A*(1.5*fy*roll + 1.0*fy*lp((lnx, lny, lnz))))
+w0 = np.asfortranarray(A*(1.5*fy*lp((lnx, lny, lnz))))
 
 # ---- solver setup (same config on every rank; solver applies wall BCs only to boundary blocks) --
 s = flow.Solver(lnx, lny, lnz)
