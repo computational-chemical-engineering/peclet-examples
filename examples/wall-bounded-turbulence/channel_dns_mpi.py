@@ -244,17 +244,25 @@ for it in range(it0 + 1, NSTEPS+1):
     if do_diag or do_stat:
         mU, Ruu, Rvv, Ruv = accumulate() if do_stat else (None,)*4
         if do_diag:
-            # a light diagnostic that doesn't double-accumulate
-            u = s.get_u(); Uy_l = u.sum(axis=(0,2)); N = u.shape[0]*u.shape[2]
+            # light live diagnostic (doesn't double-accumulate). Includes a peak -<u'v'>+ so you can
+            # SEE turbulence sustaining vs relaminarizing in real time: turbulent ~0.5-0.7, laminar ~0.
+            u = s.get_u(); v = s.get_v()
+            Uy_l = u.sum(axis=(0,2)); N = u.shape[0]*u.shape[2]
             gU = reduce_global(Uy_l, N)
             cbuf = np.zeros(GNY); cbuf[oy:oy+lny] = N; gc = np.zeros(GNY); world.Allreduce(cbuf, gc, op=MPI.SUM)
             with np.errstate(invalid="ignore"): Uprof = gU/gc
+            vc = v.copy(); vc[:, 1:, :] = 0.5*(v[:, 1:, :] + v[:, :-1, :])
+            gUV = reduce_global((u*vc).sum(axis=(0,2)), N); gVS = reduce_global(vc.sum(axis=(0,2)), N)
+            with np.errstate(invalid="ignore"):
+                uvprof = gUV/gc - (gU/gc)*(gVS/gc)   # -<u'v'> in the lower half is positive
             locsum = np.array([float(u.sum()), float(u.size)]); tot = np.zeros(2); world.Allreduce(locsum, tot, op=MPI.SUM)
             Ub = tot[0]/tot[1]
             utau = np.sqrt(nu*Uprof[0]/0.5)
+            uvpk = float(np.nanmax(np.abs(uvprof)))/max(utau, 1e-9)**2
             if RANK == 0:
                 tp = it*DT/nu; rate = it/(time.time()-t0)
-                print(f"  it={it:6d} t+={tp:7.1f} Ub+={Ub:5.2f} u_tau~{utau:.3f} nacc={nacc} [{rate:.1f} it/s]", flush=True)
+                print(f"  it={it:6d} t+={tp:7.1f} Ub+={Ub:5.2f} u_tau~{utau:.3f} -uv+pk={uvpk:.3f} "
+                      f"nacc={nacc} [{rate:.1f} it/s]", flush=True)
                 ts.append([it, tp, Ub, utau, nacc])
     if CKPT > 0 and it % CKPT == 0:
         checkpoint(it)   # survive the SLURM walltime limit -> resubmit resumes from here

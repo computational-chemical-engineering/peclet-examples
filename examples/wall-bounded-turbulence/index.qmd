@@ -70,17 +70,21 @@ for it in range(nsteps):
     s.step()
 ```
 
-We seed with a Reichardt mean profile plus wall-damped low-pass noise so the flow trips to turbulence
-and sustains it. Statistics ($\langle U\rangle$, $\langle u'^2\rangle$, $\langle u'v'\rangle$, …) are
-averaged over the homogeneous $x,z$ planes and over time, then folded about the centreline.
+Getting a channel to *become* turbulent at $Re_\tau=180$ — a fragile low-Reynolds point — needs more than
+random noise: the initial field seeds **streamwise rolls and streaks** at the streak spanwise wavelength
+(~110 wall units), the coherent structures that drive the self-sustaining turbulence cycle, with all
+perturbation scales set in **wall units** (resolution-independent). Statistics ($\langle U\rangle$,
+$\langle u'^2\rangle$, $\langle u'v'\rangle$, …) are then averaged over the homogeneous $x,z$ planes and
+over time, folded about the centreline.
 
 ::: {.callout-note}
-## Two forcing modes
-**CPG** (`set_body_force`) fixes $u_\tau=1$ but the bulk velocity drifts, so it is slow to reach a
-stationary state. **Constant flow rate (CFR)** — hold the bulk $U_b^+$ fixed by adding a uniform shift
-to $u$ each step — reaches a stationary state much faster and lets you read off the *emergent* friction
-from momentum balance, $u_\tau^2 = H\langle\delta\rangle/\Delta t$. The driver does CFR on-device
-(zero-copy CuPy) when `CFR=<bulk>` is set. Both are in the script.
+## Forcing: CPG for transition, CFR to hold the flux
+**CPG** (`set_body_force`) pins $u_\tau=1$ exactly (so $Re_\tau=180$ by construction) — the robust drive
+for *reaching and sustaining* turbulence, and a laminarizing flow is obvious (the bulk $U_b^+$ climbs
+instead of holding ~15.7). **Constant flow rate (CFR)** holds $U_b^+$ fixed (on-device via CuPy) and
+reads the *emergent* friction from momentum balance, $u_\tau^2 = H\langle\delta\rangle/\Delta t$ — useful
+once the flow is turbulent, but it will happily hold a *laminar* flux too, so it is not the choice for
+transition. The production scripts default to CPG; both are in the driver.
 :::
 
 ## Validation against MKM 1999 — the resolution ladder
@@ -270,11 +274,11 @@ python analyze_channel.py c128_stats.npz c128_benchmark.png
 
 # Snellius production run (converged MKM benchmark):
 ./install_snellius.sh h100
-OUT=chan240 sbatch snellius_gpu.slurm      # 182M / 4 H100; auto-resumes across walltime limits (submit once)
+FRESH=1 OUT=chan240 sbatch snellius_gpu.slurm   # 182M / 4 H100; FRESH clears any old checkpoint; auto-resumes across walltime
 # it finishes when it writes chan240.done; copy chan240_stats.npz back, then:
 python analyze_channel.py chan240_stats.npz result.png
 # finer resolutions toward exact MKM agreement:
-OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm    # 614M / 12 H100 (hero, Delta+=1.0)
+FRESH=1 OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm  # 614M / 12 H100 (hero, Delta+=1.0)
 ```
 
 The MKM $Re_\tau=180$ reference profiles are bundled under `mkm/` (from @mkm1999, via the

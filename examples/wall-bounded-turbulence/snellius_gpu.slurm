@@ -17,10 +17,14 @@
 #   ~5 eddy-turnovers); at ~1.7 s/step for 182M/4GPU a converged average is ~40-50k steps (~20-24h),
 #   spread over however many walltime windows it takes.
 #
-#   Submit ONCE:  OUT=chan240 sbatch snellius_gpu.slurm                    # 182M, 1 node
-#                 OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm  # 614M hero, 3 nodes
-#   Watch:  squeue --me   (you'll see the running job + a PENDING successor with dependency)
-#   Stop early:  scancel the pending successor, or `touch ${OUT}.done`.  Manual mode: CHAIN=0.
+#   Submit ONCE (FRESH=1 on a NEW run clears any old checkpoint so it starts from the IC — required
+#   after changing IC/forcing/grid; the auto-chain's successors resume, so pass FRESH=1 only here):
+#     FRESH=1 OUT=chan240 sbatch snellius_gpu.slurm                    # 182M, 1 node
+#     FRESH=1 OUT=chan360 GNY=360 sbatch --nodes=3 snellius_gpu.slurm  # 614M hero, 3 nodes
+#   WATCH THE FIRST ~1-2 h (tail chan-dns-*.out): under CPG a sustaining turbulent run keeps Ub+ ~15-16
+#   and -uv+pk ~0.5-0.7; if Ub+ climbs toward 60 / -uv+pk -> 0 it is relaminarizing -> scancel + tell us.
+#   Watch:  squeue --me   (running job + a PENDING successor with dependency)
+#   Stop early:  scancel BOTH the running and pending jobs (or `touch ${OUT}.done`).  Manual mode: CHAIN=0.
 #   Confirm on the machine: `sinfo -s` (partitions), `module avail 2024` (versions), `accinfo` (account).
 # ==========================================================================================
 #SBATCH --job-name=chan-dns
@@ -59,6 +63,14 @@ export DT="${DT:-0.02}" ; export DIAG="${DIAG:-500}" ; export ADV=0
 # NB: keep OUT STABLE across resubmits so the run resumes from its checkpoint (do NOT use $SLURM_JOB_ID).
 export OUT="${OUT:-chan_${GNY}}"
 
+# FRESH=1 wipes this OUT's checkpoint + sentinel + stats so the run starts from the IC (NOT a resume).
+# REQUIRED whenever you change the IC / forcing / grid — otherwise a restart loads the old checkpointed
+# field and silently ignores the new setup (e.g. resuming a laminarized field). The user passes FRESH=1
+# on the FIRST submit; the auto-resubmit chain below forces FRESH=0 on its successors so they RESUME.
+if [ "${FRESH:-0}" = "1" ]; then
+  echo "[fresh] removing stale ${OUT} checkpoint/sentinel/stats"; rm -f "${OUT}".done "${OUT}"_ckpt_* "${OUT}"_stats.npz
+fi
+
 # --- auto-resubmit chain: continue across walltime limits with no manual action ------------------
 # If the run already finished (driver wrote ${OUT}.done), stop. Otherwise queue a successor that runs
 # AFTER this job ends (afterany) with the SAME allocation + environment, so on a walltime kill it
@@ -72,7 +84,7 @@ fi
 if [ "${CHAIN}" -gt 0 ]; then
   nxt=$(sbatch --parsable --dependency=afterany:${SLURM_JOB_ID} \
         --nodes=${SLURM_NNODES} --partition=${SLURM_JOB_PARTITION} \
-        --export=ALL,CHAIN=$((CHAIN-1)) "${SLURM_SUBMIT_DIR}/snellius_gpu.slurm" 2>/dev/null) \
+        --export=ALL,CHAIN=$((CHAIN-1)),FRESH=0 "${SLURM_SUBMIT_DIR}/snellius_gpu.slurm" 2>/dev/null) \
     && echo "[chain] queued successor job ${nxt} (starts after ${SLURM_JOB_ID}; ${CHAIN} resubmits left)" \
     || echo "[chain] WARNING: could not queue successor (submit by hand to resume)"
 fi
