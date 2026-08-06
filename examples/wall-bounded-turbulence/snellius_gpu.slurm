@@ -79,7 +79,11 @@ fi
 # normal completion just makes it exit immediately.
 export CHAIN="${CHAIN:-12}"
 if [ -f "${OUT}.done" ]; then
-  echo "[chain] ${OUT} already complete ($(cat ${OUT}.done)); not resubmitting."; exit 0
+  echo "[chain] ${OUT} already complete ($(cat ${OUT}.done)); not resubmitting."
+  echo "[chain]   To START A NEW run for OUT=${OUT} (e.g. after changing IC/forcing/grid), first clear it:"
+  echo "[chain]     rm -f ${OUT}.done ${OUT}_ckpt_* ${OUT}_stats.npz    (or: sbatch --export=ALL,FRESH=1 ...)"
+  echo "[chain]   Note: a plain resubmit without clearing would RESUME the old checkpoint, ignoring new settings."
+  exit 0
 fi
 if [ "${CHAIN}" -gt 0 ]; then
   nxt=$(sbatch --parsable --dependency=afterany:${SLURM_JOB_ID} \
