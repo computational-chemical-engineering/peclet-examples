@@ -46,8 +46,8 @@ if [ "$CODE" = cans ]; then
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
   NP=$NP NX=$(( BASE_GNX * N )) NY=$GNY NZ=$GNZ NSTEPS=20 TILE=$TILE \
     LABEL="snellius-genoa-cans" OUT="$OUT" \
-    CANS="$REFDIR/CaNS/run/cans" MPIRUN="srun" MPIFLAGS="--mpi=pmix" \
-    "$EXDIR/../run_cans.sh"
+    CANS="$REFDIR/CaNS/run/cans" MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix" \
+    "$EXDIR/../run_cans.sh" || echo "[FAILED] $OUT"
 elif [ "$CODE" = openfoam ]; then
   module load OpenFOAM/v2406-foss-2023a 2>/dev/null || module load "$(module -r -t avail '^OpenFOAM/v2' 2>&1 | grep '^OpenFOAM' | sort -V | tail -1)"
   source "$FOAM_BASH" 2>/dev/null || source "$WM_PROJECT_DIR/etc/bashrc"

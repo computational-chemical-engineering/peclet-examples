@@ -63,7 +63,8 @@ io_backend = 'mpiio'
 EOF
 
 cd "$WORK"
-$MPIRUN -np "$NP" ${MPIFLAGS:---bind-to core} "$CANS" input.nml > log.run 2>&1 || {
+# NPFLAG: '-np' for OpenMPI mpirun (default), '-n' for srun
+$MPIRUN ${NPFLAG:--np} "$NP" ${MPIFLAGS:---bind-to core} "$CANS" input.nml > log.run 2>&1 || {
   tail -5 log.run >&2; exit 1; }
 
 # per-step wall time: "Average, minimum & maximum elapsed time" line after each step; steady half
