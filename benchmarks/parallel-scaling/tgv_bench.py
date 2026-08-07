@@ -22,6 +22,11 @@ Env (all optional):
     ADV           advection scheme 0=SOU 1=Koren (default 0, matching the channel-DNS study)
     PRESSURE      pcg | cheb | vcycle  (default pcg)
     GRAPHAMG      1 = agglomerated GraphAMG bottom solve on the MG's coarsest level (default 0)
+    MEANSCOPE     pressure mean-removal scope: fine (default; ~3x fewer allreduces/iter) | all
+    VSWEEPS       momentum RB-GS sweep cap per component (default 20)
+    VTOL          momentum tolerance stop: end the sweep loop once the max increment has
+                  contracted to VTOL of the first sweep's (default 1e-2; 0 = fixed VSWEEPS
+                  count). The TGV diffusion number ~0.13 exits after ~3-5 sweeps.
     PMAXIT PRTOL  pressure driver iterations cap / tolerance (default 200 / 1e-5)
     MGLEVELS      pressure MG depth (default 5)
     WARMSTART     1 = seed each solve from previous phi (default 1)
@@ -71,6 +76,9 @@ CFL = float(os.environ.get("CFL", 0.2))
 ADV = int(os.environ.get("ADV", 0))
 PRESSURE = os.environ.get("PRESSURE", "pcg")
 GRAPHAMG = int(os.environ.get("GRAPHAMG", 0))
+VSWEEPS = int(os.environ.get("VSWEEPS", 20))
+VTOL = float(os.environ.get("VTOL", 1e-2))
+MEANSCOPE = os.environ.get("MEANSCOPE", "fine")
 PMAXIT = int(os.environ.get("PMAXIT", 200))
 PRTOL = float(os.environ.get("PRTOL", 1e-5))
 MGLEVELS = int(os.environ.get("MGLEVELS", 5))
@@ -135,7 +143,7 @@ s.set_mu(nu)
 s.set_dt(dt)
 s.set_advection(True)
 s.set_advection_scheme(ADV)
-s.set_velocity_solver_params(20)
+s.set_velocity_solver_params(VSWEEPS, VTOL)
 s.set_pressure_multigrid(True, MGLEVELS)
 if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
@@ -147,6 +155,7 @@ if WARMSTART:
     s.set_pressure_warmstart(True)
 if GRAPHAMG:
     s.set_pressure_graph_amg(True)  # takes effect at the geometry call below
+s.set_pressure_mean_removal(MEANSCOPE)
 # all-fluid cut-cell pressure operator (no solids): the production projection path, all-periodic
 s.set_pressure_geometry(np.asfortranarray(np.full((lnx, lny, lnz), 1e30)))
 s.set_state(u0, v0, w0)
@@ -169,6 +178,7 @@ for _ in range(NSTEPS):
     for p in phases:
         acc[p].append(t[p])
     acc["pressure_allreduce_count"].append(t["pressure_allreduce_count"])
+    acc.setdefault("momentum_sweeps", []).append(t["momentum_sweeps"])
     iters.append(s.last_pressure_iterations())
 t1 = time.perf_counter()
 wall = world.allreduce(t1 - t0, op=MPI.MAX)
@@ -223,6 +233,11 @@ if RANK == 0:
         "adv": ADV,
         "pressure": PRESSURE,
         "graphamg": GRAPHAMG,
+        "vsweeps": VSWEEPS,
+        "vtol": VTOL,
+        "meanscope": MEANSCOPE,
+        "momentum_sweeps_per_step": float(np.mean(acc["momentum_sweeps"]))
+        if acc.get("momentum_sweeps") else None,
         "pmaxit": PMAXIT,
         "prtol": PRTOL,
         "mglevels": MGLEVELS,

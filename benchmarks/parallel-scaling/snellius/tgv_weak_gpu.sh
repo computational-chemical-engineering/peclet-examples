@@ -49,9 +49,12 @@ for N in 1 2 4 8 16 32; do
   [ "$N" -le "$MAXN" ] && run_one $N "weak_np${N}.json"
 done
 
-# Lever ablation at the largest allocated N (inter-node points 8/16 are the interesting ones)
+# Lever ablation at the largest allocated N (inter-node points 8/16 are the interesting ones).
+# The default run already uses MEANSCOPE=fine (5.4 allreduces/iter); meanall restores the legacy
+# scope (17.6/iter) to quantify the reduction tax directly at scale.
 if [ "${LEVERS:-0}" = 1 ]; then
   run_one $MAXN "weak_np${MAXN}_cheb.json"    env PRESSURE=cheb PMAXIT=400
+  run_one $MAXN "weak_np${MAXN}_meanall.json" env MEANSCOPE=all
   run_one $MAXN "weak_np${MAXN}_amg.json"     env GRAPHAMG=1
   run_one $MAXN "weak_np${MAXN}_hoststage.json" env PECLET_CORE_GPU_AWARE_MPI=0
 fi

@@ -72,46 +72,81 @@ At power-of-two rank counts nothing changes — which is why the channel-scaling
 never saw it. *A lesson for the decomposition-anatomy section below: rank counts off the
 power-of-two grid exercise entirely different ORB paths.*
 
+### The first comparison run made the solver 2.9× faster on CPU (and 1.5× on GPU)
+
+The first head-to-head was humbling: serial peclet ran at 0.35 Mcell/s — *slower than OpenFOAM*
+(0.47). The per-phase instrumentation decomposed the gap into three findings, each fixed and
+measured in `flow`:
+
+1. **A fixed momentum sweep count from a stiffer regime.** The benchmark inherited 20 Red–Black
+   Gauss–Seidel sweeps per velocity component — sized for large-d$t$/porous production runs. At
+   this case's diffusion number (~0.13) five sweeps fully converge (ablation: 20→5 sweeps changes
+   the analytic-decay check by nothing and saves a third of the step). The structural fix is a
+   **tolerance-based stop** (`set_velocity_solver_params(iters, rtol)`): the sweep loop ends once
+   the max velocity increment has contracted to `rtol` of the first sweep's, with the check fused
+   into the sweep kernel. Easy regimes exit at 3–5 sweeps; stiff regimes still run to the cap.
+2. **Kokkos' default host MDRange tiling was a hidden 2–5× tax.** Rewriting the RB-GS smoothers in
+   a host-only line-sweep form (one $(y,z)$ pencil per task, contiguous stride-2 $x$-loop —
+   bit-identical, since same-colour cells are independent) gave **5.6× on the momentum sweep** and
+   1.7× on the projection; the same full-$x$-row tiling applied to the elementwise and reduction
+   kernels added more. The device code path is untouched by construction (compile-time selection),
+   verified: with legacy settings the GPU reproduces its baseline **to the decimal**.
+3. **The pressure solve issued ~17.6 global all-reduces per Krylov iteration** — dot products,
+   residual maxima, and a nullspace (mean) projection at *every multigrid level* costing two
+   all-reduces each. Fusing the mean-removal's {sum, count} pair into one `MPI_Allreduce`
+   (bit-identical) and dropping the interior-level projections (`set_pressure_mean_removal("fine")`
+   — the operator preserves mean-freeness, so the Krylov iteration never sees the dropped
+   components) brings it to **5.4 per iteration, with iteration counts exactly unchanged**. On one
+   node this is invisible; across nodes each all-reduce is a latency hit, so this ~3× matters
+   exactly where the channel study saw the inter-node drop. The Chebyshev driver inherits the same
+   diet through the shared V-cycle (13 → ~3 per iteration).
+
+Net effect, all correctness gates green (33/33 MPI ctests, GPU regression suite at +0.00 %,
+analytic checks digit-identical): **serial CPU 5969 → 2047 ms/step (2.9×), single GPU 155.7 →
+105.3 ms/step (1.48×)**. Every number below is the improved solver.
+
 ### Hybrid mix: some MPI is good, all-MPI is not
 
 ![Left: throughput by MPI ranks × OpenMP threads on 24 cores (fixed $192^3$ TGV). Right: the
 per-phase step decomposition.](workstation_mix.png)
 
-**12 ranks × 2 threads is the sweet spot (5.0 Mcell/s)** — 1.8× pure OpenMP (1×24, 2.8) and 1.4×
-pure MPI (24×1, 3.5). The phase split shows why: the implicit **momentum solve and the pressure
-projection are both memory-bandwidth-bound sweeps**, so what matters is keeping all memory channels
-fed (many ranks) without paying 24 ranks' worth of halo surface and per-rank multigrid boilerplate.
-The global-reduction term is invisible on one node (< 2 ms/step) — it only matters across nodes.
+**12 ranks × 2 threads is the sweet spot (11.8 Mcell/s)** — vs 9.8 for pure MPI (24×1) and a
+14× speedup over serial. The phase split shows why: the momentum solve and the pressure projection
+are memory-bandwidth-bound sweeps, so what matters is keeping all memory channels fed without
+paying 24 ranks' worth of halo surface and per-rank multigrid boilerplate. The global-reduction
+term is invisible on one node (< 2 ms/step) — it only matters across nodes.
 
-### Weak scaling within one node: all three codes hit the same wall
+### Weak scaling within one node: bandwidth is the wall, and peclet now holds the best curve
 
 ![Weak scaling at 2.1 M cells/rank (grid $128n\times128\times128$), pure MPI, up to 24 cores.
 Left: efficiency vs. own 1-rank baseline. Right: absolute throughput (log scale); the dotted line
 is the single RTX 5080 running the same case.](workstation_weak.png)
 
-With per-rank work fixed, **all three codes decay to ~20–30 % "efficiency" by 24 ranks — and this
-is not communication**: peclet's pressure iteration count stays at exactly 7.0 per step at every
-rank count (post-fix), and CaNS/OpenFOAM show the same shape. A single node's weak scaling measures
-**shared memory-bandwidth saturation**, nothing else. peclet saturates earliest (17 % at np = 24)
-because its semi-implicit step makes the most memory passes per cell-update; CaNS's explicit
-RK3 + FFT step makes the fewest and holds 31 %. The ordering of absolute throughput is the honest
-headline: **CaNS 41 Mcell/s, OpenFOAM 3.3, peclet 1.7** on 24 CPU cores — the price of an implicit,
-cut-cell-general solver on CPU — **and the single RTX 5080 at 45 Mcell/s beats CaNS's entire
-24-core node** running the identical case. This is the design point of the suite: the CPU path is
-an oracle, the GPU path is the product.
+With per-rank work fixed, all three codes decay together — **and this is not communication**:
+peclet's pressure iteration count stays at exactly 7.0 per step at every rank count. A single
+node's weak scaling measures **shared memory-bandwidth saturation**, nothing else. After the
+optimization round, **peclet holds the best weak-scaling efficiency of the three (40 % at 24
+ranks, vs 31 % CaNS / 29 % OpenFOAM)** — fewer memory passes per step also means later saturation.
+Absolute CPU throughput on 24 cores: **CaNS 41 Mcell/s, peclet 9.8, OpenFOAM 3.3**. peclet is 3×
+faster than OpenFOAM at identical settings; CaNS's remaining 4× is the price of generality stated
+honestly — an explicit RK3 step plus an exact FFT solve that exists *only because* the box is
+trivial, against an implicit step and a geometric multigrid that handle arbitrary cut-cell
+geometry at large d$t$. **And the single RTX 5080 at 67 Mcell/s outruns CaNS's entire 24-core
+node by 1.6×** running the identical case — the design point of the suite: the CPU path is a
+capable oracle, the GPU path is the product.
 
 ### Single-GPU ladder (RTX 5080, 16 GB)
 
 | grid | cells | ms/step | Mcell/s | pressure iters |
 |---|---|---|---|---|
-| $128^3$ | 2.1 M | 44.9 | 46.7 | 7.0 |
-| $160^3$ | 4.1 M | 96.3 | 42.5 | 9.5 |
-| $192^3$ | 7.1 M | 155.7 | 45.5 | 8.9 |
-| $208^3$ | 9.0 M | 333.0 | 27.0 | 19.5 |
+| $128^3$ | 2.1 M | 31.1 | 67.4 | 7.0 |
+| $160^3$ | 4.1 M | 67.5 | 60.7 | 9.5 |
+| $192^3$ | 7.1 M | 105.3 | 67.2 | 8.9 |
+| $208^3$ | 9.0 M | 265.0 | 34.0 | 19.6 |
 
-Steady ~45 Mcell/s until 16 GB fills. The $208^3$ outlier is *algorithmic*, not hardware: 208
+Steady ~60–67 Mcell/s until 16 GB fills. The $208^3$ outlier is *algorithmic*, not hardware: 208
 supports only a $13^3$-bottomed multigrid whose odd coarse level weakens the preconditioner
-(19.5 iterations). Grids with generous power-of-two content keep the hierarchy deep — the same
+(19.6 iterations). Grids with generous power-of-two content keep the hierarchy deep — the same
 divisibility theme as the decomposition story.
 
 ## Multi-GPU weak scaling on Snellius H100 (1–32 GPUs)
@@ -133,16 +168,16 @@ peclet's geometric-MG-for-general-geometry design point)*
 ## Decomposition anatomy: is a prime rank count much worse than a power of two?
 
 **After the alignment fix: no.** Sweeping awkward rank counts on the fixed $192^3$ box
-(pure MPI, 5965WX):
+(pure MPI, 5965WX, final solver):
 
 | ranks | ms/step | Mcell/s | pressure iters | max-block imbalance |
 |---|---|---|---|---|
-| 5 | 10428 | 0.7 | 8.0 | ≤ 1.02× |
-| 7 (prime) | 7948 | 0.9 | 8.0 | 1.02× |
-| **8** | 6457 | 1.1 | **7.0** | 1.00× |
-| 13 (prime) | 3489 | 2.0 | 8.0 | 1.08× |
-| **16** | 3425 | 2.1 | **7.0** | 1.00× |
-| 23 (prime) | 2442 | 2.9 | 8.0 | 1.20× |
+| 5 | 2634 | 2.7 | 8.0 | 1.04× |
+| 7 (prime) | 2015 | 3.5 | 8.0 | 1.02× |
+| **8** | 1579 | 4.5 | **6.9** | 1.00× |
+| 13 (prime) | 1186 | 6.0 | 7.9 | 1.08× |
+| **16** | 945 | 7.5 | **7.2** | 1.00× |
+| 23 (prime) | 819 | 8.6 | 8.0 | 1.20× |
 
 Non-power-of-two counts pay exactly **one extra pressure iteration** (the ORB's uneven-subtree
 splits land off the deepest coarsening grid, so the multigrid loses its bottom level) and a ≤ 20 %

@@ -17,8 +17,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RES = os.path.join(HERE, "results", "workstation")
+RES = os.path.join(HERE, "results", "workstation")  # final-solver runs (headline figures)
+# the alignment-fix before/after pair, both measured with the SAME (pre-tolerance-stop) solver:
 PRE = os.path.join(HERE, "results", "workstation-prefix-alignment")
+ALIGNPOST = os.path.join(HERE, "results", "workstation-alignfix-post")
 
 # validated reference palette (light mode), fixed slot order
 BLUE, ORANGE, AQUA, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
@@ -133,9 +135,9 @@ if all(have.values()):
 
 # ---- 3: the alignment fix, before/after -------------------------------------------------------
 pre = {mixkey(d): d for d in load(PRE, "mix_r*.json") if d["np"] > 1}
-post = {mixkey(d): d for d in load(RES, "mix_r*.json") if d["np"] > 1}
+post = {mixkey(d): d for d in load(ALIGNPOST, "mix_r*.json") if d["np"] > 1}
 pre_w = {d["np"]: d for d in load(PRE, "weak_np*.json")}
-post_w = {d["np"]: d for d in load(RES, "weak_np*.json")}
+post_w = {d["np"]: d for d in load(ALIGNPOST, "weak_np*.json")}
 common = sorted((k for k in post if k in pre),
                 key=lambda k: -int(k.split("×")[0]))
 if common and 24 in pre_w:

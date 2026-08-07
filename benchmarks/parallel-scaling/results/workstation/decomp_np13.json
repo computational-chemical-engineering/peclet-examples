@@ -15,39 +15,47 @@
  "adv": 0,
  "pressure": "pcg",
  "graphamg": 0,
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "meanscope": "fine",
+ "momentum_sweeps_per_step": 12.0,
  "pmaxit": 200,
  "prtol": 1e-05,
  "mglevels": 5,
  "warmstart": 1,
  "nsteps": 12,
  "warmup": 3,
- "ms_per_step": 3489.4070498800525,
- "mcells_per_s": 2.028392760954415,
- "pressure_iters_per_step": 8.0,
+ "ms_per_step": 1185.4785011770825,
+ "mcells_per_s": 5.970490390987471,
+ "pressure_iters_per_step": 7.916666666666667,
  "phase_seconds_per_step": {
   "step": {
-   "max": 3.489355646461869,
-   "min": 3.4888491734551885
+   "max": 1.1854240838438272,
+   "min": 1.1849442961004872
   },
   "predictor": {
-   "max": 0.22141492801407972,
-   "min": 0.1173359533616652
+   "max": 0.1597581235691905,
+   "min": 0.11001433509712417
   },
   "momentum": {
-   "max": 1.8530011978776504,
-   "min": 1.7590421656301867
+   "max": 0.19433465025698146,
+   "min": 0.1443759478473415
   },
   "projection": {
-   "max": 1.506034819331641,
-   "min": 1.5019204313866794
+   "max": 0.8755042163344721,
+   "min": 0.8683902259605626
   },
   "pressure_allreduce": {
-   "max": 0.17798625475,
-   "min": 0.007796836999999998
+   "max": 0.13438052641666667,
+   "min": 0.006215368916666668
   },
   "pressure_allreduce_count": {
-   "max": 141.0,
-   "min": 141.0
+   "max": 42.583333333333336,
+   "min": 42.583333333333336
+  },
+  "momentum_sweeps": {
+   "max": 12.0,
+   "min": 12.0
   }
  },
  "blocks": [

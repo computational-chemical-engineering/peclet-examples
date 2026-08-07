@@ -1,8 +1,8 @@
 {
- "label": "workstation-5965wx",
- "np": 6,
+ "label": "workstation-decomp",
+ "np": 5,
  "backend": "OpenMP",
- "omp_threads": "4",
+ "omp_threads": "1",
  "global": [
   192,
   192,
@@ -15,47 +15,39 @@
  "adv": 0,
  "pressure": "pcg",
  "graphamg": 0,
- "vsweeps": 20,
- "vtol": 0.01,
- "meanscope": "fine",
- "momentum_sweeps_per_step": 12.0,
  "pmaxit": 200,
  "prtol": 1e-05,
  "mglevels": 5,
  "warmstart": 1,
- "nsteps": 25,
- "warmup": 5,
- "ms_per_step": 701.4734060689807,
- "mcells_per_s": 10.090030411365278,
+ "nsteps": 12,
+ "warmup": 3,
+ "ms_per_step": 10428.151456095899,
+ "mcells_per_s": 0.6787289223597281,
  "pressure_iters_per_step": 8.0,
  "phase_seconds_per_step": {
   "step": {
-   "max": 0.7014210537448525,
-   "min": 0.7013959741219878
+   "max": 10.428107612533495,
+   "min": 10.427803844058266
   },
   "predictor": {
-   "max": 0.09488807912915945,
-   "min": 0.07804566245526075
+   "max": 0.703495288034901,
+   "min": 0.5265454252560934
   },
   "momentum": {
-   "max": 0.09387611113488674,
-   "min": 0.0768122972175479
+   "max": 5.560601955822979,
+   "min": 5.387608997446175
   },
   "projection": {
-   "max": 0.5259304480627179,
-   "min": 0.5243372378125787
+   "max": 4.330150493886322,
+   "min": 4.326141390639047
   },
   "pressure_allreduce": {
-   "max": 0.014886973559999999,
-   "min": 0.00232079704
+   "max": 0.07422868266666667,
+   "min": 0.005776511333333334
   },
   "pressure_allreduce_count": {
-   "max": 43.0,
-   "min": 43.0
-  },
-  "momentum_sweeps": {
-   "max": 12.0,
-   "min": 12.0
+   "max": 141.0,
+   "min": 141.0
   }
  },
  "blocks": [
@@ -69,8 +61,8 @@
     0
    ],
    "size": [
+    80,
     96,
-    64,
     192
    ]
   },
@@ -80,13 +72,13 @@
    "gpu": "-",
    "origin": [
     0,
-    64,
+    96,
     0
    ],
    "size": [
+    80,
     96,
-    128,
-    96
+    192
    ]
   },
   {
@@ -94,14 +86,14 @@
    "host": "SMM-TRS2",
    "gpu": "-",
    "origin": [
+    80,
     0,
-    64,
-    96
+    0
    ],
    "size": [
-    96,
-    128,
-    96
+    112,
+    64,
+    192
    ]
   },
   {
@@ -109,14 +101,14 @@
    "host": "SMM-TRS2",
    "gpu": "-",
    "origin": [
-    96,
-    0,
+    80,
+    64,
     0
    ],
    "size": [
-    96,
-    64,
-    192
+    112,
+    128,
+    96
    ]
   },
   {
@@ -124,27 +116,12 @@
    "host": "SMM-TRS2",
    "gpu": "-",
    "origin": [
-    96,
-    64,
-    0
-   ],
-   "size": [
-    96,
-    128,
-    96
-   ]
-  },
-  {
-   "rank": 5,
-   "host": "SMM-TRS2",
-   "gpu": "-",
-   "origin": [
-    96,
+    80,
     64,
     96
    ],
    "size": [
-    96,
+    112,
     128,
     96
    ]
