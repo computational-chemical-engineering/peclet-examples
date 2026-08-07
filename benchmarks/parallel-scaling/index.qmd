@@ -130,7 +130,24 @@ GPUs — and any default changed by a clear winner)*
 methodology notes — an FFT direct solve and an algebraic-multigrid general-purpose code bracket
 peclet's geometric-MG-for-general-geometry design point)*
 
-## Decomposition anatomy
+## Decomposition anatomy: is a prime rank count much worse than a power of two?
 
-*(pending: prime vs power-of-two rank counts, slab/pencil/brick ORB topologies forced by box
-aspect, the MG even-coarsening gate, and a "what should I choose" conclusion)*
+**After the alignment fix: no.** Sweeping awkward rank counts on the fixed $192^3$ box
+(pure MPI, 5965WX):
+
+| ranks | ms/step | Mcell/s | pressure iters | max-block imbalance |
+|---|---|---|---|---|
+| 5 | 10428 | 0.7 | 8.0 | ≤ 1.02× |
+| 7 (prime) | 7948 | 0.9 | 8.0 | 1.02× |
+| **8** | 6457 | 1.1 | **7.0** | 1.00× |
+| 13 (prime) | 3489 | 2.0 | 8.0 | 1.08× |
+| **16** | 3425 | 2.1 | **7.0** | 1.00× |
+| 23 (prime) | 2442 | 2.9 | 8.0 | 1.20× |
+
+Non-power-of-two counts pay exactly **one extra pressure iteration** (the ORB's uneven-subtree
+splits land off the deepest coarsening grid, so the multigrid loses its bottom level) and a ≤ 20 %
+max-block imbalance at the worst prime — both minor; throughput sits on the same trend line as the
+neighbouring powers of two. *Before* the fix the same experiment produced 27–114 iterations/step
+and up to 12:1 imbalance — the difference between "prime rank counts are mildly suboptimal" and
+"prime rank counts are catastrophic" was a bug, not a law of nature. Multi-node topology effects
+(slab vs pencil vs brick at scale) are measured in the Snellius sections above.
