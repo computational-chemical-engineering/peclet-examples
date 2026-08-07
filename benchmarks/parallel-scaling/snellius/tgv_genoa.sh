@@ -38,8 +38,10 @@ run_one () {  # ntasks rpn threads gnx out
     srun --mpi=pmix --ntasks=$nt --ntasks-per-node=$rpn --cpus-per-task=$th \
     "$VENV/bin/python" "$EXDIR/../tgv_bench.py" > "$RES/${out%.json}.log" 2>&1 \
     && grep -E "^\[result" "$RES/${out%.json}.log" \
-    || { echo "  [FAILED $out]"; grep -iE "error|traceback|fatal" \
-         "$RES/${out%.json}.log" | head -5 | sed 's/^/    /'; }
+    || { echo "  [FAILED $out] rank-0 error (full log: $RES/${out%.json}.log):"
+         grep -m1 -A6 "Traceback" "$RES/${out%.json}.log" | sed 's/^/    /'
+         grep -m3 -iE "Error:|ModuleNotFound|ImportError|assert" \
+           "$RES/${out%.json}.log" | sed 's/^/    /'; }
 }
 
 MODE="${MODE:-mix}"

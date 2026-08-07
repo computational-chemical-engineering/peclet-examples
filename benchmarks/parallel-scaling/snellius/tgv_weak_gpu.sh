@@ -41,8 +41,10 @@ run_one () {  # N out extra-env...
     srun --mpi=pmix --ntasks=$N --gpus-per-task=1 --gpu-bind=per_task:1 \
     "$VENV/bin/python" "$EXDIR/../tgv_bench.py" > "$RES/${out%.json}.log" 2>&1 \
     && grep -E "^\[(result|check)" "$RES/${out%.json}.log" \
-    || { echo "  [FAILED N=$N]"; grep -iE "error|traceback|out of memory|fatal" \
-         "$RES/${out%.json}.log" | head -5 | sed 's/^/    /'; }
+    || { echo "  [FAILED N=$N] rank-0 error (full log: $RES/${out%.json}.log):"
+         grep -m1 -A6 "Traceback" "$RES/${out%.json}.log" | sed 's/^/    /'
+         grep -m3 -iE "Error:|ModuleNotFound|ImportError|out of memory|assert" \
+           "$RES/${out%.json}.log" | sed 's/^/    /'; }
 }
 
 for N in 1 2 4 8 16 32; do
