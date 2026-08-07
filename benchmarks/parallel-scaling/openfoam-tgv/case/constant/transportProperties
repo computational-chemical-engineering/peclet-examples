@@ -1,0 +1,10 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      transportProperties;
+}
+
+// Re_tile = U0 * (2*pi) / nu = 100, matching the peclet/CaNS runs
+nu              [0 2 -1 0 0 0 0] 0.06283185307;

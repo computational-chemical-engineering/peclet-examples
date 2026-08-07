@@ -1,0 +1,116 @@
+{
+ "label": "workstation-5965wx",
+ "np": 4,
+ "backend": "OpenMP",
+ "omp_threads": "1",
+ "global": [
+  512,
+  128,
+  128
+ ],
+ "cells": 8388608,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 12662.835762426257,
+ "mcells_per_s": 0.6624588802526413,
+ "pressure_iters_per_step": 7.0,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 12.662804393656552,
+   "min": 12.662761925198138
+  },
+  "predictor": {
+   "max": 0.9369639018177987,
+   "min": 0.8898656920716167
+  },
+  "momentum": {
+   "max": 6.725429200939834,
+   "min": 6.678410348817706
+  },
+  "projection": {
+   "max": 5.036997763514519,
+   "min": 5.034920787066222
+  },
+  "pressure_allreduce": {
+   "max": 0.023617883560000004,
+   "min": 0.012996726240000003
+  },
+  "pressure_allreduce_count": {
+   "max": 124.0,
+   "min": 124.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    128,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    256,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    384,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

@@ -1,0 +1,17 @@
+{
+ "label": "workstation-cans",
+ "np": 1,
+ "backend": "cpu",
+ "omp_threads": "1",
+ "global": [
+  128,
+  128,
+  128
+ ],
+ "cells": 2097152,
+ "nsteps": 25,
+ "ms_per_step": 372.67590300000006,
+ "mcells_per_s": 5.62728092457322,
+ "code": "cans",
+ "solver": "RK3+FFT"
+}

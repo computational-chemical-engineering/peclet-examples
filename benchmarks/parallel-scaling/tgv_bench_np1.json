@@ -1,0 +1,75 @@
+{
+ "label": "",
+ "np": 1,
+ "backend": "OpenMP",
+ "omp_threads": "4",
+ "global": [
+  128,
+  128,
+  128
+ ],
+ "cells": 2097152,
+ "tile": 128,
+ "re": 1.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 10,
+ "warmup": 3,
+ "ms_per_step": 7464.202465675771,
+ "mcells_per_s": 0.280961296219359,
+ "pressure_iters_per_step": 7.9,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 7.464180211909115,
+   "min": 7.464180211909115
+  },
+  "predictor": {
+   "max": 0.5213269519619643,
+   "min": 0.5213269519619643
+  },
+  "momentum": {
+   "max": 3.2507621781900524,
+   "min": 3.2507621781900524
+  },
+  "projection": {
+   "max": 3.6884033336304127,
+   "min": 3.6884033336304127
+  },
+  "pressure_allreduce": {
+   "max": 0.00011139910000000004,
+   "min": 0.00011139910000000004
+  },
+  "pressure_allreduce_count": {
+   "max": 139.3,
+   "min": 139.3
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  }
+ ],
+ "check": {
+  "ke_ratio_measured": 0.33453229529366835,
+  "ke_ratio_stokes": 0.008136199128635184,
+  "rel_err": 40.11653242560016
+ },
+ "gpu_aware_env": ""
+}

@@ -1,0 +1,71 @@
+{
+ "label": "workstation-5965wx",
+ "np": 1,
+ "backend": "OpenMP",
+ "omp_threads": "24",
+ "global": [
+  192,
+  192,
+  192
+ ],
+ "cells": 7077888,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 2958.2933616638184,
+ "mcells_per_s": 2.3925578482923746,
+ "pressure_iters_per_step": 9.88,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 2.9582731062546372,
+   "min": 2.9582731062546372
+  },
+  "predictor": {
+   "max": 0.16535342797636987,
+   "min": 0.16535342797636987
+  },
+  "momentum": {
+   "max": 1.0177363083139062,
+   "min": 1.0177363083139062
+  },
+  "projection": {
+   "max": 1.7711383938789367,
+   "min": 1.7711383938789367
+  },
+  "pressure_allreduce": {
+   "max": 8.818383999999997e-05,
+   "min": 8.818383999999997e-05
+  },
+  "pressure_allreduce_count": {
+   "max": 172.96,
+   "min": 172.96
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    192,
+    192
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

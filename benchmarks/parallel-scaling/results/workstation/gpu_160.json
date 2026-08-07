@@ -1,0 +1,71 @@
+{
+ "label": "workstation-rtx5080",
+ "np": 1,
+ "backend": "Cuda",
+ "omp_threads": "",
+ "global": [
+  160,
+  160,
+  160
+ ],
+ "cells": 4096000,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 50,
+ "warmup": 10,
+ "ms_per_step": 96.30683084949851,
+ "mcells_per_s": 42.53073186886337,
+ "pressure_iters_per_step": 9.48,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.09629977561533451,
+   "min": 0.09629977561533451
+  },
+  "predictor": {
+   "max": 0.0018624096736311912,
+   "min": 0.0018624096736311912
+  },
+  "momentum": {
+   "max": 0.035559961758553985,
+   "min": 0.035559961758553985
+  },
+  "projection": {
+   "max": 0.05857101196423173,
+   "min": 0.05857101196423173
+  },
+  "pressure_allreduce": {
+   "max": 1.208141999999998e-05,
+   "min": 1.208141999999998e-05
+  },
+  "pressure_allreduce_count": {
+   "max": 166.16,
+   "min": 166.16
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "0000:41:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    160,
+    160,
+    160
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

@@ -1,0 +1,37 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| Tiled Taylor-Green box: @NTX@ x @NTY@ x @NTZ@ tiles of 2*pi, @NX@ x @NY@ x @NZ@ cells, all cyclic |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+
+scale 1;
+
+LX @LX@;
+LY @LY@;
+LZ @LZ@;
+
+vertices
+(
+    (0 0 0)  ($LX 0 0)  ($LX $LY 0)  (0 $LY 0)
+    (0 0 $LZ) ($LX 0 $LZ) ($LX $LY $LZ) (0 $LY $LZ)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (@NX@ @NY@ @NZ@) simpleGrading (1 1 1)
+);
+
+boundary
+(
+    left   { type cyclic; neighbourPatch right;  faces ((0 4 7 3)); }
+    right  { type cyclic; neighbourPatch left;   faces ((1 2 6 5)); }
+    front  { type cyclic; neighbourPatch back;   faces ((0 1 5 4)); }
+    back   { type cyclic; neighbourPatch front;  faces ((3 7 6 2)); }
+    bottom { type cyclic; neighbourPatch top;    faces ((0 3 2 1)); }
+    top    { type cyclic; neighbourPatch bottom; faces ((4 5 6 7)); }
+);

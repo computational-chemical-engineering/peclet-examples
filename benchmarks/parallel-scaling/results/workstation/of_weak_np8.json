@@ -1,0 +1,16 @@
+{
+ "label": "workstation-openfoam",
+ "np": 8,
+ "backend": "cpu",
+ "global": [
+  1024,
+  128,
+  128
+ ],
+ "cells": 16777216,
+ "nsteps": 20,
+ "ms_per_step": 9898.999999999998,
+ "mcells_per_s": 1.6948394787352261,
+ "code": "openfoam",
+ "solver": "icoFoam+GAMG"
+}

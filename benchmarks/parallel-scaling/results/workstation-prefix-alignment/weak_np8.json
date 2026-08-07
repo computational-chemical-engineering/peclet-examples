@@ -1,0 +1,176 @@
+{
+ "label": "workstation-5965wx",
+ "np": 8,
+ "backend": "OpenMP",
+ "omp_threads": "1",
+ "global": [
+  1024,
+  128,
+  128
+ ],
+ "cells": 16777216,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 19068.858557716012,
+ "mcells_per_s": 0.8798227722556198,
+ "pressure_iters_per_step": 7.0,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 19.06880543205887,
+   "min": 19.067896358445285
+  },
+  "predictor": {
+   "max": 1.0030518381297588,
+   "min": 0.692093710154295
+  },
+  "momentum": {
+   "max": 11.06511173799634,
+   "min": 10.809136904068291
+  },
+  "projection": {
+   "max": 7.270247734300792,
+   "min": 7.235357408449054
+  },
+  "pressure_allreduce": {
+   "max": 0.36350616568,
+   "min": 0.023350272480000003
+  },
+  "pressure_allreduce_count": {
+   "max": 124.0,
+   "min": 124.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    128,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    256,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    384,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 4,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    512,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 5,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    640,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 6,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    768,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  },
+  {
+   "rank": 7,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    896,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    128,
+    128
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

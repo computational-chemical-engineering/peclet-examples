@@ -1,0 +1,236 @@
+{
+ "label": "workstation-5965wx",
+ "np": 12,
+ "backend": "OpenMP",
+ "omp_threads": "2",
+ "global": [
+  192,
+  192,
+  192
+ ],
+ "cells": 7077888,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 1402.9950377345085,
+ "mcells_per_s": 5.044841791763602,
+ "pressure_iters_per_step": 7.0,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 1.4029405929520726,
+   "min": 1.402904870659113
+  },
+  "predictor": {
+   "max": 0.08888389047235251,
+   "min": 0.08709004309028387
+  },
+  "momentum": {
+   "max": 0.7083791723847389,
+   "min": 0.706680747307837
+  },
+  "projection": {
+   "max": 0.6028688925132155,
+   "min": 0.6024793068319559
+  },
+  "pressure_allreduce": {
+   "max": 0.0057153542,
+   "min": 0.00281446496
+  },
+  "pressure_allreduce_count": {
+   "max": 124.0,
+   "min": 124.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    64
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    128
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    96,
+    0
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 4,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    96,
+    64
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 5,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    96,
+    128
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 6,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    0,
+    0
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 7,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    0,
+    64
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 8,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    0,
+    128
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 9,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    96,
+    0
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 10,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    96,
+    64
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  },
+  {
+   "rank": 11,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    96,
+    128
+   ],
+   "size": [
+    96,
+    96,
+    64
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

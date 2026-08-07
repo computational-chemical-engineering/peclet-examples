@@ -1,0 +1,58 @@
+#!/bin/bash
+# ==========================================================================================
+# TGV weak scaling on Snellius gpu_h100 — 47.2M cells/GPU fixed (384x384x320 per GPU, tile 64),
+# GNX grows with N. Sweeps every N that fits the allocation and has no JSON yet (resumable).
+# Short runs (10+40 steps): a full sweep costs a few minutes of GPU time per point.
+#
+#   sbatch --nodes=1 tgv_weak_gpu.sh            # N = 1,2,4
+#   sbatch --nodes=2 tgv_weak_gpu.sh            # N = 8
+#   sbatch --nodes=4 tgv_weak_gpu.sh            # N = 16
+#   sbatch --nodes=8 tgv_weak_gpu.sh            # N = 32
+#   LEVERS=1 sbatch --nodes=2 tgv_weak_gpu.sh   # additionally: cheb / GraphAMG-bottom /
+#                                               # host-staged-halo variants at the allocated max N
+# ==========================================================================================
+#SBATCH --job-name=tgv-weak
+#SBATCH --partition=gpu_h100
+#SBATCH --nodes=1
+#SBATCH --gpus-per-node=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:45:00
+#SBATCH --output=tgv-weak-%j.out
+#SBATCH --account=tes24005
+set -uo pipefail
+EXDIR="${SLURM_SUBMIT_DIR:-$PWD}"
+source "$EXDIR/../../../examples/wall-bounded-turbulence/snellius_env.sh"
+
+SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"; BUILD="${BUILD:-$SUITE/flow/build_cuda_mpi}"
+VENV="${VENV:-$SUITE/flow/.venv}"; export PYTHONPATH="$BUILD:${PYTHONPATH:-}"
+export PECLET_BIND_GPU=0 PECLET_CORE_GPU_AWARE_MPI="${GPU_AWARE:-1}"
+RES="$EXDIR/results/snellius-h100"; mkdir -p "$RES"
+
+export TILE=64 GNY=384 GNZ=320 NSTEPS=40 WARMUP=10 RE=100 ADV=0
+BASE_GNX=384    # 384x384x320 = 47.2M cells/GPU
+MAXN=$(( SLURM_NNODES * 4 ))
+
+run_one () {  # N out extra-env...
+  local N=$1 out=$2; shift 2
+  [ -f "$RES/$out" ] && { echo "[skip] $out"; return; }
+  echo "======= N=$N : $((BASE_GNX * N))x${GNY}x${GNZ} = $(( BASE_GNX * N * GNY * GNZ / 1000000 ))M  ($out) ======="
+  env GNX=$(( BASE_GNX * N )) LABEL="snellius-h100" OUT="$RES/$out" "$@" \
+    srun --mpi=pmix --ntasks=$N --gpus-per-task=1 --gpu-bind=per_task:1 \
+    "$VENV/bin/python" "$EXDIR/../tgv_bench.py" > "$RES/${out%.json}.log" 2>&1 \
+    && grep -E "^\[(result|check)" "$RES/${out%.json}.log" \
+    || { echo "  [FAILED N=$N]"; grep -iE "error|traceback|out of memory|fatal" \
+         "$RES/${out%.json}.log" | head -5 | sed 's/^/    /'; }
+}
+
+for N in 1 2 4 8 16 32; do
+  [ "$N" -le "$MAXN" ] && run_one $N "weak_np${N}.json"
+done
+
+# Lever ablation at the largest allocated N (inter-node points 8/16 are the interesting ones)
+if [ "${LEVERS:-0}" = 1 ]; then
+  run_one $MAXN "weak_np${MAXN}_cheb.json"    env PRESSURE=cheb PMAXIT=400
+  run_one $MAXN "weak_np${MAXN}_amg.json"     env GRAPHAMG=1
+  run_one $MAXN "weak_np${MAXN}_hoststage.json" env PECLET_CORE_GPU_AWARE_MPI=0
+fi
+echo "done -> $RES"
