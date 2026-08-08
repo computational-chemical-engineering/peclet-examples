@@ -10,8 +10,8 @@
  ],
  "cells": 377487360,
  "nsteps": 20,
- "ms_per_step": 17877.097234825524,
- "mcells_per_s": 21.11569652732183,
+ "ms_per_step": 18747.80433011276,
+ "mcells_per_s": 20.135017058700523,
  "code": "cans",
  "solver": "RK3+FFT"
 }

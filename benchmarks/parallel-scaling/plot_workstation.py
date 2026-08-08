@@ -99,6 +99,7 @@ codes = [
     ("weak_np*.json", "peclet.flow", BLUE),
     ("cans_weak_np*.json", "CaNS", ORANGE),
     ("of_weak_np*.json", "OpenFOAM", AQUA),
+    ("incflo_weak_np*.json", "incflo", YELLOW),
 ]
 have = {lbl: sorted(load(RES, pat), key=lambda d: d["np"]) for pat, lbl, _ in codes}
 if all(have.values()):

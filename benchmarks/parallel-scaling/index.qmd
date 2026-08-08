@@ -122,18 +122,28 @@ term is invisible on one node (< 2 ms/step) — it only matters across nodes.
 Left: efficiency vs. own 1-rank baseline. Right: absolute throughput (log scale); the dotted line
 is the single RTX 5080 running the same case.](workstation_weak.png)
 
-With per-rank work fixed, all three codes decay together — **and this is not communication**:
+With per-rank work fixed, all four codes decay together — **and this is not communication**:
 peclet's pressure iteration count stays at exactly 7.0 per step at every rank count. A single
-node's weak scaling measures **shared memory-bandwidth saturation**, nothing else. After the
-optimization round, **peclet holds the best weak-scaling efficiency of the three (40 % at 24
-ranks, vs 31 % CaNS / 29 % OpenFOAM)** — fewer memory passes per step also means later saturation.
-Absolute CPU throughput on 24 cores: **CaNS 41 Mcell/s, peclet 9.8, OpenFOAM 3.3**. peclet is 3×
-faster than OpenFOAM at identical settings; CaNS's remaining 4× is the price of generality stated
-honestly — an explicit RK3 step plus an exact FFT solve that exists *only because* the box is
-trivial, against an implicit step and a geometric multigrid that handle arbitrary cut-cell
-geometry at large d$t$. **And the single RTX 5080 at 67 Mcell/s outruns CaNS's entire 24-core
-node by 1.6×** running the identical case — the design point of the suite: the CPU path is a
-capable oracle, the GPU path is the product.
+node's weak scaling measures **shared memory-bandwidth saturation**, nothing else — the efficiency
+ordering (incflo 48 %, peclet 40 %, CaNS 31 %, OpenFOAM 29 % at 24 ranks) is simply the *inverse*
+of per-core bandwidth demand: the slower a code streams per core-second, the later the shared
+memory system saturates. Absolute CPU throughput on 24 cores: **CaNS 41 Mcell/s, peclet 9.8,
+incflo 3.6, OpenFOAM 3.3**. Three comparisons worth separating:
+
+- **vs OpenFOAM** (the ubiquitous general-purpose reference): peclet is **3× faster** at identical
+  settings.
+- **vs incflo** (the AMReX exascale solver in peclet's *own method family* — finite-volume
+  incompressible NS, geometric-multigrid projections, embedded-boundary capable): peclet is
+  **2.7× faster on CPU**, and 3.3× per core — winning its own game against the state of the art
+  that shares its design constraints.
+- **vs CaNS** (the FFT ceiling): the remaining 4× is the price of generality stated honestly — an
+  explicit RK3 step plus an exact FFT solve that exists *only because* the box is trivial, against
+  an implicit step and a geometric multigrid that handle arbitrary cut-cell geometry at large
+  d$t$.
+
+**And the single RTX 5080 at 67 Mcell/s outruns CaNS's entire 24-core node by 1.6×** running the
+identical case — the design point of the suite: the CPU path is a capable oracle, the GPU path is
+the product.
 
 ### Single-GPU ladder (RTX 5080, 16 GB)
 
