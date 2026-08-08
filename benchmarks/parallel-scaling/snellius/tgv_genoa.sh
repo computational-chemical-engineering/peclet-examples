@@ -30,6 +30,9 @@ VENV="${VENV:-$SUITE/flow/.venv}"; export PYTHONPATH="$BUILD:${PYTHONPATH:-}"
 RES="$EXDIR/results/snellius-genoa"; mkdir -p "$RES"
 export TILE=64 GNY=640 GNZ=384 RE=100 ADV=0 OMP_PROC_BIND=spread OMP_PLACES=cores
 BASE_GNX=768    # 768x640x384 = 188.7M / node (~1M cells/core at 192 c/node)
+# NB: weak n=8 (1.5G cells, ~280 GB/node) runs close to genoa's 336 GiB — an OOM-killed rank
+# leaves the survivors hung in a collective. The driver heartbeat makes that visible in the log;
+# a run past ~10 min without heartbeat progress is hung -> scancel.
 
 run_one () {  # ntasks rpn threads gnx out
   local nt=$1 rpn=$2 th=$3 gnx=$4 out=$5

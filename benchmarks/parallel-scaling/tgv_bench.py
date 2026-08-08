@@ -163,8 +163,12 @@ s.set_state(u0, v0, w0)
 ke0 = world.allreduce(float(np.sum(u0 * u0 + v0 * v0 + w0 * w0)), op=MPI.SUM)
 
 # ---- warmup, then measure ---------------------------------------------------------------------
-for _ in range(WARMUP):
+# Heartbeat: a hung distributed run (e.g. one OOM-killed rank, survivors blocked in a collective)
+# is diagnosable only if the log shows how far it got.
+p0(f"[run] warmup {WARMUP} steps...")
+for i in range(WARMUP):
     s.step()
+    p0(f"[run] warmup {i + 1}/{WARMUP} done")
 
 phases = ("step", "predictor", "momentum", "projection", "pressure_allreduce")
 acc = {p: [] for p in phases}
@@ -172,8 +176,11 @@ acc["pressure_allreduce_count"] = []
 iters = []
 world.Barrier()
 t0 = time.perf_counter()
-for _ in range(NSTEPS):
+_hb = max(1, NSTEPS // 5)
+for istep in range(NSTEPS):
     s.step()
+    if (istep + 1) % _hb == 0:
+        p0(f"[run] step {istep + 1}/{NSTEPS}")
     t = s.last_step_timers()
     for p in phases:
         acc[p].append(t[p])
