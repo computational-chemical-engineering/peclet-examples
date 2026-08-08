@@ -99,8 +99,10 @@ elif [ "$CODE" = openfoam ]; then
   # source-built ESI v2412 (refs_genoa.sh openfoam-build) — same version + case dialect as the
   # workstation reference. Snellius' central module is the Foundation fork (different dialect).
   # NB stderr NOT discarded: this source once exited the job silently and the discarded stderr
-  # hid the reason for days.
-  set +u; source "$REFDIR/OpenFOAM-v2412/etc/bashrc" || true; set -u
+  # hid the reason for days. And `set --` first: bash passes the CALLER's positional args to a
+  # sourced script — foam's bashrc read our mode argument 'openfoam' as FOAM_SETTINGS, sourced
+  # the etc/openfoam wrapper, and exit-1'd the whole job on its leftover options.
+  set +u; set --; source "$REFDIR/OpenFOAM-v2412/etc/bashrc" || true; set -u
   command -v icoFoam >/dev/null || {
     echo "FATAL: icoFoam not on PATH — run 'sbatch --nodes=1 --time=03:00:00 refs_genoa.sh openfoam-build' first" >&2
     exit 1; }
