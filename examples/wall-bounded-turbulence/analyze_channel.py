@@ -58,11 +58,18 @@ a.plot(yph, 1 - yph/Re_tau, "k:", lw=0.8, label=r"$1-y/H$")
 a.set_xlabel(r"$y^+$"); a.set_ylabel("stress$^+$"); a.set_title("Stress balance"); a.legend(fontsize=8); a.set_xlim(0, 180)
 
 a = ax[1, 1]
-ts = d["ts"]
-a.plot(ts[:, 1], ts[:, 5], "C0-", label=r"$u_{rms,pk}$")
-a.plot(ts[:, 1], ts[:, 7], "C2-", label=r"tke$_{pk}$")
-a.plot(ts[:, 1], ts[:, 6]*10, "C3-", label=r"$-\langle u'v'\rangle_{pk}\times10$")
-a.set_xlabel(r"$t^+$"); a.set_title("Turbulence time series"); a.legend(fontsize=8)
+ts = np.atleast_2d(d["ts"])
+if ts.ndim == 2 and ts.shape[1] >= 8:        # single-GPU driver: turbulence-peak history
+    a.plot(ts[:, 1], ts[:, 5], "C0-", label=r"$u_{rms,pk}$")
+    a.plot(ts[:, 1], ts[:, 7], "C2-", label=r"tke$_{pk}$")
+    a.plot(ts[:, 1], ts[:, 6]*10, "C3-", label=r"$-\langle u'v'\rangle_{pk}\times10$")
+    a.set_title("Turbulence time series")
+elif ts.ndim == 2 and ts.shape[1] >= 4:      # distributed driver: [it, t+, Ub+, u_tau, nacc]
+    a.plot(ts[:, 1], ts[:, 2], "C0-", label=r"$U_b^+$")
+    a.plot(ts[:, 1], ts[:, 3], "C1-", label=r"$u_\tau$ (wall-grad)")
+    a.axhline(15.63, color="C0", ls=":", lw=0.8); a.axhline(1.0, color="C1", ls=":", lw=0.8)
+    a.set_title("Bulk & friction history (equilibration)")
+a.set_xlabel(r"$t^+$"); a.legend(fontsize=8)
 
 plt.suptitle(f"Channel DNS  {d['NX']}x{d['NY']}x{d['NZ']}  Delta+={float(d['Dplus']):.2f}  "
              f"Re_tau(meas)={Re_tau:.0f} (MKM 178)  Lx+={float(d['Lxp'])*utau:.0f} Lz+={float(d['Lzp'])*utau:.0f}  nacc={int(d.get('nacc',0))}")

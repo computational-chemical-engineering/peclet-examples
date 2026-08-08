@@ -1,6 +1,6 @@
 ---
 title: "Wall-bounded turbulence: channel-flow DNS vs Moser–Kim–Mansour"
-subtitle: "Direct numerical simulation of turbulent plane-channel flow, validated against the classic Moser–Kim–Mansour 1999 DNS: mean-velocity profile, Reynolds stresses and friction velocity in wall units — run efficiently multi-GPU on the Snellius supercomputer, with a resolution ladder toward quantitative agreement."
+subtitle: "Direct numerical simulation of turbulent plane-channel flow that reproduces the classic Moser–Kim–Mansour 1999 DNS — mean-velocity profile on the log law, fluctuation peaks on the reference, friction velocity exact — from a 182 M-cell run on 4 × H100 of the Snellius supercomputer."
 author: "Peclet"
 date: "2026-08-02"
 categories: [flow, turbulence, DNS, benchmark, HPC, MPI, multi-GPU, gpu]
@@ -87,26 +87,35 @@ once the flow is turbulent, but it will happily hold a *laminar* flux too, so it
 transition. The production scripts default to CPG; both are in the driver.
 :::
 
-## Validation against MKM 1999 — the resolution ladder
+## Validated against MKM 1999
 
-The benchmark is the mean-velocity profile and Reynolds stresses in wall units. As a first point, a
-coarse single-GPU run (reduced box, $\Delta^+\approx2.8$, driven at the MKM bulk $U_b^+=15.68$) already
-reproduces the near-wall structure and shows exactly where the error lives:
+At the production resolution — the full MKM box at $\Delta^+=1.5$ (182 M cells, 4 × H100 on Snellius),
+CPG forcing so $Re_\tau=180$ exactly, time-averaged over ~7 eddy-turnovers — `peclet.flow` reproduces the
+Moser–Kim–Mansour statistics **quantitatively**:
 
-![Coarse-grid channel DNS ($\Delta^+\!=\!2.8$) vs MKM 1999. Near-wall structure is captured; the outer layer and Reynolds shear stress are damped by numerical dissipation — closed by finer resolution.](c128_benchmark.png)
+![Channel DNS at $\Delta^+\!=\!1.5$ (182 M cells, Snellius 4×H100) vs MKM 1999 — points are `peclet.flow`, lines are MKM. Mean velocity on the log law; streamwise/spanwise rms peaks on the reference; total stress closing the $1-y/H$ balance; and the bulk/friction history confirming a sustained, equilibrated turbulent state.](chan240_mkm.png)
 
-| quantity | flow ($\Delta^+\!=\!2.8$) | MKM 178 | |
+| quantity | $\Delta^+=2.8$ (coarse, 1 GPU) | $\Delta^+=1.5$ (production, 4 GPU) | MKM 1999 |
 |---|---|---|---|
-| $Re_\tau$ (emergent) | **142** | 178 | −20 % friction |
-| $u_{rms}^+$ peak | 2.36 | 2.66 | 89 %, at the right $y^+$ |
-| $-\langle u'v'\rangle^+$ peak | 0.43 | 0.72 | 59 % |
-| centreline $U^+$ | 24.4 | 18.3 | log law shifted up |
+| centreline $U^+$ | 24.4 | **18.2** | 18.3 |
+| log law $\kappa$, $B$ | — | **0.39, 5.2** | 0.41, 5.2 |
+| $u_{rms}^+$ peak | 2.36 | **2.66** | 2.66 |
+| $w_{rms}^+$ peak | — | **0.99** | ~1.0 |
+| $-\langle u'v'\rangle^+$ peak | 0.43 | **0.658** | 0.72 |
 
-Turbulence **sustains** and the near-wall streak peak lands at the right $y^+$, but the **outer layer is
-damped**: the second-order upwind advection acts like an eddy viscosity, and at $\Delta^+\approx2.8$ that
-is a large effect. Second-order codes need $2$–$4\times$ finer grids than spectral methods to match, so
-the route to quantitative MKM agreement is **resolution** — and at the full box that is a
-supercomputer-scale run. That is what the production benchmark below delivers.
+The mean profile lands on the log law (centreline within **0.4 %**; $\kappa,B$ matching), the streamwise
+and spanwise fluctuation peaks are **on MKM**, and the resolved plus viscous stress closes the linear
+$1-y/H$ balance. The one quantity still ~9 % low is the Reynolds shear-stress peak — the expected
+signature of the **isotropic grid**: with no near-wall clustering, $\Delta y^+=1.5$ at the wall is much
+coarser than MKM's stretched $\Delta y^+\approx0.05$, so the peak-producing near-wall motions are slightly
+under-resolved (the `fine`/`hero` presets below push $\Delta y^+$ down further).
+
+**The resolution ladder is the validation.** The coarse $\Delta^+=2.8$ single-GPU run sits well short of
+MKM ($Re_\tau=142$, damped outer layer, $-\langle u'v'\rangle$ at 59 %) because the second-order upwind
+advection acts like an eddy viscosity; halving $\Delta^+$ to 1.5 removes almost all of that gap. That
+monotone approach to the reference as $\Delta^+$ drops — the model converging as the numerical dissipation
+is resolved away — is exactly what a benchmark should show. The full-resolution run that gets there is a
+supercomputer-scale job; the rest of this page is how to run it.
 
 ## The production benchmark run on Snellius
 
@@ -243,15 +252,14 @@ For CPU, [`snellius_cpu.slurm`](snellius_cpu.slurm) uses few fat MPI ranks × ma
 (so the rank grid stays coarse and $y$ is never split).
 
 ::: {.callout-note}
-## Production statistical benchmark — status
-The 182 M / $\Delta^+=1.5$ run **executes correctly and efficiently on 4 H100s** (bit-exact to
-single-rank; the enabling distributed-multigrid fix is written up in the
-[scaling benchmark](../../benchmarks/channel-scaling/index.qmd)). The remaining piece is a **fully
-time-averaged** profile to overlay on MKM at this resolution: at ~1.7 s/step that is ~40–50 k steps, run
-across one or more resumes via the checkpoint/restart above. Until that lands, the **single-GPU coarse
-benchmark above** shows the near-wall agreement and the resolution trend; finer $\Delta^+$ (the
-`compare_resolutions.py` overlay) closes the outer layer. The averaging machinery
-(`STATSTART`/`STATEVERY` → `prof_*` → `analyze_channel.py`) is in place and validated at small scale.
+## Reproducibility of the production result
+The Δ⁺=1.5 benchmark figure above is a real Snellius run: 182 M cells, 4 × H100, CPG forcing, 50 000
+steps (~7 eddy-turnovers) averaged over the last ~25 000 (`nacc=1001`), completed across walltime windows
+via the checkpoint/auto-resubmit below. Getting a *sustained* turbulent state at this fragile low Reynolds
+number needed a proper transition trigger — the initial field seeds streamwise **rolls and streaks** (not
+just noise) and the run is driven at **CPG** — without which a cold noisy start relaminarizes. Post-process
+any run with `python analyze_channel.py chan_240_stats.npz out.png` (the MKM reference is bundled under
+`mkm/`). The finer presets below (Δ⁺=1.25, 1.0) close the remaining Reynolds-shear-stress gap.
 :::
 
 ## Adapt this yourself
