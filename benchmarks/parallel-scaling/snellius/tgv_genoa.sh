@@ -37,6 +37,7 @@ run_one () {  # ntasks rpn threads gnx out
   echo "======= $out : ${gnx}x${GNY}x${GNZ}, $nt ranks x $th threads ======="
   env GNX=$gnx OMP_NUM_THREADS=$th LABEL="snellius-genoa" OUT="$RES/$out" \
     srun --mpi=pmix --ntasks=$nt --ntasks-per-node=$rpn --cpus-per-task=$th \
+    --distribution=block:block --cpu-bind=cores \
     "$VENV/bin/python" "$EXDIR/../tgv_bench.py" > "$RES/${out%.json}.log" 2>&1 \
     && grep -E "^\[result" "$RES/${out%.json}.log" \
     || { echo "  [FAILED $out] rank-0 error (full log: $RES/${out%.json}.log):"
@@ -56,6 +57,10 @@ else
   export NSTEPS=15 WARMUP=5
   RPN="${RPN:-96}"; THREADS="${THREADS:-2}"
   N=$SLURM_NNODES
-  run_one $(( RPN * N )) "$RPN" "$THREADS" $(( BASE_GNX * N )) "weak_n${N}_r${RPN}_t${THREADS}.json"
+  # optional 2nd argument = repeat tag (e.g. `tgv_genoa.sh weak r2`) — genoa node-set variability
+  # is REAL (same config measured 3.2 vs 8.0 s/step on different node sets); report the best-of
+  # or the spread, never a single draw.
+  REP="${2:+_${2}}"
+  run_one $(( RPN * N )) "$RPN" "$THREADS" $(( BASE_GNX * N )) "weak_n${N}_r${RPN}_t${THREADS}${REP}.json"
 fi
 echo "done -> $RES"
