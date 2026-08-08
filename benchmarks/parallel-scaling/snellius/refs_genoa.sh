@@ -56,7 +56,9 @@ if [ "$MODE" = openfoam-build ]; then
     [ -d "$f" ] || tar xzf "$f.tgz"
   done
   cd OpenFOAM-v2412
-  set +u; source etc/bashrc || true; set -u    # foam bashrc is not `set -u`-clean
+  # WM_LABEL_SIZE=64: 32-bit labels overflow (SIGABRT in polyMesh::setTopology) past ~2e8 cells —
+  # the n>=2 weak grids exceed 1e9 faces. Explicit source args also suppress caller-arg forwarding.
+  set +u; source etc/bashrc WM_LABEL_SIZE=64 || true; set -u
   [ -n "${WM_PROJECT_DIR:-}" ] || { echo "FATAL: OpenFOAM env did not source" >&2; exit 1; }
   ./Allwmake -j 96 -s -q -l
   command -v icoFoam && echo "OpenFOAM v2412 built"
@@ -110,7 +112,8 @@ elif [ "$CODE" = openfoam ]; then
   # hid the reason for days. And `set --` first: bash passes the CALLER's positional args to a
   # sourced script — foam's bashrc read our mode argument 'openfoam' as FOAM_SETTINGS, sourced
   # the etc/openfoam wrapper, and exit-1'd the whole job on its leftover options.
-  set +u; set --; source "$REFDIR/OpenFOAM-v2412/etc/bashrc" || true; set -u
+  # WM_LABEL_SIZE=64 must match the build (Int64 labels; Int32 SIGABRTs past ~2e8 cells).
+  set +u; set --; source "$REFDIR/OpenFOAM-v2412/etc/bashrc" WM_LABEL_SIZE=64 || true; set -u
   command -v icoFoam >/dev/null || {
     echo "FATAL: icoFoam not on PATH — run 'sbatch --nodes=1 --time=03:00:00 refs_genoa.sh openfoam-build' first" >&2
     exit 1; }
