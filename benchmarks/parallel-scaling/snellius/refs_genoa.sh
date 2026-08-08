@@ -81,10 +81,18 @@ fi
 CODE="$MODE"
 if [ "$CODE" = cans ]; then
   NP=$(( 192 * N ))
-  OUT="$RES/cans_weak_n${N}.json"
+  # optional 2nd argument = explicit pencil grid "PxQ" (e.g. `refs_genoa.sh cans 2x192`):
+  # fairness sweep for the FFT-transpose layout; output tagged with the dims.
+  DIMS_ARG="${2:-}"
+  if [ -n "$DIMS_ARG" ]; then
+    DIMS="${DIMS_ARG/x/,}"; TAG="_d${DIMS_ARG}"
+  else
+    DIMS="0,0"; TAG=""
+  fi
+  OUT="$RES/cans_weak_n${N}${TAG}.json"
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
   NP=$NP NX=$(( BASE_GNX * N )) NY=$GNY NZ=$GNZ NSTEPS=20 TILE=$TILE \
-    LABEL="snellius-genoa-cans" OUT="$OUT" \
+    LABEL="snellius-genoa-cans" OUT="$OUT" DIMS="$DIMS" \
     CANS="$REFDIR/CaNS/run/cans" MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix" \
     "$EXDIR/../run_cans.sh" || echo "[FAILED] $OUT"
 elif [ "$CODE" = incflo ]; then
