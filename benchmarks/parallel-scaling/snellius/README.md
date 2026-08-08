@@ -25,17 +25,33 @@ cans`, `tgv_weak_gpu.sh levers`.
 
 ## 1. GPU weak scaling 1–32 H100 (task: extend the curve + per-phase split)
 
+**The GPU build must be rebuilt first** (the driver needs the tolerance-stop / mean-removal APIs
+from the perf commits — an older `build_cuda_mpi` fails every run with a TypeError):
+
 ```bash
-sbatch --nodes=1 tgv_weak_gpu.sh      # N=1,2,4      (~15 min)
-sbatch --nodes=2 tgv_weak_gpu.sh      # N=8
-sbatch --nodes=4 tgv_weak_gpu.sh      # N=16
-sbatch --nodes=8 tgv_weak_gpu.sh      # N=32
-# lever ablation (Chebyshev / mean-scope / GraphAMG bottom / host-staged halo) at the max N:
-sbatch --nodes=2 tgv_weak_gpu.sh levers
-sbatch --nodes=4 tgv_weak_gpu.sh levers
+cd /projects/0/prjs1022/peclet/suite && git pull --recurse-submodules
+cd ../peclet-examples/examples/wall-bounded-turbulence
+sbatch install_snellius.sh h100          # incremental flow rebuild; note the job id -> $BUILD
 ```
 
-Cost: each N is a ≲2-minute measurement; the whole campaign is a few k SBU.
+Then queue the whole campaign with dependencies (each job measures ONLY its argument N —
+queue-parallel safe):
+
+```bash
+cd ../../benchmarks/parallel-scaling/snellius
+sbatch --dependency=afterok:$BUILD --nodes=1 tgv_weak_gpu.sh 1
+sbatch --dependency=afterok:$BUILD --nodes=1 tgv_weak_gpu.sh 2
+sbatch --dependency=afterok:$BUILD --nodes=1 tgv_weak_gpu.sh 4
+sbatch --dependency=afterok:$BUILD --nodes=2 tgv_weak_gpu.sh 8
+sbatch --dependency=afterok:$BUILD --nodes=4 tgv_weak_gpu.sh 16
+sbatch --dependency=afterok:$BUILD --nodes=8 tgv_weak_gpu.sh 32
+# lever ablation (Chebyshev / mean-scope-all / GraphAMG bottom / host-staged halo):
+sbatch --dependency=afterok:$BUILD --nodes=2 tgv_weak_gpu.sh levers   # at N=8
+sbatch --dependency=afterok:$BUILD --nodes=4 tgv_weak_gpu.sh levers   # at N=16
+```
+
+Cost: each N is a ≲2-minute measurement; the whole campaign is a few k SBU. gpu_h100 queue wait
+dominates — short walltimes (45 min) backfill well.
 
 ## 2. Genoa CPU
 
