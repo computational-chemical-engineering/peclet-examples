@@ -24,7 +24,13 @@ DT=$(python3 -c "print(0.2*2*$PI/$TILE)")
 ENDT=$(python3 -c "print($NSTEPS*0.2*2*$PI/$TILE)")
 
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/oftgv.XXXXXX")
-trap 'rm -rf "$WORK"' EXIT
+# On failure: dump the OpenFOAM logs BEFORE cleanup (otherwise the evidence is deleted)
+trap 'code=$?; if [ $code -ne 0 ]; then
+        echo "[run_openfoam FAILED exit=$code] last lines of each stage log:" >&2
+        for f in "$WORK"/case/log.*; do
+          [ -f "$f" ] && { echo "--- $f:" >&2; tail -8 "$f" >&2; }
+        done
+      fi; rm -rf "$WORK"' EXIT
 cp -r "$HERE/case" "$WORK/case"
 for f in system/blockMeshDict system/controlDict system/decomposeParDict; do
   sed -i -e "s/@NX@/$NX/g; s/@NY@/$NY/g; s/@NZ@/$NZ/g" \

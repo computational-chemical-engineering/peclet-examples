@@ -76,8 +76,18 @@ elif [ "$CODE" = incflo ]; then
     INCFLO="$REFDIR/incflo/build/incflo.ex" MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix" \
     "$EXDIR/../run_incflo.sh" || echo "[FAILED] $OUT"
 elif [ "$CODE" = openfoam ]; then
-  module load OpenFOAM/v2406-foss-2023a 2>/dev/null || module load "$(module -r -t avail '^OpenFOAM/v2' 2>&1 | grep '^OpenFOAM' | sort -V | tail -1)"
-  source "$FOAM_BASH" 2>/dev/null || source "$WM_PROJECT_DIR/etc/bashrc"
+  # OpenFOAM modules may live under a different toolchain year than the loaded 2024 stack:
+  # enumerate across years, load the newest v-series, fail LOUDLY with the available list.
+  OFMOD="$(module -r -t avail '^OpenFOAM' 2>&1 | grep -E '^OpenFOAM/v[0-9]' | sort -V | tail -1)"
+  if [ -z "$OFMOD" ]; then
+    module load 2023 2>/dev/null || true
+    OFMOD="$(module -r -t avail '^OpenFOAM' 2>&1 | grep -E '^OpenFOAM/v[0-9]' | sort -V | tail -1)"
+  fi
+  [ -n "$OFMOD" ] || { echo "FATAL: no OpenFOAM module found; module avail says:" >&2
+                       module -r avail '^OpenFOAM' 2>&1 | tail -20 >&2; exit 1; }
+  echo "[openfoam] using module $OFMOD"
+  module load "$OFMOD" || { echo "FATAL: module load $OFMOD failed" >&2; exit 1; }
+  source "${FOAM_BASH:-$WM_PROJECT_DIR/etc/bashrc}" 2>/dev/null || true
   NP=$(( 192 * N ))
   OUT="$RES/of_weak_n${N}.json"
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
