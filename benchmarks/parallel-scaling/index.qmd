@@ -169,11 +169,50 @@ plateau-vs-decay verdict on the inter-node drop)*
 *(pending: Chebyshev vs MG-PCG, GraphAMG bottom, GPU-aware vs host-staged halo ablation at 8/16
 GPUs — and any default changed by a clear winner)*
 
-## CPU weak scaling on Snellius Genoa vs CaNS and OpenFOAM
+## Cross-node CPU weak scaling on Snellius Genoa: the structural argument, measured
 
-*(pending: the three-code weak-scaling comparison at matched cells/rank, with the honest
-methodology notes — an FFT direct solve and an algebraic-multigrid general-purpose code bracket
-peclet's geometric-MG-for-general-geometry design point)*
+The head-to-head the study was built for: 188.7 M cells *per node* (768×640×384 each), grown with
+the node count on Snellius Genoa (192 cores/node), every code on the identical tiled-TGV case.
+peclet runs its measured single-node optimum (96 ranks × 2 threads, which alone delivers
+59 Mcell/s — 6× the whole 24-core workstation); the references run their natural pure-MPI mode.
+
+**Methodology note that is itself a finding:** single scaling measurements on a busy cluster are
+noise. The same peclet configuration measured 3.2 s and 8.0 s per step on different node
+allocations before we pinned cores (`--cpu-bind=cores`) and took three draws per point. Bound
+draws reproduce to ±5 %; the figure shows every draw (open markers) and the median (line). CaNS
+and incflo points are single draws — their *large* features are far outside this noise band, but
+their small wiggles are not interpretable.
+
+![Cross-node weak scaling on Snellius Genoa, 188.7 Mcells/node fixed. Left: efficiency vs own
+1-node baseline (open circles: individual peclet draws). Right: aggregate throughput; the dotted
+line is ideal scaling at peclet's slope.](snellius_weak.png)
+
+| nodes | peclet (median) | CaNS | incflo |
+|---|---|---|---|
+| 1 | 45 Mcell/s — 100 % | **109 — 100 %** | 16 — 100 % |
+| 2 | 86 — 96 % | 20 — 9 % | 21 — 67 % |
+| 4 | 167 — 93 % | 153 — 35 % | 49 — 77 % |
+| 8 | **266 — 74 %** | 45 — **5 %** | — |
+
+Three structural results:
+
+1. **peclet holds the flattest curve in the field** — 96/93/74 % at 2/4/8 nodes, iterations
+   pinned at 8.1 throughout, and the measured all-reduce cost growing like the expected
+   latency-bound log-term (153 → 431 ms/step, ~9 % of the step at 8 nodes). This is the "one-time
+   inter-node cost, then a gentle slope" shape the study set out to verify.
+2. **CaNS's single-node crown does not survive the interconnect.** 2.4× faster than peclet on one
+   node — and by two nodes it has collapsed to 9 % efficiency (reproduced in independent runs),
+   at eight nodes to 5 %: **eight CaNS nodes deliver the throughput of one peclet node.** The FFT
+   direct solve's global all-to-all transposes are cheap in shared memory and ruinous across
+   nodes; peclet's halo + reduction structure is precisely what avoids this. (Caveat stated
+   honestly: CaNS ran with its automatic pencil-grid choice; expert `dims` tuning may soften —
+   but cannot remove — the all-to-all tax.)
+3. **Against its own method family, peclet wins on both axes**: ~3× incflo per node *and* the
+   flatter curve (93 % vs 77 % at 4 nodes).
+
+The crossover happens **before two nodes**: any problem too big for a single node is already a
+problem where peclet outruns the FFT state of the art. *(OpenFOAM's cross-node points — same ESI
+v2412 built from source on Snellius — are compiling and will complete this figure.)*
 
 ## Decomposition anatomy: is a prime rank count much worse than a power of two?
 
