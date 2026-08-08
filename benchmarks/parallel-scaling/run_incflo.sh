@@ -7,6 +7,12 @@
 # reproduces the same tiled field as tgv_bench.py; mu=0.01, rho=1 gives Re_tile = 100.
 #
 # Usage: NP=4 NX=128 NY=128 NZ=128 NSTEPS=20 OUT=incflo_np4.json ./run_incflo.sh
+#
+# FAIR-COMPARISON SETTINGS (measured ablation, serial 128^3: 6402 -> 4183 ms/step, 1.53x):
+#   MAXGRID (default 64): AMReX default max_grid_size=32 shreds each rank into tiny boxes
+#     (ghost overhead); 64 balances box count against per-box overhead at our rank counts.
+#   MGRTOL (default 1e-5): AMReX MLMG defaults to ~1e-11 — far tighter than peclet (1e-5) or
+#     OpenFOAM (~1e-6) pay; matched to the study's tolerance level.
 set -eu
 HERE="$(cd "$(dirname "$0")" && pwd)"
 NP=${NP:-1}
@@ -18,6 +24,8 @@ case "$OUT" in /*) : ;; *) OUT="$PWD/$OUT" ;; esac
 LABEL=${LABEL:-incflo}
 INCFLO=${INCFLO:-$HOME/Codes/scaling-refs/incflo/build/incflo.ex}
 MPIRUN=${MPIRUN:-/usr/bin/mpirun}
+MAXGRID=${MAXGRID:-64}
+MGRTOL=${MGRTOL:-1e-5}
 
 NTX=$((NX / TILE)); NTY=$((NY / TILE)); NTZ=$((NZ / TILE))
 DT=$(python3 -c "print(0.2/$TILE)")     # CFL 0.2: dx = 1/TILE domain units, U0 = 1
@@ -37,6 +45,10 @@ incflo.ro_0             = 1.
 incflo.mu               = 0.01
 amr.n_cell              = $NX $NY $NZ
 amr.max_level           = 0
+amr.max_grid_size       = $MAXGRID
+mac_proj.mg_rtol        = $MGRTOL
+nodal_proj.mg_rtol      = $MGRTOL
+diffusion.mg_rtol       = $MGRTOL
 geometry.prob_lo        = 0. 0. 0.
 geometry.prob_hi        = $NTX. $NTY. $NTZ.
 geometry.is_periodic    = 1 1 1
@@ -48,9 +60,9 @@ $MPIRUN ${NPFLAG:--np} "$NP" ${MPIFLAGS:---bind-to core} "$INCFLO" inputs > log.
   tail -8 log.run >&2; exit 1; }
 
 # per-step wall time from incflo's per-step "Time per step" prints; steady half
-python3 - log.run "$NP" "$NX" "$NY" "$NZ" "$NSTEPS" "$LABEL" "$OUT" <<'EOF'
+python3 - log.run "$NP" "$NX" "$NY" "$NZ" "$NSTEPS" "$LABEL" "$OUT" "$MAXGRID" "$MGRTOL" <<'EOF'
 import json, re, sys
-log, np_, nx, ny, nz, nsteps, label, out = sys.argv[1:]
+log, np_, nx, ny, nz, nsteps, label, out, maxgrid, mgrtol = sys.argv[1:]
 np_, nx, ny, nz, nsteps = int(np_), int(nx), int(ny), int(nz), int(nsteps)
 txt = open(log).read()
 t = [float(m.group(1)) for m in re.finditer(r"Time per step (\S+)", txt)]
@@ -61,7 +73,8 @@ ms = 1e3 * sum(d) / len(d)
 cells = nx * ny * nz
 res = {"label": label, "np": np_, "backend": "cpu", "global": [nx, ny, nz], "cells": cells,
        "nsteps": nsteps, "ms_per_step": ms, "mcells_per_s": cells / (ms / 1e3) / 1e6,
-       "code": "incflo", "solver": "FV+MLMG-projection"}
+       "code": "incflo", "solver": "FV+MLMG-projection",
+       "maxgrid": int(maxgrid), "mg_rtol": float(mgrtol)}
 json.dump(res, open(out, "w"), indent=1)
 print(f"[result] {ms:.1f} ms/step  {res['mcells_per_s']:.2f} Mcell/s  -> {out}")
 EOF
