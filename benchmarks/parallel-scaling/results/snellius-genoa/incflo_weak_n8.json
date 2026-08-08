@@ -1,16 +1,16 @@
 {
  "label": "snellius-genoa-incflo",
- "np": 768,
+ "np": 1536,
  "backend": "cpu",
  "global": [
-  3072,
+  6144,
   640,
   384
  ],
- "cells": 754974720,
+ "cells": 1509949440,
  "nsteps": 15,
- "ms_per_step": 11257.667182500001,
- "mcells_per_s": 67.06315862433785,
+ "ms_per_step": 12883.18607125,
+ "mcells_per_s": 117.20310734078345,
  "code": "incflo",
  "solver": "FV+MLMG-projection",
  "maxgrid": 64,

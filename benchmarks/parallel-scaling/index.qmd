@@ -125,17 +125,20 @@ is the single RTX 5080 running the same case.](workstation_weak.png)
 With per-rank work fixed, all four codes decay together — **and this is not communication**:
 peclet's pressure iteration count stays at exactly 7.0 per step at every rank count. A single
 node's weak scaling measures **shared memory-bandwidth saturation**, nothing else — the efficiency
-ordering (incflo 48 %, peclet 40 %, CaNS 31 %, OpenFOAM 29 % at 24 ranks) is simply the *inverse*
+ordering (incflo 43 %, peclet 40 %, CaNS 31 %, OpenFOAM 29 % at 24 ranks) is simply the *inverse*
 of per-core bandwidth demand: the slower a code streams per core-second, the later the shared
 memory system saturates. Absolute CPU throughput on 24 cores: **CaNS 41 Mcell/s, peclet 9.8,
-incflo 3.6, OpenFOAM 3.3**. Three comparisons worth separating:
+incflo 4.4, OpenFOAM 3.3**. Three comparisons worth separating:
 
 - **vs OpenFOAM** (the ubiquitous general-purpose reference): peclet is **3× faster** at identical
   settings.
 - **vs incflo** (the AMReX exascale solver in peclet's *own method family* — finite-volume
   incompressible NS, geometric-multigrid projections, embedded-boundary capable): peclet is
-  **2.7× faster on CPU**, and 3.3× per core — winning its own game against the state of the art
-  that shares its design constraints.
+  **2.2× faster on CPU** (2.4× per core) — winning its own game against the state of the art that
+  shares its design constraints. *Fairness note: incflo runs here with expert-tuned settings, not
+  defaults — we measured the ablation (`max_grid_size` 32→64: 1.25×; MLMG tolerances matched to
+  the study's 1e-5 instead of AMReX's ~1e-11 default: 1.31×; combined 1.53×) and report the tuned
+  numbers.*
 - **vs CaNS** (the FFT ceiling): the remaining 4× is the price of generality stated honestly — an
   explicit RK3 step plus an exact FFT solve that exists *only because* the box is trivial, against
   an implicit step and a geometric multigrid that handle arbitrary cut-cell geometry at large

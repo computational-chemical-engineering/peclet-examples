@@ -1,0 +1,18 @@
+{
+ "label": "workstation-incflo",
+ "np": 8,
+ "backend": "cpu",
+ "global": [
+  1024,
+  128,
+  128
+ ],
+ "cells": 16777216,
+ "nsteps": 20,
+ "ms_per_step": 8256.4355482,
+ "mcells_per_s": 2.032016831241132,
+ "code": "incflo",
+ "solver": "FV+MLMG-projection",
+ "maxgrid": 64,
+ "mg_rtol": 1e-05
+}
