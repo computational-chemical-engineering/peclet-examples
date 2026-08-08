@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Reference-code weak scaling on the workstation: CaNS and OpenFOAM on the same tiled-TGV case
-# as bench_workstation.sh part B (128^3 = 2.1M cells per rank, pure MPI, x grows).
-# Usage: ./bench_references.sh [cans|openfoam|all]     (default all)
+# Reference-code weak scaling on the workstation: CaNS, OpenFOAM and incflo on the same tiled-TGV
+# case as bench_workstation.sh part B (128^3 = 2.1M cells per rank, pure MPI, x grows).
+# Usage: ./bench_references.sh [cans|openfoam|incflo|all]     (default all)
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RES="$HERE/results/workstation"
@@ -27,4 +27,14 @@ if [ "$part" = openfoam ] || [ "$part" = all ]; then
       LABEL="workstation-openfoam" OUT="$out" "$HERE/openfoam-tgv/run_openfoam.sh" || echo "[FAIL] $out"
   done
 fi
+if [ "$part" = incflo ] || [ "$part" = all ]; then
+  echo "== incflo weak scaling, 2.1M cells/rank =="
+  for np in 1 2 4 8 16 24; do
+    out="$RES/incflo_weak_np${np}.json"
+    [ -f "$out" ] && { echo "[skip] $out"; continue; }
+    NP=$np NX=$((128 * np)) NY=128 NZ=128 NSTEPS=20 TILE=64 \
+      LABEL="workstation-incflo" OUT="$out" "$HERE/run_incflo.sh" || echo "[FAIL] $out"
+  done
+fi
+
 echo "== done: $RES =="

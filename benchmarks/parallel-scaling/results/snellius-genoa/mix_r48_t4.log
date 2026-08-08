@@ -1,0 +1,52 @@
+[cfg] global 768x640x384 = 188.7M cells  tile=64  Re=100 nu=0.64 dt=0.2  ranks=48  backend=OpenMP  pressure=pcg(maxit=200,rtol=1e-05,levels=5,warmstart=1)  adv=SOU  steps=5+15
+  rank 0: block 192x112x192 at [0, 0, 0]  tcn582.local.snellius.surf.nl -
+  rank 1: block 192x112x192 at [0, 112, 0]  tcn582.local.snellius.surf.nl -
+  rank 2: block 192x96x192 at [0, 224, 0]  tcn582.local.snellius.surf.nl -
+  rank 3: block 192x112x192 at [0, 0, 192]  tcn582.local.snellius.surf.nl -
+  rank 4: block 192x112x192 at [0, 112, 192]  tcn582.local.snellius.surf.nl -
+  rank 5: block 192x96x192 at [0, 224, 192]  tcn582.local.snellius.surf.nl -
+  rank 6: block 192x112x192 at [192, 0, 0]  tcn582.local.snellius.surf.nl -
+  rank 7: block 192x112x192 at [192, 112, 0]  tcn582.local.snellius.surf.nl -
+  rank 8: block 192x96x192 at [192, 224, 0]  tcn582.local.snellius.surf.nl -
+  rank 9: block 192x112x192 at [192, 0, 192]  tcn582.local.snellius.surf.nl -
+  rank 10: block 192x112x192 at [192, 112, 192]  tcn582.local.snellius.surf.nl -
+  rank 11: block 192x96x192 at [192, 224, 192]  tcn582.local.snellius.surf.nl -
+  rank 12: block 192x112x192 at [0, 320, 0]  tcn582.local.snellius.surf.nl -
+  rank 13: block 192x112x192 at [0, 432, 0]  tcn582.local.snellius.surf.nl -
+  rank 14: block 192x96x192 at [0, 544, 0]  tcn582.local.snellius.surf.nl -
+  rank 15: block 192x112x192 at [0, 320, 192]  tcn582.local.snellius.surf.nl -
+  rank 16: block 192x112x192 at [0, 432, 192]  tcn582.local.snellius.surf.nl -
+  rank 17: block 192x96x192 at [0, 544, 192]  tcn582.local.snellius.surf.nl -
+  rank 18: block 192x112x192 at [192, 320, 0]  tcn582.local.snellius.surf.nl -
+  rank 19: block 192x112x192 at [192, 432, 0]  tcn582.local.snellius.surf.nl -
+  rank 20: block 192x96x192 at [192, 544, 0]  tcn582.local.snellius.surf.nl -
+  rank 21: block 192x112x192 at [192, 320, 192]  tcn582.local.snellius.surf.nl -
+  rank 22: block 192x112x192 at [192, 432, 192]  tcn582.local.snellius.surf.nl -
+  rank 23: block 192x96x192 at [192, 544, 192]  tcn582.local.snellius.surf.nl -
+  rank 24: block 192x112x192 at [384, 0, 0]  tcn582.local.snellius.surf.nl -
+  rank 25: block 192x112x192 at [384, 112, 0]  tcn582.local.snellius.surf.nl -
+  rank 26: block 192x96x192 at [384, 224, 0]  tcn582.local.snellius.surf.nl -
+  rank 27: block 192x112x192 at [384, 0, 192]  tcn582.local.snellius.surf.nl -
+  rank 28: block 192x112x192 at [384, 112, 192]  tcn582.local.snellius.surf.nl -
+  rank 29: block 192x96x192 at [384, 224, 192]  tcn582.local.snellius.surf.nl -
+  rank 30: block 192x112x192 at [576, 0, 0]  tcn582.local.snellius.surf.nl -
+  rank 31: block 192x112x192 at [576, 112, 0]  tcn582.local.snellius.surf.nl -
+  rank 32: block 192x96x192 at [576, 224, 0]  tcn582.local.snellius.surf.nl -
+  rank 33: block 192x112x192 at [576, 0, 192]  tcn582.local.snellius.surf.nl -
+  rank 34: block 192x112x192 at [576, 112, 192]  tcn582.local.snellius.surf.nl -
+  rank 35: block 192x96x192 at [576, 224, 192]  tcn582.local.snellius.surf.nl -
+  rank 36: block 192x112x192 at [384, 320, 0]  tcn582.local.snellius.surf.nl -
+  rank 37: block 192x112x192 at [384, 432, 0]  tcn582.local.snellius.surf.nl -
+  rank 38: block 192x96x192 at [384, 544, 0]  tcn582.local.snellius.surf.nl -
+  rank 39: block 192x112x192 at [384, 320, 192]  tcn582.local.snellius.surf.nl -
+  rank 40: block 192x112x192 at [384, 432, 192]  tcn582.local.snellius.surf.nl -
+  rank 41: block 192x96x192 at [384, 544, 192]  tcn582.local.snellius.surf.nl -
+  rank 42: block 192x112x192 at [576, 320, 0]  tcn582.local.snellius.surf.nl -
+  rank 43: block 192x112x192 at [576, 432, 0]  tcn582.local.snellius.surf.nl -
+  rank 44: block 192x96x192 at [576, 544, 0]  tcn582.local.snellius.surf.nl -
+  rank 45: block 192x112x192 at [576, 320, 192]  tcn582.local.snellius.surf.nl -
+  rank 46: block 192x112x192 at [576, 432, 192]  tcn582.local.snellius.surf.nl -
+  rank 47: block 192x96x192 at [576, 544, 192]  tcn582.local.snellius.surf.nl -
+[result] 4662.7 ms/step  40.5 Mcell/s  pressure iters/step 9.5
+[phases, rank-max ms/step] step=4662.6  predictor=747.1  momentum=838.5  projection=3412.2  pressure_allreduce=200.4  allreduce_count=51
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/parallel-scaling/snellius/results/snellius-genoa/mix_r48_t4.json

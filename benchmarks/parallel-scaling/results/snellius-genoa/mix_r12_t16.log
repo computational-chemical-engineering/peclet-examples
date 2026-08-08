@@ -1,0 +1,16 @@
+[cfg] global 768x640x384 = 188.7M cells  tile=64  Re=100 nu=0.64 dt=0.2  ranks=12  backend=OpenMP  pressure=pcg(maxit=200,rtol=1e-05,levels=5,warmstart=1)  adv=SOU  steps=5+15
+  rank 0: block 128x320x384 at [0, 0, 0]  tcn816.local.snellius.surf.nl -
+  rank 1: block 256x320x192 at [128, 0, 0]  tcn816.local.snellius.surf.nl -
+  rank 2: block 256x320x192 at [128, 0, 192]  tcn816.local.snellius.surf.nl -
+  rank 3: block 128x320x384 at [0, 320, 0]  tcn819.local.snellius.surf.nl -
+  rank 4: block 256x320x192 at [128, 320, 0]  tcn819.local.snellius.surf.nl -
+  rank 5: block 256x320x192 at [128, 320, 192]  tcn819.local.snellius.surf.nl -
+  rank 6: block 128x320x384 at [384, 0, 0]  tcn820.local.snellius.surf.nl -
+  rank 7: block 256x320x192 at [512, 0, 0]  tcn820.local.snellius.surf.nl -
+  rank 8: block 256x320x192 at [512, 0, 192]  tcn820.local.snellius.surf.nl -
+  rank 9: block 128x320x384 at [384, 320, 0]  tcn821.local.snellius.surf.nl -
+  rank 10: block 256x320x192 at [512, 320, 0]  tcn821.local.snellius.surf.nl -
+  rank 11: block 256x320x192 at [512, 320, 192]  tcn821.local.snellius.surf.nl -
+[result] 4561.2 ms/step  41.4 Mcell/s  pressure iters/step 12.0
+[phases, rank-max ms/step] step=4561.2  predictor=430.6  momentum=399.7  projection=3735.1  pressure_allreduce=47.0  allreduce_count=63
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/parallel-scaling/snellius/results/snellius-genoa/mix_r12_t16.json

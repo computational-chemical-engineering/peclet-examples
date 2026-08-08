@@ -4,9 +4,11 @@
 # as tgv_genoa.sh MODE=weak (188M cells/node, GNX grows with nodes).
 #
 # Mode is the SCRIPT ARGUMENT (SURF sbatch drops leading env vars):
-#   One-time CaNS build:   sbatch --nodes=1 refs_genoa.sh build
+#   One-time builds:       sbatch --nodes=1 refs_genoa.sh build          # CaNS
+#                          sbatch --nodes=1 refs_genoa.sh incflo-build   # incflo (AMReX superbuild)
 #   Weak points:           sbatch --nodes=2 refs_genoa.sh cans
 #                          sbatch --nodes=2 refs_genoa.sh openfoam
+#                          sbatch --nodes=2 refs_genoa.sh incflo
 #
 # OpenFOAM caveat: blockMesh+decomposePar are SERIAL — mesh generation for >2 nodes' worth of
 # cells (>380M) takes long + lots of RAM on one core. OpenFOAM runs use RPN=192 (pure MPI, its
@@ -41,6 +43,21 @@ if [ "$MODE" = build ] || [ "${BUILD_CANS:-0}" = 1 ]; then
   exit 0
 fi
 
+if [ "$MODE" = incflo-build ]; then
+  module load CMake 2>/dev/null || true
+  cd "$REFDIR"
+  [ -d incflo ] || git clone --depth 1 https://github.com/AMReX-Fluids/incflo.git
+  [ -d amrex ] || git clone --depth 1 https://github.com/AMReX-Codes/amrex.git
+  [ -d AMReX-Hydro ] || git clone --depth 1 https://github.com/AMReX-Fluids/AMReX-Hydro.git
+  cd incflo
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DAMREX_HOME=../amrex \
+    -DAMREX_HYDRO_HOME=../AMReX-Hydro -DINCFLO_DIM=3 -DINCFLO_MPI=ON -DINCFLO_OMP=OFF \
+    -DCMAKE_CXX_FLAGS=-march=native
+  cmake --build build -j 32
+  ls -la build/incflo.ex && echo "incflo built"
+  exit 0
+fi
+
 CODE="$MODE"
 if [ "$CODE" = cans ]; then
   NP=$(( 192 * N ))
@@ -50,6 +67,14 @@ if [ "$CODE" = cans ]; then
     LABEL="snellius-genoa-cans" OUT="$OUT" \
     CANS="$REFDIR/CaNS/run/cans" MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix" \
     "$EXDIR/../run_cans.sh" || echo "[FAILED] $OUT"
+elif [ "$CODE" = incflo ]; then
+  NP=$(( 192 * N ))
+  OUT="$RES/incflo_weak_n${N}.json"
+  [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
+  NP=$NP NX=$(( BASE_GNX * N )) NY=$GNY NZ=$GNZ NSTEPS=15 TILE=$TILE \
+    LABEL="snellius-genoa-incflo" OUT="$OUT" \
+    INCFLO="$REFDIR/incflo/build/incflo.ex" MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix" \
+    "$EXDIR/../run_incflo.sh" || echo "[FAILED] $OUT"
 elif [ "$CODE" = openfoam ]; then
   module load OpenFOAM/v2406-foss-2023a 2>/dev/null || module load "$(module -r -t avail '^OpenFOAM/v2' 2>&1 | grep '^OpenFOAM' | sort -V | tail -1)"
   source "$FOAM_BASH" 2>/dev/null || source "$WM_PROJECT_DIR/etc/bashrc"

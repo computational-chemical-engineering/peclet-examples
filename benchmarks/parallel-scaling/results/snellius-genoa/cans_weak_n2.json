@@ -1,0 +1,17 @@
+{
+ "label": "snellius-genoa-cans",
+ "np": 384,
+ "backend": "cpu",
+ "omp_threads": "1",
+ "global": [
+  1536,
+  640,
+  384
+ ],
+ "cells": 377487360,
+ "nsteps": 20,
+ "ms_per_step": 17877.097234825524,
+ "mcells_per_s": 21.11569652732183,
+ "code": "cans",
+ "solver": "RK3+FFT"
+}
