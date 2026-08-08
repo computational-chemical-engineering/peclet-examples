@@ -4,8 +4,12 @@
 # as tgv_genoa.sh MODE=weak (188M cells/node, GNX grows with nodes).
 #
 # Mode is the SCRIPT ARGUMENT (SURF sbatch drops leading env vars):
-#   One-time builds:       sbatch --nodes=1 refs_genoa.sh build          # CaNS
-#                          sbatch --nodes=1 refs_genoa.sh incflo-build   # incflo (AMReX superbuild)
+#   One-time builds:       sbatch --nodes=1 refs_genoa.sh build            # CaNS
+#                          sbatch --nodes=1 refs_genoa.sh incflo-build     # incflo (AMReX superbuild)
+#                          sbatch --nodes=1 --time=03:00:00 refs_genoa.sh openfoam-build
+#                              # ESI OpenFOAM v2412 from source (~1h at -j 96) — the SAME version
+#                              # and case dialect as the workstation reference; Snellius' central
+#                              # module is the Foundation fork (OpenFOAM/12), a different dialect.
 #   Weak points:           sbatch --nodes=2 refs_genoa.sh cans
 #                          sbatch --nodes=2 refs_genoa.sh openfoam
 #                          sbatch --nodes=2 refs_genoa.sh incflo
@@ -43,6 +47,20 @@ if [ "$MODE" = build ] || [ "${BUILD_CANS:-0}" = 1 ]; then
   exit 0
 fi
 
+if [ "$MODE" = openfoam-build ]; then
+  cd "$REFDIR"
+  for f in OpenFOAM-v2412 ThirdParty-v2412; do
+    [ -f "$f.tgz" ] || wget -q "https://dl.openfoam.com/source/v2412/$f.tgz"
+    [ -d "$f" ] || tar xzf "$f.tgz"
+  done
+  cd OpenFOAM-v2412
+  set +u; source etc/bashrc || true; set -u    # foam bashrc is not `set -u`-clean
+  [ -n "${WM_PROJECT_DIR:-}" ] || { echo "FATAL: OpenFOAM env did not source" >&2; exit 1; }
+  ./Allwmake -j 96 -s -q -l
+  command -v icoFoam && echo "OpenFOAM v2412 built"
+  exit 0
+fi
+
 if [ "$MODE" = incflo-build ]; then
   module load CMake 2>/dev/null || true
   cd "$REFDIR"
@@ -76,18 +94,13 @@ elif [ "$CODE" = incflo ]; then
     INCFLO="$REFDIR/incflo/build/incflo.ex" MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix" \
     "$EXDIR/../run_incflo.sh" || echo "[FAILED] $OUT"
 elif [ "$CODE" = openfoam ]; then
-  # OpenFOAM modules may live under a different toolchain year than the loaded 2024 stack:
-  # enumerate across years, load the newest v-series, fail LOUDLY with the available list.
-  OFMOD="$(module -r -t avail '^OpenFOAM' 2>&1 | grep -E '^OpenFOAM/v[0-9]' | sort -V | tail -1)"
-  if [ -z "$OFMOD" ]; then
-    module load 2023 2>/dev/null || true
-    OFMOD="$(module -r -t avail '^OpenFOAM' 2>&1 | grep -E '^OpenFOAM/v[0-9]' | sort -V | tail -1)"
-  fi
-  [ -n "$OFMOD" ] || { echo "FATAL: no OpenFOAM module found; module avail says:" >&2
-                       module -r avail '^OpenFOAM' 2>&1 | tail -20 >&2; exit 1; }
-  echo "[openfoam] using module $OFMOD"
-  module load "$OFMOD" || { echo "FATAL: module load $OFMOD failed" >&2; exit 1; }
-  source "${FOAM_BASH:-$WM_PROJECT_DIR/etc/bashrc}" 2>/dev/null || true
+  # source-built ESI v2412 (refs_genoa.sh openfoam-build) — same version + case dialect as the
+  # workstation reference. Snellius' central module is the Foundation fork (different dialect).
+  set +u; source "$REFDIR/OpenFOAM-v2412/etc/bashrc" 2>/dev/null || true; set -u
+  command -v icoFoam >/dev/null || {
+    echo "FATAL: icoFoam not on PATH — run 'sbatch --nodes=1 --time=03:00:00 refs_genoa.sh openfoam-build' first" >&2
+    exit 1; }
+  echo "[openfoam] using $(command -v icoFoam)"
   NP=$(( 192 * N ))
   OUT="$RES/of_weak_n${N}.json"
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }

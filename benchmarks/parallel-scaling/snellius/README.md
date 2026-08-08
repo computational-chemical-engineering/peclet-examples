@@ -49,7 +49,8 @@ for n in 1 2 4 8; do sbatch --nodes=$n tgv_genoa.sh weak; done
 ## 3. References
 
 ```bash
-sbatch --nodes=1 refs_genoa.sh incflo-build      # once (AMReX superbuild, ~15 min)
+sbatch --nodes=1 refs_genoa.sh incflo-build                       # once (AMReX superbuild, ~15 min)
+sbatch --nodes=1 --time=03:00:00 refs_genoa.sh openfoam-build     # once (ESI v2412 source, ~1 h)
 for n in 1 2 4; do sbatch --nodes=$n refs_genoa.sh cans; done
 for n in 1 2 4; do sbatch --nodes=$n refs_genoa.sh incflo; done
 for n in 1 2; do sbatch --nodes=$n refs_genoa.sh openfoam; done   # serial blockMesh caps size
