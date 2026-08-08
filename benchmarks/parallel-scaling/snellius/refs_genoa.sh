@@ -25,7 +25,9 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=tgv-refs-%j.out
 #SBATCH --account=tes24005
+echo "[refs] start $(date '+%T') host=$(hostname) mode='${1:-<none>}' submitdir=${SLURM_SUBMIT_DIR:-?}"
 set -uo pipefail
+set -x   # full trace: this script once failed EMPTY-output — never allow that again
 EXDIR="${SLURM_SUBMIT_DIR:-$PWD}"
 RES="$EXDIR/results/snellius-genoa"; mkdir -p "$RES"
 REFDIR="${REFDIR:-/projects/0/prjs1022/peclet/scaling-refs}"; mkdir -p "$REFDIR"
