@@ -16,8 +16,12 @@ cd ../peclet-examples && git pull
 #         -DCMAKE_PREFIX_PATH=$PWD/../extern/install/host-openmp \
 #         -DPython_EXECUTABLE=$PWD/.venv/bin/python && cmake --build build_omp_mpi -j
 # CaNS build, once:
-BUILD_CANS=1 sbatch --nodes=1 refs_genoa.sh
+sbatch --nodes=1 refs_genoa.sh build
 ```
+
+**Mode selection is always a script ARGUMENT, never a leading env var** — SURF's sbatch drops
+those (the channel campaign's FRESH=1 lesson). `sbatch ... tgv_genoa.sh weak`, `refs_genoa.sh
+cans`, `tgv_weak_gpu.sh levers`.
 
 ## 1. GPU weak scaling 1–32 H100 (task: extend the curve + per-phase split)
 
@@ -26,9 +30,9 @@ sbatch --nodes=1 tgv_weak_gpu.sh      # N=1,2,4      (~15 min)
 sbatch --nodes=2 tgv_weak_gpu.sh      # N=8
 sbatch --nodes=4 tgv_weak_gpu.sh      # N=16
 sbatch --nodes=8 tgv_weak_gpu.sh      # N=32
-# lever ablation (Chebyshev / GraphAMG bottom / host-staged halo) at the allocated max N:
-LEVERS=1 sbatch --nodes=2 tgv_weak_gpu.sh
-LEVERS=1 sbatch --nodes=4 tgv_weak_gpu.sh
+# lever ablation (Chebyshev / mean-scope / GraphAMG bottom / host-staged halo) at the max N:
+sbatch --nodes=2 tgv_weak_gpu.sh levers
+sbatch --nodes=4 tgv_weak_gpu.sh levers
 ```
 
 Cost: each N is a ≲2-minute measurement; the whole campaign is a few k SBU.
@@ -37,15 +41,16 @@ Cost: each N is a ≲2-minute measurement; the whole campaign is a few k SBU.
 
 ```bash
 sbatch --nodes=1 tgv_genoa.sh                       # hybrid mix sweep (192x1 … 12x16)
-# then weak scaling at the winning mix (default 96x2):
-for n in 1 2 4 8; do MODE=weak sbatch --nodes=$n tgv_genoa.sh; done
+# then weak scaling at the winning mix (default 96x2). NOTE: mode is a script ARGUMENT —
+# SURF sbatch drops leading env vars (the FRESH=1 lesson):
+for n in 1 2 4 8; do sbatch --nodes=$n tgv_genoa.sh weak; done
 ```
 
 ## 3. References
 
 ```bash
-for n in 1 2 4; do CODE=cans sbatch --nodes=$n refs_genoa.sh; done
-for n in 1 2; do CODE=openfoam sbatch --nodes=$n refs_genoa.sh; done   # serial blockMesh caps size
+for n in 1 2 4; do sbatch --nodes=$n refs_genoa.sh cans; done
+for n in 1 2; do sbatch --nodes=$n refs_genoa.sh openfoam; done   # serial blockMesh caps size
 ```
 
 ## 4. Bring results home

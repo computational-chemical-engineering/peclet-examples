@@ -8,8 +8,9 @@
 #   sbatch --nodes=2 tgv_weak_gpu.sh            # N = 8
 #   sbatch --nodes=4 tgv_weak_gpu.sh            # N = 16
 #   sbatch --nodes=8 tgv_weak_gpu.sh            # N = 32
-#   LEVERS=1 sbatch --nodes=2 tgv_weak_gpu.sh   # additionally: cheb / GraphAMG-bottom /
-#                                               # host-staged-halo variants at the allocated max N
+#   sbatch --nodes=2 tgv_weak_gpu.sh levers     # additionally: cheb / mean-scope / GraphAMG /
+#             (argument, not env var —          # host-staged-halo variants at the allocated max N
+#              SURF sbatch drops leading env)
 # ==========================================================================================
 #SBATCH --job-name=tgv-weak
 #SBATCH --partition=gpu_h100
@@ -54,7 +55,7 @@ done
 # Lever ablation at the largest allocated N (inter-node points 8/16 are the interesting ones).
 # The default run already uses MEANSCOPE=fine (5.4 allreduces/iter); meanall restores the legacy
 # scope (17.6/iter) to quantify the reduction tax directly at scale.
-if [ "${LEVERS:-0}" = 1 ]; then
+if [ "${1:-}" = levers ] || [ "${LEVERS:-0}" = 1 ]; then
   run_one $MAXN "weak_np${MAXN}_cheb.json"    env PRESSURE=cheb PMAXIT=400
   run_one $MAXN "weak_np${MAXN}_meanall.json" env MEANSCOPE=all
   run_one $MAXN "weak_np${MAXN}_amg.json"     env GRAPHAMG=1

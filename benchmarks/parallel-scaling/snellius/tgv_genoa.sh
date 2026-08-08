@@ -7,9 +7,10 @@
 #   MODE=weak (--nodes=1..8): weak scaling at the chosen mix (default RPN=96 x THREADS=2),
 #             188M cells/node fixed, GNX grows with node count
 #
-#   sbatch --nodes=1 tgv_genoa.sh
-#   MODE=weak sbatch --nodes=4 tgv_genoa.sh
-#   MODE=weak RPN=192 THREADS=1 sbatch --nodes=2 tgv_genoa.sh
+# Pass the mode as the SCRIPT ARGUMENT (SURF sbatch drops leading env vars — the FRESH=1 lesson):
+#   sbatch --nodes=1 tgv_genoa.sh                    # mix
+#   sbatch --nodes=4 tgv_genoa.sh weak
+#   sbatch --nodes=2 --export=ALL,RPN=192,THREADS=1 tgv_genoa.sh weak
 # ==========================================================================================
 #SBATCH --job-name=tgv-genoa
 #SBATCH --partition=genoa
@@ -44,7 +45,7 @@ run_one () {  # ntasks rpn threads gnx out
            "$RES/${out%.json}.log" | sed 's/^/    /'; }
 }
 
-MODE="${MODE:-mix}"
+MODE="${1:-${MODE:-mix}}"   # argument beats env (env vars can be dropped by SURF sbatch)
 if [ "$MODE" = mix ]; then
   export NSTEPS=15 WARMUP=5
   for cfg in "192 1" "96 2" "48 4" "24 8" "12 16"; do

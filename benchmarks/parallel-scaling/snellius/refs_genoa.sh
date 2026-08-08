@@ -3,9 +3,10 @@
 # Reference codes on Snellius genoa: CaNS + OpenFOAM weak scaling on the same tiled-TGV case
 # as tgv_genoa.sh MODE=weak (188M cells/node, GNX grows with nodes).
 #
-# One-time CaNS build (login node or first run):   BUILD_CANS=1 sbatch --nodes=1 refs_genoa.sh
-# Weak points:    CODE=cans sbatch --nodes=2 refs_genoa.sh
-#                 CODE=openfoam sbatch --nodes=2 refs_genoa.sh
+# Mode is the SCRIPT ARGUMENT (SURF sbatch drops leading env vars):
+#   One-time CaNS build:   sbatch --nodes=1 refs_genoa.sh build
+#   Weak points:           sbatch --nodes=2 refs_genoa.sh cans
+#                          sbatch --nodes=2 refs_genoa.sh openfoam
 #
 # OpenFOAM caveat: blockMesh+decomposePar are SERIAL — mesh generation for >2 nodes' worth of
 # cells (>380M) takes long + lots of RAM on one core. OpenFOAM runs use RPN=192 (pure MPI, its
@@ -28,7 +29,8 @@ N=${SLURM_NNODES:-1}
 
 module purge; module load 2024 foss/2024a          # GCC + OpenMPI + FFTW (CaNS needs FFTW)
 
-if [ "${BUILD_CANS:-0}" = 1 ]; then
+MODE="${1:-${CODE:-cans}}"   # argument beats env (env vars can be dropped by SURF sbatch)
+if [ "$MODE" = build ] || [ "${BUILD_CANS:-0}" = 1 ]; then
   cd "$REFDIR"
   [ -d CaNS ] || git clone https://github.com/CaNS-World/CaNS.git
   cd CaNS
@@ -39,7 +41,7 @@ if [ "${BUILD_CANS:-0}" = 1 ]; then
   exit 0
 fi
 
-CODE="${CODE:-cans}"
+CODE="$MODE"
 if [ "$CODE" = cans ]; then
   NP=$(( 192 * N ))
   OUT="$RES/cans_weak_n${N}.json"
