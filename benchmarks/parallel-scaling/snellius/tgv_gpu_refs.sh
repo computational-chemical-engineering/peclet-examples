@@ -1,0 +1,110 @@
+#!/bin/bash
+# ==========================================================================================
+# Reference codes on Snellius gpu_h100: incflo (AMReX CUDA) and CaNS (OpenACC + cuDecomp)
+# on the SAME weak-scaling grids as peclet's GPU study (47.2M cells/GPU: 384N x 384 x 320).
+#
+# Mode is the SCRIPT ARGUMENT (SURF sbatch drops leading env vars):
+#   One-time builds:  sbatch --nodes=1 tgv_gpu_refs.sh incflo-build
+#                     sbatch --nodes=1 tgv_gpu_refs.sh cans-build
+#   Weak points (N = GPUs = allocated nodes x 4):
+#                     sbatch --nodes=1 tgv_gpu_refs.sh incflo 4
+#                     sbatch --nodes=2 tgv_gpu_refs.sh cans 8      etc.
+# ==========================================================================================
+#SBATCH --job-name=tgv-gpuref
+#SBATCH --partition=gpu_h100
+#SBATCH --nodes=1
+#SBATCH --gpus-per-node=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:45:00
+#SBATCH --output=tgv-gpuref-%j.out
+#SBATCH --account=tes24005
+echo "[gpuref] start $(date '+%T') host=$(hostname) mode='${1:-<none>}' n='${2:-}'"
+set -uo pipefail
+set -x
+EXDIR="${SLURM_SUBMIT_DIR:-$PWD}"
+RES="$EXDIR/results/snellius-h100"; mkdir -p "$RES"
+REFDIR="${REFDIR:-/projects/0/prjs1022/peclet/scaling-refs}"; mkdir -p "$REFDIR"
+export TILE=64
+MODE="${1:-}"; NGPU="${2:-4}"
+
+if [ "$MODE" = incflo-build ]; then
+  module purge; module load 2024 foss/2024a CUDA/12.6.0 CMake 2>/dev/null || module load 2024 foss/2024a CUDA/12.6.0
+  cd "$REFDIR"
+  [ -d incflo ] || git clone --depth 1 https://github.com/AMReX-Fluids/incflo.git
+  [ -d amrex ] || git clone --depth 1 https://github.com/AMReX-Codes/amrex.git
+  [ -d AMReX-Hydro ] || git clone --depth 1 https://github.com/AMReX-Fluids/AMReX-Hydro.git
+  # AMReX arch plumbing silently drops SM>=10.0 and can fall back to sm_86 via CMake's stale
+  # FindCUDA table; the bypass patch is harmless for sm_90 but applied for robustness (idempotent).
+  U=amrex/Tools/CMake/AMReXUtils.cmake
+  grep -q "LOCAL PATCH" $U || python3 - "$U" <<'EOF'
+import re, sys
+p = sys.argv[1]; s = open(p).read()
+patch = '''   set(_archs ${${_cuda_archs}})
+
+   if (_archs MATCHES "^[0-9]+(;[0-9]+)*$")  # LOCAL PATCH: numeric archs bypass the stale table
+      set(AMREX_CUDA_ARCHS ${_archs} CACHE INTERNAL "CUDA archs AMReX is built for")
+      return()
+   endif ()
+'''
+s = s.replace('''function (set_cuda_architectures _cuda_archs)
+
+   set(_archs ${${_cuda_archs}})
+''', 'function (set_cuda_architectures _cuda_archs)\n\n' + patch, 1)
+open(p, 'w').write(s)
+EOF
+  cd incflo
+  cmake -S . -B build_gpu -DCMAKE_BUILD_TYPE=Release -DAMREX_HOME=../amrex \
+    -DAMREX_HYDRO_HOME=../AMReX-Hydro -DINCFLO_DIM=3 -DINCFLO_MPI=ON -DINCFLO_OMP=OFF \
+    -DINCFLO_CUDA=ON -DAMReX_CUDA_ARCH=90
+  cmake --build build_gpu -j 32
+  ls -la build_gpu/incflo.ex && echo "incflo GPU built"
+  exit 0
+fi
+
+if [ "$MODE" = cans-build ]; then
+  # CaNS GPU = OpenACC via nvfortran + cuDecomp. Loud failure with the module list if no NVHPC.
+  module purge; module load 2024 2>/dev/null || true
+  NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
+  [ -n "$NVMOD" ] || { echo "FATAL: no NVHPC module:"; module -r avail 'NVHPC|nvhpc' 2>&1 | tail; exit 1; }
+  module load "$NVMOD"
+  cd "$REFDIR/CaNS"
+  git submodule update --init dependencies/cuDecomp || true
+  cp -f configs/defaults/build-default.conf build.conf
+  sed -i 's/^FCOMP=.*/FCOMP=NVIDIA/; s/^GPU=.*/GPU=1/' build.conf
+  grep -E "FCOMP|GPU" build.conf
+  make allclean || true
+  make libs && make -j 16
+  ls -la run/cans && echo "CaNS GPU built"
+  exit 0
+fi
+
+# ---- run modes: incflo | cans, weak grid 384N x 384 x 320 -------------------------------------
+GNX=$(( 384 * NGPU )); GNY=384; GNZ=320
+case "$MODE" in
+incflo)
+  module purge; module load 2024 foss/2024a CUDA/12.6.0
+  OUT="$RES/incflo_gpu_np${NGPU}.json"
+  [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
+  NP=$NGPU NX=$GNX NY=$GNY NZ=$GNZ NSTEPS=30 TILE=$TILE MAXGRID=384 \
+    LABEL="snellius-h100-incflo" OUT="$OUT" \
+    INCFLO="$REFDIR/incflo/build_gpu/incflo.ex" \
+    MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix --gpus-per-task=1 --gpu-bind=per_task:1" \
+    "$EXDIR/../run_incflo.sh" || echo "[FAILED] $OUT"
+  ;;
+cans)
+  module purge; module load 2024 2>/dev/null || true
+  NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
+  module load "$NVMOD"
+  export LD_LIBRARY_PATH="$REFDIR/CaNS/dependencies/cuDecomp/build/lib:${LD_LIBRARY_PATH:-}"
+  OUT="$RES/cans_gpu_np${NGPU}.json"
+  [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
+  NP=$NGPU NX=$GNX NY=$GNY NZ=$GNZ NSTEPS=30 TILE=$TILE \
+    LABEL="snellius-h100-cans" OUT="$OUT" \
+    CANS="$REFDIR/CaNS/run/cans" \
+    MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix --gpus-per-task=1 --gpu-bind=per_task:1" \
+    "$EXDIR/../run_cans.sh" || echo "[FAILED] $OUT"
+  ;;
+*) echo "FATAL: unknown mode '$MODE' (incflo-build|cans-build|incflo|cans)"; exit 1 ;;
+esac
+echo "done -> $RES"
