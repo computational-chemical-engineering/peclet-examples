@@ -1,0 +1,18 @@
+{
+ "label": "workstation-incflo-rtx5080",
+ "np": 1,
+ "backend": "cpu",
+ "global": [
+  160,
+  160,
+  160
+ ],
+ "cells": 4096000,
+ "nsteps": 50,
+ "ms_per_step": 228.69984492,
+ "mcells_per_s": 17.90993781142613,
+ "code": "incflo",
+ "solver": "FV+MLMG-projection",
+ "maxgrid": 160,
+ "mg_rtol": 1e-05
+}
