@@ -1,0 +1,24 @@
+[cfg] global 1536x384x320 = 188.7M cells  tile=64  Re=100 nu=0.64 dt=0.2  ranks=4  backend=Cuda  pressure=pcg(maxit=200,rtol=1e-05,levels=5,warmstart=1)  adv=SOU  steps=10+40
+  rank 0: block 384x384x320 at [0, 0, 0]  gcn120.local.snellius.surf.nl 0000:26:00.0
+  rank 1: block 384x384x320 at [384, 0, 0]  gcn120.local.snellius.surf.nl 0000:06:00.0
+  rank 2: block 384x384x320 at [768, 0, 0]  gcn120.local.snellius.surf.nl 0000:C6:00.0
+  rank 3: block 384x384x320 at [1152, 0, 0]  gcn120.local.snellius.surf.nl 0000:A6:00.0
+[run] warmup 10 steps...
+[run] warmup 1/10 done
+[run] warmup 2/10 done
+[run] warmup 3/10 done
+[run] warmup 4/10 done
+[run] warmup 5/10 done
+[run] warmup 6/10 done
+[run] warmup 7/10 done
+[run] warmup 8/10 done
+[run] warmup 9/10 done
+[run] warmup 10/10 done
+[run] step 8/40
+[run] step 16/40
+[run] step 24/40
+[run] step 32/40
+[run] step 40/40
+[result] 189.2 ms/step  997.6 Mcell/s  pressure iters/step 4.0
+[phases, rank-max ms/step] step=189.2  predictor=9.6  momentum=54.1  projection=124.2  pressure_allreduce=0.3  allreduce_count=23
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/parallel-scaling/snellius/results/snellius-h100/weak_np4_mgfix.json

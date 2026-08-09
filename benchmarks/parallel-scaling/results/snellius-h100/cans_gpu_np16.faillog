@@ -1,0 +1,22 @@
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+/projects/0/prjs1022/peclet/scaling-refs/CaNS/run/cans: error while loading shared libraries: libfftw3.so.3: cannot open shared object file: No such file or directory
+srun: error: gcn120: tasks 0-3: Exited with exit code 127
+srun: Terminating StepId=25377610.0
+srun: error: gcn159: tasks 8-11: Exited with exit code 127
+[2026-08-09T21:36:36.929] error: --task-epilog failed status=15
+srun: error: gcn125: tasks 4-7: Exited with exit code 127
+srun: error: gcn160: tasks 12-15: Exited with exit code 127

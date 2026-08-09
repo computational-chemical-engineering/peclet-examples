@@ -55,8 +55,8 @@ velf(1:3) = 0., 0., 0.
 dims(1:2) = $D1, $D2, ipencil_axis = 1
 /
 &cudecomp
-cudecomp_t_comm_backend = 0, cudecomp_is_t_enable_nccl = T, cudecomp_is_t_enable_nvshmem = T
-cudecomp_h_comm_backend = 0, cudecomp_is_h_enable_nccl = T, cudecomp_is_h_enable_nvshmem = T
+cudecomp_t_comm_backend = 0, cudecomp_is_t_enable_nccl = ${CANS_NCCL:-T}, cudecomp_is_t_enable_nvshmem = ${CANS_NVSHMEM:-T}
+cudecomp_h_comm_backend = 0, cudecomp_is_h_enable_nccl = ${CANS_NCCL:-T}, cudecomp_is_h_enable_nvshmem = ${CANS_NVSHMEM:-T}
 /
 &numerics
 is_impdiff = F, is_impdiff_1d = F

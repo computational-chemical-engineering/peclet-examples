@@ -1,0 +1,18 @@
+{
+ "label": "snellius-h100-incflo",
+ "np": 1,
+ "backend": "cpu",
+ "global": [
+  384,
+  384,
+  320
+ ],
+ "cells": 47185920,
+ "nsteps": 30,
+ "ms_per_step": 772.1080107333333,
+ "mcells_per_s": 61.11310767930476,
+ "code": "incflo",
+ "solver": "FV+MLMG-projection",
+ "maxgrid": 384,
+ "mg_rtol": 1e-05
+}

@@ -185,7 +185,10 @@ cans)
     exit 1; }
   OUT="$RES/cans_gpu_np${NGPU}.json"
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
+  # NCCL/NVSHMEM off: NVHPC 24.9's bundled NCCL errors across nodes here (autotune crash), while
+  # the MPI transpose backends measure fine — cuDecomp autotunes among those (page caveat noted).
   NP=$NGPU NX=$GNX NY=$GNY NZ=$GNZ NSTEPS=30 TILE=$TILE \
+    CANS_NCCL=F CANS_NVSHMEM=F \
     LABEL="snellius-h100-cans" OUT="$OUT" \
     CANS="$REFDIR/CaNS-gpu/run/cans" \
     MPIRUN="$CANS_MPIRUN" NPFLAG="$CANS_NPFLAG" MPIFLAGS="$CANS_MPIFLAGS" \

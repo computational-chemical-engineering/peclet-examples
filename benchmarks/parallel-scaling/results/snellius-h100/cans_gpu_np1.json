@@ -1,0 +1,18 @@
+{
+ "label": "snellius-h100-cans",
+ "np": 1,
+ "backend": "cpu",
+ "omp_threads": "16",
+ "global": [
+  384,
+  384,
+  320
+ ],
+ "cells": 47185920,
+ "nsteps": 30,
+ "ms_per_step": 77.44212140000008,
+ "mcells_per_s": 609.3056226633786,
+ "code": "cans",
+ "solver": "RK3+FFT",
+ "dims": "0,0"
+}

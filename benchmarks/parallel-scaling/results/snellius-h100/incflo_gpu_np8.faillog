@@ -1,0 +1,234 @@
+Initializing AMReX (26.08)...
+MPI initialized with 8 MPI processes
+MPI initialized with thread support level 0
+Initializing CUDA...
+CUDA initialized with 8 devices.
+AMReX (26.08) initialized
+incflo git hash: 7307d8725c2a
+Scalar diffusion coefficients
+Tracer diffusion coeff: 0:0
+Newtonian fluid with mu = 0.01
+Making new level 0 from scratch
+[gcn120:3219008:0:3219008]      cma_ep.c:85   process_vm_readv(pid=3219009 {0x14ba774e8f60,524288}-->{0x14fdb4800000,524288}) returned -1: Bad address
+[gcn125:3627233:0:3627233]      cma_ep.c:85   process_vm_readv(pid=3627234 {0x1492d34e8f60,524288}-->{0x146e44800000,524288}) returned -1: Bad address
+[gcn125:3627234:0:3627234]      cma_ep.c:85   process_vm_readv(pid=3627233 {0x146e1f200000,524288}-->{0x1492f8ae8f60,524288}) returned -1: Bad address
+[gcn120:3219009:0:3219009]      cma_ep.c:85   process_vm_readv(pid=3219010 {0x14fd8f4e8f60,524288}-->{0x148a1c800000,524288}) returned -1: Bad address
+[gcn120:3219007:0:3219007]      cma_ep.c:85   process_vm_readv(pid=3219008 {0x1464f7200000,524288}-->{0x14ba9a800000,524288}) returned -1: Bad address
+[gcn125:3627235:0:3627235]      cma_ep.c:85   process_vm_readv(pid=3627234 {0x1494434e8f60,524288}-->{0x146e44ae8f60,524288}) returned -1: Bad address
+[gcn125:3627232:0:3627232]      cma_ep.c:85   process_vm_readv(pid=3627233 {0x1547ff4e8f60,524288}-->{0x1492f8800000,524288}) returned -1: Bad address
+[gcn120:3219010:0:3219010]      cma_ep.c:85   process_vm_readv(pid=3219009 {0x1489f7200000,524288}-->{0x14fdb4ae8f60,524288}) returned -1: Bad address
+==== backtrace (tid:3219008) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+21 0x000000000042f545 _start()  ???:0
+=================================
+SIGABRT
+==== backtrace (tid:3627232) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+21 0x000000000042f545 _start()  ???:0
+=================================
+SIGABRT
+==== backtrace (tid:3627234) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+21 0x000000000042f545 _start()  ???:0
+=================================
+==== backtrace (tid:3219007) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+SIGABRT
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+21 0x000000000042f545 _start()  ???:0
+=================================
+==== backtrace (tid:3219010) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+SIGABRT
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+==== backtrace (tid:3219009) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+21 0x000000000042f545 _start()  ???:0
+=================================
+21 0x000000000042f545 _start()  ???:0
+=================================
+SIGABRT
+SIGABRT
+==== backtrace (tid:3627235) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+21 0x000000000042f545 _start()  ???:0
+=================================
+SIGABRT
+==== backtrace (tid:3627233) ====
+ 0 0x00000000000037d3 uct_cma_ep_tx_error()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:85
+ 1 0x0000000000003b28 uct_cma_ep_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/cma/cma_ep.c:129
+ 2 0x000000000001e925 uct_scopy_ep_progress_tx()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/sm/scopy/base/scopy_ep.c:150
+ 3 0x0000000000024e31 ucs_arbiter_dispatch_nonempty()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.c:321
+ 4 0x000000000001e449 ucs_arbiter_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/arbiter.h:386
+ 5 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:383
+ 6 0x00000000000255a1 ucs_callbackq_spill_elems_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:385
+ 7 0x00000000000255a1 ucs_callbackq_proxy_callback()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.c:479
+ 8 0x000000000004ea5a ucs_callbackq_dispatch()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucs/datastruct/callbackq.h:215
+ 9 0x000000000004ea5a uct_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/uct/api/uct.h:2787
+10 0x000000000004ea5a ucp_worker_progress()  /tmp/jenkins/build/UCX/1.16.0/GCCcore-13.3.0/ucx-1.16.0/src/ucp/core/ucp_worker.c:2991
+11 0x0000000000029a03 opal_progress()  ???:0
+12 0x00000000000967ef ompi_request_default_test_all()  ???:0
+13 0x00000000000e4a21 MPI_Testall()  ???:0
+14 0x00000000006a1a60 amrex::ParallelDescriptor::Test()  ???:0
+15 0x000000000050f517 amrex::FabArray<amrex::FArrayBox>::FBEP_nowait<double, amrex::FArrayBox>()  ???:0
+16 0x00000000005ba265 incflo::InitialProjection()  ???:0
+17 0x0000000000430fe8 incflo::InitData()  ???:0
+18 0x000000000042c1b3 main()  ???:0
+19 0x000000000002a610 __libc_start_call_main()  ???:0
+20 0x000000000002a6c0 __libc_start_main_alias_2()  :0
+21 0x000000000042f545 _start()  ???:0
+=================================
+SIGABRT
+See Backtrace.1 file for details
+See Backtrace.4 file for details
+See Backtrace.6 file for details
+See Backtrace.7 file for details
+See Backtrace.5 file for details
+See Backtrace.0 file for details
+See Backtrace.2 file for details
+See Backtrace.3 file for details
+[2026-08-09T21:46:43.785] error: *** STEP 25380375.0 ON gcn120 CANCELLED AT 2026-08-09T21:46:43 DUE to SIGNAL Killed ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: error: gcn120: tasks 0,2-3: Killed
+srun: Terminating StepId=25380375.0
+srun: error: gcn120: task 1: Exited with exit code 6
+[2026-08-09T21:46:44.207] error: --task-epilog failed status=15
+srun: error: gcn125: tasks 4-7: Killed

@@ -1,0 +1,39 @@
+[cfg] global 768x640x384 = 188.7M cells  tile=64  Re=100 nu=0.64 dt=0.2  ranks=24  backend=OpenMP  pressure=pcg(maxit=200,rtol=1e-05,levels=5,warmstart=1)  adv=SOU  steps=5+15
+  rank 0: block 192x320x128 at [0, 0, 0]  tcn732.local.snellius.surf.nl -
+  rank 1: block 192x160x256 at [0, 0, 128]  tcn732.local.snellius.surf.nl -
+  rank 2: block 192x160x256 at [0, 160, 128]  tcn732.local.snellius.surf.nl -
+  rank 3: block 192x320x128 at [192, 0, 0]  tcn732.local.snellius.surf.nl -
+  rank 4: block 192x160x256 at [192, 0, 128]  tcn732.local.snellius.surf.nl -
+  rank 5: block 192x160x256 at [192, 160, 128]  tcn732.local.snellius.surf.nl -
+  rank 6: block 192x320x128 at [0, 320, 0]  tcn732.local.snellius.surf.nl -
+  rank 7: block 192x160x256 at [0, 320, 128]  tcn732.local.snellius.surf.nl -
+  rank 8: block 192x160x256 at [0, 480, 128]  tcn732.local.snellius.surf.nl -
+  rank 9: block 192x320x128 at [192, 320, 0]  tcn732.local.snellius.surf.nl -
+  rank 10: block 192x160x256 at [192, 320, 128]  tcn732.local.snellius.surf.nl -
+  rank 11: block 192x160x256 at [192, 480, 128]  tcn732.local.snellius.surf.nl -
+  rank 12: block 192x320x128 at [384, 0, 0]  tcn732.local.snellius.surf.nl -
+  rank 13: block 192x160x256 at [384, 0, 128]  tcn732.local.snellius.surf.nl -
+  rank 14: block 192x160x256 at [384, 160, 128]  tcn732.local.snellius.surf.nl -
+  rank 15: block 192x320x128 at [576, 0, 0]  tcn732.local.snellius.surf.nl -
+  rank 16: block 192x160x256 at [576, 0, 128]  tcn732.local.snellius.surf.nl -
+  rank 17: block 192x160x256 at [576, 160, 128]  tcn732.local.snellius.surf.nl -
+  rank 18: block 192x320x128 at [384, 320, 0]  tcn732.local.snellius.surf.nl -
+  rank 19: block 192x160x256 at [384, 320, 128]  tcn732.local.snellius.surf.nl -
+  rank 20: block 192x160x256 at [384, 480, 128]  tcn732.local.snellius.surf.nl -
+  rank 21: block 192x320x128 at [576, 320, 0]  tcn732.local.snellius.surf.nl -
+  rank 22: block 192x160x256 at [576, 320, 128]  tcn732.local.snellius.surf.nl -
+  rank 23: block 192x160x256 at [576, 480, 128]  tcn732.local.snellius.surf.nl -
+[run] warmup 5 steps...
+[run] warmup 1/5 done
+[run] warmup 2/5 done
+[run] warmup 3/5 done
+[run] warmup 4/5 done
+[run] warmup 5/5 done
+[run] step 3/15
+[run] step 6/15
+[run] step 9/15
+[run] step 12/15
+[run] step 15/15
+[result] 3043.2 ms/step  62.0 Mcell/s  pressure iters/step 4.0
+[phases, rank-max ms/step] step=3043.1  predictor=459.2  momentum=647.1  projection=1946.0  pressure_allreduce=141.4  allreduce_count=23
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/parallel-scaling/snellius/results/snellius-genoa/mix_r24_t8_mgfix.json

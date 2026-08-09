@@ -1,0 +1,757 @@
+CUDECOMP: Running transpose autotuning...
+CUDECOMP:	grid: 8 x 1, backend: MPI_P2P 
+CUDECOMP:	Total time min/max/avg/std [ms]: 59.451172/142.772827/87.905830/27.526226
+CUDECOMP:	           min/max/avg/std [ms]: 59.451168/142.772827/87.905830/27.526226 (weighted)
+CUDECOMP:	TransposeXY time min/max/avg/std [ms]: 24.382912/70.509277/43.883606/14.051664
+CUDECOMP:	TransposeYZ time min/max/avg/std [ms]: 0.395872/0.403296/0.397579/0.001964
+CUDECOMP:	TransposeZY time min/max/avg/std [ms]: 0.401888/0.488704/0.471820/0.026210
+CUDECOMP:	TransposeYX time min/max/avg/std [ms]: 26.009983/82.341187/43.152824/16.746597
+CUDECOMP:	grid: 8 x 1, backend: MPI_P2P (pipelined) 
+CUDECOMP:	Total time min/max/avg/std [ms]: 28.865215/31.850399/29.713200/1.039566
+CUDECOMP:	           min/max/avg/std [ms]: 28.865215/31.850401/29.713200/1.039566 (weighted)
+CUDECOMP:	TransposeXY time min/max/avg/std [ms]: 13.899360/16.482496/14.575359/0.582871
+CUDECOMP:	TransposeYZ time min/max/avg/std [ms]: 0.393216/0.402592/0.395818/0.002409
+CUDECOMP:	TransposeZY time min/max/avg/std [ms]: 0.402560/0.484864/0.470879/0.025644
+CUDECOMP:	TransposeYX time min/max/avg/std [ms]: 13.721536/16.182783/14.271143/0.689299
+CUDECOMP:	grid: 8 x 1, backend: MPI_A2A 
+CUDECOMP:	(skipped) 
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:322 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:510 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:160 Invalid usage. (unknown transpose communication type)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP: Running transpose autotuning...
+CUDECOMP:	grid: 8 x 1, backend: MPI_P2P 
+CUDECOMP:	Total time min/max/avg/std [ms]: 31.112000/63.955139/41.014904/10.437763
+CUDECOMP:	           min/max/avg/std [ms]: 31.112000/63.955135/41.014904/10.437763 (weighted)
+CUDECOMP:	TransposeXY time min/max/avg/std [ms]: 13.947488/23.165377/16.674337/2.235922
+CUDECOMP:	TransposeYZ time min/max/avg/std [ms]: 0.356576/0.359744/0.358005/0.000811
+CUDECOMP:	TransposeZY time min/max/avg/std [ms]: 0.354784/0.367840/0.356636/0.001913
+CUDECOMP:	TransposeYX time min/max/avg/std [ms]: 14.364320/48.591457/23.625927/11.270914
+CUDECOMP:	grid: 4 x 2, backend: MPI_P2P 
+CUDECOMP:	Total time min/max/avg/std [ms]: 41.233406/55.394783/45.792049/3.732134
+CUDECOMP:	           min/max/avg/std [ms]: 41.233406/55.394783/45.792053/3.732134 (weighted)
+CUDECOMP:	TransposeXY time min/max/avg/std [ms]: 12.395136/19.511553/15.175730/1.648376
+CUDECOMP:	TransposeYZ time min/max/avg/std [ms]: 6.473600/17.855583/7.633786/2.293482
+CUDECOMP:	TransposeZY time min/max/avg/std [ms]: 6.345216/9.263808/7.208112/0.749927
+CUDECOMP:	TransposeYX time min/max/avg/std [ms]: 12.534656/22.857536/15.774423/2.777898
+CUDECOMP:	grid: 2 x 4, backend: MPI_P2P 
+CUDECOMP:	Total time min/max/avg/std [ms]: 37.921696/46.625984/42.122452/2.219572
+CUDECOMP:	           min/max/avg/std [ms]: 37.921696/46.625984/42.122452/2.219572 (weighted)
+CUDECOMP:	TransposeXY time min/max/avg/std [ms]: 8.267072/9.768032/9.143758/0.314510
+CUDECOMP:	TransposeYZ time min/max/avg/std [ms]: 9.294592/14.556320/10.805553/1.436624
+CUDECOMP:	TransposeZY time min/max/avg/std [ms]: 9.344928/14.434240/11.127772/1.478820
+CUDECOMP:	TransposeYX time min/max/avg/std [ms]: 8.907168/15.472192/11.045367/1.702509
+CUDECOMP:	grid: 1 x 8, backend: MPI_P2P 
+CUDECOMP:	Total time min/max/avg/std [ms]: 28.271486/36.750557/31.336634/1.953867
+CUDECOMP:	           min/max/avg/std [ms]: 28.271488/36.750561/31.336636/1.953867 (weighted)
+CUDECOMP:	TransposeXY time min/max/avg/std [ms]: 0.354848/0.358112/0.356405/0.000613
+CUDECOMP:	TransposeYZ time min/max/avg/std [ms]: 13.004928/20.605120/15.356140/1.593362
+CUDECOMP:	TransposeZY time min/max/avg/std [ms]: 13.376800/17.630112/15.266318/1.140795
+CUDECOMP:	TransposeYX time min/max/avg/std [ms]: 0.355424/0.360992/0.357771/0.001126
+CUDECOMP: SELECTED: grid: 1 x 8, backend: MPI_P2P, Avg. time (weighted) [ms]: 31.336636
+CUDECOMP: transpose autotuning time [s]: 1.318306
+CUDECOMP: Running halo autotuning...
+CUDECOMP: Autotune halo axis: x
+CUDECOMP:	grid: 1 x 8, halo backend: MPI 
+CUDECOMP:	Total time min/max/avg/std [ms]: 0.615616/2.704640/0.950276/0.472355
+CUDECOMP:	grid: 1 x 8, halo backend: MPI (blocking) 
+CUDECOMP:	Total time min/max/avg/std [ms]: 0.761568/0.811808/0.793018/0.010740
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/include/internal/comm_routines.h:705 NCCL error. (error code 1)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/autotune.cc:976 Internal error. (error code 7)
+ In auto-tuning mode......
+ factors:             1            2            4            8
+ p_row x p_col            2            4
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+host:0x159d760 device:0x154cde700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+host:0x15a96c0 device:0x154d7be00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+host:0x15c01e0 device:0x154cde600000 size:12 presentcount:0+1 line:257 name:lo(:)
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+host:0x159d760 device:0x1542a6700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+host:0x15a96c0 device:0x154341e00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+host:0x15c01e0 device:0x1542a6600000 size:12 presentcount:0+1 line:257 name:lo(:)
+host:0x15c01ec device:0x1542a66fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x1542a66fa400 size:12 presentcount:0+1 line:257 name:n(:)
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+host:0x159d760 device:0x14b672700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+host:0x15a96c0 device:0x14b70fe00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+host:0x15c01e0 device:0x14b672600000 size:12 presentcount:0+1 line:257 name:lo(:)
+host:0x15c01ec device:0x14b6726fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x14b6726fa400 size:12 presentcount:0+1 line:257 name:n(:)
+host:0x15c5f80 device:0x14b672701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x14b672701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x14b672701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x14b70fe00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x14b6726fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x14b6726fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x14b6726fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x14b6726faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x14b6726fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x6e7c470 device:0x14b6726fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+host:0x6f6f8b0 device:0x14b6726fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x6f90f70 device:0x14b6726fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+host:0x700ea90 device:0x14b672700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x701d310 device:0x14b6726fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x701f020 device:0x14b672700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+host:0x15c01ec device:0x154cde6fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x154cde6fa400 size:12 presentcount:0+1 line:257 name:n(:)
+host:0x15c5f80 device:0x154cde701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x154cde701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x154cde701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x154d7be00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x154cde6fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x154cde6fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x154cde6fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x154cde6faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x154cde6fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x61ddeb0 device:0x154cde700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+host:0x6209540 device:0x154cde6fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+host:0x62280e0 device:0x154cde6fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x6236030 device:0x154cde700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x6a8ad10 device:0x154cde700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x6b910e0 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x6b933c0 device:0x154cde6fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x6ba7660 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x6baac60 device:0x154cde701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+host:0x6bbd260 device:0x154cde6fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x6bbea60 device:0x154cde6fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x6d6f240 device:0x154cde700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+host:0x73f6f10 device:0x154cde6fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+host:0x191843d0 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x191ee470 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x191ee4a0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x191eec30 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x195c6160 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x1b46efe0 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+allocated block device:0x154cde600000 size:512 thread:1
+allocated block device:0x154cde6fa200 size:512 thread:1
+allocated block device:0x154cde6fa400 size:512 thread:1
+allocated block device:0x154cde6fa600 size:512 thread:1
+allocated block device:0x154cde6fa800 size:512 thread:1
+allocated block device:0x154cde6faa00 size:512 thread:1
+allocated block device:0x154cde6fac00 size:512 thread:1
+allocated block device:0x154cde6fae00 size:512 thread:1
+host:0x15c5f80 device:0x1542a6701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x1542a6701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x1542a6701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x154341e00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x1542a66fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x1542a66fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x1542a66fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x1542a66faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x1542a66fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x4b4c0c0 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x61b2200 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x61ce350 device:0x1542a6700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x62ed750 device:0x1542a6701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+host:0x69dfd60 device:0x1542a6700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+host:0x6ad8370 device:0x1542a66fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x6fd34b0 device:0x1542a6700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x1112a9c0 device:0x1542a66fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x12724630 device:0x1542a66fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+host:0x18b5b970 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x192d8580 device:0x1542a66fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x193c9fb0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x193c9fe0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x193e2ab0 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x197a0150 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+host:0x197a1180 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x1a0aa6c0 device:0x1542a66fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x1b35ef30 device:0x1542a6700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+host:0x1b522d60 device:0x1542a66fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+allocated block device:0x1542a6600000 size:512 thread:1
+allocated block device:0x1542a66fa200 size:512 thread:1
+allocated block device:0x1542a66fa400 size:512 thread:1
+allocated block device:0x1542a66fa600 size:512 thread:1
+allocated block device:0x1542a66fa800 size:512 thread:1
+allocated block device:0x1542a66faa00 size:512 thread:1
+allocated block device:0x1542a66fac00 size:512 thread:1
+allocated block device:0x1542a66fae00 size:512 thread:1
+allocated block device:0x1542a66fe000 size:512 thread:1
+allocated block device:0x1542a66fe200 size:512 thread:1
+allocated block device:0x1542a66fe400 size:512 thread:1
+allocated block device:0x1542a66fe600 size:512 thread:1
+allocated block device:0x1542a66fe800 size:512 thread:1
+allocated block device:0x1542a66fea00 size:512 thread:1
+allocated block device:0x1542a6700400 size:512 thread:1
+allocated block device:0x1542a6700600 size:512 thread:1
+allocated block device:0x1542a6700800 size:512 thread:1
+allocated block device:0x1542a6700a00 size:1024 thread:1
+allocated block device:0x1542a6700e00 size:512 thread:1
+allocated block device:0x1542a6701000 size:512 thread:1
+allocated block device:0x1542a6701200 size:512 thread:1
+allocated block device:0x1542a6701400 size:512 thread:1
+allocated block device:0x1542a6701600 size:512 thread:1
+host:0x159d760 device:0x15302e700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+host:0x15a96c0 device:0x1530cbe00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+host:0x15c01e0 device:0x15302e600000 size:12 presentcount:0+1 line:257 name:lo(:)
+host:0x15c01ec device:0x15302e6fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x15302e6fa400 size:12 presentcount:0+1 line:257 name:n(:)
+host:0x15c5f80 device:0x15302e701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x15302e701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x15302e701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x1530cbe00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x15302e6fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x15302e6fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x15302e6fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x15302e6faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x15302e6fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x50ad5d0 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x6896720 device:0x15302e6fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x68d2560 device:0x15302e6fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x68fd6b0 device:0x15302e6fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+host:0x691e080 device:0x15302e6fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x71ae050 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x7248000 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x7278510 device:0x15302e701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+host:0x7283940 device:0x15302e700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x728b920 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+host:0x72c4f80 device:0x15302e6fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x7302350 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x7312b50 device:0x15302e6fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+host:0x7314950 device:0x15302e700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x7515610 device:0x15302e700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+host:0x19930c50 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x19930c80 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x19949520 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x1bc5bdc0 device:0x15302e700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+allocated block device:0x15302e600000 size:512 thread:1
+allocated block device:0x15302e6fa200 size:512 thread:1
+allocated block device:0x15302e6fa400 size:512 thread:1
+allocated block device:0x15302e6fa600 size:512 thread:1
+allocated block device:0x15302e6fa800 size:512 thread:1
+allocated block device:0x15302e6faa00 size:512 thread:1
+allocated block device:0x15302e6fac00 size:512 thread:1
+allocated block device:0x15302e6fae00 size:512 thread:1
+allocated block device:0x15302e6fe000 size:512 thread:1
+allocated block device:0x15302e6fe200 size:512 thread:1
+allocated block device:0x15302e6fe400 size:512 thread:1
+allocated block device:0x15302e6fe600 size:512 thread:1
+allocated block device:0x15302e6fe800 size:512 thread:1
+allocated block device:0x15302e6fea00 size:512 thread:1
+allocated block device:0x15302e700400 size:512 thread:1
+allocated block device:0x15302e700600 size:512 thread:1
+allocated block device:0x15302e700800 size:512 thread:1
+allocated block device:0x15302e700a00 size:1024 thread:1
+allocated block device:0x15302e700e00 size:512 thread:1
+allocated block device:0x15302e701000 size:512 thread:1
+allocated block device:0x15302e701200 size:512 thread:1
+allocated block device:0x15302e701400 size:512 thread:1
+allocated block device:0x15302e701600 size:512 thread:1
+host:0x70495b0 device:0x14b672700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x7178500 device:0x14b672701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+host:0x7226050 device:0x14b6726fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x19588650 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x19688080 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x196880b0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x196915f0 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x19a4fb10 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+host:0x1a21f250 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x1a21f280 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x1a21f460 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x1b3eb510 device:0x14b6726fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x1b9805c0 device:0x14b672700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+allocated block device:0x14b672600000 size:512 thread:1
+allocated block device:0x14b6726fa200 size:512 thread:1
+allocated block device:0x14b6726fa400 size:512 thread:1
+allocated block device:0x14b6726fa600 size:512 thread:1
+allocated block device:0x14b6726fa800 size:512 thread:1
+allocated block device:0x14b6726faa00 size:512 thread:1
+allocated block device:0x14b6726fac00 size:512 thread:1
+allocated block device:0x14b6726fae00 size:512 thread:1
+allocated block device:0x14b6726fe000 size:512 thread:1
+allocated block device:0x14b6726fe200 size:512 thread:1
+allocated block device:0x14b6726fe400 size:512 thread:1
+allocated block device:0x14b6726fe600 size:512 thread:1
+allocated block device:0x14b6726fe800 size:512 thread:1
+allocated block device:0x14b6726fea00 size:512 thread:1
+allocated block device:0x14b672700400 size:512 thread:1
+allocated block device:0x14b672700600 size:512 thread:1
+allocated block device:0x14b672700800 size:512 thread:1
+allocated block device:0x14b672700a00 size:1024 thread:1
+allocated block device:0x14b672700e00 size:512 thread:1
+allocated block device:0x14b672701000 size:512 thread:1
+allocated block device:0x14b672701200 size:512 thread:1
+allocated block device:0x14b672701400 size:512 thread:1
+allocated block device:0x14b672701600 size:512 thread:1
+deleted block   device:0x14b6726fb000 size:3072 threadid=1 
+deleted block   device:0x14b6726fbc00 size:3072 threadid=1 
+deleted block   device:0x14b6726fc800 size:3072 threadid=1 
+deleted block   device:0x14b6726fd400 size:3072 threadid=1 
+deleted block   device:0x14b6726fec00 size:3072 threadid=1 
+deleted block   device:0x14b6726ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x19688020
+
+allocated block device:0x154cde6fe000 size:512 thread:1
+allocated block device:0x154cde6fe200 size:512 thread:1
+allocated block device:0x154cde6fe400 size:512 thread:1
+allocated block device:0x154cde6fe600 size:512 thread:1
+allocated block device:0x154cde6fe800 size:512 thread:1
+allocated block device:0x154cde6fea00 size:512 thread:1
+allocated block device:0x154cde700400 size:512 thread:1
+allocated block device:0x154cde700600 size:512 thread:1
+allocated block device:0x154cde700800 size:512 thread:1
+allocated block device:0x154cde700a00 size:1024 thread:1
+allocated block device:0x154cde700e00 size:512 thread:1
+allocated block device:0x154cde701000 size:512 thread:1
+allocated block device:0x154cde701200 size:512 thread:1
+allocated block device:0x154cde701400 size:512 thread:1
+allocated block device:0x154cde701600 size:512 thread:1
+deleted block   device:0x154cde6fb000 size:3072 threadid=1 
+deleted block   device:0x154cde6fbc00 size:3072 threadid=1 
+deleted block   device:0x154cde6fc800 size:3072 threadid=1 
+deleted block   device:0x154cde6fd400 size:3072 threadid=1 
+deleted block   device:0x154cde6fec00 size:3072 threadid=1 
+deleted block   device:0x154cde6ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x191ee410
+
+deleted block   device:0x1542a66fb000 size:3072 threadid=1 
+deleted block   device:0x1542a66fbc00 size:3072 threadid=1 
+deleted block   device:0x1542a66fc800 size:3072 threadid=1 
+deleted block   device:0x1542a66fd400 size:3072 threadid=1 
+deleted block   device:0x1542a66fec00 size:3072 threadid=1 
+deleted block   device:0x1542a66ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x193c9f50
+
+deleted block   device:0x15302e6fb000 size:3072 threadid=1 
+deleted block   device:0x15302e6fbc00 size:3072 threadid=1 
+deleted block   device:0x15302e6fc800 size:3072 threadid=1 
+deleted block   device:0x15302e6fd400 size:3072 threadid=1 
+deleted block   device:0x15302e6fec00 size:3072 threadid=1 
+deleted block   device:0x15302e6ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x19930bf0
+
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+host:0x159d760 device:0x14e006700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+host:0x15a96c0 device:0x14e0a3e00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+host:0x159d760 device:0x14a09e700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+host:0x15c01e0 device:0x14e006600000 size:12 presentcount:0+1 line:257 name:lo(:)
+host:0x15c01ec device:0x14e0066fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x14e0066fa400 size:12 presentcount:0+1 line:257 name:n(:)
+host:0x15c5f80 device:0x14e006701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x14e006701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x14e006701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x14e0a3e00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x14e0066fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x14e0066fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x14e0066fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x14e0066faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x14e0066fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x51fe4a0 device:0x14e0066fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+host:0x524e910 device:0x14e0066fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x52776f0 device:0x14e0066fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x573eb30 device:0x14e0066fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x5a681b0 device:0x14e0066fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x15a96c0 device:0x14a13be00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+host:0x15c01e0 device:0x14a09e600000 size:12 presentcount:0+1 line:257 name:lo(:)
+host:0x15c01ec device:0x14a09e6fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x14a09e6fa400 size:12 presentcount:0+1 line:257 name:n(:)
+host:0x15c5f80 device:0x14a09e701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x14a09e701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x14a09e701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x14a13be00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x14a09e6fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x14a09e6fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x14a09e6fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x14a09e6faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x14a09e6fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x6be3db0 device:0x14a09e6fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x6c0b020 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x6cfd440 device:0x14a09e700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+host:0x6d8c660 device:0x14a09e700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+host:0x6d8d7d0 device:0x14a09e700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x159d760 device:0x14aef2700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+host:0x15a96c0 device:0x14af8fe00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+host:0x15c01e0 device:0x14aef2600000 size:12 presentcount:0+1 line:257 name:lo(:)
+host:0x15c01ec device:0x14aef26fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x14aef26fa400 size:12 presentcount:0+1 line:257 name:n(:)
+host:0x15c5f80 device:0x14aef2701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x14aef2701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x14aef2701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x14af8fe00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x14aef26fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x14aef26fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x14aef26fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x14aef26faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x14aef26fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x6208d70 device:0x14aef2701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+host:0x6234120 device:0x14aef2700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+host:0x6372410 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x656d580 device:0x14aef2700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+host:0x11d316c0 device:0x14aef26fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x13577620 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x182022d0 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x188ebda0 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+host:0x188ed350 device:0x14aef2700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x189f66a0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x189f66d0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x18db3e60 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x194a5990 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x1957db00 device:0x14aef26fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+host:0x19581b90 device:0x14aef26fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x5aaa000 device:0x14e006700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+host:0x5b3ddb0 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x5b7d040 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x5b915c0 device:0x14e006700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+host:0x5c42d90 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+host:0x5c45d90 device:0x14e0066fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+host:0x5c54d90 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x5c57d90 device:0x14e006700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x5c87190 device:0x14e006700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x18293270 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x182932a0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x18d408c0 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x18f08f20 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x1a02ca20 device:0x14e006701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+allocated block device:0x14e006600000 size:512 thread:1
+allocated block device:0x14e0066fa200 size:512 thread:1
+allocated block device:0x14e0066fa400 size:512 thread:1
+allocated block device:0x14e0066fa600 size:512 thread:1
+allocated block device:0x14e0066fa800 size:512 thread:1
+allocated block device:0x14e0066faa00 size:512 thread:1
+allocated block device:0x14e0066fac00 size:512 thread:1
+allocated block device:0x14e0066fae00 size:512 thread:1
+allocated block device:0x14e0066fe000 size:512 thread:1
+allocated block device:0x14e0066fe200 size:512 thread:1
+allocated block device:0x14e0066fe400 size:512 thread:1
+allocated block device:0x14e0066fe600 size:512 thread:1
+allocated block device:0x14e0066fe800 size:512 thread:1
+allocated block device:0x14e0066fea00 size:512 thread:1
+allocated block device:0x14e006700400 size:512 thread:1
+allocated block device:0x14e006700600 size:512 thread:1
+allocated block device:0x14e006700800 size:512 thread:1
+allocated block device:0x14e006700a00 size:1024 thread:1
+allocated block device:0x14e006700e00 size:512 thread:1
+allocated block device:0x14e006701000 size:512 thread:1
+allocated block device:0x14e006701200 size:512 thread:1
+allocated block device:0x14e006701400 size:512 thread:1
+allocated block device:0x14e006701600 size:512 thread:1
+deleted block   device:0x14e0066fb000 size:3072 threadid=1 
+deleted block   device:0x14e0066fbc00 size:3072 threadid=1 
+deleted block   device:0x14e0066fc800 size:3072 threadid=1 
+deleted block   device:0x14e0066fd400 size:3072 threadid=1 
+deleted block   device:0x14e0066fec00 size:3072 threadid=1 
+deleted block   device:0x14e0066ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x18293210
+
+host:0x6d9a6f0 device:0x14a09e700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x6da3cf0 device:0x14a09e701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+host:0x6db9ef0 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x6f48110 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x75e1820 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x12769d00 device:0x14a09e6fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x132c30b0 device:0x14a09e6fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x192f0760 device:0x14a09e6fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+host:0x193f9f50 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x193f9f80 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x19eaa730 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x1a092180 device:0x14a09e6fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+host:0x1ace9930 device:0x14a09e6fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x1b73b730 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+allocated block device:0x14a09e600000 size:512 thread:1
+allocated block device:0x14a09e6fa200 size:512 thread:1
+allocated block device:0x14a09e6fa400 size:512 thread:1
+allocated block device:0x14a09e6fa600 size:512 thread:1
+allocated block device:0x14a09e6fa800 size:512 thread:1
+allocated block device:0x14a09e6faa00 size:512 thread:1
+allocated block device:0x14a09e6fac00 size:512 thread:1
+allocated block device:0x14a09e6fae00 size:512 thread:1
+allocated block device:0x14a09e6fe000 size:512 thread:1
+allocated block device:0x14a09e6fe200 size:512 thread:1
+allocated block device:0x14a09e6fe400 size:512 thread:1
+allocated block device:0x14a09e6fe600 size:512 thread:1
+allocated block device:0x14a09e6fe800 size:512 thread:1
+allocated block device:0x14a09e6fea00 size:512 thread:1
+allocated block device:0x14a09e700400 size:512 thread:1
+allocated block device:0x14a09e700600 size:512 thread:1
+allocated block device:0x14a09e700800 size:512 thread:1
+allocated block device:0x14a09e700a00 size:1024 thread:1
+allocated block device:0x14a09e700e00 size:512 thread:1
+allocated block device:0x14a09e701000 size:512 thread:1
+allocated block device:0x14a09e701200 size:512 thread:1
+allocated block device:0x14a09e701400 size:512 thread:1
+allocated block device:0x14a09e701600 size:512 thread:1
+deleted block   device:0x14a09e6fb000 size:3072 threadid=1 
+deleted block   device:0x14a09e6fbc00 size:3072 threadid=1 
+deleted block   device:0x14a09e6fc800 size:3072 threadid=1 
+deleted block   device:0x14a09e6fd400 size:3072 threadid=1 
+deleted block   device:0x14a09e6fec00 size:3072 threadid=1 
+deleted block   device:0x14a09e6ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x193f9ef0
+
+host:0x19582960 device:0x14aef26fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x19582d50 device:0x14aef26fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x19582f90 device:0x14aef2700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x19662d40 device:0x14aef26fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+allocated block device:0x14aef2600000 size:512 thread:1
+allocated block device:0x14aef26fa200 size:512 thread:1
+allocated block device:0x14aef26fa400 size:512 thread:1
+allocated block device:0x14aef26fa600 size:512 thread:1
+allocated block device:0x14aef26fa800 size:512 thread:1
+allocated block device:0x14aef26faa00 size:512 thread:1
+allocated block device:0x14aef26fac00 size:512 thread:1
+allocated block device:0x14aef26fae00 size:512 thread:1
+allocated block device:0x14aef26fe000 size:512 thread:1
+allocated block device:0x14aef26fe200 size:512 thread:1
+allocated block device:0x14aef26fe400 size:512 thread:1
+allocated block device:0x14aef26fe600 size:512 thread:1
+allocated block device:0x14aef26fe800 size:512 thread:1
+allocated block device:0x14aef26fea00 size:512 thread:1
+allocated block device:0x14aef2700400 size:512 thread:1
+allocated block device:0x14aef2700600 size:512 thread:1
+allocated block device:0x14aef2700800 size:512 thread:1
+allocated block device:0x14aef2700a00 size:1024 thread:1
+allocated block device:0x14aef2700e00 size:512 thread:1
+allocated block device:0x14aef2701000 size:512 thread:1
+allocated block device:0x14aef2701200 size:512 thread:1
+allocated block device:0x14aef2701400 size:512 thread:1
+allocated block device:0x14aef2701600 size:512 thread:1
+deleted block   device:0x14aef26fb000 size:3072 threadid=1 
+deleted block   device:0x14aef26fbc00 size:3072 threadid=1 
+deleted block   device:0x14aef26fc800 size:3072 threadid=1 
+deleted block   device:0x14aef26fd400 size:3072 threadid=1 
+deleted block   device:0x14aef26fec00 size:3072 threadid=1 
+deleted block   device:0x14aef26ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x189f6640
+
+ *******************************
+ *** Beginning of simulation ***
+ *******************************
+ 
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+CUDECOMP:ERROR: /projects/0/prjs1022/peclet/scaling-refs/CaNS-gpu/dependencies/cuDecomp/src/cudecomp.cc:205 Invalid usage. (invalid grid descriptor)
+Present table dump for device[1]: NVIDIA Tesla GPU 0, compute capability 9.0, threadid=1
+Hint: specify 0x800 bit in NV_ACC_DEBUG for verbose info.
+host:0x159d760 device:0x14cbc6700a00 size:744 presentcount:0+1 line:299 name:rhsbp
+host:0x15a96c0 device:0x14cc5fe00300 size:120 presentcount:0+1 line:-1 name:_mod_param_21
+host:0x15c01e0 device:0x14cbc6600000 size:12 presentcount:0+1 line:257 name:lo(:)
+host:0x15c01ec device:0x14cbc66fa200 size:12 presentcount:0+1 line:257 name:hi(:)
+host:0x15c01f8 device:0x14cbc66fa400 size:12 presentcount:0+1 line:257 name:n(:)
+host:0x15c5f80 device:0x14cbc6701200 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c6010 device:0x14cbc6701400 size:128 presentcount:0+1 line:78 name:descriptor
+host:0x15c60a0 device:0x14cbc6701600 size:224 presentcount:0+1 line:81 name:descriptor
+host:0x15c6580 device:0x14cc5fe00100 size:432 presentcount:0+1 line:-1 name:_mod_common_cudecomp_16
+host:0x15c6ac0 device:0x14cbc66fac00 size:24 presentcount:0+1 line:258 name:l(:)
+host:0x15c6bd0 device:0x14cbc66fa600 size:24 presentcount:0+1 line:258 name:bforce(:)
+host:0x15c6c10 device:0x14cbc66fa800 size:24 presentcount:0+1 line:258 name:dl(:)
+host:0x15c6c30 device:0x14cbc66faa00 size:24 presentcount:0+1 line:258 name:dli(:)
+host:0x15c6c60 device:0x14cbc66fae00 size:24 presentcount:0+1 line:259 name:gacc(:)
+host:0x5d29510 device:(nil) size:0 presentcount:0+1 line:223 name:scalars(:)
+host:0x5d50ea0 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_0(:)
+host:0x5d6d9d0 device:0x14cbc6700600 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_c(:)
+host:0x5dbc650 device:0x14cbc66fe200 size:24 presentcount:0+1 line:261 name:zf(:)
+host:0x5dc0c10 device:(nil) size:0 presentcount:0+1 line:78 name:solver_buf_1(:)
+host:0x5e2f310 device:0x14cbc6701000 size:16 presentcount:0+1 line:299 name:rhsbp%z(:,:,:)
+host:0x5e3ad10 device:0x14cbc6700400 size:16 presentcount:0+1 line:299 name:rhsbp%x(:,:,:)
+host:0x5e42720 device:0x14cbc6700800 size:24 presentcount:0+1 line:280 name:grid_vol_ratio_f(:)
+host:0x5e620d0 device:0x14cbc6700e00 size:16 presentcount:0+1 line:299 name:rhsbp%y(:,:,:)
+host:0x5e7d240 device:(nil) size:0 presentcount:0+1 line:298 name:cp(:)
+host:0x5e7de40 device:0x14cbc66fea00 size:24 presentcount:0+1 line:261 name:dzfi(:)
+host:0x600b1a0 device:0x14cbc66fe000 size:24 presentcount:0+1 line:261 name:zc(:)
+host:0x10224a70 device:0x14cbc66fe600 size:24 presentcount:0+1 line:261 name:dzf(:)
+host:0x14f0b6b0 device:(nil) size:0 presentcount:0+1 line:298 name:bp(:)
+host:0x1785d0a0 device:(nil) size:0 presentcount:0+1 line:298 name:ap(:)
+host:0x183d6550 device:0x14cbc66fe400 size:24 presentcount:0+1 line:261 name:dzc(:)
+host:0x18f8dbc0 device:(nil) size:0 presentcount:0+1 line:81 name:pz_aux_1(:,:,:)
+host:0x1906b4c0 device:(nil) size:0 presentcount:0+1 line:298 name:lambdaxyp(:,:)
+host:0x1a83e3c0 device:0x14cbc66fe800 size:24 presentcount:0+1 line:261 name:dzci(:)
+allocated block device:0x14cbc6600000 size:512 thread:1
+allocated block device:0x14cbc66fa200 size:512 thread:1
+allocated block device:0x14cbc66fa400 size:512 thread:1
+allocated block device:0x14cbc66fa600 size:512 thread:1
+allocated block device:0x14cbc66fa800 size:512 thread:1
+allocated block device:0x14cbc66faa00 size:512 thread:1
+allocated block device:0x14cbc66fac00 size:512 thread:1
+allocated block device:0x14cbc66fae00 size:512 thread:1
+allocated block device:0x14cbc66fe000 size:512 thread:1
+allocated block device:0x14cbc66fe200 size:512 thread:1
+allocated block device:0x14cbc66fe400 size:512 thread:1
+allocated block device:0x14cbc66fe600 size:512 thread:1
+allocated block device:0x14cbc66fe800 size:512 thread:1
+allocated block device:0x14cbc66fea00 size:512 thread:1
+allocated block device:0x14cbc6700400 size:512 thread:1
+allocated block device:0x14cbc6700600 size:512 thread:1
+allocated block device:0x14cbc6700800 size:512 thread:1
+allocated block device:0x14cbc6700a00 size:1024 thread:1
+allocated block device:0x14cbc6700e00 size:512 thread:1
+allocated block device:0x14cbc6701000 size:512 thread:1
+allocated block device:0x14cbc6701200 size:512 thread:1
+allocated block device:0x14cbc6701400 size:512 thread:1
+allocated block device:0x14cbc6701600 size:512 thread:1
+deleted block   device:0x14cbc66fb000 size:3072 threadid=1 
+deleted block   device:0x14cbc66fbc00 size:3072 threadid=1 
+deleted block   device:0x14cbc66fc800 size:3072 threadid=1 
+deleted block   device:0x14cbc66fd400 size:3072 threadid=1 
+deleted block   device:0x14cbc66fec00 size:3072 threadid=1 
+deleted block   device:0x14cbc66ff800 size:3072 threadid=1 
+FATAL ERROR: data in use_device clause was not found on device 1: host:0x5fedce0
+
+srun: error: gcn73: tasks 1-2: Exited with exit code 1
+srun: Terminating StepId=25382293.0
+[2026-08-10T00:25:31.659] error: *** STEP 25382293.0 ON gcn73 CANCELLED AT 2026-08-10T00:25:31 DUE TO TASK FAILURE ***
+srun: error: gcn148: tasks 5-6: Exited with exit code 1
+srun: error: gcn73: task 0: Exited with exit code 1
+srun: error: gcn148: task 4: Exited with exit code 1
+srun: error: gcn73: task 3: Exited with exit code 1
+srun: error: gcn148: task 7: Exited with exit code 1
