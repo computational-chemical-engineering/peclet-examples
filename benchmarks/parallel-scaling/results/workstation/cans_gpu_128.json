@@ -1,0 +1,18 @@
+{
+ "label": "workstation-cans-rtx5080",
+ "np": 1,
+ "backend": "cpu",
+ "omp_threads": "1",
+ "global": [
+  128,
+  128,
+  128
+ ],
+ "cells": 2097152,
+ "nsteps": 50,
+ "ms_per_step": 15.935903080000013,
+ "mcells_per_s": 131.59919393786862,
+ "code": "cans",
+ "solver": "RK3+FFT",
+ "dims": "0,0"
+}
