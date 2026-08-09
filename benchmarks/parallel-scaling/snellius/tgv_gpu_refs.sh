@@ -104,6 +104,9 @@ if [ "$MODE" = cans-build ]; then
   cp -f configs/defaults/build-default.conf build.conf
   sed -i 's/^FCOMP=.*/FCOMP=NVIDIA/; s/^GPU=.*/GPU=1/' build.conf
   grep -E "FCOMP|GPU" build.conf
+  # NVHPC 24.9 ICE workaround (select_rtemp/exp_call on array-SECTION args to MPI_ALLREDUCE in
+  # timer.f90; fixed in 26.x): pass the whole arrays — semantically identical, idempotent.
+  sed -i 's/timer_elapsed_\(acc\|min\|max\)(:)/timer_elapsed_\1/g' src/timer.f90
   make allclean || true
   make libs && make -j 16
   ls -la run/cans || { echo "FATAL: no GPU binary produced" >&2; exit 1; }
