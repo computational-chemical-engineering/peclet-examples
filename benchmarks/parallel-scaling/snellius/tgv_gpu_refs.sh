@@ -28,6 +28,29 @@ REFDIR="${REFDIR:-/projects/0/prjs1022/peclet/scaling-refs}"; mkdir -p "$REFDIR"
 export TILE=64
 MODE="${1:-}"; NGPU="${2:-4}"
 
+# Put an MPI for nvfortran on PATH (the NVHPC module alone ships no mpifort). Route 1: a
+# site OpenMPI built against NVHPC; route 2: NVHPC's bundled comm_libs MPI. Sets CANS_MPIRUN
+# for the run mode (bundled MPI is not Slurm/pmix-integrated -> launch with its own mpirun).
+nvhpc_mpi () {
+  CANS_MPIRUN=srun; CANS_NPFLAG="-n"
+  CANS_MPIFLAGS="--mpi=pmix --gpus-per-task=1 --gpu-bind=per_task:1"
+  if ! command -v mpifort >/dev/null; then
+    OMPIMOD="$(module -r -t avail 'OpenMPI.*NVHPC' 2>&1 | grep -iE '^OpenMPI' | sort -V | tail -1)"
+    [ -n "$OMPIMOD" ] && module load "$OMPIMOD" && echo "[nvhpc_mpi] loaded $OMPIMOD"
+  fi
+  if ! command -v mpifort >/dev/null && [ -n "${EBROOTNVHPC:-}" ]; then
+    for d in "$EBROOTNVHPC"/Linux_x86_64/*/comm_libs/mpi; do
+      [ -x "$d/bin/mpifort" ] || continue
+      export PATH="$d/bin:$PATH" LD_LIBRARY_PATH="$d/lib:${LD_LIBRARY_PATH:-}"
+      CANS_MPIRUN="$d/bin/mpirun"; CANS_NPFLAG="-np"; CANS_MPIFLAGS=" "
+      echo "[nvhpc_mpi] using NVHPC bundled MPI: $d (launcher: its mpirun, GPU binding by local rank)"
+    done
+  fi
+  command -v mpifort >/dev/null || {
+    echo "FATAL: no mpifort for nvfortran; OpenMPI modules seen:" >&2
+    module -r avail 'OpenMPI' 2>&1 | tail -15 >&2; exit 1; }
+}
+
 if [ "$MODE" = incflo-build ]; then
   # the peclet-validated GPU MPI stack (gompi/2024a + CUDA 12.6 + UCX-CUDA + pml=ucx): plain
   # foss UCX has no CUDA support -> CMA aborts on CUDA-registered buffers in FillBoundary
@@ -73,6 +96,7 @@ if [ "$MODE" = cans-build ]; then
   NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
   [ -n "$NVMOD" ] || { echo "FATAL: no NVHPC module:"; module -r avail 'NVHPC|nvhpc' 2>&1 | tail; exit 1; }
   module load "$NVMOD"
+  nvhpc_mpi   # Snellius' NVHPC module ships no mpifort on PATH — see helper at top
   cd "$REFDIR"
   [ -d CaNS-gpu ] || git clone --depth 1 https://github.com/CaNS-World/CaNS.git CaNS-gpu
   cd CaNS-gpu
@@ -108,6 +132,7 @@ cans)
   module purge; module load 2024 2>/dev/null || true
   NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
   module load "$NVMOD"
+  nvhpc_mpi   # same MPI the binary was built with; sets CANS_MPIRUN/NPFLAG/MPIFLAGS
   export LD_LIBRARY_PATH="$REFDIR/CaNS-gpu/dependencies/cuDecomp/build/lib:${LD_LIBRARY_PATH:-}"
   ldd "$REFDIR/CaNS-gpu/run/cans" | grep -q fftw3 && {
     echo "FATAL: CaNS-gpu/run/cans links FFTW (CPU build) — rerun 'tgv_gpu_refs.sh cans-build'" >&2
@@ -117,7 +142,7 @@ cans)
   NP=$NGPU NX=$GNX NY=$GNY NZ=$GNZ NSTEPS=30 TILE=$TILE \
     LABEL="snellius-h100-cans" OUT="$OUT" \
     CANS="$REFDIR/CaNS-gpu/run/cans" \
-    MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix --gpus-per-task=1 --gpu-bind=per_task:1" \
+    MPIRUN="$CANS_MPIRUN" NPFLAG="$CANS_NPFLAG" MPIFLAGS="$CANS_MPIFLAGS" \
     "$EXDIR/../run_cans.sh" || echo "[FAILED] $OUT"
   ;;
 *) echo "FATAL: unknown mode '$MODE' (incflo-build|cans-build|incflo|cans)"; exit 1 ;;
