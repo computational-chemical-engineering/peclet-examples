@@ -111,6 +111,10 @@ if [ "$MODE" = cans-build ]; then
   # guarded sed builds clean on NVHPC 26.3).
   git checkout -- src/timer.f90 2>/dev/null || true
   sed -i '/MPI_ALLREDUCE/ s/timer_elapsed_\(acc\|min\|max\)(:)/timer_elapsed_\1/g' src/timer.f90
+  # ...and 24.9's SECOND ICE ('bad ast optype' in Lowering): arithmetic on array sections inside
+  # write lists. Scalarize the diagnostic prints — numerically identical output.
+  sed -i 's/(i,3:3)/(i,3)/g' src/timer.f90
+  sed -i 's|timing_results_acc(i,1:3)/timer_counts(i)|timing_results_acc(i,1)/timer_counts(i),timing_results_acc(i,2)/timer_counts(i),timing_results_acc(i,3)/timer_counts(i)|' src/timer.f90
   make allclean || true
   make libs && make -j 16
   ls -la run/cans || { echo "FATAL: no GPU binary produced" >&2; exit 1; }
