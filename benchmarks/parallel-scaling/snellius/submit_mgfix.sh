@@ -53,9 +53,12 @@ for f in tgv_genoa.sh tgv_weak_gpu.sh "$INSTALL_DIR/install_snellius.sh" \
 done
 
 say() { echo "[submit_mgfix] $*"; }
-sub() {  # echo + submit, returns the job id on stdout (DRY_RUN prints only)
+sub() {  # echo + submit; job id goes to stdout (for --dependency) and to the log (for the user)
   echo "  sbatch $*" >&2
-  if [ "${DRY_RUN:-0}" = 1 ]; then echo "DRYRUN"; else sbatch --parsable "$@"; fi
+  local id
+  if [ "${DRY_RUN:-0}" = 1 ]; then id=DRYRUN; else id=$(sbatch --parsable "$@") || id=""; fi
+  [ -n "$id" ] && echo "    -> job $id" >&2 || echo "    -> SUBMIT FAILED" >&2
+  echo "$id"
 }
 
 # --- 1. sources -------------------------------------------------------------------------------
