@@ -84,7 +84,7 @@ website:
           - href: benchmarks/channel-scaling/index.qmd
             text: "Channel DNS multi-GPU scaling (Snellius H100)"
           - href: benchmarks/parallel-scaling/index.qmd
-            text: "Parallel scaling vs CaNS & OpenFOAM"
+            text: "Parallel scaling vs CaNS, incflo & OpenFOAM"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

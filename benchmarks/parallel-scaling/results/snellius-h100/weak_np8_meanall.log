@@ -1,0 +1,28 @@
+[cfg] global 3072x384x320 = 377.5M cells  tile=64  Re=100 nu=0.64 dt=0.2  ranks=8  backend=Cuda  pressure=pcg(maxit=200,rtol=1e-05,levels=5,warmstart=1)  adv=SOU  steps=10+40
+  rank 0: block 384x384x320 at [0, 0, 0]  gcn129.local.snellius.surf.nl 0000:26:00.0
+  rank 1: block 384x384x320 at [384, 0, 0]  gcn129.local.snellius.surf.nl 0000:06:00.0
+  rank 2: block 384x384x320 at [768, 0, 0]  gcn129.local.snellius.surf.nl 0000:C6:00.0
+  rank 3: block 384x384x320 at [1152, 0, 0]  gcn129.local.snellius.surf.nl 0000:A6:00.0
+  rank 4: block 384x384x320 at [1536, 0, 0]  gcn153.local.snellius.surf.nl 0000:26:00.0
+  rank 5: block 384x384x320 at [1920, 0, 0]  gcn153.local.snellius.surf.nl 0000:06:00.0
+  rank 6: block 384x384x320 at [2304, 0, 0]  gcn153.local.snellius.surf.nl 0000:C6:00.0
+  rank 7: block 384x384x320 at [2688, 0, 0]  gcn153.local.snellius.surf.nl 0000:A6:00.0
+[run] warmup 10 steps...
+[run] warmup 1/10 done
+[run] warmup 2/10 done
+[run] warmup 3/10 done
+[run] warmup 4/10 done
+[run] warmup 5/10 done
+[run] warmup 6/10 done
+[run] warmup 7/10 done
+[run] warmup 8/10 done
+[run] warmup 9/10 done
+[run] warmup 10/10 done
+[run] step 8/40
+[run] step 16/40
+[run] step 24/40
+[run] step 32/40
+[run] step 40/40
+[result] 440.0 ms/step  858.0 Mcell/s  pressure iters/step 12.2
+[phases, rank-max ms/step] step=439.9  predictor=9.7  momentum=54.7  projection=374.3  pressure_allreduce=2.5  allreduce_count=125
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/parallel-scaling/snellius/results/snellius-h100/weak_np8_meanall.json

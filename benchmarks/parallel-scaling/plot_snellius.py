@@ -90,3 +90,41 @@ ax2.legend(fontsize=8, frameon=False, loc="upper left")
 fig.tight_layout()
 fig.savefig(os.path.join(HERE, "snellius_weak.png"), dpi=150)
 print("snellius_weak.png")
+
+# ---- GPU: 1-32 H100 weak scaling + the pressure-solver ablation --------------------------------
+G = os.path.join(HERE, "results", "snellius-h100")
+gn = [1, 2, 4, 8, 16, 32]
+gd = {n: json.load(open(os.path.join(G, f"weak_np{n}.json"))) for n in gn}
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+eff = [100 * gd[1]["ms_per_step"] / gd[n]["ms_per_step"] for n in gn]
+ax1.plot(gn, eff, "o-", color=BLUE, lw=2, ms=5)
+for n, e in zip(gn, eff):
+    ax1.annotate(f"{e:.0f}%", (n, e), textcoords="offset points", xytext=(0, -14),
+                 ha="center", fontsize=8, color=INK2)
+ax1.axhline(100, ls="--", c=INK2, lw=0.8)
+ax1.set_xscale("log", base=2)
+ax1.set_xticks(gn, [str(n) for n in gn])
+ax1.set_xlabel("H100 GPUs (47.2 Mcells/GPU fixed; 4 GPUs/node)")
+ax1.set_ylabel("weak-scaling efficiency [%]")
+ax1.set_ylim(0, 112)
+ax1.set_title("GPU weak scaling — 3.5 Gcell/s on 32 H100", fontsize=10)
+
+variants = [("", "MG-PCG + fine scope (default)", BLUE), ("_meanall", "mean removal: all levels", AQUA),
+            ("_hoststage", "host-staged halo", YELLOW), ("_cheb", "Chebyshev", ORANGE),
+            ("_amg", "GraphAMG bottom", "#e87ba4")]
+x = range(len(variants))
+w = 0.38
+for off, N, hatch in ((-w / 2, 8, None), (w / 2, 16, "//")):
+    vals = [json.load(open(os.path.join(G, f"weak_np{N}{v}.json")))["ms_per_step"]
+            for v, _, _ in variants]
+    ax2.bar([i + off for i in x], vals, w, color=[c for _, _, c in variants],
+            edgecolor=SURFACE, linewidth=2, hatch=hatch)
+ax2.plot([], [], "s", color=INK2, label="left: 8 GPUs   right (hatched): 16 GPUs")
+ax2.set_xticks(list(x), [lbl for _, lbl, _ in variants], rotation=18, ha="right", fontsize=8)
+ax2.set_ylabel("ms/step")
+ax2.set_title("Pressure-solver ablation at the inter-node points", fontsize=10)
+ax2.legend(fontsize=8, frameon=False)
+ax2.grid(axis="x", visible=False)
+fig.tight_layout()
+fig.savefig(os.path.join(HERE, "snellius_gpu.png"), dpi=150)
+print("snellius_gpu.png")

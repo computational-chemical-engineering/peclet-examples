@@ -1,0 +1,16 @@
+{
+ "label": "snellius-genoa-openfoam",
+ "np": 192,
+ "backend": "cpu",
+ "global": [
+  768,
+  640,
+  384
+ ],
+ "cells": 188743680,
+ "nsteps": 10,
+ "ms_per_step": 20168.000000000007,
+ "mcells_per_s": 9.35857199523998,
+ "code": "openfoam",
+ "solver": "icoFoam+GAMG"
+}

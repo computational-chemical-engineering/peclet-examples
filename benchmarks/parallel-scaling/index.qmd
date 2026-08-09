@@ -1,152 +1,84 @@
 ---
 title: "Parallel scaling: peclet.flow vs the field"
-subtitle: "Weak scaling of the incompressible Navier–Stokes solver on CPU (MPI × OpenMP) and multi-GPU, from a 24-core workstation to Snellius H100 nodes — instrumented per phase, benchmarked head-to-head against CaNS and OpenFOAM on the same triply periodic case."
+subtitle: "Weak scaling of the incompressible Navier–Stokes solver on CPU (MPI × OpenMP) and multi-GPU, from a 24-core workstation to 32 H100s on Snellius — benchmarked head-to-head against CaNS, incflo (AMReX) and OpenFOAM on the identical triply periodic case."
 author: "Peclet"
-date: "2026-08-07"
+date: "2026-08-09"
 categories: [flow, HPC, MPI, multi-GPU, CPU, benchmark, scaling]
 ---
 
-*(Study in progress — sections fill in as the measurement campaign lands.)*
+## The questions
 
-## The question
+Three things a prospective user of a parallel CFD solver actually wants to know, each answered here
+by measurement:
 
-The [channel-scaling study](../channel-scaling/index.qmd) measured the production channel DNS on
-Snellius H100s: near-ideal weak scaling on one node, a drop to 47 % crossing to a second node. That
-raised three questions this page answers:
-
-1. **Is the inter-node drop "expected physics" or a defect?** A latency-bound global reduction
-   costs ~log(nodes), so the expected weak-scaling shape is one visible drop at the node boundary,
-   then a near-plateau. One multi-node data point cannot distinguish that from continued decay —
-   here we extend to 32 GPUs (8 nodes) and *decompose the time per step* into predictor / momentum
-   solve / pressure projection / global reductions, with the pressure iteration count separated
-   from the per-iteration cost.
-2. **How does the CPU path scale?** Weak scaling under MPI × OpenMP hybrid parallelism, from a
-   24-core workstation to Snellius Genoa nodes (192 cores each).
-3. **How does `peclet.flow` compare to the field?** The same case, run by
-   [CaNS](https://github.com/CaNS-World/CaNS) (the methodologically closest state-of-the-art
-   solver: 2nd-order staggered FD, FFT-based direct Poisson solve, published scaling to tens of
-   thousands of cores) and by **OpenFOAM** (the most widely used open-source CFD code).
+1. **Does weak scaling survive the interconnect?** On-node parallelism is cheap; the test of a
+   distributed incompressible solver is what happens to its global pressure solve when halo
+   exchanges and reductions start crossing nodes.
+2. **What does the same code deliver on CPU and on GPU**, from a workstation to a national
+   supercomputer (Snellius: Genoa nodes with 192 cores; H100 nodes with 4 GPUs)?
+3. **How does it compare with leading open-source codes** on the identical case? We run three
+   references, chosen to bracket the design space:
+   - [**CaNS**](https://github.com/CaNS-World/CaNS) — the state of the art in raw speed for
+     *trivial geometry*: explicit RK3 + an exact FFT Poisson solve, possible only on boxes.
+   - [**incflo**](https://github.com/AMReX-Fluids/incflo) — the DOE-exascale (AMReX) solver in
+     peclet's *own method family*: finite-volume incompressible NS, geometric-multigrid
+     projections, embedded-boundary capable.
+   - **OpenFOAM** (ESI v2412) — the ubiquitous general-purpose unstructured code, `icoFoam` + GAMG.
 
 ## The instrument: a boundary-free Taylor–Green box
 
 Scaling studies want a case that grows without complications. We tile a triply periodic box with
-**Taylor–Green vortices** (one vortex per $64^3$ tile, $\mathrm{Re}_\text{tile}=100$): no walls, no
-immersed geometry, every cell does identical work, and the domain extends in any direction by adding
-tiles. The TGV initial condition is also a Stokes eigenfunction, which gives the driver a built-in
-analytic correctness check (backward-Euler decay factor matched to $2\times10^{-3}$, identical
-across rank counts).
+**Taylor–Green vortices** (one vortex per $64^3$ tile, $\mathrm{Re}_\text{tile}=100$): no walls,
+every cell does identical work, and the domain extends in any direction by adding tiles. The TGV
+initial condition is also a Stokes eigenfunction, giving the driver a built-in analytic
+correctness check (matched to $2\times10^{-3}$, identical across rank counts and backends).
 
-[`tgv_bench.py`](tgv_bench.py) runs the case distributed (core ORB decomposition) and reports
-warmup-excluded per-step wall time with the solver's new per-phase instrumentation:
+[`tgv_bench.py`](tgv_bench.py) runs the case distributed and reports warmup-excluded per-step wall
+time with a per-phase breakdown (predictor / momentum solve / pressure projection), the pressure
+iteration count, and the accumulated time and count of every global reduction inside the pressure
+solve — so algorithmic effects and communication effects are never conflated.
 
-- **predictor** (ghost fills, RHS/advection builds), **momentum** (implicit diffusion solves),
-  **projection** (cut-cell pressure multigrid) — device-fenced phase times per rank;
-- **pressure iterations per step** — so algorithmic drift (more Krylov iterations on a bigger
-  global problem) is never conflated with communication cost;
-- **global-reduction tax** — accumulated wall time and count of every `MPI_Allreduce` inside the
-  pressure solve, the latency-bound term of distributed incompressible CFD.
+**Fairness rules, applied symmetrically.** Every code runs the identical grids at matched
+per-step tolerances (pressure ~1e-5/1e-6 class; CaNS's FFT solve is exact); timings are
+steady-state per-step wall times, excluding each code's setup (meshing, FFT plans, grid
+initialization). References run *expert-tuned*, not default: incflo gets `max_grid_size=64` and
+MLMG tolerances matched to the study (its AMReX defaults — $32^3$ box shredding and ~1e-11
+tolerances — cost it a measured 1.53×, which we refuse to charge it). OpenFOAM uses GAMG with a
+64-bit-label build (required above ~2×10⁸ cells). CaNS runs its recommended adaptive CFL 0.95 —
+its RK3 step advances ~4× more physical time per step than the fixed-CFL codes, which per-step
+throughput comparisons deliberately do not penalize. On the cluster, single measurements are
+noise: production points are pinned (`--cpu-bind=cores`) and taken as the **median of three
+draws** (bound draws reproduce to ±5 %; the figures show every draw).
 
-## Workstation baseline (Threadripper PRO 5965WX, RTX 5080)
+## Workstation (24-core Threadripper PRO 5965WX, RTX 5080)
 
-Before the supercomputer: everything measurable on one machine — a 24-core Threadripper PRO 5965WX
-(8-channel DDR4) with an RTX 5080 (16 GB). Three questions: what is the best MPI × OpenMP mix on one
-node, how do the three codes weak-scale within a node, and where does a consumer GPU land.
-
-### The instrument found (and fixed) a real decomposition bug
-
-The very first sweep produced the study's first result. At **non-power-of-two rank counts** the ORB
-decomposition was badly imbalanced (blocks from 86 k to 1.05 M cells at np = 24 on $192^3$) *and*
-the pressure multigrid lost its coarse levels — **27 pressure iterations/step instead of 8**, and
-114 on the weak-scaling grid. Root cause: the decomposition was aligned to the grid's *natural
-maximum* coarsening depth (align 64 for $192^3$, 1024 for a 3072-cell axis), which over-constrains
-the ORB — the aligned split snap turns a balanced 96|96 into 128|64, and sub-boxes below twice the
-alignment skip alignment entirely, collapsing the multigrid's even-coarsening gate. Capping the
-alignment at $2^4$ (all the default 5-level hierarchy needs) fixes both at once:
-
-![Before/after the `coarsenAlignment` cap. Bars: ms/step (log); annotations: pressure
-iterations/step. Every parallel configuration improves; the broken cases recover
-5–6×.](workstation_alignfix.png)
-
-The fix is validated bit-exact where it should be (33/33 flow MPI ctests) and shipped in `flow`.
-At power-of-two rank counts nothing changes — which is why the channel-scaling study (np = 1…8)
-never saw it. *A lesson for the decomposition-anatomy section below: rank counts off the
-power-of-two grid exercise entirely different ORB paths.*
-
-### The first comparison run made the solver 2.9× faster on CPU (and 1.5× on GPU)
-
-The first head-to-head was humbling: serial peclet ran at 0.35 Mcell/s — *slower than OpenFOAM*
-(0.47). The per-phase instrumentation decomposed the gap into three findings, each fixed and
-measured in `flow`:
-
-1. **A fixed momentum sweep count from a stiffer regime.** The benchmark inherited 20 Red–Black
-   Gauss–Seidel sweeps per velocity component — sized for large-d$t$/porous production runs. At
-   this case's diffusion number (~0.13) five sweeps fully converge (ablation: 20→5 sweeps changes
-   the analytic-decay check by nothing and saves a third of the step). The structural fix is a
-   **tolerance-based stop** (`set_velocity_solver_params(iters, rtol)`): the sweep loop ends once
-   the max velocity increment has contracted to `rtol` of the first sweep's, with the check fused
-   into the sweep kernel. Easy regimes exit at 3–5 sweeps; stiff regimes still run to the cap.
-2. **Kokkos' default host MDRange tiling was a hidden 2–5× tax.** Rewriting the RB-GS smoothers in
-   a host-only line-sweep form (one $(y,z)$ pencil per task, contiguous stride-2 $x$-loop —
-   bit-identical, since same-colour cells are independent) gave **5.6× on the momentum sweep** and
-   1.7× on the projection; the same full-$x$-row tiling applied to the elementwise and reduction
-   kernels added more. The device code path is untouched by construction (compile-time selection),
-   verified: with legacy settings the GPU reproduces its baseline **to the decimal**.
-3. **The pressure solve issued ~17.6 global all-reduces per Krylov iteration** — dot products,
-   residual maxima, and a nullspace (mean) projection at *every multigrid level* costing two
-   all-reduces each. Fusing the mean-removal's {sum, count} pair into one `MPI_Allreduce`
-   (bit-identical) and dropping the interior-level projections (`set_pressure_mean_removal("fine")`
-   — the operator preserves mean-freeness, so the Krylov iteration never sees the dropped
-   components) brings it to **5.4 per iteration, with iteration counts exactly unchanged**. On one
-   node this is invisible; across nodes each all-reduce is a latency hit, so this ~3× matters
-   exactly where the channel study saw the inter-node drop. The Chebyshev driver inherits the same
-   diet through the shared V-cycle (13 → ~3 per iteration).
-
-Net effect, all correctness gates green (33/33 MPI ctests, GPU regression suite at +0.00 %,
-analytic checks digit-identical): **serial CPU 5969 → 2047 ms/step (2.9×), single GPU 155.7 →
-105.3 ms/step (1.48×)**. Every number below is the improved solver.
-
-### Hybrid mix: some MPI is good, all-MPI is not
+### Hybrid MPI × OpenMP mix
 
 ![Left: throughput by MPI ranks × OpenMP threads on 24 cores (fixed $192^3$ TGV). Right: the
 per-phase step decomposition.](workstation_mix.png)
 
-**12 ranks × 2 threads is the sweet spot (11.8 Mcell/s)** — vs 9.8 for pure MPI (24×1) and a
-14× speedup over serial. The phase split shows why: the momentum solve and the pressure projection
-are memory-bandwidth-bound sweeps, so what matters is keeping all memory channels fed without
-paying 24 ranks' worth of halo surface and per-rank multigrid boilerplate. The global-reduction
-term is invisible on one node (< 2 ms/step) — it only matters across nodes.
+**12 ranks × 2 threads is the sweet spot (11.8 Mcell/s)** — vs 9.8 for pure MPI and a 14× speedup
+over serial. The phase split shows why: the momentum and pressure sweeps are memory-bandwidth
+bound, so what matters is feeding all memory channels without paying 24 ranks' worth of halo
+surface and per-rank multigrid boilerplate. The same shape reappears on Genoa (below): some MPI is
+good, all-MPI is not.
 
-### Weak scaling within one node: bandwidth is the wall, and peclet now holds the best curve
+### Weak scaling within one node: four codes, one wall
 
-![Weak scaling at 2.1 M cells/rank (grid $128n\times128\times128$), pure MPI, up to 24 cores.
-Left: efficiency vs. own 1-rank baseline. Right: absolute throughput (log scale); the dotted line
-is the single RTX 5080 running the same case.](workstation_weak.png)
+![Weak scaling at 2.1 M cells/rank, pure MPI, up to 24 cores. Left: efficiency vs. own 1-rank
+baseline. Right: absolute throughput (log scale); the dotted line is the single RTX 5080 running
+the same case.](workstation_weak.png)
 
-With per-rank work fixed, all four codes decay together — **and this is not communication**:
-peclet's pressure iteration count stays at exactly 7.0 per step at every rank count. A single
-node's weak scaling measures **shared memory-bandwidth saturation**, nothing else — the efficiency
-ordering (incflo 43 %, peclet 40 %, CaNS 31 %, OpenFOAM 29 % at 24 ranks) is simply the *inverse*
-of per-core bandwidth demand: the slower a code streams per core-second, the later the shared
-memory system saturates. Absolute CPU throughput on 24 cores: **CaNS 41 Mcell/s, peclet 9.8,
-incflo 4.4, OpenFOAM 3.3**. Three comparisons worth separating:
-
-- **vs OpenFOAM** (the ubiquitous general-purpose reference): peclet is **3× faster** at identical
-  settings.
-- **vs incflo** (the AMReX exascale solver in peclet's *own method family* — finite-volume
-  incompressible NS, geometric-multigrid projections, embedded-boundary capable): peclet is
-  **2.2× faster on CPU** (2.4× per core) — winning its own game against the state of the art that
-  shares its design constraints. *Fairness note: incflo runs here with expert-tuned settings, not
-  defaults — we measured the ablation (`max_grid_size` 32→64: 1.25×; MLMG tolerances matched to
-  the study's 1e-5 instead of AMReX's ~1e-11 default: 1.31×; combined 1.53×) and report the tuned
-  numbers.*
-- **vs CaNS** (the FFT ceiling): the remaining 4× is the price of generality stated honestly — an
-  explicit RK3 step plus an exact FFT solve that exists *only because* the box is trivial, against
-  an implicit step and a geometric multigrid that handle arbitrary cut-cell geometry at large
-  d$t$.
-
-**And the single RTX 5080 at 67 Mcell/s outruns CaNS's entire 24-core node by 1.6×** running the
-identical case — the design point of the suite: the CPU path is a capable oracle, the GPU path is
-the product.
+With per-rank work fixed, all four codes decay together — and this is not communication (peclet's
+pressure iteration count is pinned at 7.0 at every rank count). A single node's weak scaling
+measures **shared memory-bandwidth saturation**, nothing else: the efficiency ordering (incflo
+43 %, peclet 40 %, CaNS 31 %, OpenFOAM 29 % at 24 ranks) is the *inverse* of per-core bandwidth
+demand. Absolute throughput on 24 cores: **CaNS 41 Mcell/s, peclet 9.8, incflo 4.4, OpenFOAM
+3.3** — peclet is 3× OpenFOAM and 2.2× incflo at identical settings, while CaNS's 4× lead is the
+price of generality made visible: an exact FFT solve that exists *only because* the box is
+trivial, against machinery that handles arbitrary cut-cell geometry at large d$t$. **And the
+single RTX 5080 at 67 Mcell/s outruns CaNS's entire 24-core node by 1.6×** — the design point of
+the suite: the CPU path is a capable oracle, the GPU path is the product.
 
 ### Single-GPU ladder (RTX 5080, 16 GB)
 
@@ -158,69 +90,12 @@ the product.
 | $208^3$ | 9.0 M | 265.0 | 34.0 | 19.6 |
 
 Steady ~60–67 Mcell/s until 16 GB fills. The $208^3$ outlier is *algorithmic*, not hardware: 208
-supports only a $13^3$-bottomed multigrid whose odd coarse level weakens the preconditioner
-(19.6 iterations). Grids with generous power-of-two content keep the hierarchy deep — the same
-divisibility theme as the decomposition story.
+supports only a $13^3$-bottomed multigrid whose odd coarse level weakens the preconditioner.
+Grids with generous power-of-two content keep the hierarchy deep — a practical sizing rule.
 
-## Multi-GPU weak scaling on Snellius H100 (1–32 GPUs)
+## Does the domain decomposition care about awkward rank counts?
 
-*(pending: extended weak-scaling curve with per-phase split and iteration counts; the
-plateau-vs-decay verdict on the inter-node drop)*
-
-## Reduction-light solver options at scale
-
-*(pending: Chebyshev vs MG-PCG, GraphAMG bottom, GPU-aware vs host-staged halo ablation at 8/16
-GPUs — and any default changed by a clear winner)*
-
-## Cross-node CPU weak scaling on Snellius Genoa: the structural argument, measured
-
-The head-to-head the study was built for: 188.7 M cells *per node* (768×640×384 each), grown with
-the node count on Snellius Genoa (192 cores/node), every code on the identical tiled-TGV case.
-peclet runs its measured single-node optimum (96 ranks × 2 threads, which alone delivers
-59 Mcell/s — 6× the whole 24-core workstation); the references run their natural pure-MPI mode.
-
-**Methodology note that is itself a finding:** single scaling measurements on a busy cluster are
-noise. The same peclet configuration measured 3.2 s and 8.0 s per step on different node
-allocations before we pinned cores (`--cpu-bind=cores`) and took three draws per point. Bound
-draws reproduce to ±5 %; the figure shows every draw (open markers) and the median (line). CaNS
-and incflo points are single draws — their *large* features are far outside this noise band, but
-their small wiggles are not interpretable.
-
-![Cross-node weak scaling on Snellius Genoa, 188.7 Mcells/node fixed. Left: efficiency vs own
-1-node baseline (open circles: individual peclet draws). Right: aggregate throughput; the dotted
-line is ideal scaling at peclet's slope.](snellius_weak.png)
-
-| nodes | peclet (median) | CaNS | incflo |
-|---|---|---|---|
-| 1 | 45 Mcell/s — 100 % | **109 — 100 %** | 16 — 100 % |
-| 2 | 86 — 96 % | 20 — 9 % | 21 — 67 % |
-| 4 | 167 — 93 % | 153 — 35 % | 49 — 77 % |
-| 8 | **266 — 74 %** | 45 — **5 %** | — |
-
-Three structural results:
-
-1. **peclet holds the flattest curve in the field** — 96/93/74 % at 2/4/8 nodes, iterations
-   pinned at 8.1 throughout, and the measured all-reduce cost growing like the expected
-   latency-bound log-term (153 → 431 ms/step, ~9 % of the step at 8 nodes). This is the "one-time
-   inter-node cost, then a gentle slope" shape the study set out to verify.
-2. **CaNS's single-node crown does not survive the interconnect.** 2.4× faster than peclet on one
-   node — and by two nodes it has collapsed to 9 % efficiency (reproduced in independent runs),
-   at eight nodes to 5 %: **eight CaNS nodes deliver the throughput of one peclet node.** The FFT
-   direct solve's global all-to-all transposes are cheap in shared memory and ruinous across
-   nodes; peclet's halo + reduction structure is precisely what avoids this. (Caveat stated
-   honestly: CaNS ran with its automatic pencil-grid choice; expert `dims` tuning may soften —
-   but cannot remove — the all-to-all tax.)
-3. **Against its own method family, peclet wins on both axes**: ~3× incflo per node *and* the
-   flatter curve (93 % vs 77 % at 4 nodes).
-
-The crossover happens **before two nodes**: any problem too big for a single node is already a
-problem where peclet outruns the FFT state of the art. *(OpenFOAM's cross-node points — same ESI
-v2412 built from source on Snellius — are compiling and will complete this figure.)*
-
-## Decomposition anatomy: is a prime rank count much worse than a power of two?
-
-**After the alignment fix: no.** Sweeping awkward rank counts on the fixed $192^3$ box
-(pure MPI, 5965WX, final solver):
+Sweeping prime and composite rank counts on a fixed $192^3$ box (pure MPI, 5965WX):
 
 | ranks | ms/step | Mcell/s | pressure iters | max-block imbalance |
 |---|---|---|---|---|
@@ -231,10 +106,92 @@ v2412 built from source on Snellius — are compiling and will complete this fig
 | **16** | 945 | 7.5 | **7.2** | 1.00× |
 | 23 (prime) | 819 | 8.6 | 8.0 | 1.20× |
 
-Non-power-of-two counts pay exactly **one extra pressure iteration** (the ORB's uneven-subtree
-splits land off the deepest coarsening grid, so the multigrid loses its bottom level) and a ≤ 20 %
-max-block imbalance at the worst prime — both minor; throughput sits on the same trend line as the
-neighbouring powers of two. *Before* the fix the same experiment produced 27–114 iterations/step
-and up to 12:1 imbalance — the difference between "prime rank counts are mildly suboptimal" and
-"prime rank counts are catastrophic" was a bug, not a law of nature. Multi-node topology effects
-(slab vs pencil vs brick at scale) are measured in the Snellius sections above.
+**Barely.** Non-power-of-two counts pay one extra pressure iteration (the ORB's uneven subtree
+splits land off the deepest multigrid coarsening grid, trimming the bottom level) and at worst a
+20 % max-block imbalance — throughput sits on the same trend line as the neighbouring powers of
+two. Users can pick rank counts by hardware, not by numerology.
+
+## Cross-node CPU weak scaling on Snellius Genoa
+
+The central experiment: 188.7 M cells *per node* (768×640×384 each), grown with the node count on
+Genoa (192 cores/node), every code on the identical case. peclet runs its measured single-node
+optimum (96 ranks × 2 threads — 59 Mcell/s on one node, 6× the whole workstation); the references
+run their natural pure-MPI mode.
+
+![Cross-node weak scaling on Snellius Genoa, 188.7 Mcells/node fixed. Left: efficiency vs own
+1-node baseline (open circles: individual peclet draws). Right: aggregate throughput; the dotted
+line is ideal scaling at peclet's slope.](snellius_weak.png)
+
+| nodes | peclet (median) | CaNS | incflo | OpenFOAM |
+|---|---|---|---|---|
+| 1 | 45 Mcell/s — 100 % | **109 — 100 %** | 16 — 100 % | 9.4 — 100 % |
+| 2 | 86 — 96 % | 20 — 9 % | 32 — 99 % | — |
+| 4 | 167 — 93 % | 153 — 35 % | 67 — 103 % | — |
+| 8 | **266 — 74 %** | 45 — **5 %** | 117 — 90 % | — |
+
+Three structural results:
+
+1. **The two geometric-multigrid codes scale; the FFT code does not.** peclet (96/93/74 %) and
+   incflo (99/103/90 %, single draws) both hold near-flat cross-node curves — halo exchanges plus
+   a handful of latency-bound reductions per iteration survive the interconnect. peclet's
+   instrumentation makes the cost precise: iterations pinned at 8.1, global-reduction time growing
+   like the expected log-term to ~9 % of the step at 8 nodes.
+2. **CaNS's single-node crown does not survive the interconnect.** 2.4× faster than peclet on one
+   node — and by two nodes it has collapsed to 9 % efficiency (reproduced in independent runs), at
+   eight nodes to 5 %: **eight CaNS nodes deliver the throughput of one peclet node.** Its FFT
+   solve requires global all-to-all transposes every substep — nearly free in shared memory,
+   ruinous across nodes. (Caveat: CaNS ran its automatic pencil-grid choice; expert `dims` tuning
+   may soften, but cannot remove, the all-to-all.) **The crossover lands before two nodes**: any
+   problem too big for one node is already a problem where peclet outruns the FFT state of the art.
+3. **Within the method family, peclet leads on speed at equal scaling**: ~2.8× incflo per node
+   with the same flat curve, and 4.8× OpenFOAM on its single-node point. (OpenFOAM's multi-node
+   points are limited by its serial mesh generation at these sizes — an operational cost of the
+   unstructured design that the structured codes don't have.)
+
+## Multi-GPU weak scaling: 1–32 H100
+
+The same case at 47.2 M cells per GPU (4 H100 per node), 1 → 32 GPUs — from one device to eight
+nodes:
+
+![Left: GPU weak scaling, 47.2 Mcells/GPU fixed — 90 % efficiency and 3.5 Gcell/s aggregate at 32
+H100s. Right: the pressure-solver ablation at the inter-node points (8 and 16
+GPUs).](snellius_gpu.png)
+
+**Weak efficiency stays above 90 % all the way to 32 GPUs** (100 → 94 → 93 → 92 → 92 → 90 %), with
+iterations pinned at 12.2 and the entire global-reduction budget at 6.5 ms of a 426 ms step
+(1.5 %) at 32 GPUs. In absolute terms: **one H100 delivers 123 Mcell/s — 2.7 Genoa nodes'
+worth — and 32 H100s sustain 3.5 Gcell/s**, a grid of 1.5 billion cells advancing more than two
+time steps per second.
+
+The ablation on the right is how the solver's defaults are chosen — measured, at scale:
+
+- **MG-PCG with fine-scoped nullspace removal** (the default) wins outright: the pressure solve
+  performs ~5 all-reduces per Krylov iteration, few enough that even across 8 nodes the reduction
+  tax stays negligible.
+- Removing the mean on every multigrid level instead ("all") costs 5.5 % — pure reduction latency.
+- The host-staged halo costs 12 % vs GPU-aware MPI (device pointers straight to the interconnect).
+- **Chebyshev**, the classical reduction-free alternative, loses 2.6×: it needs 38 iterations
+  against PCG's 12, and at ~5 reductions/iteration PCG's information advantage beats Chebyshev's
+  communication advantage everywhere we can measure.
+- An agglomerated algebraic bottom solve (GraphAMG) buys fewer iterations (7.4) but pays far more
+  than it saves at these scales.
+
+## What the study says, in one paragraph
+
+On the identical boundary-free case, `peclet.flow` is the fastest general-geometry incompressible
+solver in the comparison on every platform tested — 3× OpenFOAM and 2.2× incflo per CPU node, 4.8×
+OpenFOAM on Genoa — and the *only* code family in the field (shared with incflo) whose weak
+scaling survives the interconnect, holding ~90 % across nodes where the FFT state of the art
+collapses below 10 %. The same source runs 67 Mcell/s on a consumer RTX 5080 (outrunning CaNS's
+whole 24-core node), 123 Mcell/s on one H100, and 3.5 Gcell/s at 90 % weak efficiency on 32 H100s.
+The pressure solve that makes general geometry possible — cut-cell geometric multigrid inside
+PCG — costs a measured ~4× against an FFT direct solve on one node, and wins it back with interest
+the moment the problem spans two.
+
+## Reproducing
+
+All drivers, case definitions, runner scripts for the three reference codes, the Snellius job
+pack, raw result JSONs and the figure scripts live in
+[`benchmarks/parallel-scaling/`](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/parallel-scaling)
+— `tgv_bench.py` (peclet), `run_cans.sh`, `run_incflo.sh`, `openfoam-tgv/`, `snellius/README.md`
+(exact submission commands), `plot_workstation.py` / `plot_snellius.py`.

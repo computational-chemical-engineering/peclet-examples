@@ -66,15 +66,16 @@ distributed-multigrid correctness fix that made the large runs possible.
 :::
 
 ::: {.g-col-12 .g-col-md-6}
-### [Parallel scaling vs CaNS & OpenFOAM →](parallel-scaling/index.qmd)
+### [Parallel scaling vs CaNS, incflo & OpenFOAM →](parallel-scaling/index.qmd)
 The systematic scaling study on a boundary-free tiled Taylor–Green case: CPU (MPI × OpenMP hybrid)
-and multi-GPU weak scaling from a 24-core workstation to Snellius, **head-to-head against CaNS**
-(state-of-the-art FFT solver) **and OpenFOAM** on identical grids — with the solver instrumented
-per phase (predictor / momentum / projection / global reductions) so algorithmic and communication
-costs are never conflated. Already found and fixed a real ORB-alignment bug (27→8 pressure
-iterations at non-power-of-two rank counts) and maps the hybrid sweet spot.
+and multi-GPU weak scaling from a 24-core workstation to 32 H100s on Snellius, head-to-head
+against **CaNS** (the FFT state of the art), **incflo** (the AMReX exascale solver in peclet's
+method family) and **OpenFOAM** on identical grids. Headlines: **90 % weak efficiency and
+3.5 Gcell/s on 32 H100s**; on CPU the crossover against CaNS lands **before two nodes** (its FFT
+all-to-all collapses across the interconnect while peclet holds ~90 %); 3× OpenFOAM and 2.2×
+incflo per node at expert-tuned reference settings.
 
-*flow · HPC · MPI · CPU + GPU · weak scaling · CaNS · OpenFOAM · decomposition*
+*flow · HPC · MPI · CPU + GPU · weak scaling · CaNS · incflo · OpenFOAM · decomposition*
 :::
 
 :::
