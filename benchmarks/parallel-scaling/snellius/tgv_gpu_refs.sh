@@ -29,7 +29,10 @@ export TILE=64
 MODE="${1:-}"; NGPU="${2:-4}"
 
 if [ "$MODE" = incflo-build ]; then
-  module purge; module load 2024 foss/2024a CUDA/12.6.0 CMake 2>/dev/null || module load 2024 foss/2024a CUDA/12.6.0
+  # the peclet-validated GPU MPI stack (gompi/2024a + CUDA 12.6 + UCX-CUDA + pml=ucx): plain
+  # foss UCX has no CUDA support -> CMA aborts on CUDA-registered buffers in FillBoundary
+  set --; source "$EXDIR/../../../examples/wall-bounded-turbulence/snellius_env.sh"
+  module load CMake 2>/dev/null || true
   cd "$REFDIR"
   [ -d incflo ] || git clone --depth 1 https://github.com/AMReX-Fluids/incflo.git
   [ -d amrex ] || git clone --depth 1 https://github.com/AMReX-Codes/amrex.git
@@ -90,10 +93,12 @@ fi
 GNX=$(( 384 * NGPU )); GNY=384; GNZ=320
 case "$MODE" in
 incflo)
-  module purge; module load 2024 foss/2024a CUDA/12.6.0
+  # same validated GPU MPI env as the peclet runs (UCX-CUDA); device-direct AMReX communication
+  set --; source "$EXDIR/../../../examples/wall-bounded-turbulence/snellius_env.sh"
   OUT="$RES/incflo_gpu_np${NGPU}.json"
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
   NP=$NGPU NX=$GNX NY=$GNY NZ=$GNZ NSTEPS=30 TILE=$TILE MAXGRID=384 \
+    EXTRA="amrex.use_gpu_aware_mpi = 1" \
     LABEL="snellius-h100-incflo" OUT="$OUT" \
     INCFLO="$REFDIR/incflo/build_gpu/incflo.ex" \
     MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix --gpus-per-task=1 --gpu-bind=per_task:1" \

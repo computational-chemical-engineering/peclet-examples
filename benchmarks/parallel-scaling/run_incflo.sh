@@ -54,6 +54,8 @@ geometry.prob_hi        = $NTX. $NTY. $NTZ.
 geometry.is_periodic    = 1 1 1
 incflo.probtype         = 3
 EOF
+# extra AMReX/incflo input lines from the caller (e.g. amrex.use_gpu_aware_mpi = 1)
+[ -n "${EXTRA:-}" ] && printf '%s\n' "$EXTRA" >> "$WORK/inputs"
 
 cd "$WORK"
 $MPIRUN ${NPFLAG:--np} "$NP" ${MPIFLAGS:---bind-to core} "$INCFLO" inputs > log.run 2>&1 || {
