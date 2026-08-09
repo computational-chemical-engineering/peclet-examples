@@ -106,7 +106,11 @@ if [ "$MODE" = cans-build ]; then
   grep -E "FCOMP|GPU" build.conf
   # NVHPC 24.9 ICE workaround (select_rtemp/exp_call on array-SECTION args to MPI_ALLREDUCE in
   # timer.f90; fixed in 26.x): pass the whole arrays — semantically identical, idempotent.
-  sed -i 's/timer_elapsed_\(acc\|min\|max\)(:)/timer_elapsed_\1/g' src/timer.f90
+  # Constrained to the MPI_ALLREDUCE lines: the same pattern appears in the DECLARATIONS, where
+  # stripping (:) turns the allocatables into scalars (verified: unguarded sed breaks the build,
+  # guarded sed builds clean on NVHPC 26.3).
+  git checkout -- src/timer.f90 2>/dev/null || true
+  sed -i '/MPI_ALLREDUCE/ s/timer_elapsed_\(acc\|min\|max\)(:)/timer_elapsed_\1/g' src/timer.f90
   make allclean || true
   make libs && make -j 16
   ls -la run/cans || { echo "FATAL: no GPU binary produced" >&2; exit 1; }
