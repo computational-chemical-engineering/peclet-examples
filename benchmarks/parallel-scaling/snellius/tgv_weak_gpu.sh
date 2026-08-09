@@ -53,12 +53,16 @@ run_one () {  # N out extra-env...
 }
 
 ARG="${1:-}"
+# Optional 2nd argument = result tag appended to every JSON (`tgv_weak_gpu.sh "" mgfix`, or
+# `... levers mgfix`). run_one SKIPS existing files, so a solver change needs a new tag — else the
+# pre-change JSONs are silently reported as the new numbers.
+TAG="${2:+_${2}}"
 if [ -n "$ARG" ] && [ "$ARG" != levers ]; then
   [ "$ARG" -le "$MAXN" ] || { echo "FATAL: N=$ARG needs $(( (ARG+3)/4 )) nodes, allocated $SLURM_NNODES" >&2; exit 1; }
-  run_one "$ARG" "weak_np${ARG}.json"
+  run_one "$ARG" "weak_np${ARG}${TAG}.json"
 else
   for N in 1 2 4 8 16 32; do
-    [ "$N" -le "$MAXN" ] && run_one $N "weak_np${N}.json"
+    [ "$N" -le "$MAXN" ] && run_one $N "weak_np${N}${TAG}.json"
   done
 fi
 
@@ -66,9 +70,9 @@ fi
 # The default run already uses MEANSCOPE=fine (5.4 allreduces/iter); meanall restores the legacy
 # scope (17.6/iter) to quantify the reduction tax directly at scale.
 if [ "$ARG" = levers ] || [ "${LEVERS:-0}" = 1 ]; then
-  run_one $MAXN "weak_np${MAXN}_cheb.json"    env PRESSURE=cheb PMAXIT=400
-  run_one $MAXN "weak_np${MAXN}_meanall.json" env MEANSCOPE=all
-  run_one $MAXN "weak_np${MAXN}_amg.json"     env GRAPHAMG=1
-  run_one $MAXN "weak_np${MAXN}_hoststage.json" env PECLET_CORE_GPU_AWARE_MPI=0
+  run_one $MAXN "weak_np${MAXN}_cheb${TAG}.json"    env PRESSURE=cheb PMAXIT=400
+  run_one $MAXN "weak_np${MAXN}_meanall${TAG}.json" env MEANSCOPE=all
+  run_one $MAXN "weak_np${MAXN}_amg${TAG}.json"     env GRAPHAMG=1
+  run_one $MAXN "weak_np${MAXN}_hoststage${TAG}.json" env PECLET_CORE_GPU_AWARE_MPI=0
 fi
 echo "done -> $RES"

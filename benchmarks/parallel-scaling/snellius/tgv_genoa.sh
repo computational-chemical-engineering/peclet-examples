@@ -50,20 +50,23 @@ run_one () {  # ntasks rpn threads gnx out
 }
 
 MODE="${1:-${MODE:-mix}}"   # argument beats env (env vars can be dropped by SURF sbatch)
+# Optional 2nd argument = result tag, appended to every JSON name (`tgv_genoa.sh mix mgfix`).
+# run_one SKIPS an existing file, so a solver change needs a new tag (or a moved results dir) —
+# otherwise the pre-change JSONs are silently reported as the new numbers.
+TAG="${2:+_${2}}"
 if [ "$MODE" = mix ]; then
   export NSTEPS=15 WARMUP=5
   for cfg in "192 1" "96 2" "48 4" "24 8" "12 16"; do
     set -- $cfg
-    run_one "$1" "$1" "$2" "$BASE_GNX" "mix_r$1_t$2.json"
+    run_one "$1" "$1" "$2" "$BASE_GNX" "mix_r$1_t$2${TAG}.json"
   done
 else
   export NSTEPS=15 WARMUP=5
   RPN="${RPN:-96}"; THREADS="${THREADS:-2}"
   N=$SLURM_NNODES
-  # optional 2nd argument = repeat tag (e.g. `tgv_genoa.sh weak r2`) — genoa node-set variability
-  # is REAL (same config measured 3.2 vs 8.0 s/step on different node sets); report the best-of
-  # or the spread, never a single draw.
-  REP="${2:+_${2}}"
-  run_one $(( RPN * N )) "$RPN" "$THREADS" $(( BASE_GNX * N )) "weak_n${N}_r${RPN}_t${THREADS}${REP}.json"
+  # The 2nd argument (TAG above) doubles as the repeat tag (`tgv_genoa.sh weak r2`) — genoa
+  # node-set variability is REAL (same config measured 3.2 vs 8.0 s/step on different node sets);
+  # report the best-of or the spread, never a single draw.
+  run_one $(( RPN * N )) "$RPN" "$THREADS" $(( BASE_GNX * N )) "weak_n${N}_r${RPN}_t${THREADS}${TAG}.json"
 fi
 echo "done -> $RES"

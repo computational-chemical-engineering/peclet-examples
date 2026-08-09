@@ -62,6 +62,48 @@ sbatch --nodes=1 tgv_genoa.sh                       # hybrid mix sweep (192x1 �
 for n in 1 2 4 8; do sbatch --nodes=$n tgv_genoa.sh weak; done
 ```
 
+## 2b. Validation of the MG residual-halo fix (flow 5d77deb) — fat-rank parity
+
+The pressure V-cycle used to restrict a residual computed with one-colour-stale ghosts, which made
+its convergence rate depend on the DECOMPOSITION: the genoa mix ran 12 pressure iters/step at
+12–24 ranks/node against 8.1 at 96 (the whole "fat ranks are slower" penalty). With the fix,
+iteration counts are decomposition-independent and lower everywhere (workstation: flat 4.0 at
+np=1…24 on one grid; single RTX 5080 192³: 105.4 → 60.0 ms/step). **Every peclet number in the
+study predates this** — CPU and GPU alike — so re-measure before comparing against the references.
+
+Both scripts take a **result TAG as their last argument** (JSONs are skipped when they already
+exist, so without a new tag the pre-fix results are silently re-reported):
+
+```bash
+cd /projects/0/prjs1022/peclet/suite && git pull --recurse-submodules   # flow: MG fix
+# rebuild BOTH: build_omp_mpi (genoa) and build_cuda_mpi (H100) — header-only solver, must recompile
+sbatch --nodes=1 tgv_genoa.sh mix mgfix                                # 192x1 … 12x16 rerun
+sbatch --nodes=8 --export=ALL,RPN=12,THREADS=16 tgv_genoa.sh weak mgfix   # the fat target
+sbatch --nodes=8 --export=ALL,RPN=96,THREADS=2  tgv_genoa.sh weak mgfix   # the thin reference
+for n in 1 2 4; do sbatch --nodes=$n --export=ALL,RPN=12,THREADS=16 tgv_genoa.sh weak mgfix; done
+for n in 1 2 4; do sbatch --nodes=$n --export=ALL,RPN=96,THREADS=2  tgv_genoa.sh weak mgfix; done
+```
+
+Read the `pressure_iters_per_step` field first: **12×16 and 96×2 should now agree** (the fix's
+prediction). Per-node throughput parity follows only if the remaining intra-rank thread scaling
+holds up — on the workstation a 24-thread rank is still ~24% slower than 12 ranks × 2 threads at
+320³ (all of it inside `projection`), so 12×16 may land a little behind 96×2 even with equal
+iteration counts. Repeat draws (`... weak mgfix2`) as usual: genoa node-set variability is ±2.5×
+on single draws.
+
+GPU curve, same reasoning (single-device throughput ~1.75×, so the whole 1–32 weak curve moves):
+
+```bash
+sbatch --nodes=1 tgv_weak_gpu.sh 1 mgfix
+sbatch --nodes=1 tgv_weak_gpu.sh 2 mgfix
+sbatch --nodes=1 tgv_weak_gpu.sh 4 mgfix
+sbatch --nodes=2 tgv_weak_gpu.sh 8 mgfix
+sbatch --nodes=4 tgv_weak_gpu.sh 16 mgfix
+sbatch --nodes=8 tgv_weak_gpu.sh 32 mgfix
+sbatch --nodes=2 tgv_weak_gpu.sh levers mgfix    # lever ablation is worth redoing: Chebyshev went
+sbatch --nodes=4 tgv_weak_gpu.sh levers mgfix    # 17 -> 5 iters locally, it was 2.6x WORSE before
+```
+
 ## 3. References
 
 ```bash
