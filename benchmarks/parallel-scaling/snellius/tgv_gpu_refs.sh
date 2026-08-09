@@ -63,19 +63,26 @@ EOF
 fi
 
 if [ "$MODE" = cans-build ]; then
-  # CaNS GPU = OpenACC via nvfortran + cuDecomp. Loud failure with the module list if no NVHPC.
+  # CaNS GPU = OpenACC via nvfortran + cuDecomp — in a SEPARATE CaNS-gpu checkout (building
+  # GPU=1 in the CPU checkout destroys the genoa CPU binary and poisons its build.conf; the
+  # workstation recipe uses the same split). Loud failure with the module list if no NVHPC.
   module purge; module load 2024 2>/dev/null || true
   NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
   [ -n "$NVMOD" ] || { echo "FATAL: no NVHPC module:"; module -r avail 'NVHPC|nvhpc' 2>&1 | tail; exit 1; }
   module load "$NVMOD"
-  cd "$REFDIR/CaNS"
-  git submodule update --init dependencies/cuDecomp || true
+  cd "$REFDIR"
+  [ -d CaNS-gpu ] || git clone --depth 1 https://github.com/CaNS-World/CaNS.git CaNS-gpu
+  cd CaNS-gpu
+  git submodule update --init dependencies/2decomp-fft dependencies/cuDecomp
   cp -f configs/defaults/build-default.conf build.conf
   sed -i 's/^FCOMP=.*/FCOMP=NVIDIA/; s/^GPU=.*/GPU=1/' build.conf
   grep -E "FCOMP|GPU" build.conf
   make allclean || true
   make libs && make -j 16
-  ls -la run/cans && echo "CaNS GPU built"
+  ls -la run/cans || { echo "FATAL: no GPU binary produced" >&2; exit 1; }
+  # a correct GPU binary links cuFFT, not FFTW — fail here rather than at 8 GPUs' runtime
+  ldd run/cans | grep -q fftw3 && { echo "FATAL: binary links FFTW -> this is a CPU build" >&2; exit 1; }
+  echo "CaNS GPU built"
   exit 0
 fi
 
@@ -96,12 +103,15 @@ cans)
   module purge; module load 2024 2>/dev/null || true
   NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
   module load "$NVMOD"
-  export LD_LIBRARY_PATH="$REFDIR/CaNS/dependencies/cuDecomp/build/lib:${LD_LIBRARY_PATH:-}"
+  export LD_LIBRARY_PATH="$REFDIR/CaNS-gpu/dependencies/cuDecomp/build/lib:${LD_LIBRARY_PATH:-}"
+  ldd "$REFDIR/CaNS-gpu/run/cans" | grep -q fftw3 && {
+    echo "FATAL: CaNS-gpu/run/cans links FFTW (CPU build) — rerun 'tgv_gpu_refs.sh cans-build'" >&2
+    exit 1; }
   OUT="$RES/cans_gpu_np${NGPU}.json"
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
   NP=$NGPU NX=$GNX NY=$GNY NZ=$GNZ NSTEPS=30 TILE=$TILE \
     LABEL="snellius-h100-cans" OUT="$OUT" \
-    CANS="$REFDIR/CaNS/run/cans" \
+    CANS="$REFDIR/CaNS-gpu/run/cans" \
     MPIRUN="srun" NPFLAG="-n" MPIFLAGS="--mpi=pmix --gpus-per-task=1 --gpu-bind=per_task:1" \
     "$EXDIR/../run_cans.sh" || echo "[FAILED] $OUT"
   ;;

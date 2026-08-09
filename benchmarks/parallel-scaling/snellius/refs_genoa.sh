@@ -43,7 +43,10 @@ if [ "$MODE" = build ] || [ "${BUILD_CANS:-0}" = 1 ]; then
   [ -d CaNS ] || git clone https://github.com/CaNS-World/CaNS.git
   cd CaNS
   git submodule update --init dependencies/2decomp-fft
-  cp -n configs/defaults/build-default.conf build.conf
+  # cp -f + explicit GNU/GPU=0: a stray GPU-flavoured build.conf (from the old in-place
+  # cans-build) must never poison the CPU build
+  cp -f configs/defaults/build-default.conf build.conf
+  sed -i 's/^FCOMP=.*/FCOMP=GNU/; s/^GPU=.*/GPU=0/' build.conf
   make libs && make -j 16          # libs MUST be serial (Fortran module race)
   ls -la run/cans && echo "CaNS built"
   exit 0
