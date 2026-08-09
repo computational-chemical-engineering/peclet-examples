@@ -117,8 +117,11 @@ fi
 GNX=$(( 384 * NGPU )); GNY=384; GNZ=320
 case "$MODE" in
 incflo)
-  # same validated GPU MPI env as the peclet runs (UCX-CUDA); device-direct AMReX communication
+  # same validated GPU MPI env as the peclet runs (UCX-CUDA); device-direct AMReX communication.
+  # UCX_TLS=^cma: the CMA transport's process_vm_readv cannot touch CUDA-registered memory
+  # (measured: SIGABRT 'Bad address' in FillBoundary) — drop it, UCX falls back to sm/sysv.
   set --; source "$EXDIR/../../../examples/wall-bounded-turbulence/snellius_env.sh"
+  export UCX_TLS='^cma'
   OUT="$RES/incflo_gpu_np${NGPU}.json"
   [ -f "$OUT" ] && { echo "[skip] $OUT"; exit 0; }
   NP=$NGPU NX=$GNX NY=$GNY NZ=$GNZ NSTEPS=30 TILE=$TILE MAXGRID=384 \
@@ -133,6 +136,7 @@ cans)
   NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
   module load "$NVMOD"
   nvhpc_mpi   # same MPI the binary was built with; sets CANS_MPIRUN/NPFLAG/MPIFLAGS
+  export UCX_TLS='^cma'   # same CMA-vs-CUDA-memory hazard as incflo — preempt it
   export LD_LIBRARY_PATH="$REFDIR/CaNS-gpu/dependencies/cuDecomp/build/lib:${LD_LIBRARY_PATH:-}"
   ldd "$REFDIR/CaNS-gpu/run/cans" | grep -q fftw3 && {
     echo "FATAL: CaNS-gpu/run/cans links FFTW (CPU build) — rerun 'tgv_gpu_refs.sh cans-build'" >&2
