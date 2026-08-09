@@ -73,7 +73,9 @@ EOF
 cd "$WORK"
 # NPFLAG: '-np' for OpenMPI mpirun (default), '-n' for srun
 $MPIRUN ${NPFLAG:--np} "$NP" ${MPIFLAGS:---bind-to core} "$CANS" input.nml > log.run 2>&1 || {
-  tail -5 log.run >&2; exit 1; }
+  cp log.run "${OUT%.json}.faillog" 2>/dev/null   # durable full log next to the results
+  echo "[run_cans FAILED] full log: ${OUT%.json}.faillog; tail:" >&2
+  tail -25 log.run >&2; exit 1; }
 
 # per-step wall time: "Average, minimum & maximum elapsed time" line after each step; steady half
 python3 - log.run "$NP" "$NX" "$NY" "$NZ" "$NSTEPS" "$LABEL" "$NTHREADS" "$OUT" "$DIMS" <<'EOF'
