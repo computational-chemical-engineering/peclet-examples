@@ -28,6 +28,18 @@ REFDIR="${REFDIR:-/projects/0/prjs1022/peclet/scaling-refs}"; mkdir -p "$REFDIR"
 export TILE=64
 MODE="${1:-}"; NGPU="${2:-4}"
 
+# Load the newest usable NVHPC across module years (the 2024 tree stops at 24.9, whose frontend
+# ICEs on CaNS's timer.f90; 2025 carries 25.x where those bugs are fixed).
+load_nvhpc () {
+  module purge
+  for y in 2025 2024; do
+    module load $y 2>/dev/null || continue
+    NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC/[0-9.]+-CUDA' | sort -V | tail -1)"
+    [ -n "$NVMOD" ] && module load "$NVMOD" && { echo "[load_nvhpc] $y: $NVMOD"; return 0; }
+  done
+  echo "FATAL: no NVHPC module found in 2025/2024 trees" >&2; exit 1
+}
+
 # Put an MPI for nvfortran on PATH (the NVHPC module alone ships no mpifort). Route 1: a
 # site OpenMPI built against NVHPC; route 2: NVHPC's bundled comm_libs MPI. Sets CANS_MPIRUN
 # for the run mode (bundled MPI is not Slurm/pmix-integrated -> launch with its own mpirun).
@@ -92,11 +104,8 @@ if [ "$MODE" = cans-build ]; then
   # CaNS GPU = OpenACC via nvfortran + cuDecomp — in a SEPARATE CaNS-gpu checkout (building
   # GPU=1 in the CPU checkout destroys the genoa CPU binary and poisons its build.conf; the
   # workstation recipe uses the same split). Loud failure with the module list if no NVHPC.
-  module purge; module load 2024 2>/dev/null || true
-  NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
-  [ -n "$NVMOD" ] || { echo "FATAL: no NVHPC module:"; module -r avail 'NVHPC|nvhpc' 2>&1 | tail; exit 1; }
-  module load "$NVMOD"
-  nvhpc_mpi   # Snellius' NVHPC module ships no mpifort on PATH — see helper at top
+  load_nvhpc
+  nvhpc_mpi   # Snellius' NVHPC modules ship no mpifort on PATH — see helper at top
   cd "$REFDIR"
   [ -d CaNS-gpu ] || git clone --depth 1 https://github.com/CaNS-World/CaNS.git CaNS-gpu
   cd CaNS-gpu
@@ -143,9 +152,7 @@ incflo)
     "$EXDIR/../run_incflo.sh" || echo "[FAILED] $OUT"
   ;;
 cans)
-  module purge; module load 2024 2>/dev/null || true
-  NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC' | sort -V | tail -1)"
-  module load "$NVMOD"
+  load_nvhpc  # MUST resolve the same NVHPC the binary was built with (both pick newest)
   nvhpc_mpi   # same MPI the binary was built with; sets CANS_MPIRUN/NPFLAG/MPIFLAGS
   export UCX_TLS='^cma'   # same CMA-vs-CUDA-memory hazard as incflo — preempt it
   export LD_LIBRARY_PATH="$REFDIR/CaNS-gpu/dependencies/cuDecomp/build/lib:${LD_LIBRARY_PATH:-}"
