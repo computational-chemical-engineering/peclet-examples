@@ -28,16 +28,25 @@ REFDIR="${REFDIR:-/projects/0/prjs1022/peclet/scaling-refs}"; mkdir -p "$REFDIR"
 export TILE=64
 MODE="${1:-}"; NGPU="${2:-4}"
 
-# Load the newest usable NVHPC across module years (the 2024 tree stops at 24.9, whose frontend
-# ICEs on CaNS's timer.f90; 2025 carries 25.x where those bugs are fixed).
+# NVHPC selection. Counter-intuitively PIN 24.9-CUDA-12.6.0: the 2025-tree modules
+# ("nvidia-compilers") are compilers-only installs WITHOUT the math_libs/NCCL components that
+# cuDecomp's find_package(NVHPC) requires (measured: 25.11 config fails on cusolver/NCCL, and
+# defaults to nonexistent CUDA-13.0 dirs), while 24.9 is a full bundle under which cuDecomp
+# configures AND builds — its two timer.f90 frontend ICEs are handled by the seds below. Also
+# keeps CUDA 12.6, the driver-proven runtime the rest of the campaign uses.
 load_nvhpc () {
   module purge
-  for y in 2025 2024; do
+  module load 2024 2>/dev/null || true
+  if module load NVHPC/24.9-CUDA-12.6.0 2>/dev/null; then
+    echo "[load_nvhpc] pinned NVHPC/24.9-CUDA-12.6.0 (full bundle)"
+    return 0
+  fi
+  for y in 2024 2025; do
     module load $y 2>/dev/null || continue
     NVMOD="$(module -r -t avail '^NVHPC' 2>&1 | grep -E '^NVHPC/[0-9.]+-CUDA' | sort -V | tail -1)"
-    [ -n "$NVMOD" ] && module load "$NVMOD" && { echo "[load_nvhpc] $y: $NVMOD"; return 0; }
+    [ -n "$NVMOD" ] && module load "$NVMOD" && { echo "[load_nvhpc] fallback $y: $NVMOD"; return 0; }
   done
-  echo "FATAL: no NVHPC module found in 2025/2024 trees" >&2; exit 1
+  echo "FATAL: no NVHPC module found in 2024/2025 trees" >&2; exit 1
 }
 
 # Put an MPI for nvfortran on PATH (the NVHPC module alone ships no mpifort). Route 1: a
