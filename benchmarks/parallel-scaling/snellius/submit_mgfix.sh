@@ -41,6 +41,9 @@ TAG="${TAG:-mgfix}"
 REPEATS="${REPEATS:-1}"
 MAXGPU="${MAXGPU:-32}"
 MODE="${1:-all}"
+# DRY_RUN=1 hands out fake job ids (from a counter file — sub() runs in a subshell, so a plain
+# variable would not survive) so the --dependency wiring shows up in the printed sbatch lines too.
+DRY_COUNTER="${TMPDIR:-/tmp}/.submit_mgfix_dryid.$$"
 GPU_BUILD="$SUITE/flow/build_cuda_mpi"     # what tgv_weak_gpu.sh defaults to
 CPU_BUILD="$SUITE/flow/build_omp_mpi"      # what tgv_genoa.sh defaults to
 
@@ -56,7 +59,11 @@ say() { echo "[submit_mgfix] $*"; }
 sub() {  # echo + submit; job id goes to stdout (for --dependency) and to the log (for the user)
   echo "  sbatch $*" >&2
   local id
-  if [ "${DRY_RUN:-0}" = 1 ]; then id=DRYRUN; else id=$(sbatch --parsable "$@") || id=""; fi
+  if [ "${DRY_RUN:-0}" = 1 ]; then
+    id=$(( $(cat "$DRY_COUNTER" 2>/dev/null || echo 900000) + 1 )); echo "$id" > "$DRY_COUNTER"
+  else
+    id=$(sbatch --parsable "$@") || id=""
+  fi
   [ -n "$id" ] && echo "    -> job $id" >&2 || echo "    -> SUBMIT FAILED" >&2
   echo "$id"
 }
@@ -81,7 +88,7 @@ needs_build() {
   [ -n "$(find "$SUITE/flow/src" "$SUITE/core/include" -newer "$so" -print -quit 2>/dev/null)" ]
 }
 
-CPU_JOB="" GPU_JOB=""
+CPU_JOB="" GPU_JOB="" BUILDS_SUBMITTED=0
 want_cpu=0 want_gpu=0
 case "$MODE" in
   all)   want_cpu=1; want_gpu=1 ;;
@@ -100,33 +107,56 @@ if [ "$want_cpu" = 1 ] && needs_build "$CPU_BUILD"; then
                 --output="$HERE/peclet-build-cpu-%j.out" \
                 --wrap="cd '$INSTALL_DIR' && SLURM_SUBMIT_DIR='$INSTALL_DIR' bash ./install_snellius.sh cpu")
   say "  build job $CPU_JOB"
+  BUILDS_SUBMITTED=1
 else
   [ "$want_cpu" = 1 ] && say "CPU build $CPU_BUILD is current -> no rebuild"
 fi
 
 if [ "$want_gpu" = 1 ] && needs_build "$GPU_BUILD"; then
   say "GPU build $GPU_BUILD is missing/stale -> submitting h100 build"
-  gdep=""; [ -n "$CPU_JOB" ] && [ "$CPU_JOB" != DRYRUN ] && gdep="--dependency=afterok:$CPU_JOB"
+  gdep=""; [ -n "$CPU_JOB" ] && [ -n "$CPU_JOB" ] && gdep="--dependency=afterok:$CPU_JOB"
   GPU_JOB=$(sub --job-name=peclet-build-gpu $gdep --partition=gpu_h100 --gpus=1 --nodes=1 \
                 --ntasks=1 --cpus-per-task=16 --time=02:00:00 --account=tes24005 \
                 --output="$HERE/peclet-build-gpu-%j.out" \
                 --wrap="cd '$INSTALL_DIR' && SLURM_SUBMIT_DIR='$INSTALL_DIR' bash ./install_snellius.sh h100")
   say "  build job $GPU_JOB"
+  BUILDS_SUBMITTED=1
 else
   [ "$want_gpu" = 1 ] && say "GPU build $GPU_BUILD is current -> no rebuild"
 fi
 [ "$MODE" = build ] && { say "build-only mode; nothing else queued"; exit 0; }
 
-dep_of() {  # $1 = job id (may be empty) -> "--dependency=afterok:ID" or nothing
-  [ -n "$1" ] && [ "$1" != DRYRUN ] && echo "--dependency=afterok:$1"
-}
+# EVERY measurement must wait for EVERY build submitted in this run, not just the build for its own
+# backend: the two builds share $SUITE/flow/.venv and install_snellius.sh recreates it with
+# `python3 -m venv --clear`. A genoa job that depended only on the CPU build therefore started while
+# the h100 build had the venv emptied, and died with "ModuleNotFoundError: No module named numpy"
+# (measured, 2026-08-09). One combined afterok list costs a little queue latency and removes the race.
+ALL_DEPS=""
+for j in "$CPU_JOB" "$GPU_JOB"; do
+  [ -n "$j" ] && ALL_DEPS="${ALL_DEPS}:$j"
+done
+DEP=""
+[ -n "$ALL_DEPS" ] && DEP="--dependency=afterok${ALL_DEPS}"
+[ -n "$DEP" ] && say "every measurement waits on $DEP (shared flow/.venv)"
+
+# --- 2b. venv preflight ---------------------------------------------------------------------------
+# When no build is queued, nothing will repair the venv — check it now instead of discovering it in
+# 17 failed jobs. (mpi4py import is the one that matters: the driver is launched under srun.)
+if [ "$BUILDS_SUBMITTED" = 0 ]; then
+  if ! "$SUITE/flow/.venv/bin/python" -c "import numpy, mpi4py" 2>/dev/null; then
+    echo "FATAL: $SUITE/flow/.venv cannot import numpy+mpi4py — a previous build left it broken." >&2
+    echo "       Repair it with:  FORCE_BUILD=1 bash $0 build   (then rerun this command)" >&2
+    exit 1
+  fi
+  say "venv preflight ok ($SUITE/flow/.venv)"
+fi
 
 # --- 3. genoa CPU measurements -----------------------------------------------------------------
 # The headline: does 12x16 (fat) now match 96x2 (thin) per node? The mix job answers it on ONE
 # node; the weak sweeps answer whether it holds across nodes (fat ranks = 8x fewer ranks in the
 # collectives, which is the whole point of the exercise).
 if [ "$want_cpu" = 1 ]; then
-  d=$(dep_of "$CPU_JOB")
+  d="$DEP"
   say "queueing genoa: 1-node mix + weak sweeps at 12x16 (fat) and 96x2 (thin), tag=$TAG"
   sub $d --nodes=1 --job-name=tgv-mix "$HERE/tgv_genoa.sh" mix "$TAG" >/dev/null
   for n in 1 2 4 8; do
@@ -151,7 +181,7 @@ fi
 # is worth redoing too: Chebyshev went 17 -> 5 iterations locally, and it was the lever the old
 # ablation rejected (2.6x worse).
 if [ "$want_gpu" = 1 ]; then
-  d=$(dep_of "$GPU_JOB")
+  d="$DEP"
   say "queueing H100 weak sweep 1..$MAXGPU + lever ablation, tag=$TAG"
   for N in 1 2 4 8 16 32; do
     [ "$N" -le "$MAXGPU" ] || continue
@@ -186,3 +216,4 @@ Then regenerate figures + page locally:
     cd ~/Codes/peclet-examples/benchmarks/parallel-scaling
     python plot_snellius.py && python plot_workstation.py
 EOF
+rm -f "$DRY_COUNTER"

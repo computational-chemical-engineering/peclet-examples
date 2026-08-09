@@ -99,9 +99,14 @@ bash submit_mgfix.sh all         # DRY_RUN=1 first if you want to see the sbatch
 2. **Builds only what is stale** — it compares `flow/build_omp_mpi` and `flow/build_cuda_mpi`
    against `flow/src` + `core/include` mtimes and submits `install_snellius.sh cpu` (genoa) and/or
    `install_snellius.sh h100` only when needed; every measurement is then queued with
-   `--dependency=afterok:<build>`. A current build is left alone and the jobs start immediately.
-   Both builds share `flow/.venv` (the installer recreates it with `--clear`), so when both are
-   stale the CPU build runs first and the GPU build finishes the venv (it re-adds cupy).
+   `--dependency=afterok:<all builds submitted>`. A current build is left alone and the jobs start
+   immediately (after a preflight that the venv can `import numpy, mpi4py`).
+   **Why every job waits for BOTH builds:** they share `$SUITE/flow/.venv` and `install_snellius.sh`
+   recreates it with `python3 -m venv --clear`. In the first mgfix batch the genoa jobs depended
+   only on the CPU build, started while the h100 build had the venv emptied, and died with
+   `ModuleNotFoundError: No module named 'numpy'`. The CPU build is also ordered first so the GPU
+   build finishes the venv (it re-adds cupy). If jobs ever fail that way again: wait for the builds
+   to finish, then rerun the driver — no JSON is written on failure, so it just refills the gaps.
 3. Queues, with result tag `mgfix` (`TAG=` to change; `REPEATS=2` adds a second genoa draw):
    - **genoa**: 1-node hybrid mix (192×1 … 12×16) + weak sweeps n=1,2,4,8 at **12×16 (fat)** and
      **96×2 (thin)** — the fat-vs-thin comparison this fix was made for.
