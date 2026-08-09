@@ -122,17 +122,32 @@ if [ "$MODE" = cans-build ]; then
   cp -f configs/defaults/build-default.conf build.conf
   sed -i 's/^FCOMP=.*/FCOMP=NVIDIA/; s/^GPU=.*/GPU=1/' build.conf
   grep -E "FCOMP|GPU" build.conf
-  # NVHPC 24.9 ICE workaround (select_rtemp/exp_call on array-SECTION args to MPI_ALLREDUCE in
-  # timer.f90; fixed in 26.x): pass the whole arrays — semantically identical, idempotent.
-  # Constrained to the MPI_ALLREDUCE lines: the same pattern appears in the DECLARATIONS, where
-  # stripping (:) turns the allocatables into scalars (verified: unguarded sed breaks the build,
-  # guarded sed builds clean on NVHPC 26.3).
-  git checkout -- src/timer.f90 2>/dev/null || true
-  sed -i '/MPI_ALLREDUCE/ s/timer_elapsed_\(acc\|min\|max\)(:)/timer_elapsed_\1/g' src/timer.f90
-  # ...and 24.9's SECOND ICE ('bad ast optype' in Lowering): arithmetic on array sections inside
-  # write lists. Scalarize the diagnostic prints — numerically identical output.
-  sed -i 's/(i,3:3)/(i,3)/g' src/timer.f90
-  sed -i 's|timing_results_acc(i,1:3)/timer_counts(i)|timing_results_acc(i,1)/timer_counts(i),timing_results_acc(i,2)/timer_counts(i),timing_results_acc(i,3)/timer_counts(i)|' src/timer.f90
+  # NVHPC 24.9's frontend cannot compile upstream timer.f90 (two distinct ICEs, then a fort1
+  # SEGFAULT — a per-line whack-a-mole with no end). NOTHING in this build configuration
+  # references mod_timer (the _TIMER instrumentation is off; verified: the stub links with zero
+  # unresolved symbols on 26.3), so replace the module with its public interface, no-op bodies.
+  cat > src/timer.f90 <<'FEOF'
+!
+! Benchmark stub for mod_timer: NVHPC 24.9's frontend crashes on the upstream file's
+! array-section constructs. No consumer in this build configuration (_TIMER off).
+!
+module mod_timer
+  implicit none
+  private
+  public :: timer_tic,timer_toc,timer_print,timer_cleanup,timer_drain
+contains
+  subroutine timer_tic()
+  end subroutine timer_tic
+  subroutine timer_toc()
+  end subroutine timer_toc
+  subroutine timer_print()
+  end subroutine timer_print
+  subroutine timer_cleanup()
+  end subroutine timer_cleanup
+  subroutine timer_drain()
+  end subroutine timer_drain
+end module mod_timer
+FEOF
   make allclean || true
   make libs && make -j 16
   ls -la run/cans || { echo "FATAL: no GPU binary produced" >&2; exit 1; }
