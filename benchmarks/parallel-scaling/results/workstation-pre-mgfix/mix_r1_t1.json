@@ -1,0 +1,80 @@
+{
+ "label": "workstation-5965wx",
+ "np": 1,
+ "backend": "OpenMP",
+ "omp_threads": "1",
+ "global": [
+  192,
+  192,
+  192
+ ],
+ "cells": 7077888,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "graphamg": 0,
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "meanscope": "fine",
+ "momentum_sweeps_per_step": 12.0,
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 6,
+ "warmup": 2,
+ "ms_per_step": 8576.363240523884,
+ "mcells_per_s": 0.825278477776747,
+ "pressure_iters_per_step": 8.666666666666666,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 8.576339362344394,
+   "min": 8.576339362344394
+  },
+  "predictor": {
+   "max": 1.7301991316489875,
+   "min": 1.7301991316489875
+  },
+  "momentum": {
+   "max": 0.3913080914256473,
+   "min": 0.3913080914256473
+  },
+  "projection": {
+   "max": 6.445702398506303,
+   "min": 6.445702398506303
+  },
+  "pressure_allreduce": {
+   "max": 6.881716666666666e-05,
+   "min": 6.881716666666666e-05
+  },
+  "pressure_allreduce_count": {
+   "max": 46.333333333333336,
+   "min": 46.333333333333336
+  },
+  "momentum_sweeps": {
+   "max": 12.0,
+   "min": 12.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    192,
+    192
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

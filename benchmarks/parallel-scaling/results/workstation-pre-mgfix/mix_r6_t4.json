@@ -1,0 +1,155 @@
+{
+ "label": "workstation-5965wx",
+ "np": 6,
+ "backend": "OpenMP",
+ "omp_threads": "4",
+ "global": [
+  192,
+  192,
+  192
+ ],
+ "cells": 7077888,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "graphamg": 0,
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "meanscope": "fine",
+ "momentum_sweeps_per_step": 12.0,
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 701.4734060689807,
+ "mcells_per_s": 10.090030411365278,
+ "pressure_iters_per_step": 8.0,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.7014210537448525,
+   "min": 0.7013959741219878
+  },
+  "predictor": {
+   "max": 0.09488807912915945,
+   "min": 0.07804566245526075
+  },
+  "momentum": {
+   "max": 0.09387611113488674,
+   "min": 0.0768122972175479
+  },
+  "projection": {
+   "max": 0.5259304480627179,
+   "min": 0.5243372378125787
+  },
+  "pressure_allreduce": {
+   "max": 0.014886973559999999,
+   "min": 0.00232079704
+  },
+  "pressure_allreduce_count": {
+   "max": 43.0,
+   "min": 43.0
+  },
+  "momentum_sweeps": {
+   "max": 12.0,
+   "min": 12.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    96,
+    64,
+    192
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    64,
+    0
+   ],
+   "size": [
+    96,
+    128,
+    96
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    64,
+    96
+   ],
+   "size": [
+    96,
+    128,
+    96
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    0,
+    0
+   ],
+   "size": [
+    96,
+    64,
+    192
+   ]
+  },
+  {
+   "rank": 4,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    64,
+    0
+   ],
+   "size": [
+    96,
+    128,
+    96
+   ]
+  },
+  {
+   "rank": 5,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    96,
+    64,
+    96
+   ],
+   "size": [
+    96,
+    128,
+    96
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

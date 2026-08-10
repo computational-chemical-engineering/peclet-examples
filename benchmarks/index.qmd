@@ -71,9 +71,11 @@ The systematic scaling study on a boundary-free tiled Taylor–Green case: CPU (
 and multi-GPU weak scaling from a 24-core workstation to 32 H100s on Snellius, head-to-head
 against **CaNS** (the FFT state of the art), **incflo** (the AMReX exascale solver in peclet's
 method family) and **OpenFOAM** on identical grids. Headlines: **90 % weak efficiency and
-3.5 Gcell/s on 32 H100s**; on CPU the crossover against CaNS lands **before two nodes** (its FFT
-all-to-all collapses across the interconnect while peclet holds ~90 %); 3× OpenFOAM and 2.2×
-incflo per node at expert-tuned reference settings.
+7.7 Gcell/s on 32 H100s** (1.5 billion cells, five steps per second); the crossover against CaNS
+lands **before two nodes on CPU and between 4 and 8 GPUs** — its FFT all-to-all collapses below
+10 % on both fabrics while peclet and incflo hold ~90 %; and peclet leads every general-geometry
+reference on every platform (4.2× OpenFOAM, 3.2× incflo per CPU node, 6.3× incflo on one GPU) at
+expert-tuned reference settings.
 
 *flow · HPC · MPI · CPU + GPU · weak scaling · CaNS · incflo · OpenFOAM · decomposition*
 :::

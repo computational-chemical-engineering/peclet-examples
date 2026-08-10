@@ -1,0 +1,140 @@
+{
+ "label": "workstation-decomp",
+ "np": 5,
+ "backend": "OpenMP",
+ "omp_threads": "1",
+ "global": [
+  192,
+  192,
+  192
+ ],
+ "cells": 7077888,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "graphamg": 0,
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "meanscope": "fine",
+ "momentum_sweeps_per_step": 12.0,
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 12,
+ "warmup": 3,
+ "ms_per_step": 2634.378087862084,
+ "mcells_per_s": 2.6867396265598393,
+ "pressure_iters_per_step": 8.0,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 2.6343236196165285,
+   "min": 2.63411186557884
+  },
+  "predictor": {
+   "max": 0.419701156206429,
+   "min": 0.3549007025236885
+  },
+  "momentum": {
+   "max": 0.31754677269297343,
+   "min": 0.25288645426432294
+  },
+  "projection": {
+   "max": 1.9526894374284893,
+   "min": 1.9481115171220154
+  },
+  "pressure_allreduce": {
+   "max": 0.04932868366666667,
+   "min": 0.003171890583333333
+  },
+  "pressure_allreduce_count": {
+   "max": 43.0,
+   "min": 43.0
+  },
+  "momentum_sweeps": {
+   "max": 12.0,
+   "min": 12.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    80,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    0,
+    96,
+    0
+   ],
+   "size": [
+    80,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    80,
+    0,
+    0
+   ],
+   "size": [
+    112,
+    64,
+    192
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    80,
+    64,
+    0
+   ],
+   "size": [
+    112,
+    128,
+    96
+   ]
+  },
+  {
+   "rank": 4,
+   "host": "SMM-TRS2",
+   "gpu": "-",
+   "origin": [
+    80,
+    64,
+    96
+   ],
+   "size": [
+    112,
+    128,
+    96
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

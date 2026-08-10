@@ -1,0 +1,80 @@
+{
+ "label": "workstation-rtx5080",
+ "np": 1,
+ "backend": "Cuda",
+ "omp_threads": "",
+ "global": [
+  160,
+  160,
+  160
+ ],
+ "cells": 4096000,
+ "tile": 64,
+ "re": 100.0,
+ "cfl": 0.2,
+ "adv": 0,
+ "pressure": "pcg",
+ "graphamg": 0,
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "meanscope": "fine",
+ "momentum_sweeps_per_step": 12.0,
+ "pmaxit": 200,
+ "prtol": 1e-05,
+ "mglevels": 5,
+ "warmstart": 1,
+ "nsteps": 50,
+ "warmup": 10,
+ "ms_per_step": 67.45813887566328,
+ "mcells_per_s": 60.719137353457356,
+ "pressure_iters_per_step": 9.48,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.06745220609009266,
+   "min": 0.06745220609009266
+  },
+  "predictor": {
+   "max": 0.0018620800785720348,
+   "min": 0.0018620800785720348
+  },
+  "momentum": {
+   "max": 0.00826785972341895,
+   "min": 0.00826785972341895
+  },
+  "projection": {
+   "max": 0.05701665258035064,
+   "min": 0.05701665258035064
+  },
+  "pressure_allreduce": {
+   "max": 5.253780000000001e-06,
+   "min": 5.253780000000001e-06
+  },
+  "pressure_allreduce_count": {
+   "max": 50.4,
+   "min": 50.4
+  },
+  "momentum_sweeps": {
+   "max": 12.0,
+   "min": 12.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "SMM-TRS2",
+   "gpu": "0000:41:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    160,
+    160,
+    160
+   ]
+  }
+ ],
+ "check": null,
+ "gpu_aware_env": ""
+}

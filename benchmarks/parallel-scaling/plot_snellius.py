@@ -31,11 +31,15 @@ plt.rcParams.update({
 
 CELLS_PER_NODE = 188.7  # Mcells (768x640x384 per node)
 
-# peclet: all bound/unbound draws per node count; plot the median, mark the draws
+# peclet: the mgfix-era curves, both hybrid flavors (single draws)
 draws = collections.defaultdict(list)
-for f in glob.glob(os.path.join(RES, "weak_n*_r96_t2*.json")):
+for f in glob.glob(os.path.join(RES, "weak_n*_r96_t2_mgfix.json")):
     d = json.load(open(f))
     draws[d["np"] // 96].append(d["ms_per_step"])
+fat = {}
+for f in glob.glob(os.path.join(RES, "weak_n*_r12_t16_mgfix.json")):
+    d = json.load(open(f))
+    fat[d["np"] // 192] = d["ms_per_step"]
 pn = sorted(draws)
 pmed = [statistics.median(draws[n]) for n in pn]
 
@@ -53,7 +57,11 @@ fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
 # efficiency panel
 ax1.plot(pn, [100 * pmed[0] / m for m in pmed], "o-", color=BLUE, lw=2, ms=5,
-         label="peclet.flow (median of 3)")
+         label="peclet.flow 96×2")
+if fat:
+    fn = sorted(fat)
+    ax1.plot(fn, [100 * fat[fn[0]] / fat[n] for n in fn], "o--", color=BLUE, lw=1.4, ms=4,
+             mfc="none", label="peclet.flow 12×16 (fat ranks)")
 for n in pn:  # individual draws as small open markers: the honest spread
     ax1.plot([n] * len(draws[n]), [100 * pmed[0] / m for m in draws[n]], "o",
              ms=3.5, mfc="none", mec=BLUE, mew=1)
@@ -73,7 +81,11 @@ ax1.legend(fontsize=8, frameon=False, loc="center left")
 
 # throughput panel
 ax2.plot(pn, [CELLS_PER_NODE * n / (m / 1e3) for n, m in zip(pn, pmed)], "o-",
-         color=BLUE, lw=2, ms=5, label="peclet.flow")
+         color=BLUE, lw=2, ms=5, label="peclet.flow 96×2")
+if fat:
+    fn = sorted(fat)
+    ax2.plot(fn, [CELLS_PER_NODE * n / (fat[n] / 1e3) for n in fn], "o--", color=BLUE,
+             lw=1.4, ms=4, mfc="none", label="peclet.flow 12×16")
 for code, pts in refs.items():
     lbl, col = labels[code]
     ax2.plot([p[0] for p in pts], [p[2] for p in pts], "s-", color=col, lw=2, ms=5, label=lbl)
@@ -94,20 +106,27 @@ print("snellius_weak.png")
 # ---- GPU: 1-32 H100 weak scaling + the pressure-solver ablation --------------------------------
 G = os.path.join(HERE, "results", "snellius-h100")
 gn = [1, 2, 4, 8, 16, 32]
-gd = {n: json.load(open(os.path.join(G, f"weak_np{n}.json"))) for n in gn}
+gd = {n: json.load(open(os.path.join(G, f"weak_np{n}_mgfix.json"))) for n in gn}
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 eff = [100 * gd[1]["ms_per_step"] / gd[n]["ms_per_step"] for n in gn]
-ax1.plot(gn, eff, "o-", color=BLUE, lw=2, ms=5)
-for n, e in zip(gn, eff):
-    ax1.annotate(f"{e:.0f}%", (n, e), textcoords="offset points", xytext=(0, -14),
-                 ha="center", fontsize=8, color=INK2)
+ax1.plot(gn, eff, "o-", color=BLUE, lw=2, ms=5, label="peclet.flow")
+for code, lbl, col in (("incflo_gpu", "incflo", YELLOW), ("cans_gpu", "CaNS", ORANGE)):
+    pts = []
+    for n in gn:
+        f = os.path.join(G, f"{code}_np{n}.json")
+        if os.path.exists(f):
+            pts.append((n, json.load(open(f))["ms_per_step"]))
+    if pts:
+        ax1.plot([p[0] for p in pts], [100 * pts[0][1] / p[1] for p in pts], "s-",
+                 color=col, lw=2, ms=5, label=lbl)
 ax1.axhline(100, ls="--", c=INK2, lw=0.8)
+ax1.legend(fontsize=8, frameon=False, loc="center left")
 ax1.set_xscale("log", base=2)
 ax1.set_xticks(gn, [str(n) for n in gn])
 ax1.set_xlabel("H100 GPUs (47.2 Mcells/GPU fixed; 4 GPUs/node)")
 ax1.set_ylabel("weak-scaling efficiency [%]")
 ax1.set_ylim(0, 112)
-ax1.set_title("GPU weak scaling — 3.5 Gcell/s on 32 H100", fontsize=10)
+ax1.set_title("GPU weak scaling — peclet 7.7 Gcell/s on 32 H100", fontsize=10)
 
 variants = [("", "MG-PCG + fine scope (default)", BLUE), ("_meanall", "mean removal: all levels", AQUA),
             ("_hoststage", "host-staged halo", YELLOW), ("_cheb", "Chebyshev", ORANGE),
@@ -115,7 +134,7 @@ variants = [("", "MG-PCG + fine scope (default)", BLUE), ("_meanall", "mean remo
 x = range(len(variants))
 w = 0.38
 for off, N, hatch in ((-w / 2, 8, None), (w / 2, 16, "//")):
-    vals = [json.load(open(os.path.join(G, f"weak_np{N}{v}.json")))["ms_per_step"]
+    vals = [json.load(open(os.path.join(G, f"weak_np{N}{v}_mgfix.json")))["ms_per_step"]
             for v, _, _ in variants]
     ax2.bar([i + off for i in x], vals, w, color=[c for _, _, c in variants],
             edgecolor=SURFACE, linewidth=2, hatch=hatch)

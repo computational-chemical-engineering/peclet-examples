@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 """Figures for the workstation part of the parallel-scaling study.
 
-Reads results/workstation/*.json (bench_workstation.sh, bench_references.sh) and the pre-fix
-archive results/workstation-prefix-alignment/, writes:
+Reads results/workstation/*.json (bench_workstation.sh, bench_references.sh) and writes:
   workstation_mix.png      - hybrid MPI x OpenMP mix at fixed 192^3 (throughput + phase split)
-  workstation_weak.png     - weak scaling 2.1M cells/rank: peclet vs CaNS vs OpenFOAM
-  workstation_alignfix.png - before/after the coarsenAlignment cap
+  workstation_weak.png     - weak scaling 2.1M cells/rank: peclet vs the three reference codes
 """
 import glob
 import json
@@ -18,9 +16,6 @@ import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, "results", "workstation")  # final-solver runs (headline figures)
-# the alignment-fix before/after pair, both measured with the SAME (pre-tolerance-stop) solver:
-PRE = os.path.join(HERE, "results", "workstation-prefix-alignment")
-ALIGNPOST = os.path.join(HERE, "results", "workstation-alignfix-post")
 
 # validated reference palette (light mode), fixed slot order
 BLUE, ORANGE, AQUA, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
@@ -133,40 +128,3 @@ if all(have.values()):
     fig.tight_layout()
     fig.savefig(os.path.join(HERE, "workstation_weak.png"), dpi=150)
     print("workstation_weak.png")
-
-# ---- 3: the alignment fix, before/after -------------------------------------------------------
-pre = {mixkey(d): d for d in load(PRE, "mix_r*.json") if d["np"] > 1}
-post = {mixkey(d): d for d in load(ALIGNPOST, "mix_r*.json") if d["np"] > 1}
-pre_w = {d["np"]: d for d in load(PRE, "weak_np*.json")}
-post_w = {d["np"]: d for d in load(ALIGNPOST, "weak_np*.json")}
-common = sorted((k for k in post if k in pre),
-                key=lambda k: -int(k.split("×")[0]))
-if common and 24 in pre_w:
-    fig, ax = plt.subplots(figsize=(8.4, 3.6))
-    labels = common + ["weak 24×1"]
-    b_ms = [pre[k]["ms_per_step"] for k in common] + [pre_w[24]["ms_per_step"]]
-    a_ms = [post[k]["ms_per_step"] for k in common] + [post_w[24]["ms_per_step"]]
-    b_it = [pre[k]["pressure_iters_per_step"] for k in common] + \
-           [pre_w[24]["pressure_iters_per_step"]]
-    a_it = [post[k]["pressure_iters_per_step"] for k in common] + \
-           [post_w[24]["pressure_iters_per_step"]]
-    x = range(len(labels))
-    w = 0.38
-    r1 = ax.bar([i - w / 2 for i in x], b_ms, w, color=BLUE, label="before (natural-max align)",
-                edgecolor=SURFACE, linewidth=2)
-    r2 = ax.bar([i + w / 2 for i in x], a_ms, w, color=ORANGE, label="after (align cap 16)",
-                edgecolor=SURFACE, linewidth=2)
-    for r, it in zip(list(r1) + list(r2), b_it + a_it):
-        ax.text(r.get_x() + r.get_width() / 2, r.get_height() * 1.03, f"{it:.0f} it",
-                ha="center", fontsize=8, color=INK2)
-    ax.set_yscale("log")
-    ax.set_xticks(list(x), labels)
-    ax.set_ylabel("ms/step (log)")
-    ax.set_xlabel("MPI ranks × OpenMP threads (192$^3$; rightmost: weak 3072×128×128)")
-    ax.set_title("The coarsenAlignment cap: step time and pressure iterations, before → after",
-                 fontsize=10)
-    ax.legend(fontsize=8, frameon=False)
-    ax.grid(axis="x", visible=False)
-    fig.tight_layout()
-    fig.savefig(os.path.join(HERE, "workstation_alignfix.png"), dpi=150)
-    print("workstation_alignfix.png")
