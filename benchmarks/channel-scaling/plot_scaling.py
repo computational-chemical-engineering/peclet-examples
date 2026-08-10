@@ -1,43 +1,184 @@
 #!/usr/bin/env python
-"""Weak-scaling figure for the Snellius channel-DNS runs (46M cells/GPU fixed)."""
+"""Figures for the channel-DNS weak-scaling benchmark.
+
+Reads results/snellius-h100/chan_np*.json (written by snellius/chan_weak_gpu.sh) and writes:
+
+    weak_scaling.png    weak-scaling efficiency + aggregate throughput vs GPU count
+    channel_phases.png  where the step goes: per-phase breakdown, pressure iterations,
+                        global-reduction time and count
+    channel_levers.png  the ablation at the largest inter-node point (only if those JSONs exist)
+
+Repeat draws (chan_np8_r2.json, ...) are all plotted; the line follows their median.
+Missing points are skipped, so this runs on a partial sweep.
+"""
+import glob
+import json
 import os
-import numpy as np
+import statistics
+
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# Measured on Snellius gpu_h100 (H100), 46M cells/GPU fixed, GPU-aware MPI halo.
-# (from chan-weak-25094513.out; steady ms/step excludes 50-step warmup)
-gpus   = np.array([1, 2, 4, 8])
-ms     = np.array([1369.2, 1299.8, 1712.6, 2942.3])   # ms/step
-mcells = np.array([33, 70, 106, 124])                 # Mcell-updates/s
-nodes  = ["1 node", "1 node", "1 node", "2 nodes"]
+HERE = os.path.dirname(os.path.abspath(__file__))
+RES = os.path.join(HERE, "results", "snellius-h100")
 
-eff = ms[0] / ms * 100.0   # weak-scaling efficiency (ideal = flat ms/step)
+BLUE, ORANGE, AQUA, YELLOW, PINK = "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"
+SURFACE, INK, INK2 = "#fcfcfb", "#0b0b0b", "#52514e"
+plt.rcParams.update({
+    "figure.facecolor": SURFACE, "axes.facecolor": SURFACE, "savefig.facecolor": SURFACE,
+    "text.color": INK, "axes.edgecolor": INK2, "axes.labelcolor": INK,
+    "xtick.color": INK2, "ytick.color": INK2, "font.size": 10,
+    "axes.grid": True, "grid.color": "#e6e5e1", "grid.linewidth": 0.6,
+    "axes.axisbelow": True, "axes.spines.top": False, "axes.spines.right": False,
+})
 
-fig, ax = plt.subplots(1, 2, figsize=(11, 4.3))
+GPUS_PER_NODE = 4
 
-a = ax[0]
-a.plot(gpus, ms, "o-", color="C0", ms=7)
-a.axhline(ms[0], color="grey", ls=":", lw=1, label="ideal (flat)")
-for x, y, n in zip(gpus, ms, nodes):
-    a.annotate(f"{y:.0f} ms\n{100*ms[0]/y:.0f}%", (x, y), textcoords="offset points",
-               xytext=(0, 8), ha="center", fontsize=8)
-a.set_xscale("log", base=2); a.set_xticks(gpus); a.set_xticklabels(gpus)
-a.set_xlabel("H100 GPUs (46 M cells each)"); a.set_ylabel("ms / step (steady)")
-a.set_title("Weak scaling — time per step"); a.legend(fontsize=8); a.set_ylim(0, 3200)
-a.axvspan(4.5, 9, color="orange", alpha=0.08); a.text(6, 300, "multi-node", fontsize=8, color="C1", ha="center")
 
-a = ax[1]
-a.plot(gpus, mcells, "s-", color="C2", ms=7)
-a.plot(gpus, mcells[0]*gpus, "k:", lw=1, label="ideal (linear)")
-a.set_xscale("log", base=2); a.set_xticks(gpus); a.set_xticklabels(gpus)
-a.set_xlabel("H100 GPUs"); a.set_ylabel("M cell-updates / s")
-a.set_title("Weak scaling — throughput"); a.legend(fontsize=8)
+def load_sweep(prefix="chan_np"):
+    """{N: [record, ...]} over all draws of each rank count (base run + _r2, _r3, ...)."""
+    out = {}
+    for f in sorted(glob.glob(os.path.join(RES, prefix + "*.json"))):
+        stem = os.path.basename(f)[len(prefix):-len(".json")]
+        head = stem.split("_")[0]
+        if not head.isdigit() or len(stem.split("_")) > 2:  # skip levers (np8_cpg, np8_mg4, ...)
+            continue
+        if len(stem.split("_")) == 2 and not stem.split("_")[1].startswith("r"):
+            continue
+        out.setdefault(int(head), []).append(json.load(open(f)))
+    return out
 
-plt.suptitle("Channel DNS weak scaling on Snellius (H100, GPU-aware MPI, 46 M cells/GPU, Δ⁺=1.5 cross-section)")
-plt.tight_layout()
-out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weak_scaling.png")
-plt.savefig(out, dpi=110); print("wrote", out)
-for g, m, e, mc in zip(gpus, ms, eff, mcells):
-    print(f"  {g} GPU: {m:.0f} ms/step, {e:.0f}% weak-eff, {mc} Mcell/s")
+
+def med(recs, key):
+    return statistics.median(r[key] for r in recs)
+
+
+def phase(rec, name, stat="max"):
+    return 1e3 * rec["phase_seconds_per_step"][name][stat]
+
+
+runs = load_sweep()
+if not runs:
+    raise SystemExit(f"no results in {RES} — run snellius/chan_weak_gpu.sh first")
+N = sorted(runs)
+ms = [med(runs[n], "ms_per_step") for n in N]
+eff = [100 * ms[0] / m for m in ms]
+agg = [med(runs[n], "mcells_per_s") for n in N]
+per_gpu = runs[N[0]][0]["cells"] / 1e6
+
+# ---- figure 1: the curve ------------------------------------------------------------------------
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+
+ax1.plot(N, eff, "o-", color=BLUE, lw=2, ms=6, label="peclet.flow")
+for n, m in zip(N, ms):  # every individual draw, as the honest spread
+    for r in runs[n]:
+        ax1.plot([n], [100 * ms[0] / r["ms_per_step"]], "o", ms=3.5, mfc="none", mec=BLUE, mew=1)
+ax1.axhline(100, ls="--", c=INK2, lw=0.8, label="ideal")
+if max(N) > GPUS_PER_NODE:
+    ax1.axvspan(GPUS_PER_NODE * 1.15, max(N) * 1.15, color=ORANGE, alpha=0.06)
+    ax1.text(GPUS_PER_NODE * 1.4, 8, "multi-node", fontsize=8, color=ORANGE)
+ax1.set_xscale("log", base=2)
+ax1.set_xticks(N, [str(n) for n in N])
+ax1.set_xlabel(f"H100 GPUs ({per_gpu:.0f} Mcells/GPU fixed; {GPUS_PER_NODE} GPUs/node)")
+ax1.set_ylabel("weak-scaling efficiency [%]")
+ax1.set_ylim(0, 112)
+ax1.set_title("Channel DNS weak scaling", fontsize=10)
+ax1.legend(fontsize=8, frameon=False, loc="lower left")
+for n, e, m in zip(N, eff, ms):
+    ax1.annotate(f"{e:.0f}%\n{m:.0f} ms", (n, e), textcoords="offset points", xytext=(0, 9),
+                 ha="center", fontsize=7.5, color=INK2)
+
+ax2.plot(N, agg, "o-", color=BLUE, lw=2, ms=6, label="peclet.flow")
+ax2.plot(N, [agg[0] * n / N[0] for n in N], ":", c=INK2, lw=1.2, label="ideal (linear)")
+ax2.set_xscale("log", base=2)
+ax2.set_yscale("log")
+ax2.set_xticks(N, [str(n) for n in N])
+ax2.set_xlabel("H100 GPUs")
+ax2.set_ylabel("aggregate Mcell-updates/s")
+ax2.set_title(f"Throughput — {agg[-1] / 1e3:.2f} Gcell/s on {N[-1]} GPUs", fontsize=10)
+ax2.legend(fontsize=8, frameon=False, loc="upper left")
+
+fig.tight_layout()
+fig.savefig(os.path.join(HERE, "weak_scaling.png"), dpi=150)
+print("weak_scaling.png")
+
+# ---- figure 2: where the step goes ---------------------------------------------------------------
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+
+x = range(len(N))
+bottom = [0.0] * len(N)
+for name, col, lbl in (("predictor", AQUA, "predictor (ghosts, advection, stencils)"),
+                       ("momentum", YELLOW, "momentum (implicit diffusion)"),
+                       ("projection", BLUE, "projection (pressure solve)")):
+    vals = [statistics.median(phase(r, name) for r in runs[n]) for n in N]
+    ax1.bar(x, vals, 0.62, bottom=bottom, color=col, edgecolor=SURFACE, linewidth=1.5, label=lbl)
+    bottom = [b + v for b, v in zip(bottom, vals)]
+red = [statistics.median(phase(r, "pressure_allreduce") for r in runs[n]) for n in N]
+cfr = [statistics.median(phase(r, "cfr") for r in runs[n]) for n in N]
+ax1.plot(x, [r + c for r, c in zip(red, cfr)], "o-", color=ORANGE, lw=2, ms=5,
+         label="of which: global reductions")
+ax1.set_xticks(list(x), [str(n) for n in N])
+ax1.set_xlabel("H100 GPUs")
+ax1.set_ylabel("ms / step (rank-max)")
+ax1.set_title("Where the step goes", fontsize=10)
+ax1.legend(fontsize=7.5, frameon=False, loc="upper left")
+ax1.grid(axis="x", visible=False)
+
+it = [med(runs[n], "pressure_iters_per_step") for n in N]
+ax2.plot(N, it, "o-", color=BLUE, lw=2, ms=6, label="pressure iterations / step")
+ax2.set_xscale("log", base=2)
+ax2.set_xticks(N, [str(n) for n in N])
+ax2.set_xlabel("H100 GPUs")
+ax2.set_ylabel("pressure iterations / step", color=BLUE)
+ax2.set_ylim(0, max(it) * 1.6)
+ax2.set_title("Algorithm vs communication", fontsize=10)
+axb = ax2.twinx()
+axb.plot(N, [100 * (r + c) / m for r, c, m in zip(red, cfr, ms)], "s--", color=ORANGE, lw=1.8, ms=5)
+axb.set_ylabel("global reductions [% of step]", color=ORANGE)
+axb.set_ylim(0, max(1.0, max(100 * (r + c) / m for r, c, m in zip(red, cfr, ms)) * 1.8))
+axb.grid(False)
+ax2.plot([], [], "s--", color=ORANGE, label="global reductions [% of step]")
+ax2.legend(fontsize=8, frameon=False, loc="upper left")
+
+fig.tight_layout()
+fig.savefig(os.path.join(HERE, "channel_phases.png"), dpi=150)
+print("channel_phases.png")
+
+# ---- figure 3: lever ablation (optional) ---------------------------------------------------------
+LEVERS = [("", "default", BLUE), ("_cpg", "CPG forcing\n(no CFR all-reduce)", AQUA),
+          ("_meanall", "mean removal:\nall levels", YELLOW),
+          ("_mg4", "MG depth 4", PINK), ("_mg6", "MG depth 6", "#9a7bd6"),
+          ("_hoststage", "host-staged\nhalo", ORANGE)]
+for NL in (n for n in (8, 16, 32) if n in runs):
+    have = [(s, lbl, c) for s, lbl, c in LEVERS
+            if os.path.exists(os.path.join(RES, f"chan_np{NL}{s}.json"))]
+    if len(have) < 2:
+        continue
+    vals = [json.load(open(os.path.join(RES, f"chan_np{NL}{s}.json")))["ms_per_step"]
+            for s, _, _ in have]
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(range(len(have)), vals, 0.6, color=[c for _, _, c in have],
+           edgecolor=SURFACE, linewidth=2)
+    for i, v in enumerate(vals):
+        ax.annotate(f"{v:.0f}\n{v / vals[0]:+.0%}" if i else f"{v:.0f}", (i, v),
+                    textcoords="offset points", xytext=(0, 4), ha="center", fontsize=8)
+    ax.set_xticks(range(len(have)), [lbl for _, lbl, _ in have], fontsize=8)
+    ax.set_ylabel("ms / step")
+    ax.set_title(f"Solver-configuration ablation at {NL} GPUs", fontsize=10)
+    ax.grid(axis="x", visible=False)
+    fig.tight_layout()
+    fig.savefig(os.path.join(HERE, "channel_levers.png"), dpi=150)
+    print(f"channel_levers.png (N={NL})")
+    break
+
+# ---- console summary ----------------------------------------------------------------------------
+print(f"\n{'GPUs':>5} {'ms/step':>9} {'eff':>6} {'Mcell/s':>9} {'iters':>6} {'sweeps':>7} "
+      f"{'allred ms':>10} {'allred/step':>12} {'draws':>6}")
+for n, m, e, a, i in zip(N, ms, eff, agg, it):
+    r = runs[n][0]
+    print(f"{n:5d} {m:9.1f} {e:5.0f}% {a:9.0f} {i:6.1f} "
+          f"{med(runs[n], 'momentum_sweeps_per_step'):7.1f} "
+          f"{statistics.median(phase(x_, 'pressure_allreduce') for x_ in runs[n]):10.1f} "
+          f"{r['phase_seconds_per_step']['pressure_allreduce_count']['max']:12.0f} {len(runs[n]):6d}")

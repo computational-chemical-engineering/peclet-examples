@@ -13,9 +13,25 @@ Or CPU (one rank per core-group):
 Grid units dx=dy=dz=1 (isotropic). u_tau=1 by choice -> stats in wall units. CPG f=2/gny pins
 u_tau=1 (momentum balance); CFR (hold bulk) reaches a stationary state faster and measures u_tau.
 
-Env: GNX GNY GNZ NSTEPS DT DIAG STATSTART STATEVERY ADV CFR OUT RE_TAU SEED
+Doubles as the *scaling instrument* for the channel-scaling benchmark: every run reports
+warmup-excluded steady timing with the solver's per-phase breakdown (predictor / momentum /
+projection), the pressure-solver iteration count and its global-reduction (MPI_Allreduce) time and
+count, plus the CFR forcing's own all-reduce, and writes it all as JSON (BENCH_OUT). The physics
+settings are unchanged; only the measurement is added.
+
+Env: GNX GNY GNZ NSTEPS DT DIAG STATSTART STATEVERY ADV CFR OUT RE_TAU SEED NOISE WARMUP CKPT
+Solver knobs (defaults = the production DNS configuration):
+    VSWEEPS VTOL     momentum RB-GS sweep cap / tolerance stop (VTOL=0 -> legacy fixed count)
+    PRESSURE         pcg (default) | cheb | vcycle
+    PMAXIT PRTOL     pressure driver iteration cap / tolerance (80 / 1e-4)
+    MGLEVELS         pressure multigrid depth (5)
+    MEANSCOPE        pressure mean-removal scope: fine (default) | all
+Instrument:
+    BENCH_OUT        JSON path for the timing record (default "<OUT>_bench.json")
+    LABEL            free-form label copied into the JSON (e.g. "snellius-h100")
+    HB               heartbeat: print progress every HB steps (0 = off, DIAG already prints)
 """
-import os, sys, time
+import json, os, socket, sys, time
 import numpy as np
 from mpi4py import MPI
 
@@ -47,6 +63,13 @@ STATEVERY = int(os.environ.get("STATEVERY", 25)); ADV = int(os.environ.get("ADV"
 CFR = float(os.environ.get("CFR", 0.0)); OUT = os.environ.get("OUT", "chan_mpi")
 RE_TAU = float(os.environ.get("RE_TAU", 180.0)); SEED = int(os.environ.get("SEED", 1234))
 CKPT = int(os.environ.get("CKPT", 0))   # checkpoint every N steps -> restart-on-resubmit (0 = off)
+# ---- solver knobs (defaults = the production DNS configuration) + instrument -------------------
+VSWEEPS = int(os.environ.get("VSWEEPS", 20)); VTOL = float(os.environ.get("VTOL", 1e-2))
+PRESSURE = os.environ.get("PRESSURE", "pcg")
+PMAXIT = int(os.environ.get("PMAXIT", 80)); PRTOL = float(os.environ.get("PRTOL", 1e-4))
+MGLEVELS = int(os.environ.get("MGLEVELS", 5)); MEANSCOPE = os.environ.get("MEANSCOPE", "fine")
+BENCH_OUT = os.environ.get("BENCH_OUT", f"{OUT}_bench.json"); LABEL = os.environ.get("LABEL", "")
+HB = int(os.environ.get("HB", 0))
 _ckpt_field = f"{OUT}_ckpt_r{RANK}.npz"  # this rank's local (u,v,w) block
 _ckpt_meta = f"{OUT}_ckpt_meta.npz"      # rank-0 step counter + accumulators (the restart "commit")
 
@@ -68,10 +91,13 @@ if _ysplit:
     sys.exit(1)
 p0(f"[cfg] global {GNX}x{GNY}x{GNZ} = {GNX*GNY*GNZ/1e6:.1f}M cells  nu={nu:.4f} f={fbody:.5g} "
    f"Delta+={Dplus:.3f} Lx+={GNX*Dplus:.0f} Ly+={GNY*Dplus:.0f} Lz+={GNZ*Dplus:.0f}  "
-   f"ranks={NP}  backend={flow.execution_space}  dt={DT} adv={'SOU' if ADV==0 else 'Koren'}")
+   f"ranks={NP}  backend={flow.execution_space}  dt={DT} adv={'SOU' if ADV==0 else 'Koren'}  "
+   f"forcing={'CFR ' + repr(CFR) if CFR > 0 else 'CPG'}  "
+   f"pressure={PRESSURE}(maxit={PMAXIT},rtol={PRTOL:g},levels={MGLEVELS},mean={MEANSCOPE})  "
+   f"momentum={VSWEEPS} sweeps(rtol={VTOL:g})")
 # Report the TRUE physical GPU per rank (host + PCI bus id) -- CUDA_VISIBLE_DEVICES is ambiguous under
 # cgroup isolation (every isolated task shows "0"). Two ranks on the same host+bus = oversubscription.
-import socket
+# Gathered with the ORB block so the JSON carries the full decomposition record.
 _host = socket.gethostname()
 _bus = "?"
 if flow.execution_space == "Cuda":
@@ -80,12 +106,12 @@ if flow.execution_space == "Cuda":
         _bus = cp.cuda.runtime.deviceGetPCIBusId(cp.cuda.runtime.getDevice())
     except Exception as e:
         _bus = f"<unknown:{type(e).__name__}>"
-_gpumap = world.gather((RANK, _host, _bus), root=0)
+_gpumap = world.gather((RANK, _host, _bus, origin, size), root=0)
 if RANK == 0:
-    print(f"  [gpu-bind] rank -> (host, GPU PCI bus):", flush=True)
+    print(f"  [gpu-bind] rank -> (block, host, GPU PCI bus):", flush=True)
     seen = {}
-    for rr, hh, bb in _gpumap:
-        print(f"    rank {rr}: {hh}  {bb}", flush=True)
+    for rr, hh, bb, oo, ss in _gpumap:
+        print(f"    rank {rr}: block {ss[0]}x{ss[1]}x{ss[2]} at {oo}  {hh}  {bb}", flush=True)
         seen.setdefault((hh, bb), []).append(rr)
     dups = {k: v for k, v in seen.items() if len(v) > 1 and flow.execution_space == "Cuda"}
     if dups:
@@ -130,8 +156,19 @@ s = flow.Solver(lnx, lny, lnz)
 s.init_mpi(GNX, GNY, GNZ)
 s.set_rho(1.0); s.set_mu(nu); s.set_dt(DT)
 s.set_advection(True); s.set_advection_scheme(ADV)
-s.set_velocity_solver_params(20)
-s.set_pressure_multigrid(True, 5); s.set_pressure_pcg(True, 80, 1e-4); s.set_pressure_warmstart(True)
+# Momentum: tolerance stop (end the sweep loop once the max increment has contracted to VTOL of the
+# first sweep's; VSWEEPS is the cap). The channel's diffusion number nu*dt ~ 0.013 is easy, so this
+# exits in a few sweeps instead of always running the cap. VTOL=0 restores the legacy fixed count.
+s.set_velocity_solver_params(VSWEEPS, VTOL)
+s.set_pressure_multigrid(True, MGLEVELS)
+if PRESSURE == "pcg":
+    s.set_pressure_pcg(True, PMAXIT, PRTOL)
+elif PRESSURE == "cheb":
+    s.set_pressure_chebyshev(True, PMAXIT, PRTOL)
+elif PRESSURE != "vcycle":
+    raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|cheb|vcycle)")
+s.set_pressure_warmstart(True)
+s.set_pressure_mean_removal(MEANSCOPE)
 s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)          # no-slip walls on -y,+y ; x,z periodic
 s.set_body_force(0.0 if CFR > 0 else fbody, 0.0, 0.0)
 s.set_pressure_geometry(np.asfortranarray(np.full((lnx, lny, lnz), 1e30)))
@@ -233,14 +270,28 @@ WARMUP = int(os.environ.get("WARMUP", 50))   # steps to exclude from the steady-
 t0 = time.time(); t_warm = None; it_warm = 0
 if _restarting:
     t_warm = t0; it_warm = it0   # timing is meaningless across a restart; anchor it here
+# Per-phase instrument (steady window only): device-fenced solver phases + the pressure solve's
+# global-reduction time/count, plus the CFR forcing's own Allreduce, which lives OUTSIDE the solver.
+PHASES = ("step", "predictor", "momentum", "projection", "pressure_allreduce")
+acc = {p: [] for p in PHASES}; acc["pressure_allreduce_count"] = []; acc["momentum_sweeps"] = []
+acc["cfr"] = []; p_iters = []
 for it in range(it0 + 1, NSTEPS+1):
     if it == WARMUP + 1:
         world.Barrier(); t_warm = time.time(); it_warm = it - 1   # start steady clock after warmup
     s.step()
+    t_cfr = 0.0
     if CFR > 0:
-        dd = apply_cfr()
+        _tc = time.perf_counter(); dd = apply_cfr(); t_cfr = time.perf_counter() - _tc
         if it >= STATSTART: dsum += dd; ndsum += 1
-    do_diag = (it % DIAG == 0 or it == 1); do_stat = (it >= STATSTART and it % STATEVERY == 0)
+    if it > WARMUP:
+        tm = s.last_step_timers()
+        for p in PHASES: acc[p].append(tm[p])
+        acc["pressure_allreduce_count"].append(tm["pressure_allreduce_count"])
+        acc["momentum_sweeps"].append(tm["momentum_sweeps"])
+        acc["cfr"].append(t_cfr); p_iters.append(s.last_pressure_iterations())
+    if HB > 0 and it % HB == 0:
+        p0(f"  [hb] it={it}/{NSTEPS}  {(time.time()-t0)/(it-it0)*1e3:.0f} ms/step avg")
+    do_diag = (DIAG > 0 and (it % DIAG == 0 or it == 1)); do_stat = (it >= STATSTART and it % STATEVERY == 0)
     if do_diag or do_stat:
         mU, Ruu, Rvv, Ruv = accumulate() if do_stat else (None,)*4
         if do_diag:
@@ -269,12 +320,47 @@ for it in range(it0 + 1, NSTEPS+1):
 
 # ---- steady-state timing (exclude warmup) -----------------------------------------------------
 world.Barrier(); t_end = time.time()
-steady_ms = (t_end - t_warm)/(NSTEPS - it_warm)*1e3 if (t_warm and NSTEPS > it_warm) else float('nan')
+nmeas = NSTEPS - it_warm
+steady_ms = (t_end - t_warm)/nmeas*1e3 if (t_warm and nmeas > 0) else float('nan')
 mcells = GNX*GNY*GNZ/1e6
 if RANK == 0:
-    print(f"[timing] steady {steady_ms:.1f} ms/step over {NSTEPS-it_warm} steps (warmup {WARMUP} excluded) | "
+    print(f"[timing] steady {steady_ms:.1f} ms/step over {nmeas} steps (warmup {WARMUP} excluded) | "
           f"{mcells:.0f}M cells, {NP} GPU(s) = {mcells/NP:.1f}M/GPU | "
           f"{mcells*1e6/(steady_ms*1e-3)/1e6:.0f} Mcell-updates/s", flush=True)
+
+# Per-phase: mean over the measured steps on this rank, then max/min over ranks. The spread is the
+# load-imbalance indicator; the rank-max is what the (barrier-synchronised) step actually costs.
+stats = {}
+for key, v in acc.items():
+    m = float(np.mean(v)) if v else float("nan")
+    stats[key] = {"max": world.allreduce(m, op=MPI.MAX), "min": world.allreduce(m, op=MPI.MIN)}
+it_mean = world.allreduce(float(np.mean(p_iters)) if p_iters else float("nan"), op=MPI.MAX)
+if RANK == 0 and p_iters:
+    print("[phases, rank-max ms/step] "
+          + "  ".join(f"{p}={1e3*stats[p]['max']:.1f}" for p in PHASES)
+          + f"  cfr_allreduce={1e3*stats['cfr']['max']:.1f}"
+          + f"  | pressure iters/step {it_mean:.1f}"
+          + f"  allreduces/step {stats['pressure_allreduce_count']['max']:.0f}"
+          + f"  momentum sweeps/step {stats['momentum_sweeps']['max']:.1f}", flush=True)
+    rec = {
+        "label": LABEL, "np": NP, "backend": flow.execution_space,
+        "omp_threads": os.environ.get("OMP_NUM_THREADS", ""),
+        "global": [GNX, GNY, GNZ], "cells": GNX*GNY*GNZ, "cells_per_rank": GNX*GNY*GNZ/NP,
+        "re_tau": RE_TAU, "nu": nu, "dt": DT, "adv": ADV, "forcing": "CFR" if CFR > 0 else "CPG",
+        "cfr": CFR, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL, "mglevels": MGLEVELS,
+        "meanscope": MEANSCOPE, "vsweeps": VSWEEPS, "vtol": VTOL,
+        "nsteps": NSTEPS, "warmup": WARMUP, "measured_steps": nmeas,
+        "ms_per_step": steady_ms, "mcells_per_s": mcells*1e3/steady_ms,
+        "pressure_iters_per_step": it_mean,
+        "momentum_sweeps_per_step": stats["momentum_sweeps"]["max"],
+        "phase_seconds_per_step": stats,
+        "blocks": [{"rank": rr, "host": hh, "gpu": bb, "origin": list(oo), "size": list(ss)}
+                   for rr, hh, bb, oo, ss in _gpumap],
+        "gpu_aware_env": os.environ.get("PECLET_CORE_GPU_AWARE_MPI", ""),
+    }
+    with open(BENCH_OUT, "w") as f:
+        json.dump(rec, f, indent=1)
+    print(f"[bench] wrote {BENCH_OUT}", flush=True)
 
 # ---- save (rank 0) ----------------------------------------------------------------------------
 if RANK == 0:
@@ -298,5 +384,7 @@ if RANK == 0:
 world.Barrier()
 # Exit hard AFTER outputs are written: skips Python/Kokkos finalize, which otherwise aborts with
 # "Kokkos allocation deallocated after Kokkos::finalize" (poisons the exit code even on success).
+# Finalize MPI first so the launcher sees an orderly shutdown instead of "exited improperly".
 sys.stdout.flush(); sys.stderr.flush()
+MPI.Finalize()
 os._exit(0)
