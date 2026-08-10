@@ -140,8 +140,13 @@ case "$ARG" in refine|refine:*)
     [ -z "$ONLY" ] || [ "$ONLY" = "$N" ] || continue
     FIXED_GNX=$gx; export GNY=$gy GNZ=$gz
     run_one "$N" "refine_np${N}${TAG}.json"
-    # at the top rung, is the block-local coarse grid the limit? (agglomerated bottom solve)
-    [ "$N" = "$MAXN" ] && run_one "$N" "refine_np${N}_amg${TAG}.json" env GRAPHAMG=1
+    # At the top rung, two probes of the block-local coarse grid: an agglomerated bottom solve,
+    # and the coarse-first decomposition (partition the coarsened grid and refine it upward, so the
+    # hierarchy nests for the full depth instead of stopping where a block turns odd).
+    if [ "$N" = "$MAXN" ]; then
+      run_one "$N" "refine_np${N}_amg${TAG}.json"    env GRAPHAMG=1
+      run_one "$N" "refine_np${N}_decomp${TAG}.json" env PECLET_FLOW_DECOMP_LEVELS=8
+    fi
   done
   FIXED_GNX=0
   echo "done -> $RES"; exit 0
