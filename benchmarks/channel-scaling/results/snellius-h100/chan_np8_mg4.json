@@ -1,0 +1,190 @@
+{
+ "label": "snellius-h100",
+ "np": 8,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  3072,
+  240,
+  503
+ ],
+ "cells": 370851840,
+ "cells_per_rank": 46356480.0,
+ "re_tau": 180.0,
+ "nu": 0.6666666666666666,
+ "dt": 0.02,
+ "adv": 0,
+ "forcing": "CFR",
+ "cfr": 15.68,
+ "pressure": "pcg",
+ "pmaxit": 80,
+ "prtol": 0.0001,
+ "mglevels": 4,
+ "meanscope": "fine",
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "nsteps": 140,
+ "warmup": 100,
+ "measured_steps": 40,
+ "ms_per_step": 2569.2847192287445,
+ "mcells_per_s": 144.34049960462278,
+ "pressure_iters_per_step": 80.0,
+ "momentum_sweeps_per_step": 11.575,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 2.515677413495723,
+   "min": 2.515646149823442
+  },
+  "predictor": {
+   "max": 0.02042379675549455,
+   "min": 0.020367448561592026
+  },
+  "momentum": {
+   "max": 0.052281238709110764,
+   "min": 0.05220790193998255
+  },
+  "projection": {
+   "max": 2.4415083434199913,
+   "min": 2.4414830946188886
+  },
+  "pressure_allreduce": {
+   "max": 0.009575033524999998,
+   "min": 0.004879029375000001
+  },
+  "pressure_allreduce_count": {
+   "max": 405.0,
+   "min": 405.0
+  },
+  "momentum_sweeps": {
+   "max": 11.575,
+   "min": 11.575
+  },
+  "cfr": {
+   "max": 0.05230013969703577,
+   "min": 0.05227012431132607
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn91.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn91.local.snellius.surf.nl",
+   "gpu": "0000:06:00.0",
+   "origin": [
+    384,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "gcn91.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    768,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "gcn91.local.snellius.surf.nl",
+   "gpu": "0000:A6:00.0",
+   "origin": [
+    1152,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  },
+  {
+   "rank": 4,
+   "host": "gcn92.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    1536,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  },
+  {
+   "rank": 5,
+   "host": "gcn92.local.snellius.surf.nl",
+   "gpu": "0000:06:00.0",
+   "origin": [
+    1920,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  },
+  {
+   "rank": 6,
+   "host": "gcn92.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    2304,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  },
+  {
+   "rank": 7,
+   "host": "gcn92.local.snellius.surf.nl",
+   "gpu": "0000:A6:00.0",
+   "origin": [
+    2688,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    240,
+    503
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

@@ -1,0 +1,20 @@
+[cfg] global 1536x240x503 = 185.4M cells  nu=0.6667 f=0.0083333 Delta+=1.500 Lx+=2304 Ly+=360 Lz+=754  ranks=4  backend=Cuda  dt=0.02 adv=SOU  forcing=CFR 15.68  pressure=pcg(maxit=80,rtol=0.0001,levels=5,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 384x240x503 at [0, 0, 0]  gcn148.local.snellius.surf.nl  0000:26:00.0
+    rank 1: block 384x240x503 at [384, 0, 0]  gcn148.local.snellius.surf.nl  0000:06:00.0
+    rank 2: block 384x240x503 at [768, 0, 0]  gcn148.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: block 384x240x503 at [1152, 0, 0]  gcn148.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.68 u_tau~1.112 -uv+pk=0.072 nacc=0 [0.2 it/s]
+  [hb] it=20/140  2439 ms/step avg
+  [hb] it=40/140  2056 ms/step avg
+  [hb] it=60/140  1914 ms/step avg
+  [hb] it=80/140  1830 ms/step avg
+  [hb] it=100/140  1768 ms/step avg
+  it=   100 t+=    3.0 Ub+=15.68 u_tau~1.037 -uv+pk=0.405 nacc=0 [0.6 it/s]
+  [hb] it=120/140  1744 ms/step avg
+  [hb] it=140/140  1701 ms/step avg
+[timing] steady 1489.7 ms/step over 40 steps (warmup 100 excluded) | 185M cells, 4 GPU(s) = 46.4M/GPU | 124 Mcell-updates/s
+[phases, rank-max ms/step] step=1436.1  predictor=20.3  momentum=49.3  projection=1365.0  pressure_allreduce=2.6  cfr_allreduce=52.3  | pressure iters/step 44.7  allreduces/step 226  momentum sweeps/step 11.0
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/chan_np4.json
+[done] 140 steps, 185M cells, 4 ranks, 1701 ms/step, nacc=0. wrote /scratch-local/tec16020.25405609/chan_chan_np4_stats.npz + /scratch-local/tec16020.25405609/chan_chan_np4.done

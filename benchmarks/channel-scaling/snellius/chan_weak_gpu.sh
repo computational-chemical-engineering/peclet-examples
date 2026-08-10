@@ -20,6 +20,7 @@
 #   sbatch --nodes=8 chan_weak_gpu.sh 32
 #   sbatch --nodes=2 chan_weak_gpu.sh levers      # CPG / mean-scope / MG depth / halo, at N=8
 #   sbatch --nodes=2 chan_weak_gpu.sh strong      # OPTIONAL: fixed 46M box on 1,2,4,8 GPUs
+#   sbatch --nodes=2 chan_weak_gpu.sh probe       # why the pressure solve hit its iteration cap
 #
 # Second argument = result TAG appended to every JSON (`chan_weak_gpu.sh 8 r2`). run_one SKIPS a
 # JSON that already exists, so a re-measurement (solver change, repeat draw) NEEDS a new tag —
@@ -84,6 +85,32 @@ if [ "$ARG" = strong ]; then
   for N in 1 2 4 8; do
     [ "$N" -le "$MAXN" ] && run_one $N "chan_strong_np${N}${TAG}.json"
   done
+  echo "done -> $RES"; exit 0
+fi
+# DIAGNOSTIC PROBES. The first weak sweep found the pressure solve pinned at PMAXIT=80 for N>=8 —
+# so it never converged and the timings were clamped, not scaled. These four probes separate the
+# possible causes; each is a couple of minutes. Run with 2 nodes.
+if [ "$ARG" = probe ]; then
+  # A. DECOMPOSITION or DOMAIN? A weak sweep grows both at once. Same global box, more ranks: if the
+  #    iteration count stays put, convergence is decomposition-independent and the weak-sweep growth
+  #    is the domain getting 32x longer under a fixed 5-level V-cycle.
+  FIXED_GNX=$BASE_GNX
+  for N in 1 2 4 8; do
+    [ "$N" -le "$MAXN" ] && run_one $N "probe_strong_np${N}${TAG}.json"
+  done
+  FIXED_GNX=0
+  # B. Is the 25-iteration SINGLE-GPU baseline the odd GNZ=503, which can never coarsen (so every
+  #    V-cycle level carries all 503 z-cells and no coarse grid ever sees a z mode)? 512 can.
+  run_one 1 "probe_evenz_np1${TAG}.json"     env GNZ=512
+  run_one 8 "probe_evenz_np8${TAG}.json"     env GNZ=512
+  # C. What does the solve actually cost when allowed to CONVERGE? (iteration count becomes a
+  #    measurement instead of a clamp; also tells us how far from converged the capped runs were)
+  for N in 1 8; do
+    [ "$N" -le "$MAXN" ] && run_one $N "probe_uncapped_np${N}${TAG}.json" env PMAXIT=400
+  done
+  # D. Does MG depth scaled WITH the domain fix the growth? At N=8, 5 levels leave the coarsest x at
+  #    192 cells — nowhere near a coarse solve. 8 levels take it to 24.
+  run_one 8 "probe_deep_np8${TAG}.json"      env MGLEVELS=8 PMAXIT=400
   echo "done -> $RES"; exit 0
 fi
 if [ -n "$ARG" ] && [ "$ARG" != levers ]; then

@@ -1,0 +1,24 @@
+[cfg] global 3072x240x503 = 370.9M cells  nu=0.6667 f=0.0083333 Delta+=1.500 Lx+=4608 Ly+=360 Lz+=754  ranks=8  backend=Cuda  dt=0.02 adv=SOU  forcing=CFR 15.68  pressure=pcg(maxit=80,rtol=0.0001,levels=5,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 384x240x503 at [0, 0, 0]  gcn88.local.snellius.surf.nl  0000:26:00.0
+    rank 1: block 384x240x503 at [384, 0, 0]  gcn88.local.snellius.surf.nl  0000:06:00.0
+    rank 2: block 384x240x503 at [768, 0, 0]  gcn88.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: block 384x240x503 at [1152, 0, 0]  gcn88.local.snellius.surf.nl  0000:A6:00.0
+    rank 4: block 384x240x503 at [1536, 0, 0]  gcn127.local.snellius.surf.nl  0000:26:00.0
+    rank 5: block 384x240x503 at [1920, 0, 0]  gcn127.local.snellius.surf.nl  0000:06:00.0
+    rank 6: block 384x240x503 at [2304, 0, 0]  gcn127.local.snellius.surf.nl  0000:C6:00.0
+    rank 7: block 384x240x503 at [2688, 0, 0]  gcn127.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.68 u_tau~1.114 -uv+pk=0.071 nacc=0 [0.2 it/s]
+  [hb] it=20/140  2698 ms/step avg
+  [hb] it=40/140  2656 ms/step avg
+  [hb] it=60/140  2642 ms/step avg
+  [hb] it=80/140  2635 ms/step avg
+  [hb] it=100/140  2631 ms/step avg
+  it=   100 t+=    3.0 Ub+=15.68 u_tau~1.037 -uv+pk=0.396 nacc=0 [0.4 it/s]
+  [hb] it=120/140  2642 ms/step avg
+  [hb] it=140/140  2638 ms/step avg
+[timing] steady 2612.1 ms/step over 40 steps (warmup 100 excluded) | 371M cells, 8 GPU(s) = 46.4M/GPU | 142 Mcell-updates/s
+[phases, rank-max ms/step] step=2558.5  predictor=20.5  momentum=52.4  projection=2484.2  pressure_allreduce=8.8  cfr_allreduce=52.4  | pressure iters/step 80.0  allreduces/step 405  momentum sweeps/step 11.6
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/chan_np8.json
+[done] 140 steps, 371M cells, 8 ranks, 2638 ms/step, nacc=0. wrote /scratch-local/tec16020.25405610/chan_chan_np8_stats.npz + /scratch-local/tec16020.25405610/chan_chan_np8.done
