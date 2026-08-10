@@ -81,36 +81,67 @@ ARG="${1:-}"; TAG="${2:+_${2}}"
 
 # ===== `refine`: the weak ladder a DNS user actually climbs ======================================
 # The production job script (examples/wall-bounded-turbulence/snellius_gpu.slurm) scales this DNS by
-# REFINING a fixed physical box, 4piH x 2H x (4/3)piH: GNX = 2pi*GNY, GNZ = (2pi/3)*GNY, with GNY
-# setting Delta+ = 360/GNY. Its own presets are GNY=240 (Delta+=1.5) on 1 node, 288 on 2, 360 on 3.
-# So more GPUs buy a FINER DNS of the same channel, never a longer one. Each rung below holds
-# ~46 Mcells/GPU on that ladder, anchored on the production GNY=240 grid at 4 GPUs:
+# REFINING a fixed physical box rather than lengthening it: more GPUs buy a finer DNS of the same
+# channel. This ladder is that, at ~46 Mcells/GPU.
 #
-#   GPUs  GNY  Delta+       grid            Mcells   M/GPU  MG levels
-#      1  152    2.37   955 x 152 x  318      46.2    46.2      5
-#      2  191    1.88  1200 x 191 x  400      91.7    45.8      5
-#      4  240    1.50  1508 x 240 x  503     182.0    45.5      5   <- production preset
-#      8  304    1.18  1910 x 304 x  637     369.9    46.2      6
-#     16  383    0.94  2406 x 383 x  802     739.0    46.2      6
-#     32  482    0.75  3028 x 482 x 1009    1472.6    46.0      6
+# GRID DIMENSIONS ARE CHOSEN FOR THEIR FACTORS OF TWO, and that is not cosmetic. The pressure
+# multigrid coarsens each axis independently while the axis is EVEN (mac_cutcell_mg.hpp: an axis
+# halves while `d % 2 == 0 && d / 2 >= 2`), so a dimension's usable MG depth is the number of times
+# it can be halved -- nothing to do with how large it is. An ODD dimension never coarsens even once.
+# Measured on one H100-class GPU, 384x128xGNZ, everything else identical:
 #
-# MG depth is a resolution setting, not a constant: what must be held fixed across the ladder is the
-# COARSEST grid, not the level count. L is chosen so the coarsest level keeps GNY/2^(L-1) in 8..16,
-# exactly as the production GNY=240 grid gets from its 5 levels. Verified with the ORB: y is never
-# split at any rung and block imbalance stays under 1.5 %.
+#     GNZ = 256 (8 halvings)   5.0 pressure iters/step   120 ms
+#     GNZ = 250 (1 halving)    9.8                       195 ms
+#     GNZ = 255 (0 halvings)  16.2                       329 ms     <- 3.2x, from ONE odd number
+#
+# The production preset derives its grid as GNX = round(2pi*GNY), GNZ = round(2pi/3*GNY), which for
+# GNY=240 gives 1508 x 240 x 503: x halves twice, y four times, z NEVER (503 is odd). Its 5-level
+# hierarchy bottoms out at 377 x 15 x 503 = 2.8 M cells -- a "coarse" grid holding 1/64 of the fine
+# one. Rounding to the nearest nice number instead (2406 x 383 x 802 at 16 GPUs) is worse still:
+# 2 levels, a 185 M-cell bottom. So the ladder below keeps the box shape at a clean 6 : 1 : 2
+# (12H x 2H x 4H, against MKM's 12.57 x 2 x 4.19 -- a 4.5 % smaller box in x and z) and takes GNY
+# through values rich in twos. Every dimension halves at least 5 times:
+#
+#   GPUs  GNY  Delta+       grid             Mcells  M/GPU  halvings x/y/z
+#      1  160    2.25   960 x 160 x  320       49.2   49.2      6/5/6
+#      2  192    1.88  1152 x 192 x  384       84.9   42.5      7/6/7
+#      4  256    1.41  1536 x 256 x  512      201.3   50.3      9/7/8
+#      8  320    1.13  1920 x 320 x  640      393.2   49.2      7/6/7
+#     16  384    0.94  2304 x 384 x  768      679.5   42.5      8/7/8
+#     32  512    0.70  4096 x 512 x  704     1476.4   46.1     11/8/6   <- longer box, see below
+#
+# 16 GPUS IS THE CEILING FOR A PROPERLY-SHAPED CHANNEL, and it is structural, not a queue limit.
+# The wall-normal direction cannot be decomposed (a no-slip domain wall plus an internal y block
+# boundary decouples the halves at the centreline; the driver hard-aborts), so the ORB has only the
+# x-z plane to cut. At a 12H x 2H x 4H box the blocks are already cube-like at 16 ranks and the 32nd
+# bisection picks y (checked: 3072 x 512 x 1024 on 32 ranks splits y on all 32). Reaching 32 GPUs
+# needs a LONGER box -- the 32-GPU rung above is 16H x 2H x 2.75H, not 12H x 2H x 4H -- so it is a
+# slightly different problem and should be read as such. Past that, the fix is wall-normal
+# decomposition support in the solver, not a bigger allocation.
+#
+# Cells/GPU cannot be held exactly constant while keeping both the box shape and the factors of two
+# (refining 3-D in powers of two moves the cell count in 8x steps), so it swings +-8 %. Weak
+# efficiency is therefore computed from throughput PER GPU, which corrects for it exactly.
+# MGLEVELS=8 everywhere and the hierarchy stops where the grid stops -- but note the distributed
+# depth is set by the PER-RANK BLOCK, not the global grid: a level coarsens an axis only if every
+# rank's block origin and size are even on it, so the coarsest global grid grows with the rank
+# count. That is what the `amg` lever (agglomerated GraphAMG bottom solve) exists to fix.
+# Verified against the real ORB at every rung: y is never split, block imbalance under 2 %.
 case "$ARG" in refine|refine:*)
   ONLY="${ARG#refine}"; ONLY="${ONLY#:}"     # `refine:8` = just that rung (queue-parallel safe)
   # CPG forcing (CFR=0), matching the production GPU script; PMAXIT raised so the pressure iteration
   # count is a MEASUREMENT rather than a clamp — a cap that never binds changes nothing, a cap that
   # binds invalidates the timing (the first weak sweep sat at exactly 80 for N>=8).
-  export CFR=0 PMAXIT=400
-  for spec in 1:955:152:318:5 2:1200:191:400:5 4:1508:240:503:5 \
-              8:1910:304:637:6 16:2406:383:802:6 32:3028:482:1009:6; do
-    IFS=: read -r N gx gy gz lv <<< "$spec"      # N:GNX:GNY:GNZ:MGLEVELS
+  export CFR=0 PMAXIT=400 MGLEVELS=8
+  for spec in 1:960:160:320 2:1152:192:384 4:1536:256:512 \
+              8:1920:320:640 16:2304:384:768 32:4096:512:704; do
+    IFS=: read -r N gx gy gz <<< "$spec"          # N:GNX:GNY:GNZ
     [ "$N" -le "$MAXN" ] || continue
     [ -z "$ONLY" ] || [ "$ONLY" = "$N" ] || continue
-    FIXED_GNX=$gx; export GNY=$gy GNZ=$gz MGLEVELS=$lv
+    FIXED_GNX=$gx; export GNY=$gy GNZ=$gz
     run_one "$N" "refine_np${N}${TAG}.json"
+    # at the top rung, is the block-local coarse grid the limit? (agglomerated bottom solve)
+    [ "$N" = "$MAXN" ] && run_one "$N" "refine_np${N}_amg${TAG}.json" env GRAPHAMG=1
   done
   FIXED_GNX=0
   echo "done -> $RES"; exit 0

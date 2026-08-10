@@ -68,6 +68,7 @@ VSWEEPS = int(os.environ.get("VSWEEPS", 20)); VTOL = float(os.environ.get("VTOL"
 PRESSURE = os.environ.get("PRESSURE", "pcg")
 PMAXIT = int(os.environ.get("PMAXIT", 80)); PRTOL = float(os.environ.get("PRTOL", 1e-4))
 MGLEVELS = int(os.environ.get("MGLEVELS", 5)); MEANSCOPE = os.environ.get("MEANSCOPE", "fine")
+GRAPHAMG = int(os.environ.get("GRAPHAMG", 0))   # agglomerated bottom solve on the coarsest level
 BENCH_OUT = os.environ.get("BENCH_OUT", f"{OUT}_bench.json"); LABEL = os.environ.get("LABEL", "")
 HB = int(os.environ.get("HB", 0))
 _ckpt_field = f"{OUT}_ckpt_r{RANK}.npz"  # this rank's local (u,v,w) block
@@ -169,6 +170,11 @@ elif PRESSURE != "vcycle":
     raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|cheb|vcycle)")
 s.set_pressure_warmstart(True)
 s.set_pressure_mean_removal(MEANSCOPE)
+if GRAPHAMG:
+    # The geometric hierarchy is block-local: an axis stops coarsening once a rank's block turns
+    # odd, so at high rank counts the coarsest GLOBAL grid is far from coarse. This replaces that
+    # bottom with an agglomerated algebraic solve. Applied at the set_pressure_geometry call below.
+    s.set_pressure_graph_amg(True)
 s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)          # no-slip walls on -y,+y ; x,z periodic
 s.set_body_force(0.0 if CFR > 0 else fbody, 0.0, 0.0)
 s.set_pressure_geometry(np.asfortranarray(np.full((lnx, lny, lnz), 1e30)))
@@ -348,7 +354,7 @@ if RANK == 0 and p_iters:
         "global": [GNX, GNY, GNZ], "cells": GNX*GNY*GNZ, "cells_per_rank": GNX*GNY*GNZ/NP,
         "re_tau": RE_TAU, "nu": nu, "dt": DT, "adv": ADV, "forcing": "CFR" if CFR > 0 else "CPG",
         "cfr": CFR, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL, "mglevels": MGLEVELS,
-        "meanscope": MEANSCOPE, "vsweeps": VSWEEPS, "vtol": VTOL,
+        "meanscope": MEANSCOPE, "graphamg": GRAPHAMG, "vsweeps": VSWEEPS, "vtol": VTOL,
         "nsteps": NSTEPS, "warmup": WARMUP, "measured_steps": nmeas,
         "ms_per_step": steady_ms, "mcells_per_s": mcells*1e3/steady_ms,
         "pressure_iters_per_step": it_mean,

@@ -68,17 +68,21 @@ if not runs:
 print(f"[sweep] {PREFIX}*  ({len(runs)} rank counts)")
 N = sorted(runs)
 ms = [med(runs[n], "ms_per_step") for n in N]
-eff = [100 * ms[0] / m for m in ms]
 agg = [med(runs[n], "mcells_per_s") for n in N]
-per_gpu = runs[N[0]][0]["cells"] / 1e6
+# Weak efficiency from throughput PER GPU, not from ms/step. On the refine ladder the cells/GPU
+# cannot be held exactly constant (see snellius/chan_weak_gpu.sh), and this normalisation corrects
+# for that exactly; on a constant-size sweep it is identical to ms[0]/ms.
+tp = [a / n for a, n in zip(agg, N)]
+eff = [100 * t / tp[0] for t in tp]
+per_gpu = runs[N[0]][0]["cells"] / N[0] / 1e6
 
 # ---- figure 1: the curve ------------------------------------------------------------------------
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
 ax1.plot(N, eff, "o-", color=BLUE, lw=2, ms=6, label="peclet.flow")
-for n, m in zip(N, ms):  # every individual draw, as the honest spread
+for n in N:  # every individual draw, as the honest spread
     for r in runs[n]:
-        ax1.plot([n], [100 * ms[0] / r["ms_per_step"]], "o", ms=3.5, mfc="none", mec=BLUE, mew=1)
+        ax1.plot([n], [100 * (r["mcells_per_s"] / n) / tp[0]], "o", ms=3.5, mfc="none", mec=BLUE, mew=1)
 ax1.axhline(100, ls="--", c=INK2, lw=0.8, label="ideal")
 if max(N) > GPUS_PER_NODE:
     ax1.axvspan(GPUS_PER_NODE * 1.15, max(N) * 1.15, color=ORANGE, alpha=0.06)
