@@ -18,6 +18,7 @@
 #   sbatch --nodes=2 chan_weak_gpu.sh 8
 #   sbatch --nodes=4 chan_weak_gpu.sh 16
 #   sbatch --nodes=8 chan_weak_gpu.sh 32
+#   sbatch --nodes=8 chan_weak_gpu.sh refine      # THE HEADLINE LADDER (see `refine` below)
 #   sbatch --nodes=2 chan_weak_gpu.sh levers      # CPG / mean-scope / MG depth / halo, at N=8
 #   sbatch --nodes=2 chan_weak_gpu.sh strong      # OPTIONAL: fixed 46M box on 1,2,4,8 GPUs
 #   sbatch --nodes=2 chan_weak_gpu.sh probe       # why the pressure solve hit its iteration cap
@@ -77,6 +78,43 @@ run_one () {  # N out extra-env...
 }
 
 ARG="${1:-}"; TAG="${2:+_${2}}"
+
+# ===== `refine`: the weak ladder a DNS user actually climbs ======================================
+# The production job script (examples/wall-bounded-turbulence/snellius_gpu.slurm) scales this DNS by
+# REFINING a fixed physical box, 4piH x 2H x (4/3)piH: GNX = 2pi*GNY, GNZ = (2pi/3)*GNY, with GNY
+# setting Delta+ = 360/GNY. Its own presets are GNY=240 (Delta+=1.5) on 1 node, 288 on 2, 360 on 3.
+# So more GPUs buy a FINER DNS of the same channel, never a longer one. Each rung below holds
+# ~46 Mcells/GPU on that ladder, anchored on the production GNY=240 grid at 4 GPUs:
+#
+#   GPUs  GNY  Delta+       grid            Mcells   M/GPU  MG levels
+#      1  152    2.37   955 x 152 x  318      46.2    46.2      5
+#      2  191    1.88  1200 x 191 x  400      91.7    45.8      5
+#      4  240    1.50  1508 x 240 x  503     182.0    45.5      5   <- production preset
+#      8  304    1.18  1910 x 304 x  637     369.9    46.2      6
+#     16  383    0.94  2406 x 383 x  802     739.0    46.2      6
+#     32  482    0.75  3028 x 482 x 1009    1472.6    46.0      6
+#
+# MG depth is a resolution setting, not a constant: what must be held fixed across the ladder is the
+# COARSEST grid, not the level count. L is chosen so the coarsest level keeps GNY/2^(L-1) in 8..16,
+# exactly as the production GNY=240 grid gets from its 5 levels. Verified with the ORB: y is never
+# split at any rung and block imbalance stays under 1.5 %.
+case "$ARG" in refine|refine:*)
+  ONLY="${ARG#refine}"; ONLY="${ONLY#:}"     # `refine:8` = just that rung (queue-parallel safe)
+  # CPG forcing (CFR=0), matching the production GPU script; PMAXIT raised so the pressure iteration
+  # count is a MEASUREMENT rather than a clamp — a cap that never binds changes nothing, a cap that
+  # binds invalidates the timing (the first weak sweep sat at exactly 80 for N>=8).
+  export CFR=0 PMAXIT=400
+  for spec in 1:955:152:318:5 2:1200:191:400:5 4:1508:240:503:5 \
+              8:1910:304:637:6 16:2406:383:802:6 32:3028:482:1009:6; do
+    IFS=: read -r N gx gy gz lv <<< "$spec"      # N:GNX:GNY:GNZ:MGLEVELS
+    [ "$N" -le "$MAXN" ] || continue
+    [ -z "$ONLY" ] || [ "$ONLY" = "$N" ] || continue
+    FIXED_GNX=$gx; export GNY=$gy GNZ=$gz MGLEVELS=$lv
+    run_one "$N" "refine_np${N}${TAG}.json"
+  done
+  FIXED_GNX=0
+  echo "done -> $RES"; exit 0
+esac
 # OPTIONAL strong scaling: the ONE-GPU box (46.4M) split over more and more GPUs, down to 5.8M
 # cells/GPU at N=8 — where the pressure solve's global reductions dominate the shrinking local work.
 # 384/N stays a multiple of the MG coarsen-alignment (16) up to N=8, so blocks stay even.

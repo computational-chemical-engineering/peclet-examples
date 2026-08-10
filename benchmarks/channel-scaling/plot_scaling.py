@@ -59,9 +59,13 @@ def phase(rec, name, stat="max"):
     return 1e3 * rec["phase_seconds_per_step"][name][stat]
 
 
-runs = load_sweep()
+# `refine_np*` (the production ladder: fixed physical box, refined with the GPU count) is the
+# headline sweep; `chan_np*` (fixed cross-section, elongated box) is the stress test.
+PREFIX = "refine_np" if glob.glob(os.path.join(RES, "refine_np*.json")) else "chan_np"
+runs = load_sweep(PREFIX)
 if not runs:
-    raise SystemExit(f"no results in {RES} — run snellius/chan_weak_gpu.sh first")
+    raise SystemExit(f"no results in {RES} — run snellius/chan_weak_gpu.sh refine first")
+print(f"[sweep] {PREFIX}*  ({len(runs)} rank counts)")
 N = sorted(runs)
 ms = [med(runs[n], "ms_per_step") for n in N]
 eff = [100 * ms[0] / m for m in ms]
