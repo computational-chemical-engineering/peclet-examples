@@ -1,0 +1,131 @@
+{
+ "label": "snellius-h100",
+ "np": 4,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  1536,
+  256,
+  512
+ ],
+ "cells": 201326592,
+ "cells_per_rank": 50331648.0,
+ "re_tau": 180.0,
+ "nu": 0.7111111111111111,
+ "dt": 0.02,
+ "adv": 0,
+ "forcing": "CPG",
+ "cfr": 0.0,
+ "pressure": "pcg",
+ "pmaxit": 400,
+ "prtol": 0.0001,
+ "mglevels": 8,
+ "meanscope": "fine",
+ "graphamg": 0,
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "nsteps": 140,
+ "warmup": 100,
+ "measured_steps": 40,
+ "ms_per_step": 322.0205247402191,
+ "mcells_per_s": 625.1980123391653,
+ "pressure_iters_per_step": 7.6,
+ "momentum_sweeps_per_step": 9.95,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.3219863682694267,
+   "min": 0.3219835451047402
+  },
+  "predictor": {
+   "max": 0.02216772359679453,
+   "min": 0.02214603080647066
+  },
+  "momentum": {
+   "max": 0.04934878297499381,
+   "min": 0.04931321290787309
+  },
+  "projection": {
+   "max": 0.2488923283701297,
+   "min": 0.2488747650932055
+  },
+  "pressure_allreduce": {
+   "max": 0.000556965425,
+   "min": 0.00046377375
+  },
+  "pressure_allreduce_count": {
+   "max": 41.0,
+   "min": 41.0
+  },
+  "momentum_sweeps": {
+   "max": 9.95,
+   "min": 9.95
+  },
+  "cfr": {
+   "max": 0.0,
+   "min": 0.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn83.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    256,
+    512
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn130.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    384,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    256,
+    512
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "gcn134.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    768,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    256,
+    512
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "gcn160.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    1152,
+    0,
+    0
+   ],
+   "size": [
+    384,
+    256,
+    512
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

@@ -1,0 +1,33 @@
+srun: Step created for StepId=25431915.5
+[cfg] global 2304x384x768 = 679.5M cells  nu=1.0667 f=0.0052083 Delta+=0.938 Lx+=2160 Ly+=360 Lz+=720  ranks=16  backend=Cuda  dt=0.02 adv=SOU  forcing=CPG  pressure=pcg(maxit=400,rtol=0.0001,levels=8,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 288x384x384 at [0, 0, 0]  gcn83.local.snellius.surf.nl  0000:26:00.0
+    rank 1: block 288x384x384 at [288, 0, 0]  gcn83.local.snellius.surf.nl  0000:06:00.0
+    rank 2: block 288x384x384 at [0, 0, 384]  gcn83.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: block 288x384x384 at [288, 0, 384]  gcn83.local.snellius.surf.nl  0000:A6:00.0
+    rank 4: block 288x384x384 at [576, 0, 0]  gcn130.local.snellius.surf.nl  0000:26:00.0
+    rank 5: block 288x384x384 at [864, 0, 0]  gcn130.local.snellius.surf.nl  0000:06:00.0
+    rank 6: block 288x384x384 at [576, 0, 384]  gcn130.local.snellius.surf.nl  0000:C6:00.0
+    rank 7: block 288x384x384 at [864, 0, 384]  gcn130.local.snellius.surf.nl  0000:A6:00.0
+    rank 8: block 288x384x384 at [1152, 0, 0]  gcn134.local.snellius.surf.nl  0000:26:00.0
+    rank 9: block 288x384x384 at [1440, 0, 0]  gcn134.local.snellius.surf.nl  0000:06:00.0
+    rank 10: block 288x384x384 at [1152, 0, 384]  gcn134.local.snellius.surf.nl  0000:C6:00.0
+    rank 11: block 288x384x384 at [1440, 0, 384]  gcn134.local.snellius.surf.nl  0000:A6:00.0
+    rank 12: block 288x384x384 at [1728, 0, 0]  gcn160.local.snellius.surf.nl  0000:26:00.0
+    rank 13: block 288x384x384 at [2016, 0, 0]  gcn160.local.snellius.surf.nl  0000:06:00.0
+    rank 14: block 288x384x384 at [1728, 0, 384]  gcn160.local.snellius.surf.nl  0000:C6:00.0
+    rank 15: block 288x384x384 at [2016, 0, 384]  gcn160.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.51 u_tau~1.001 -uv+pk=0.078 nacc=0 [0.1 it/s]
+  [hb] it=20/140  2120 ms/step avg
+  [hb] it=40/140  1239 ms/step avg
+  [hb] it=60/140  933 ms/step avg
+  [hb] it=80/140  792 ms/step avg
+  [hb] it=100/140  720 ms/step avg
+  it=   100 t+=    1.9 Ub+=15.51 u_tau~1.008 -uv+pk=0.293 nacc=0 [1.4 it/s]
+  [hb] it=120/140  687 ms/step avg
+  [hb] it=140/140  655 ms/step avg
+[timing] steady 461.0 ms/step over 40 steps (warmup 100 excluded) | 679M cells, 16 GPU(s) = 42.5M/GPU | 1474 Mcell-updates/s
+[phases, rank-max ms/step] step=461.0  predictor=19.7  momentum=56.8  projection=383.1  pressure_allreduce=2.5  cfr_allreduce=0.0  | pressure iters/step 12.8  allreduces/step 67  momentum sweeps/step 12.0
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/refine_np16_amg.json
+[done] 140 steps, 679M cells, 16 ranks, 655 ms/step, nacc=0. wrote /scratch-local/tec16020.25431915/chan_refine_np16_amg_stats.npz + /scratch-local/tec16020.25431915/chan_refine_np16_amg.done

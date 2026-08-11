@@ -1,0 +1,24 @@
+[cfg] global 3072x240x512 = 377.5M cells  nu=0.6667 f=0.0083333 Delta+=1.500 Lx+=4608 Ly+=360 Lz+=768  ranks=8  backend=Cuda  dt=0.02 adv=SOU  forcing=CFR 15.68  pressure=pcg(maxit=80,rtol=0.0001,levels=5,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 384x240x512 at [0, 0, 0]  gcn87.local.snellius.surf.nl  0000:26:00.0
+    rank 1: block 384x240x512 at [384, 0, 0]  gcn87.local.snellius.surf.nl  0000:06:00.0
+    rank 2: block 384x240x512 at [768, 0, 0]  gcn87.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: block 384x240x512 at [1152, 0, 0]  gcn87.local.snellius.surf.nl  0000:A6:00.0
+    rank 4: block 384x240x512 at [1536, 0, 0]  gcn148.local.snellius.surf.nl  0000:26:00.0
+    rank 5: block 384x240x512 at [1920, 0, 0]  gcn148.local.snellius.surf.nl  0000:06:00.0
+    rank 6: block 384x240x512 at [2304, 0, 0]  gcn148.local.snellius.surf.nl  0000:C6:00.0
+    rank 7: block 384x240x512 at [2688, 0, 0]  gcn148.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.68 u_tau~1.109 -uv+pk=0.037 nacc=0 [0.2 it/s]
+  [hb] it=20/140  1321 ms/step avg
+  [hb] it=40/140  1021 ms/step avg
+  [hb] it=60/140  895 ms/step avg
+  [hb] it=80/140  849 ms/step avg
+  [hb] it=100/140  819 ms/step avg
+  it=   100 t+=    3.0 Ub+=15.68 u_tau~1.040 -uv+pk=0.392 nacc=0 [1.2 it/s]
+  [hb] it=120/140  833 ms/step avg
+  [hb] it=140/140  811 ms/step avg
+[timing] steady 748.0 ms/step over 40 steps (warmup 100 excluded) | 377M cells, 8 GPU(s) = 47.2M/GPU | 505 Mcell-updates/s
+[phases, rank-max ms/step] step=693.5  predictor=20.9  momentum=46.2  projection=624.9  pressure_allreduce=2.5  cfr_allreduce=53.2  | pressure iters/step 21.8  allreduces/step 112  momentum sweeps/step 10.0
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/probe_evenz_np8.json
+[done] 140 steps, 377M cells, 8 ranks, 811 ms/step, nacc=0. wrote /scratch-local/tec16020.25421517/chan_probe_evenz_np8_stats.npz + /scratch-local/tec16020.25421517/chan_probe_evenz_np8.done

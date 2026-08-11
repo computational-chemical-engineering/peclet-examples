@@ -1,0 +1,48 @@
+[cfg] global 4096x512x704 = 1476.4M cells  nu=1.4222 f=0.0039062 Delta+=0.703 Lx+=2880 Ly+=360 Lz+=495  ranks=32  backend=Cuda  dt=0.02 adv=SOU  forcing=CPG  pressure=pcg(maxit=400,rtol=0.0001,levels=8,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 256x512x352 at [0, 0, 0]  gcn83.local.snellius.surf.nl  0000:26:00.0
+    rank 1: block 256x512x352 at [256, 0, 0]  gcn83.local.snellius.surf.nl  0000:06:00.0
+    rank 2: block 256x512x352 at [0, 0, 352]  gcn83.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: block 256x512x352 at [256, 0, 352]  gcn83.local.snellius.surf.nl  0000:A6:00.0
+    rank 4: block 256x512x352 at [512, 0, 0]  gcn87.local.snellius.surf.nl  0000:26:00.0
+    rank 5: block 256x512x352 at [768, 0, 0]  gcn87.local.snellius.surf.nl  0000:06:00.0
+    rank 6: block 256x512x352 at [512, 0, 352]  gcn87.local.snellius.surf.nl  0000:C6:00.0
+    rank 7: block 256x512x352 at [768, 0, 352]  gcn87.local.snellius.surf.nl  0000:A6:00.0
+    rank 8: block 256x512x352 at [1024, 0, 0]  gcn110.local.snellius.surf.nl  0000:26:00.0
+    rank 9: block 256x512x352 at [1280, 0, 0]  gcn110.local.snellius.surf.nl  0000:06:00.0
+    rank 10: block 256x512x352 at [1024, 0, 352]  gcn110.local.snellius.surf.nl  0000:C6:00.0
+    rank 11: block 256x512x352 at [1280, 0, 352]  gcn110.local.snellius.surf.nl  0000:A6:00.0
+    rank 12: block 256x512x352 at [1536, 0, 0]  gcn114.local.snellius.surf.nl  0000:26:00.0
+    rank 13: block 256x512x352 at [1792, 0, 0]  gcn114.local.snellius.surf.nl  0000:06:00.0
+    rank 14: block 256x512x352 at [1536, 0, 352]  gcn114.local.snellius.surf.nl  0000:C6:00.0
+    rank 15: block 256x512x352 at [1792, 0, 352]  gcn114.local.snellius.surf.nl  0000:A6:00.0
+    rank 16: block 256x512x352 at [2048, 0, 0]  gcn128.local.snellius.surf.nl  0000:26:00.0
+    rank 17: block 256x512x352 at [2304, 0, 0]  gcn128.local.snellius.surf.nl  0000:06:00.0
+    rank 18: block 256x512x352 at [2048, 0, 352]  gcn128.local.snellius.surf.nl  0000:C6:00.0
+    rank 19: block 256x512x352 at [2304, 0, 352]  gcn128.local.snellius.surf.nl  0000:A6:00.0
+    rank 20: block 256x512x352 at [2560, 0, 0]  gcn130.local.snellius.surf.nl  0000:26:00.0
+    rank 21: block 256x512x352 at [2816, 0, 0]  gcn130.local.snellius.surf.nl  0000:06:00.0
+    rank 22: block 256x512x352 at [2560, 0, 352]  gcn130.local.snellius.surf.nl  0000:C6:00.0
+    rank 23: block 256x512x352 at [2816, 0, 352]  gcn130.local.snellius.surf.nl  0000:A6:00.0
+    rank 24: block 256x512x352 at [3072, 0, 0]  gcn134.local.snellius.surf.nl  0000:26:00.0
+    rank 25: block 256x512x352 at [3328, 0, 0]  gcn134.local.snellius.surf.nl  0000:06:00.0
+    rank 26: block 256x512x352 at [3072, 0, 352]  gcn134.local.snellius.surf.nl  0000:C6:00.0
+    rank 27: block 256x512x352 at [3328, 0, 352]  gcn134.local.snellius.surf.nl  0000:A6:00.0
+    rank 28: block 256x512x352 at [3584, 0, 0]  gcn147.local.snellius.surf.nl  0000:26:00.0
+    rank 29: block 256x512x352 at [3840, 0, 0]  gcn147.local.snellius.surf.nl  0000:06:00.0
+    rank 30: block 256x512x352 at [3584, 0, 352]  gcn147.local.snellius.surf.nl  0000:C6:00.0
+    rank 31: block 256x512x352 at [3840, 0, 352]  gcn147.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.52 u_tau~1.003 -uv+pk=0.060 nacc=0 [0.1 it/s]
+  [hb] it=20/140  4876 ms/step avg
+  [hb] it=40/140  2714 ms/step avg
+  [hb] it=60/140  1951 ms/step avg
+  [hb] it=80/140  1565 ms/step avg
+  [hb] it=100/140  1359 ms/step avg
+  it=   100 t+=    1.4 Ub+=15.52 u_tau~1.011 -uv+pk=0.235 nacc=0 [0.7 it/s]
+  [hb] it=120/140  1252 ms/step avg
+  [hb] it=140/140  1177 ms/step avg
+[timing] steady 667.9 ms/step over 40 steps (warmup 100 excluded) | 1476M cells, 32 GPU(s) = 46.1M/GPU | 2211 Mcell-updates/s
+[phases, rank-max ms/step] step=667.8  predictor=23.3  momentum=76.9  projection=565.6  pressure_allreduce=4.7  cfr_allreduce=0.0  | pressure iters/step 17.1  allreduces/step 88  momentum sweeps/step 12.0
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/refine_np32_amg.json
+[done] 140 steps, 1476M cells, 32 ranks, 1177 ms/step, nacc=0. wrote /scratch-local/tec16020.25431923/chan_refine_np32_amg_stats.npz + /scratch-local/tec16020.25431923/chan_refine_np32_amg.done

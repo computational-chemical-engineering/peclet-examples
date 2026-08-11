@@ -1,0 +1,24 @@
+[cfg] global 1920x320x640 = 393.2M cells  nu=0.8889 f=0.00625 Delta+=1.125 Lx+=2160 Ly+=360 Lz+=720  ranks=8  backend=Cuda  dt=0.02 adv=SOU  forcing=CPG  pressure=pcg(maxit=400,rtol=0.0001,levels=8,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 480x320x320 at [0, 0, 0]  gcn83.local.snellius.surf.nl  0000:26:00.0
+    rank 1: block 480x320x320 at [0, 0, 320]  gcn83.local.snellius.surf.nl  0000:06:00.0
+    rank 2: block 480x320x320 at [480, 0, 0]  gcn130.local.snellius.surf.nl  0000:26:00.0
+    rank 3: block 480x320x320 at [480, 0, 320]  gcn130.local.snellius.surf.nl  0000:06:00.0
+    rank 4: block 480x320x320 at [960, 0, 0]  gcn134.local.snellius.surf.nl  0000:26:00.0
+    rank 5: block 480x320x320 at [960, 0, 320]  gcn134.local.snellius.surf.nl  0000:06:00.0
+    rank 6: block 480x320x320 at [1440, 0, 0]  gcn160.local.snellius.surf.nl  0000:26:00.0
+    rank 7: block 480x320x320 at [1440, 0, 320]  gcn160.local.snellius.surf.nl  0000:06:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.51 u_tau~1.002 -uv+pk=0.065 nacc=0 [0.1 it/s]
+  [hb] it=20/140  4613 ms/step avg
+  [hb] it=40/140  2478 ms/step avg
+  [hb] it=60/140  1778 ms/step avg
+  [hb] it=80/140  1425 ms/step avg
+  [hb] it=100/140  1213 ms/step avg
+  it=   100 t+=    2.2 Ub+=15.51 u_tau~1.007 -uv+pk=0.299 nacc=0 [0.8 it/s]
+  [hb] it=120/140  1092 ms/step avg
+  [hb] it=140/140  993 ms/step avg
+[timing] steady 410.0 ms/step over 40 steps (warmup 100 excluded) | 393M cells, 8 GPU(s) = 49.2M/GPU | 959 Mcell-updates/s
+[phases, rank-max ms/step] step=410.0  predictor=23.0  momentum=58.6  projection=326.6  pressure_allreduce=1.3  cfr_allreduce=0.0  | pressure iters/step 9.2  allreduces/step 49  momentum sweeps/step 10.9
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/refine_np8.json
+[done] 140 steps, 393M cells, 8 ranks, 993 ms/step, nacc=0. wrote /scratch-local/tec16020.25431915/chan_refine_np8_stats.npz + /scratch-local/tec16020.25431915/chan_refine_np8.done

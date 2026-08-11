@@ -1,0 +1,18 @@
+srun: warning: can't run 1 processes on 2 nodes, setting nnodes to 1
+[cfg] global 384x240x512 = 47.2M cells  nu=0.6667 f=0.0083333 Delta+=1.500 Lx+=576 Ly+=360 Lz+=768  ranks=1  backend=Cuda  dt=0.02 adv=SOU  forcing=CFR 15.68  pressure=pcg(maxit=80,rtol=0.0001,levels=5,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 384x240x512 at [0, 0, 0]  gcn87.local.snellius.surf.nl  0000:26:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.68 u_tau~1.113 -uv+pk=0.153 nacc=0 [0.2 it/s]
+  [hb] it=20/140  768 ms/step avg
+  [hb] it=40/140  582 ms/step avg
+  [hb] it=60/140  522 ms/step avg
+  [hb] it=80/140  495 ms/step avg
+  [hb] it=100/140  478 ms/step avg
+  it=   100 t+=    3.0 Ub+=15.68 u_tau~1.048 -uv+pk=0.401 nacc=0 [2.0 it/s]
+  [hb] it=120/140  478 ms/step avg
+  [hb] it=140/140  465 ms/step avg
+[timing] steady 390.4 ms/step over 40 steps (warmup 100 excluded) | 47M cells, 1 GPU(s) = 47.2M/GPU | 121 Mcell-updates/s
+[phases, rank-max ms/step] step=336.0  predictor=20.3  momentum=41.6  projection=272.8  pressure_allreduce=0.1  cfr_allreduce=53.0  | pressure iters/step 10.1  allreduces/step 53  momentum sweeps/step 10.0
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/probe_evenz_np1.json
+[done] 140 steps, 47M cells, 1 ranks, 465 ms/step, nacc=0. wrote /scratch-local/tec16020.25421517/chan_probe_evenz_np1_stats.npz + /scratch-local/tec16020.25421517/chan_probe_evenz_np1.done
