@@ -19,6 +19,7 @@
 #   sbatch --nodes=4 chan_weak_gpu.sh 16
 #   sbatch --nodes=8 chan_weak_gpu.sh 32
 #   sbatch --nodes=8 chan_weak_gpu.sh refine      # THE HEADLINE LADDER (see `refine` below)
+#   sbatch --nodes=8 chan_weak_gpu.sh tile        # replicate ONE box: isolates parallel efficiency
 #   sbatch --nodes=2 chan_weak_gpu.sh levers      # CPG / mean-scope / MG depth / halo, at N=8
 #   sbatch --nodes=2 chan_weak_gpu.sh strong      # OPTIONAL: fixed 46M box on 1,2,4,8 GPUs
 #   sbatch --nodes=2 chan_weak_gpu.sh probe       # why the pressure solve hit its iteration cap
@@ -127,6 +128,44 @@ ARG="${1:-}"; TAG="${2:+_${2}}"
 # rank's block origin and size are even on it, so the coarsest global grid grows with the rank
 # count. That is what the `amg` lever (agglomerated GraphAMG bottom solve) exists to fix.
 # Verified against the real ORB at every rung: y is never split, block imbalance under 2 %.
+# ===== `tile`: replicate the SAME channel, the periodic-benchmark protocol ========================
+# The refine ladder answers "a finer DNS on more GPUs", but each rung is a harder linear system, so
+# its curve mixes parallel efficiency with the solve getting harder. This ladder instead REPLICATES
+# one 1024x160x320 box (Lx=12.8H, Lz=4.0H, Delta+=2.25 -- the MKM box at this resolution) alternately
+# in the two periodic directions, so every rung is the SAME turbulence with more independent copies
+# of it: identical cells/GPU (52.4 M exactly), identical Delta+ and dt, identical per-cell work, and
+# an unchanged CPG driving force (f = 2/GNY, and GNY never changes). Any iteration growth here cannot
+# be the physics getting harder — it is the pressure solve's reach over a larger global domain.
+#
+#   GPUs  tiles x,z            grid          Mcells  M/GPU   Lx/H   Lz/H
+#      1        1x1    1024x160x 320           52.4   52.4   12.8    4.0
+#      2        2x1    2048x160x 320          104.9   52.4   25.6    4.0
+#      4        2x2    2048x160x 640          209.7   52.4   25.6    8.0
+#      8        4x2    4096x160x 640          419.4   52.4   51.2    8.0
+#     16        4x4    4096x160x1280          838.9   52.4   51.2   16.0
+#     32        8x4    8192x160x1280         1677.7   52.4  102.4   16.0
+#
+# Verified against the real ORB: balance 1.000 at every rung, the wall-normal axis never split.
+# PREDICTION worth testing rather than assuming: the geometric hierarchy is block-local, and under
+# tiling the per-rank block is constant, so the coarsest GLOBAL grid grows in proportion to the rank
+# count (~200 cells at 1 GPU, ~6400 at 32). If that is what limits the curve, the agglomerated bottom
+# solve should help far more here than the 4.5 % it bought on the refine ladder -- hence `amg` at
+# every rung from 8 up.
+case "$ARG" in tile|tile:*)
+  ONLY="${ARG#tile}"; ONLY="${ONLY#:}"
+  export CFR=0 PMAXIT=400 MGLEVELS=8 GNY=160
+  for spec in 1:1024:320 2:2048:320 4:2048:640 8:4096:640 16:4096:1280 32:8192:1280; do
+    IFS=: read -r N gx gz <<< "$spec"
+    [ "$N" -le "$MAXN" ] || continue
+    [ -z "$ONLY" ] || [ "$ONLY" = "$N" ] || continue
+    FIXED_GNX=$gx; export GNZ=$gz
+    run_one "$N" "tile_np${N}${TAG}.json"
+    [ "$N" -ge 8 ] && run_one "$N" "tile_np${N}_amg${TAG}.json" env GRAPHAMG=1
+  done
+  FIXED_GNX=0
+  echo "done -> $RES"; exit 0
+esac
+
 case "$ARG" in refine|refine:*)
   ONLY="${ARG#refine}"; ONLY="${ONLY#:}"     # `refine:8` = just that rung (queue-parallel safe)
   # CPG forcing (CFR=0), matching the production GPU script; PMAXIT raised so the pressure iteration
