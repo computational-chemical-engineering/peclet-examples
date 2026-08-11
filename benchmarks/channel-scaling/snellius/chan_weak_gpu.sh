@@ -153,14 +153,17 @@ ARG="${1:-}"; TAG="${2:+_${2}}"
 # every rung from 8 up.
 case "$ARG" in tile|tile:*)
   ONLY="${ARG#tile}"; ONLY="${ONLY#:}"
-  export CFR=0 PMAXIT=400 MGLEVELS=8 GNY=160
+  # BOTTOM=auto agglomerates the coarsest level and solves it exactly whenever the hierarchy
+  # cannot reach a small enough bottom -- the thing that makes a V-cycle domain-independent.
+  # The `smoothed` companion at each rung from 8 up is the controlled comparison.
+  export CFR=0 PMAXIT=400 MGLEVELS=8 GNY=160 BOTTOM=auto
   for spec in 1:1024:320 2:2048:320 4:2048:640 8:4096:640 16:4096:1280 32:8192:1280; do
     IFS=: read -r N gx gz <<< "$spec"
     [ "$N" -le "$MAXN" ] || continue
     [ -z "$ONLY" ] || [ "$ONLY" = "$N" ] || continue
     FIXED_GNX=$gx; export GNZ=$gz
-    run_one "$N" "tile_np${N}${TAG}.json"
-    [ "$N" -ge 8 ] && run_one "$N" "tile_np${N}_amg${TAG}.json" env GRAPHAMG=1
+    run_one "$N" "tile_np${N}${TAG}.json"                                  # BOTTOM=auto (default below)
+    [ "$N" -ge 8 ] && run_one "$N" "tile_np${N}_smoothed${TAG}.json" env BOTTOM=smoother
   done
   FIXED_GNX=0
   echo "done -> $RES"; exit 0
