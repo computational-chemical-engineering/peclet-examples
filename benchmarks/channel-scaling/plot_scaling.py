@@ -59,9 +59,13 @@ def phase(rec, name, stat="max"):
     return 1e3 * rec["phase_seconds_per_step"][name][stat]
 
 
-# `refine_np*` (the production ladder: fixed physical box, refined with the GPU count) is the
-# headline sweep; `chan_np*` (fixed cross-section, elongated box) is the stress test.
-PREFIX = "refine_np" if glob.glob(os.path.join(RES, "refine_np*.json")) else "chan_np"
+# Which sweep to plot. `tile_np*` (one box replicated -- isolates parallel efficiency) wins when
+# present, then `refine_np*` (fixed box refined), then `chan_np*` (fixed cross-section, elongated).
+# Override with an explicit prefix: `python plot_scaling.py refine_np`.
+import sys
+PREFIX = sys.argv[1] if len(sys.argv) > 1 else next(
+    (p for p in ("tile_np", "refine_np", "chan_np") if glob.glob(os.path.join(RES, p + "*.json"))),
+    "chan_np")
 runs = load_sweep(PREFIX)
 if not runs:
     raise SystemExit(f"no results in {RES} — run snellius/chan_weak_gpu.sh refine first")
@@ -156,7 +160,8 @@ fig.savefig(os.path.join(HERE, "channel_phases.png"), dpi=150)
 print("channel_phases.png")
 
 # ---- figure 3: lever ablation (optional) ---------------------------------------------------------
-LEVERS = [("", "default", BLUE), ("_amg", "agglomerated\nbottom solve", AQUA),
+LEVERS = [("", "agglomerated bottom\n(default here)", BLUE),
+          ("_smoothed", "smoothed bottom", ORANGE), ("_amg", "agglomerated\nbottom solve", AQUA),
           ("_decomp", "coarse-first\ndecomposition", PINK),
           ("_cpg", "CPG forcing", YELLOW), ("_meanall", "mean removal:\nall levels", "#9a7bd6"),
           ("_mg4", "MG depth 4", "#7a9ad6"), ("_mg6", "MG depth 6", "#c07bd6"),
