@@ -69,7 +69,9 @@ PRESSURE = os.environ.get("PRESSURE", "pcg")
 PMAXIT = int(os.environ.get("PMAXIT", 80)); PRTOL = float(os.environ.get("PRTOL", 1e-4))
 MGLEVELS = int(os.environ.get("MGLEVELS", 5)); MEANSCOPE = os.environ.get("MEANSCOPE", "fine")
 GRAPHAMG = int(os.environ.get("GRAPHAMG", 0))   # force the agglomerated bottom solve
-BOTTOM = os.environ.get("BOTTOM", "auto")      # coarse-solve policy: auto | smoother | agglomerated
+BOTTOM = os.environ.get("BOTTOM", "smoother")  # coarse-solve policy: smoother | auto | agglomerated
+                                               # (matches the solver default, so a run is reproducible;
+                                               #  the tiled scaling ladder sets auto explicitly)
 BENCH_OUT = os.environ.get("BENCH_OUT", f"{OUT}_bench.json"); LABEL = os.environ.get("LABEL", "")
 HB = int(os.environ.get("HB", 0))
 _ckpt_field = f"{OUT}_ckpt_r{RANK}.npz"  # this rank's local (u,v,w) block
