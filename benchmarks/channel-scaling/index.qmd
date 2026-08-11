@@ -1,81 +1,187 @@
 ---
-title: "Multi-GPU weak scaling: channel DNS on Snellius H100"
-subtitle: "How the distributed incompressible Navier–Stokes solver scales on a national supercomputer — measured weak scaling of the turbulent-channel DNS on NVIDIA H100 with GPU-aware MPI, and the distributed-multigrid fix that made the large runs possible."
+title: "Multi-GPU scaling: turbulent channel DNS on Snellius H100"
+subtitle: "What it costs to run a wall-bounded DNS across 1–32 H100s — and why a channel is a much harder thing to scale than a periodic box, measured phase by phase."
 author: "Peclet"
-date: "2026-08-02"
-categories: [flow, HPC, MPI, multi-GPU, benchmark, scaling]
-jupyter: python3
+date: "2026-08-11"
+categories: [flow, HPC, MPI, multi-GPU, DNS, turbulence, benchmark, scaling]
 ---
 
-This is the **performance companion** to the [wall-bounded turbulence example](../../examples/wall-bounded-turbulence/index.qmd),
-which is about *reproducing* the Moser–Kim–Mansour 1999 channel-flow statistics. Here we answer a
-different question: **how efficiently does `peclet.flow` run that DNS across many GPUs of the Snellius
-supercomputer?**
+This is the performance companion to the [wall-bounded turbulence example](../../examples/wall-bounded-turbulence/index.qmd),
+which is about *reproducing* the Moser–Kim–Mansour channel-flow statistics. The question here is
+different: **what does that DNS actually cost across many GPUs, and what sets the limit?**
 
-## What we measure
+The instrument, the machine and the methodology are shared with the
+[parallel-scaling study](../parallel-scaling/index.qmd) — same per-phase timers, same
+Snellius `gpu_h100` partition, same one-rank-per-GPU binding with GPU-aware MPI. What changes is the
+physics: walls instead of periodicity everywhere. That turns out to matter more than anything about
+the hardware.
 
-The right scaling metric for a production DNS is **weak scaling** — hold the work *per GPU* fixed and
-grow the problem with the GPU count. It answers the question you actually have: *"can I run a
-proportionally bigger (finer / larger-box) DNS on more GPUs in the same wall-clock?"* We fix **46 M
-cells per GPU** (the production $\Delta^+=1.5$ cross-section, $240\times503$, growing the streamwise
-extent with the GPU count) and sweep 1 → 8 H100s.
+## How you scale a DNS
 
-All runs use the **GPU-aware MPI** halo (device pointers handed straight to MPI via a CUDA-aware
-UCX/OpenMPI stack), one MPI rank cgroup-bound to each GPU, on Snellius' `gpu_h100` partition.
+A periodic benchmark scales by **tiling**: add GPUs, add copies of the same vortex, and every rank
+keeps solving an identical problem. A channel cannot do that. It has walls in the wall-normal
+direction, so the only way to grow it is to make the box longer — which introduces ever longer
+pressure modes — or to **refine** it, which is what a DNS user actually wants: more GPUs buy a finer
+resolution of the *same* channel.
 
-## Results
+So the ladder here refines a fixed physical box, holding ~46 M cells per GPU:
 
-![Weak scaling on Snellius H100 (46 M cells/GPU fixed). On-node scaling is near-ideal; the drop from 4→8 GPUs is the inter-node pressure-solve reduction tax.](weak_scaling.png)
+| GPUs | grid | Δ⁺ | Mcells | Mcells/GPU |
+|---|---|---|---|---|
+| 1 | 960 × 160 × 320 | 2.25 | 49.2 | 49.2 |
+| 2 | 1152 × 192 × 384 | 1.88 | 84.9 | 42.5 |
+| 4 | 1536 × 256 × 512 | 1.41 | 201.3 | 50.3 |
+| 8 | 1920 × 320 × 640 | 1.13 | 393.2 | 49.2 |
+| 16 | 2304 × 384 × 768 | 0.94 | 679.5 | 42.5 |
+| 32 | 4096 × 512 × 704 | 0.70 | 1476.4 | 46.1 |
 
-| GPUs | nodes | box | cells | ms/step | weak-scaling eff. | throughput |
-|---|---|---|---|---|---|---|
-| 1 | 1 | $377\times240\times503$ | 46 M | 1369 | 100 % | 33 Mcell/s |
-| 2 | 1 | $754\times240\times503$ | 91 M | 1300 | **105 %** | 70 Mcell/s |
-| 4 | 1 | $1508\times240\times503$ | **182 M** | 1713 | **80 %** | 106 Mcell/s |
-| 8 | 2 | $3016\times240\times503$ | 364 M | 2942 | 47 % | 124 Mcell/s |
+Rungs 1–16 are a 12H × 2H × 4H box (against MKM's 12.57 × 2 × 4.19). Every dimension is rich in
+factors of two, which is not cosmetic — see [below](#grid-dimensions-are-the-single-biggest-lever).
+Cells per GPU cannot be held exactly constant, because refining in three dimensions moves the cell
+count in 8× steps, so weak efficiency is computed from **throughput per GPU**, which corrects for the
+±8 % swing exactly.
 
-**On a single node, scaling is near-ideal.** Two GPUs is even marginally *faster* per step than one —
-the intra-node `cuda_ipc` halo exchange is essentially free — and the full **182 M production run on 4
-GPUs holds 80 % weak efficiency**. That is the sweet spot for one converged DNS: big enough per GPU to
-stay compute-bound, single-node so it pays no inter-node communication.
+**16 GPUs is the ceiling for a properly proportioned channel**, and it is structural rather than a
+queue limit: the wall-normal direction cannot be decomposed (a no-slip wall plus an internal block
+boundary decouples the two halves at the centreline), so the partitioner has only the streamwise–
+spanwise plane to cut, and by 32 ranks the blocks are cube-like enough that the next bisection would
+take the wall-normal axis. The 32-GPU rung therefore uses a longer 16H box, and is a slightly
+different problem — read it as such.
 
-**Crossing to a second node (8 GPUs) drops efficiency to ~47 %.** This is expected physics, not a
-defect: the incompressible **pressure Poisson solve does a global all-reduce every Krylov iteration**,
-and once those reductions travel over InfiniBand they become latency-bound. Communication-light coarse
-solves (an agglomerated bottom, a reduction-free Chebyshev accelerator) are the suite's active at-scale
-frontier — but for a single production DNS the 4-GPU single-node point already delivers it in ~a day.
+## The curve
 
-Reproduce with [`weak_scaling.sh`](../../examples/wall-bounded-turbulence/weak_scaling.sh) (and the
-strong-scaling counterpart [`scaling_test.sh`](../../examples/wall-bounded-turbulence/scaling_test.sh));
-the figure is regenerated by [`plot_scaling.py`](plot_scaling.py).
+![Weak scaling of the channel DNS on Snellius H100, ~46 M cells/GPU. Efficiency is per-GPU throughput, so it is unaffected by the ±8 % variation in cells per GPU.](weak_scaling.png)
 
-## The fix that made the large runs possible
+| GPUs | ms/step | pressure iters/step | Mcell/s | weak efficiency |
+|---|---|---|---|---|
+| 1 | 237 | 6.0 | 207 | 100 % |
+| 2 | 221 | 6.0 | 385 | 93 % |
+| 4 | 322 | 7.6 | 625 | 75 % |
+| 8 | 410 | 9.2 | 959 | 58 % |
+| 16 | 482 | 12.9 | 1411 | 43 % |
+| 32 | 700 | 18.6 | 2110 | 32 % |
 
-The 182 M-on-4-GPU run initially **crashed** with `cudaErrorIllegalAddress`. It is worth recording how
-it was found and fixed, because it is a representative example of debugging a device + MPI code at scale.
+**2.1 Gcell-updates/s on 32 H100s — at 32 % weak efficiency.** That is a far weaker curve than the
+periodic case on the same machine, and the per-phase data says exactly why.
 
-**Symptom.** Distributed-only (single-rank of the same 46 M problem was fine), CUDA-only, and
-*nondeterministic* across rank counts — 8 ranks ran the same block that 2 and 4 ranks crashed on.
+## Where the step goes
 
-**Diagnosis.** The failure was reproduced at *tiny* scale (a $132\times32\times131$ box, 2 ranks sharing
-one GPU) under `compute-sanitizer`, which named the kernel: `prolongAdd`, reading out of bounds. Root
-cause, confirmed in the code: the distributed cut-cell **pressure multigrid decomposed each level with
-an independent ORB**, so coarse blocks did not *nest* in fine ones. When coarsening changes the longest
-axis — here $x$ halves ($754\to377$) while $z=503$ is odd and cannot coarsen, so $z$ becomes longest and
-the coarse level splits **z** where the fine level split **x** — the restrict/prolong transfers (which
-assume coarse-local $i \leftrightarrow$ fine-local $2i$) read across the misaligned block boundary. At
-small per-rank blocks the overrun stays in mapped memory (garbage, no fault); at large blocks it crosses
-into an unmapped page → the illegal-address crash.
+![Per-phase breakdown (rank-max) and the two candidate explanations: iteration count and global reductions.](channel_phases.png)
 
-**Fix** (peclet `core` + `flow`): build each coarse level as the fine decomposition **coarsened in
-place** — an aligned ORB (split positions snapped to powers of two) plus a `coarsened()` derivation that
-divides the block layout, preserving rank order. Coarse blocks then nest by construction, so
-restrict/prolong stay purely local (no added communication). Verified: the reproduction goes from 7
-sanitizer errors to **0**, the distributed result is **bit-exact to single-rank** ($\max|\Delta U|\approx
-4\times10^{-14}$), and the full `flow` (33/33) and `dem` (24/24) MPI test suites stay green.
+The step is 83–85 % **pressure projection** at every rank count. Everything else is flat: the
+predictor holds at 20–23 ms from 1 to 32 GPUs, and the momentum solve grows only from 39 to 77 ms.
 
-## The HPC setup
+**Communication is not the bottleneck.** The pressure solve's global reductions cost 0.1 ms at 1 GPU
+and 5.4 ms at 32 — **0.03 % to 0.77 % of the step**, inter-node included. Nothing in this curve is a
+latency problem, and no amount of reduction-avoidance would move it.
 
-Everything needed to run this on Snellius — a source build with the GPU-aware 2024a toolchain, the
-one-GPU-per-rank binding, the SBU accounting, and the job scripts — is documented in the
-[wall-bounded turbulence example](../../examples/wall-bounded-turbulence/index.qmd#the-production-benchmark-run-on-snellius).
+## What actually limits it
+
+The pressure iteration count goes **6.0 → 18.6**, a factor 3.1. Weak efficiency goes 100 % → 32 %, a
+factor 3.1. The curve *is* the iteration count; there is nothing else in it.
+
+That leaves one question worth answering: is the solve getting harder because of the **decomposition**
+(more ranks) or because of the **problem** (a finer grid)? A weak-scaling ladder changes both at once,
+so it cannot tell you. Running one fixed grid on more and more GPUs can:
+
+| GPUs on a fixed 384 × 240 × 503 box | 1 | 2 | 4 | 8 |
+|---|---|---|---|---|
+| pressure iters/step | 24.68 | 25.77 | 24.20 | 23.85 |
+
+**Flat.** Convergence does not depend on how the domain is cut — the distributed multigrid is doing
+its job. So the growth along the ladder is the *problem* getting harder: each rung is a finer
+discretisation of the same channel, and the pressure solve on a wall-bounded domain is not perfectly
+resolution-independent.
+
+This is the honest reading of the 32 % figure: the 32-GPU run is not leaving two thirds of the machine
+idle, it is solving a substantially harder linear system than the 1-GPU run. It is also the difference
+from the periodic benchmark, which holds **4.00 iterations at every rung from 1 to 32 GPUs and 90 %
+efficiency** ([details](../parallel-scaling/index.qmd#multi-gpu-weak-scaling-132-h100-three-codes)).
+Tiling a periodic box replicates a problem of fixed difficulty; refining a walled one does not. A
+channel is simply a harder thing to weak-scale, and a benchmark that reports otherwise is usually
+measuring the easier question.
+
+## Grid dimensions are the single biggest lever
+
+The pressure multigrid coarsens each axis independently, and only while that axis is **even**. An
+axis's usable depth is therefore its number of factors of two — nothing to do with how large it is —
+and **an odd dimension never coarsens at all**, so no coarse grid ever sees an error mode along it.
+
+Measured on one GPU, 384 × 128 × N, everything else held fixed:
+
+| spanwise cells | halvings | pressure iters/step | ms/step |
+|---|---|---|---|
+| 256 | 8 | **5.0** | 120 |
+| 250 | 1 | 9.8 | 195 |
+| 255 | **0** | **16.2** | **329** |
+
+One odd number costs 3.2×, with no MPI involved at all. The effect compounds at scale — the same
+channel box with 503 spanwise cells against 512:
+
+| | 1 GPU | 8 GPUs |
+|---|---|---|
+| 503 cells (odd) | 830 ms, 24.7 iters | 2612 ms, 80.0 iters |
+| 512 cells | 390 ms, 10.1 iters | 748 ms, 21.8 iters |
+| | **2.1× faster** | **3.5× faster** |
+
+A channel box derived the natural way — `nx = round(2π·ny)`, `nz = round(2π/3·ny)` — lands on numbers
+like 1508 × 240 × 503, where the streamwise axis halves twice, the wall-normal four times, and the
+spanwise never. **Round the grid to numbers rich in factors of two before anything else.** It is free,
+and it is worth more than any solver option on this page.
+
+`flow` ships a checker for this, which needs neither a GPU nor a job:
+
+```bash
+python scripts/check_decomposition.py --grid 1508,240,503 --levels 5 --np 4 --walls --verbose
+```
+
+It reports the per-axis halvings, the block each rank gets, the load imbalance, and how many multigrid
+levels the hierarchy actually reaches.
+
+## Strong scaling: the same DNS, faster
+
+The complementary question — fixed problem, more GPUs — on the 46.4 M-cell box:
+
+| GPUs | 1 | 2 | 4 | 8 |
+|---|---|---|---|---|
+| ms/step | 830 | 486 | 301 | 227 |
+| speed-up | 1.00× | 1.71× | 2.75× | 3.66× |
+| efficiency | 100 % | 85 % | 69 % | 46 % |
+| Mcells/GPU | 46.4 | 23.2 | 11.6 | 5.8 |
+
+3.7× on 8 GPUs, with the per-GPU problem down to 5.8 M cells. The efficiency falls because the local
+work shrinks toward the fixed per-step overheads, not because of the pressure solve — iterations are
+flat across this sweep, as the table above shows.
+
+## Solver options at scale
+
+The coarse levels of a distributed geometric multigrid cannot get coarser than roughly one cell per
+rank, so an **agglomerated bottom solve** is the natural lever at high rank counts. Measured on the
+top two rungs:
+
+| | 16 GPUs | 32 GPUs |
+|---|---|---|
+| default | 482 ms, 12.85 iters | 700 ms, 18.62 iters |
+| agglomerated bottom | 461 ms, 12.85 iters | 668 ms, 17.10 iters |
+| | −4.3 % | −4.5 % |
+
+Real but small: it recovers a few percent, not the missing factor of three. The coarse-grid bottom is
+not where this curve is lost, which is consistent with the hierarchy reaching 7–8 levels and a
+few-thousand-cell coarsest grid at every rung.
+
+## Reproducing
+
+The run pack is [`benchmarks/channel-scaling/snellius/`](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/channel-scaling/snellius)
+— one job per rung, resumable, mode and result tag as positional arguments:
+
+```bash
+sbatch --nodes=4 chan_weak_gpu.sh refine        # the ladder, 1-16 GPUs
+sbatch --nodes=8 chan_weak_gpu.sh refine:32     # the long-box rung + the agglomerated-bottom lever
+sbatch --nodes=2 chan_weak_gpu.sh strong        # fixed-box strong scaling
+```
+
+Every run writes a JSON with the per-phase timers, iteration counts, reduction time and count, and the
+full block map; all of them are in [`results/snellius-h100/`](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/channel-scaling/results/snellius-h100),
+and `plot_scaling.py` regenerates both figures from them. The driver is the production DNS driver
+[`channel_dns_mpi.py`](../../examples/wall-bounded-turbulence/channel_dns_mpi.py) — the benchmark runs
+the same code path as a real run, not a stripped-down kernel.

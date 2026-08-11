@@ -74,7 +74,8 @@ agg = [med(runs[n], "mcells_per_s") for n in N]
 # for that exactly; on a constant-size sweep it is identical to ms[0]/ms.
 tp = [a / n for a, n in zip(agg, N)]
 eff = [100 * t / tp[0] for t in tp]
-per_gpu = runs[N[0]][0]["cells"] / N[0] / 1e6
+pg = [runs[n][0]["cells"] / n / 1e6 for n in N]
+per_gpu = f"{min(pg):.0f}-{max(pg):.0f}" if max(pg) - min(pg) > 1 else f"{pg[0]:.0f}"
 
 # ---- figure 1: the curve ------------------------------------------------------------------------
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
@@ -89,7 +90,7 @@ if max(N) > GPUS_PER_NODE:
     ax1.text(GPUS_PER_NODE * 1.4, 8, "multi-node", fontsize=8, color=ORANGE)
 ax1.set_xscale("log", base=2)
 ax1.set_xticks(N, [str(n) for n in N])
-ax1.set_xlabel(f"H100 GPUs ({per_gpu:.0f} Mcells/GPU fixed; {GPUS_PER_NODE} GPUs/node)")
+ax1.set_xlabel(f"H100 GPUs ({per_gpu} Mcells/GPU; {GPUS_PER_NODE} GPUs/node)")
 ax1.set_ylabel("weak-scaling efficiency [%]")
 ax1.set_ylim(0, 112)
 ax1.set_title("Channel DNS weak scaling", fontsize=10)
@@ -155,22 +156,23 @@ fig.savefig(os.path.join(HERE, "channel_phases.png"), dpi=150)
 print("channel_phases.png")
 
 # ---- figure 3: lever ablation (optional) ---------------------------------------------------------
-LEVERS = [("", "default", BLUE), ("_cpg", "CPG forcing\n(no CFR all-reduce)", AQUA),
-          ("_meanall", "mean removal:\nall levels", YELLOW),
-          ("_mg4", "MG depth 4", PINK), ("_mg6", "MG depth 6", "#9a7bd6"),
+LEVERS = [("", "default", BLUE), ("_amg", "agglomerated\nbottom solve", AQUA),
+          ("_decomp", "coarse-first\ndecomposition", PINK),
+          ("_cpg", "CPG forcing", YELLOW), ("_meanall", "mean removal:\nall levels", "#9a7bd6"),
+          ("_mg4", "MG depth 4", "#7a9ad6"), ("_mg6", "MG depth 6", "#c07bd6"),
           ("_hoststage", "host-staged\nhalo", ORANGE)]
-for NL in (n for n in (8, 16, 32) if n in runs):
+for NL in (n for n in (32, 16, 8) if n in runs):
     have = [(s, lbl, c) for s, lbl, c in LEVERS
-            if os.path.exists(os.path.join(RES, f"chan_np{NL}{s}.json"))]
-    if len(have) < 2:
+            if os.path.exists(os.path.join(RES, f"{PREFIX}{NL}{s}.json"))]
+    if len(have) < 3:   # two bars is a table, not a figure
         continue
-    vals = [json.load(open(os.path.join(RES, f"chan_np{NL}{s}.json")))["ms_per_step"]
+    vals = [json.load(open(os.path.join(RES, f"{PREFIX}{NL}{s}.json")))["ms_per_step"]
             for s, _, _ in have]
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.bar(range(len(have)), vals, 0.6, color=[c for _, _, c in have],
            edgecolor=SURFACE, linewidth=2)
     for i, v in enumerate(vals):
-        ax.annotate(f"{v:.0f}\n{v / vals[0]:+.0%}" if i else f"{v:.0f}", (i, v),
+        ax.annotate(f"{v:.0f}\n{v / vals[0] - 1:+.1%}" if i else f"{v:.0f}", (i, v),
                     textcoords="offset points", xytext=(0, 4), ha="center", fontsize=8)
     ax.set_xticks(range(len(have)), [lbl for _, lbl, _ in have], fontsize=8)
     ax.set_ylabel("ms / step")
