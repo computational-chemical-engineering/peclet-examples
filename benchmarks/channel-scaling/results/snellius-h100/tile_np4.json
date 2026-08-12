@@ -1,0 +1,132 @@
+{
+ "label": "snellius-h100",
+ "np": 4,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  2048,
+  160,
+  640
+ ],
+ "cells": 209715200,
+ "cells_per_rank": 52428800.0,
+ "re_tau": 180.0,
+ "nu": 0.4444444444444444,
+ "dt": 0.02,
+ "adv": 0,
+ "forcing": "CPG",
+ "cfr": 0.0,
+ "pressure": "pcg",
+ "pmaxit": 400,
+ "prtol": 0.0001,
+ "mglevels": 8,
+ "meanscope": "fine",
+ "graphamg": 0,
+ "bottom": "auto",
+ "vsweeps": 20,
+ "vtol": 0.01,
+ "nsteps": 140,
+ "warmup": 100,
+ "measured_steps": 40,
+ "ms_per_step": 269.02435421943665,
+ "mcells_per_s": 779.5398324009744,
+ "pressure_iters_per_step": 6.0,
+ "momentum_sweeps_per_step": 9.0,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.2689868985849898,
+   "min": 0.2689818841579836
+  },
+  "predictor": {
+   "max": 0.02272842766251415,
+   "min": 0.022681857383577152
+  },
+  "momentum": {
+   "max": 0.046228654886363074,
+   "min": 0.04617272152681835
+  },
+  "projection": {
+   "max": 0.1984708577627316,
+   "min": 0.19844679844682106
+  },
+  "pressure_allreduce": {
+   "max": 0.000444781575,
+   "min": 0.00028129015
+  },
+  "pressure_allreduce_count": {
+   "max": 33.0,
+   "min": 33.0
+  },
+  "momentum_sweeps": {
+   "max": 9.0,
+   "min": 9.0
+  },
+  "cfr": {
+   "max": 0.0,
+   "min": 0.0
+  }
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn132.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    512,
+    160,
+    640
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn132.local.snellius.surf.nl",
+   "gpu": "0000:06:00.0",
+   "origin": [
+    512,
+    0,
+    0
+   ],
+   "size": [
+    512,
+    160,
+    640
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "gcn132.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    1024,
+    0,
+    0
+   ],
+   "size": [
+    512,
+    160,
+    640
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "gcn132.local.snellius.surf.nl",
+   "gpu": "0000:A6:00.0",
+   "origin": [
+    1536,
+    0,
+    0
+   ],
+   "size": [
+    512,
+    160,
+    640
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

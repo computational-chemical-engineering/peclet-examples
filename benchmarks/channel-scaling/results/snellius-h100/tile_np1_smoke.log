@@ -1,0 +1,17 @@
+[cfg] global 1024x160x320 = 52.4M cells  nu=0.4444 f=0.0125 Delta+=2.250 Lx+=2304 Ly+=360 Lz+=720  ranks=1  backend=Cuda  dt=0.02 adv=SOU  forcing=CPG  pressure=pcg(maxit=400,rtol=0.0001,levels=8,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 1024x160x320 at [0, 0, 0]  gcn160.local.snellius.surf.nl  0000:26:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.50 u_tau~1.006 -uv+pk=0.094 nacc=0 [0.3 it/s]
+  [hb] it=20/140  527 ms/step avg
+  [hb] it=40/140  395 ms/step avg
+  [hb] it=60/140  352 ms/step avg
+  [hb] it=80/140  331 ms/step avg
+  [hb] it=100/140  318 ms/step avg
+  it=   100 t+=    4.5 Ub+=15.50 u_tau~1.012 -uv+pk=0.570 nacc=0 [3.0 it/s]
+  [hb] it=120/140  326 ms/step avg
+  [hb] it=140/140  317 ms/step avg
+[timing] steady 263.5 ms/step over 40 steps (warmup 100 excluded) | 52M cells, 1 GPU(s) = 52.4M/GPU | 199 Mcell-updates/s
+[phases, rank-max ms/step] step=263.5  predictor=23.1  momentum=42.9  projection=196.0  pressure_allreduce=0.1  cfr_allreduce=0.0  | pressure iters/step 6.0  allreduces/step 33  momentum sweeps/step 9.0
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/tile_np1_smoke.json
+[done] 140 steps, 52M cells, 1 ranks, 317 ms/step, nacc=0. wrote /scratch-local/tec16020.25456344/chan_tile_np1_smoke_stats.npz + /scratch-local/tec16020.25456344/chan_tile_np1_smoke.done

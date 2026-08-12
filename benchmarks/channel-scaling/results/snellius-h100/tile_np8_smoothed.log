@@ -1,0 +1,24 @@
+[cfg] global 4096x160x640 = 419.4M cells  nu=0.4444 f=0.0125 Delta+=2.250 Lx+=9216 Ly+=360 Lz+=1440  ranks=8  backend=Cuda  dt=0.02 adv=SOU  forcing=CPG  pressure=pcg(maxit=400,rtol=0.0001,levels=8,mean=fine)  momentum=20 sweeps(rtol=0.01)
+  [gpu-bind] rank -> (block, host, GPU PCI bus):
+    rank 0: block 512x160x640 at [0, 0, 0]  gcn102.local.snellius.surf.nl  0000:26:00.0
+    rank 1: block 512x160x640 at [512, 0, 0]  gcn102.local.snellius.surf.nl  0000:06:00.0
+    rank 2: block 512x160x640 at [1024, 0, 0]  gcn102.local.snellius.surf.nl  0000:C6:00.0
+    rank 3: block 512x160x640 at [1536, 0, 0]  gcn102.local.snellius.surf.nl  0000:A6:00.0
+    rank 4: block 512x160x640 at [2048, 0, 0]  gcn107.local.snellius.surf.nl  0000:26:00.0
+    rank 5: block 512x160x640 at [2560, 0, 0]  gcn107.local.snellius.surf.nl  0000:06:00.0
+    rank 6: block 512x160x640 at [3072, 0, 0]  gcn107.local.snellius.surf.nl  0000:C6:00.0
+    rank 7: block 512x160x640 at [3584, 0, 0]  gcn107.local.snellius.surf.nl  0000:A6:00.0
+  [gpu-bind] OK: every rank on a distinct physical GPU
+  it=     1 t+=    0.0 Ub+=15.52 u_tau~1.006 -uv+pk=0.014 nacc=0 [0.2 it/s]
+  [hb] it=20/140  685 ms/step avg
+  [hb] it=40/140  494 ms/step avg
+  [hb] it=60/140  431 ms/step avg
+  [hb] it=80/140  399 ms/step avg
+  [hb] it=100/140  384 ms/step avg
+  it=   100 t+=    4.5 Ub+=15.52 u_tau~1.013 -uv+pk=0.584 nacc=0 [2.4 it/s]
+  [hb] it=120/140  397 ms/step avg
+  [hb] it=140/140  386 ms/step avg
+[timing] steady 323.5 ms/step over 40 steps (warmup 100 excluded) | 419M cells, 8 GPU(s) = 52.4M/GPU | 1296 Mcell-updates/s
+[phases, rank-max ms/step] step=323.5  predictor=22.8  momentum=46.6  projection=252.5  pressure_allreduce=0.9  cfr_allreduce=0.0  | pressure iters/step 7.4  allreduces/step 40  momentum sweeps/step 9.0
+[bench] wrote /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/channel-scaling/snellius/../results/snellius-h100/tile_np8_smoothed.json
+[done] 140 steps, 419M cells, 8 ranks, 386 ms/step, nacc=0. wrote /scratch-local/tec16020.25456772/chan_tile_np8_smoothed_stats.npz + /scratch-local/tec16020.25456772/chan_tile_np8_smoothed.done
