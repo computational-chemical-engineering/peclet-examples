@@ -69,6 +69,8 @@ PRESSURE = os.environ.get("PRESSURE", "pcg")
 PMAXIT = int(os.environ.get("PMAXIT", 80)); PRTOL = float(os.environ.get("PRTOL", 1e-4))
 MGLEVELS = int(os.environ.get("MGLEVELS", 5)); MEANSCOPE = os.environ.get("MEANSCOPE", "fine")
 GRAPHAMG = int(os.environ.get("GRAPHAMG", 0))   # force the agglomerated bottom solve
+ADVECT = int(os.environ.get("ADVECT", 1))     # 0 = Stokes (no momentum advection)
+DEFCOR = int(os.environ.get("DEFCOR", 1))     # 0 = pure implicit FOU (no deferred correction)
 BOTTOM = os.environ.get("BOTTOM", "smoother")  # coarse-solve policy: smoother | auto | agglomerated
                                                # (matches the solver default, so a run is reproducible;
                                                #  the tiled scaling ladder sets auto explicitly)
@@ -159,7 +161,8 @@ w0 = np.asfortranarray(A*(1.5*fy*lp((lnx, lny, lnz))))
 s = flow.Solver(lnx, lny, lnz)
 s.init_mpi(GNX, GNY, GNZ)
 s.set_rho(1.0); s.set_mu(nu); s.set_dt(DT)
-s.set_advection(True); s.set_advection_scheme(ADV)
+s.set_advection(bool(ADVECT)); s.set_advection_scheme(ADV)
+s.set_deferred_correction(bool(DEFCOR))
 # Momentum: tolerance stop (end the sweep loop once the max increment has contracted to VTOL of the
 # first sweep's; VSWEEPS is the cap). The channel's diffusion number nu*dt ~ 0.013 is easy, so this
 # exits in a few sweeps instead of always running the cap. VTOL=0 restores the legacy fixed count.
@@ -356,7 +359,7 @@ if RANK == 0 and p_iters:
         "label": LABEL, "np": NP, "backend": flow.execution_space,
         "omp_threads": os.environ.get("OMP_NUM_THREADS", ""),
         "global": [GNX, GNY, GNZ], "cells": GNX*GNY*GNZ, "cells_per_rank": GNX*GNY*GNZ/NP,
-        "re_tau": RE_TAU, "nu": nu, "dt": DT, "adv": ADV, "forcing": "CFR" if CFR > 0 else "CPG",
+        "re_tau": RE_TAU, "nu": nu, "dt": DT, "adv": ADV, "advect": ADVECT, "defcor": DEFCOR, "forcing": "CFR" if CFR > 0 else "CPG",
         "cfr": CFR, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL, "mglevels": MGLEVELS,
         "meanscope": MEANSCOPE, "graphamg": GRAPHAMG, "bottom": BOTTOM, "vsweeps": VSWEEPS, "vtol": VTOL,
         "nsteps": NSTEPS, "warmup": WARMUP, "measured_steps": nmeas,
