@@ -154,15 +154,35 @@ hold the box and refine it, so Δ⁺ goes 2.25 → 0.70 across 1–32 GPUs at ~4
 | pressure iters/step | 6.0 | 6.0 | 7.6 | 9.2 | 12.9 | 18.6 |
 | weak efficiency | 100 % | 93 % | 75 % | 58 % | 43 % | 32 % |
 
-That curve decays, and honestly: each rung is a genuinely harder linear system, not just more of the
-same, so it mixes parallel efficiency with the problem getting harder. Communication is negligible
-there too (0.03–0.77 % of the step), and running one *fixed* grid on 1/2/4/8 GPUs holds iterations at
-24.7 / 25.8 / 24.2 / 23.9 — flat — so the decomposition is not the cause.
+That curve decays, and the decay is again the iteration count — but here, unlike the replicated
+ladder, **the coarse solve is not what causes it.** Re-running the identical ladder with the
+agglomerated bottom changes essentially nothing:
 
-**These refinement numbers were measured with the smoothed coarse solve**, before the agglomerated
-bottom was available. Given what it does to the replicated ladder, re-measuring the refinement ladder
-with it is the obvious next step, and the numbers above should be read as an upper bound on the cost
-rather than a property of the method.
+| GPUs | 1 | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| iters, smoothed bottom | 6.00 | 6.00 | 7.60 | 9.20 | 12.85 |
+| iters, agglomerated bottom | 6.00 | 6.00 | 7.60 | 9.22 | **12.85** |
+| ms/step, agglomerated | 237 | 218 | 318 | 417 | 462 |
+
+It is not a no-op that failed to engage: the coarsest grid on these rungs runs 15 to 72 cells across,
+well past the threshold, and forcing agglomeration explicitly gives the same 12.85. The bottom simply
+is not the limit here.
+
+Three things are therefore ruled out. **Communication** — 0.03 to 0.77 % of the step. **The
+decomposition** — one *fixed* grid on 1/2/4/8 GPUs holds iterations at 24.7 / 25.8 / 24.2 / 23.9,
+flat. **The coarse level** — the table above. What remains is the refinement itself, and that
+reproduces with no MPI in sight: on a single GPU, refining the same 6:1:2 box from Δ⁺ = 11.25 to 3.75
+takes the solve from 4.0 to 5.0 iterations, the same trend the ladder continues to 12.85 at Δ⁺ = 0.94.
+
+So refining this wall-bounded problem genuinely costs more iterations, and the GPU count is
+incidental. Two candidates remain unseparated: the V-cycle not being perfectly resolution-independent
+on a walled domain, and the flow itself changing as it becomes better resolved — a Δ⁺ = 2.25 field and
+a Δ⁺ = 0.70 field are not the same turbulence, and the pressure solve sees whatever divergence the
+velocity field hands it. Distinguishing them needs a fixed, converged flow field re-solved at several
+resolutions, which is not this measurement.
+
+The honest summary is that **the replicated ladder measures the machine and the refinement ladder
+measures the method**, and only the first is a parallel-efficiency number.
 
 ## Strong scaling: the same DNS, faster
 
