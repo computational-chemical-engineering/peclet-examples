@@ -1,113 +1,131 @@
 ---
 title: "Multi-GPU scaling: turbulent channel DNS on Snellius H100"
-subtitle: "What it costs to run a wall-bounded DNS across 1–32 H100s — and why a channel is a much harder thing to scale than a periodic box, measured phase by phase."
+subtitle: "5.5 Gcell-updates/s on 32 H100s at 86 % weak efficiency, with the pressure solve pinned at 6.0 iterations from 1 GPU to 32 — and a measurement of what a wall-bounded DNS costs that a periodic benchmark cannot tell you."
 author: "Peclet"
-date: "2026-08-11"
+date: "2026-08-12"
 categories: [flow, HPC, MPI, multi-GPU, DNS, turbulence, benchmark, scaling]
 ---
 
 This is the performance companion to the [wall-bounded turbulence example](../../examples/wall-bounded-turbulence/index.qmd),
-which is about *reproducing* the Moser–Kim–Mansour channel-flow statistics. The question here is
-different: **what does that DNS actually cost across many GPUs, and what sets the limit?**
+which is about *reproducing* the Moser–Kim–Mansour channel-flow statistics. The question here is what
+that DNS costs across many GPUs, and what sets the limit.
 
 The instrument, the machine and the methodology are shared with the
-[parallel-scaling study](../parallel-scaling/index.qmd) — same per-phase timers, same
-Snellius `gpu_h100` partition, same one-rank-per-GPU binding with GPU-aware MPI. What changes is the
-physics: walls instead of periodicity everywhere. That turns out to matter more than anything about
-the hardware.
+[parallel-scaling study](../parallel-scaling/index.qmd) — same per-phase timers, same Snellius
+`gpu_h100` partition, one MPI rank cgroup-bound to each GPU with GPU-aware MPI. What changes is the
+physics: walls instead of periodicity everywhere.
 
-## How you scale a DNS
+## How you scale a channel
 
-A periodic benchmark scales by **tiling**: add GPUs, add copies of the same vortex, and every rank
-keeps solving an identical problem. A channel cannot do that. It has walls in the wall-normal
-direction, so the only way to grow it is to make the box longer — which introduces ever longer
-pressure modes — or to **refine** it, which is what a DNS user actually wants: more GPUs buy a finer
-resolution of the *same* channel.
+A periodic benchmark scales by **tiling**: add GPUs, add copies of the same vortex, every rank keeps
+solving an identical problem. A channel has walls in the wall-normal direction, so it can only grow in
+the two periodic directions — but that is legitimate, and worth being precise about why.
 
-So the ladder here refines a fixed physical box, holding ~46 M cells per GPU:
+The DNS is streamwise-periodic with a body force, so there is no inflow, no outflow and **no
+streamwise development**: the flow is statistically homogeneous in `x` by construction. What the box
+length must satisfy is decorrelation — long enough that a structure does not interact with its own
+periodic image. Past a few correlation lengths the single-point statistics stop depending on the box,
+and extra length simply adds independent realisations. So replicating the box is the channel analogue
+of tiling vortices: **rung N is the same turbulence, with more copies of it.**
 
-| GPUs | grid | Δ⁺ | Mcells | Mcells/GPU |
+This ladder replicates one 1024 × 160 × 320 box (Lx = 12.8H, Lz = 4.0H, Δ⁺ = 2.25 — the MKM box at
+this resolution) alternately in the two periodic directions:
+
+| GPUs | tiles | grid | Mcells | Mcells/GPU |
 |---|---|---|---|---|
-| 1 | 960 × 160 × 320 | 2.25 | 49.2 | 49.2 |
-| 2 | 1152 × 192 × 384 | 1.88 | 84.9 | 42.5 |
-| 4 | 1536 × 256 × 512 | 1.41 | 201.3 | 50.3 |
-| 8 | 1920 × 320 × 640 | 1.13 | 393.2 | 49.2 |
-| 16 | 2304 × 384 × 768 | 0.94 | 679.5 | 42.5 |
-| 32 | 4096 × 512 × 704 | 0.70 | 1476.4 | 46.1 |
+| 1 | 1×1 | 1024×160×320 | 52.4 | 52.4 |
+| 2 | 2×1 | 2048×160×320 | 104.9 | 52.4 |
+| 4 | 2×2 | 2048×160×640 | 209.7 | 52.4 |
+| 8 | 4×2 | 4096×160×640 | 419.4 | 52.4 |
+| 16 | 4×4 | 4096×160×1280 | 838.9 | 52.4 |
+| 32 | 8×4 | 8192×160×1280 | 1677.7 | 52.4 |
 
-Rungs 1–16 are a 12H × 2H × 4H box (against MKM's 12.57 × 2 × 4.19). Every dimension is rich in
-factors of two, which is not cosmetic — see [below](#grid-dimensions-are-the-single-biggest-lever).
-Cells per GPU cannot be held exactly constant, because refining in three dimensions moves the cell
-count in 8× steps, so weak efficiency is computed from **throughput per GPU**, which corrects for the
-±8 % swing exactly.
-
-**16 GPUs is the ceiling for a properly proportioned channel**, and it is structural rather than a
-queue limit: the wall-normal direction cannot be decomposed (a no-slip wall plus an internal block
-boundary decouples the two halves at the centreline), so the partitioner has only the streamwise–
-spanwise plane to cut, and by 32 ranks the blocks are cube-like enough that the next bisection would
-take the wall-normal axis. The 32-GPU rung therefore uses a longer 16H box, and is a slightly
-different problem — read it as such.
+**Exactly 52.4 M cells per GPU at every rung**, identical Δ⁺ and dt, unchanged CPG driving force, and
+every dimension rich in factors of two — which matters more than it sounds, see
+[below](#grid-dimensions-are-the-single-biggest-lever). Load imbalance is 1.000 at every rung.
 
 ## The curve
 
-![Weak scaling of the channel DNS on Snellius H100, ~46 M cells/GPU. Efficiency is per-GPU throughput, so it is unaffected by the ±8 % variation in cells per GPU.](weak_scaling.png)
+![Weak scaling of the channel DNS on Snellius H100 at 52.4 M cells/GPU. The dashed line is the same ladder with the cheap smoothed coarse solve — the controlled comparison.](weak_scaling.png)
 
 | GPUs | ms/step | pressure iters/step | Mcell/s | weak efficiency |
 |---|---|---|---|---|
-| 1 | 237 | 6.0 | 207 | 100 % |
-| 2 | 221 | 6.0 | 385 | 93 % |
-| 4 | 322 | 7.6 | 625 | 75 % |
-| 8 | 410 | 9.2 | 959 | 58 % |
-| 16 | 482 | 12.9 | 1411 | 43 % |
-| 32 | 700 | 18.6 | 2110 | 32 % |
+| 1 | 263.9 | 6.00 | 199 | 100 % |
+| 2 | 263.6 | 6.00 | 398 | 100 % |
+| 4 | 269.0 | 6.00 | 780 | 98 % |
+| 8 | 273.5 | 6.00 | 1534 | 96 % |
+| 16 | 287.8 | 6.00 | 2915 | 92 % |
+| 32 | 305.6 | 6.00 | 5490 | **86 %** |
 
-**2.1 Gcell-updates/s on 32 H100s — at 32 % weak efficiency.** That is a far weaker curve than the
-periodic case on the same machine, and the per-phase data says exactly why.
+**5.5 Gcell-updates/s on 32 H100s at 86 % weak efficiency, with the pressure solve pinned at exactly
+6.00 iterations per step from one GPU to thirty-two.** A 1.68-billion-cell channel advances in 306 ms
+per step against 264 ms for a 52 M-cell one on a single GPU.
 
 ## Where the step goes
 
-![Per-phase breakdown (rank-max) and the two candidate explanations: iteration count and global reductions.](channel_phases.png)
+![Per-phase breakdown, and the two things that could degrade with scale: iteration count and global reductions.](channel_phases.png)
 
-The step is 83–85 % **pressure projection** at every rank count. Everything else is flat: the
-predictor holds at 20–23 ms from 1 to 32 GPUs, and the momentum solve grows only from 39 to 77 ms.
+Communication is not the limit: the pressure solve's global reductions run from 0.06 ms at 1 GPU to
+2.6 ms at 32 — **0.02 % to 0.86 % of the step** — and the reduction *count* is constant at 33 per step
+rather than growing. Load imbalance is 1.000 throughout.
 
-**Communication is not the bottleneck.** The pressure solve's global reductions cost 0.1 ms at 1 GPU
-and 5.4 ms at 32 — **0.03 % to 0.77 % of the step**, inter-node included. Nothing in this curve is a
-latency problem, and no amount of reduction-avoidance would move it.
+The 14 % that is lost by 32 GPUs is entirely per-iteration cost, not more iterations:
 
-## What actually limits it
+| | 1 GPU | 32 GPUs |
+|---|---|---|
+| predictor | 23.1 ms | 23.4 ms |
+| momentum | 43.0 ms | 55.7 ms |
+| projection | 196.3 ms | 224.9 ms |
+| — per pressure iteration | 32.7 ms | 37.5 ms |
+| global reductions | 0.06 ms | 2.62 ms |
 
-The pressure iteration count goes **6.0 → 18.6**, a factor 3.1. Weak efficiency goes 100 % → 32 %, a
-factor 3.1. The curve *is* the iteration count; there is nothing else in it.
+The predictor is flat. The projection does the same 6 iterations at every rung and each costs 15 %
+more, which is halo exchange inside the smoother and matvec. The momentum solve picks up one extra
+sweep at 32 GPUs (9 → 10) on top of a 17 % per-sweep increase. That is the healthy kind of
+weak-scaling loss — surface-to-volume, not algorithm.
 
-That leaves one question worth answering: is the solve getting harder because of the **decomposition**
-(more ranks) or because of the **problem** (a finer grid)? A weak-scaling ladder changes both at once,
-so it cannot tell you. Running one fixed grid on more and more GPUs can:
+## What makes it work: the coarse-level solve
 
-| GPUs on a fixed 384 × 240 × 503 box | 1 | 2 | 4 | 8 |
-|---|---|---|---|---|
-| pressure iters/step | 24.68 | 25.77 | 24.20 | 23.85 |
+A V-cycle converges at a rate independent of the domain only if its **coarsest level is effectively
+solved**, and a distributed geometric hierarchy cannot always get there. An axis stops coarsening once
+it turns odd, and under MPI once *any rank's block* turns odd — so the floor is roughly one cell per
+rank. At fixed cells/GPU the per-rank block is constant, so the coarsest **global** grid grows with the
+rank count no matter how many levels you request. Asking for more depth is a no-op past that point;
+the fix is to agglomerate the coarsest level onto a global operator and solve it there.
 
-**Flat.** Convergence does not depend on how the domain is cut — the distributed multigrid is doing
-its job. So the growth along the ladder is the *problem* getting harder: each rung is a finer
-discretisation of the same channel, and the pressure solve on a wall-bounded domain is not perfectly
-resolution-independent.
+Running the identical ladder both ways isolates it:
 
-This is the honest reading of the 32 % figure: the 32-GPU run is not leaving two thirds of the machine
-idle, it is solving a substantially harder linear system than the 1-GPU run. It is also the difference
-from the periodic benchmark, which holds **4.00 iterations at every rung from 1 to 32 GPUs and 90 %
-efficiency** ([details](../parallel-scaling/index.qmd#multi-gpu-weak-scaling-132-h100-three-codes)).
-Tiling a periodic box replicates a problem of fixed difficulty; refining a walled one does not. A
-channel is simply a harder thing to weak-scale, and a benchmark that reports otherwise is usually
-measuring the easier question.
+| GPUs | agglomerated bottom | smoothed bottom | |
+|---|---|---|---|
+| 8 | 273.5 ms, 6.00 iters | 323.5 ms, 7.42 iters | 1.18× |
+| 16 | 287.8 ms, 6.00 iters | 322.2 ms, 6.90 iters | 1.12× |
+| 32 | 305.6 ms, **6.00** iters | 452.0 ms, **10.38** iters | **1.48×** |
+
+Without it the iteration count climbs with the rank count and weak efficiency falls to 58 % at 32
+GPUs; with it, iterations do not move at all. The same effect is visible on a single GPU with no MPI
+in sight — lengthening a 2048 × 64 × 64 channel and varying only the depth:
+
+| levels | smoothed bottom | agglomerated bottom |
+|---|---|---|
+| 4 | 13.5 iters, 167 ms | **4.0 iters, 112 ms** |
+| 6 | 6.0 iters, 91 ms | **4.0 iters, 69.5 ms** |
+| 12 (full geometric depth) | 4.4 iters, 77.2 ms | 4.4 iters, 77.1 ms |
+
+An exact coarse solve is depth-independent, and a *shallow* hierarchy over it beats a deep one —
+the extra levels cost more than the coarse solve they replace. The criterion is the coarsest grid's
+largest **extent**, not its cell count: a 64 × 2 × 2 bottom is only 256 cells and still costs 6.0
+iterations against 4.0, because a point smoother needs O(L²) sweeps to damp a wavelength of L cells.
+
+Select it with `set_pressure_bottom("auto")`, which agglomerates exactly when the coarsest grid
+exceeds four cells on any axis. The gathered operator is keyed by global cell id, so it is
+decomposition-independent by construction — measured, a 6-rank run agrees with a single-rank one to
+4.5 × 10⁻¹⁶.
 
 ## Grid dimensions are the single biggest lever
 
-The pressure multigrid coarsens each axis independently, and only while that axis is **even**. An
-axis's usable depth is therefore its number of factors of two — nothing to do with how large it is —
-and **an odd dimension never coarsens at all**, so no coarse grid ever sees an error mode along it.
-
-Measured on one GPU, 384 × 128 × N, everything else held fixed:
+The multigrid coarsens each axis independently and only while that axis is **even**, so a dimension's
+usable depth is its number of factors of two — and an odd dimension never coarsens at all. Measured on
+one GPU, 384 × 128 × N, everything else held:
 
 | spanwise cells | halvings | pressure iters/step | ms/step |
 |---|---|---|---|
@@ -115,32 +133,40 @@ Measured on one GPU, 384 × 128 × N, everything else held fixed:
 | 250 | 1 | 9.8 | 195 |
 | 255 | **0** | **16.2** | **329** |
 
-One odd number costs 3.2×, with no MPI involved at all. The effect compounds at scale — the same
-channel box with 503 spanwise cells against 512:
-
-| | 1 GPU | 8 GPUs |
-|---|---|---|
-| 503 cells (odd) | 830 ms, 24.7 iters | 2612 ms, 80.0 iters |
-| 512 cells | 390 ms, 10.1 iters | 748 ms, 21.8 iters |
-| | **2.1× faster** | **3.5× faster** |
-
-A channel box derived the natural way — `nx = round(2π·ny)`, `nz = round(2π/3·ny)` — lands on numbers
-like 1508 × 240 × 503, where the streamwise axis halves twice, the wall-normal four times, and the
-spanwise never. **Round the grid to numbers rich in factors of two before anything else.** It is free,
-and it is worth more than any solver option on this page.
-
-`flow` ships a checker for this, which needs neither a GPU nor a job:
+One odd number costs 3.2×, with no MPI involved. A channel box derived the natural way —
+`nx = round(2π·ny)`, `nz = round(2π/3·ny)` — lands on 1508 × 240 × 503, where the streamwise axis
+halves twice, the wall-normal four times, and the spanwise never. **Round the grid to numbers rich in
+factors of two before anything else.** `flow` ships a checker that needs neither a GPU nor a job:
 
 ```bash
 python scripts/check_decomposition.py --grid 1508,240,503 --levels 5 --np 4 --walls --verbose
 ```
 
-It reports the per-axis halvings, the block each rank gets, the load imbalance, and how many multigrid
-levels the hierarchy actually reaches.
+## Refining instead of replicating
+
+Replicating answers "how efficiently does the machine run this solver". The other question a DNS user
+asks is "can more GPUs buy me a *finer* DNS in the same wall-clock", which is a different ladder:
+hold the box and refine it, so Δ⁺ goes 2.25 → 0.70 across 1–32 GPUs at ~46 M cells/GPU.
+
+| GPUs | 1 | 2 | 4 | 8 | 16 | 32 |
+|---|---|---|---|---|---|---|
+| ms/step | 237 | 221 | 322 | 410 | 482 | 700 |
+| pressure iters/step | 6.0 | 6.0 | 7.6 | 9.2 | 12.9 | 18.6 |
+| weak efficiency | 100 % | 93 % | 75 % | 58 % | 43 % | 32 % |
+
+That curve decays, and honestly: each rung is a genuinely harder linear system, not just more of the
+same, so it mixes parallel efficiency with the problem getting harder. Communication is negligible
+there too (0.03–0.77 % of the step), and running one *fixed* grid on 1/2/4/8 GPUs holds iterations at
+24.7 / 25.8 / 24.2 / 23.9 — flat — so the decomposition is not the cause.
+
+**These refinement numbers were measured with the smoothed coarse solve**, before the agglomerated
+bottom was available. Given what it does to the replicated ladder, re-measuring the refinement ladder
+with it is the obvious next step, and the numbers above should be read as an upper bound on the cost
+rather than a property of the method.
 
 ## Strong scaling: the same DNS, faster
 
-The complementary question — fixed problem, more GPUs — on the 46.4 M-cell box:
+Fixed 46.4 M-cell box, more GPUs:
 
 | GPUs | 1 | 2 | 4 | 8 |
 |---|---|---|---|---|
@@ -149,25 +175,8 @@ The complementary question — fixed problem, more GPUs — on the 46.4 M-cell b
 | efficiency | 100 % | 85 % | 69 % | 46 % |
 | Mcells/GPU | 46.4 | 23.2 | 11.6 | 5.8 |
 
-3.7× on 8 GPUs, with the per-GPU problem down to 5.8 M cells. The efficiency falls because the local
-work shrinks toward the fixed per-step overheads, not because of the pressure solve — iterations are
-flat across this sweep, as the table above shows.
-
-## Solver options at scale
-
-The coarse levels of a distributed geometric multigrid cannot get coarser than roughly one cell per
-rank, so an **agglomerated bottom solve** is the natural lever at high rank counts. Measured on the
-top two rungs:
-
-| | 16 GPUs | 32 GPUs |
-|---|---|---|
-| default | 482 ms, 12.85 iters | 700 ms, 18.62 iters |
-| agglomerated bottom | 461 ms, 12.85 iters | 668 ms, 17.10 iters |
-| | −4.3 % | −4.5 % |
-
-Real but small: it recovers a few percent, not the missing factor of three. The coarse-grid bottom is
-not where this curve is lost, which is consistent with the hierarchy reaching 7–8 levels and a
-few-thousand-cell coarsest grid at every rung.
+3.7× on 8 GPUs with the per-GPU problem down to 5.8 M cells; the falloff is the local work shrinking
+toward fixed per-step overheads, not the pressure solve — iterations are flat across this sweep.
 
 ## Reproducing
 
@@ -175,13 +184,13 @@ The run pack is [`benchmarks/channel-scaling/snellius/`](https://github.com/comp
 — one job per rung, resumable, mode and result tag as positional arguments:
 
 ```bash
-sbatch --nodes=4 chan_weak_gpu.sh refine        # the ladder, 1-16 GPUs
-sbatch --nodes=8 chan_weak_gpu.sh refine:32     # the long-box rung + the agglomerated-bottom lever
-sbatch --nodes=2 chan_weak_gpu.sh strong        # fixed-box strong scaling
+sbatch --nodes=8 chan_weak_gpu.sh tile        # the replicated ladder (+ smoothed-bottom companions)
+sbatch --nodes=4 chan_weak_gpu.sh refine      # the refinement ladder
+sbatch --nodes=2 chan_weak_gpu.sh strong      # fixed-box strong scaling
 ```
 
-Every run writes a JSON with the per-phase timers, iteration counts, reduction time and count, and the
+Every run writes a JSON with the per-phase timers, iteration counts, reduction time and count and the
 full block map; all of them are in [`results/snellius-h100/`](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/channel-scaling/results/snellius-h100),
-and `plot_scaling.py` regenerates both figures from them. The driver is the production DNS driver
+and `plot_scaling.py` regenerates the figures from them. The driver is the production DNS driver
 [`channel_dns_mpi.py`](../../examples/wall-bounded-turbulence/channel_dns_mpi.py) — the benchmark runs
 the same code path as a real run, not a stripped-down kernel.

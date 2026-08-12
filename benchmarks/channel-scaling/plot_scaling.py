@@ -88,6 +88,17 @@ ax1.plot(N, eff, "o-", color=BLUE, lw=2, ms=6, label="peclet.flow")
 for n in N:  # every individual draw, as the honest spread
     for r in runs[n]:
         ax1.plot([n], [100 * (r["mcells_per_s"] / n) / tp[0]], "o", ms=3.5, mfc="none", mec=BLUE, mew=1)
+# controlled companion: the same rungs with the cheap smoothed coarse solve, where present
+comp = {}
+for n in N:
+    f = os.path.join(RES, f"{PREFIX}{n}_smoothed.json")
+    if os.path.exists(f):
+        d = json.load(open(f))
+        comp[n] = d["mcells_per_s"] / n
+if len(comp) >= 2:
+    cn = sorted(comp)
+    ax1.plot(cn, [100 * comp[n] / tp[0] for n in cn], "s--", color=ORANGE, lw=1.8, ms=5,
+             label="smoothed coarse solve")
 ax1.axhline(100, ls="--", c=INK2, lw=0.8, label="ideal")
 if max(N) > GPUS_PER_NODE:
     ax1.axvspan(GPUS_PER_NODE * 1.15, max(N) * 1.15, color=ORANGE, alpha=0.06)
@@ -141,11 +152,19 @@ ax1.grid(axis="x", visible=False)
 
 it = [med(runs[n], "pressure_iters_per_step") for n in N]
 ax2.plot(N, it, "o-", color=BLUE, lw=2, ms=6, label="pressure iterations / step")
+cit = {}
+for n in N:
+    f = os.path.join(RES, f"{PREFIX}{n}_smoothed.json")
+    if os.path.exists(f):
+        cit[n] = json.load(open(f))["pressure_iters_per_step"]
+if len(cit) >= 2:
+    ax2.plot(sorted(cit), [cit[n] for n in sorted(cit)], "s--", color=PINK, lw=1.8, ms=5,
+             label="... with a smoothed coarse solve")
 ax2.set_xscale("log", base=2)
 ax2.set_xticks(N, [str(n) for n in N])
 ax2.set_xlabel("H100 GPUs")
 ax2.set_ylabel("pressure iterations / step", color=BLUE)
-ax2.set_ylim(0, max(it) * 1.6)
+ax2.set_ylim(0, max(list(it) + list(cit.values())) * 1.5)
 ax2.set_title("Algorithm vs communication", fontsize=10)
 axb = ax2.twinx()
 axb.plot(N, [100 * (r + c) / m for r, c, m in zip(red, cfr, ms)], "s--", color=ORANGE, lw=1.8, ms=5)
