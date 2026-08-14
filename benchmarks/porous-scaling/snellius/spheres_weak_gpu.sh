@@ -35,7 +35,7 @@ DEM_BUILD="${DEM_BUILD:-$SUITE/dem/build_cuda}"
 VENV="${VENV:-$SUITE/flow/.venv}"
 export PYTHONPATH="$BUILD:${PYTHONPATH:-}" DEM_BUILD
 export PECLET_BIND_GPU=0 PECLET_CORE_GPU_AWARE_MPI="${GPU_AWARE:-1}"
-RES="$EXDIR/results/snellius-h100"; PACKS="$EXDIR/results/packings"
+RES="$EXDIR/results/snellius-h100"; PACKS="$EXDIR/../results/packings"
 mkdir -p "$RES" "$PACKS"
 
 # rung -> grid: 256^3/GPU, doubling x,y,z in turn (blocks tile exactly -> imbalance 1.000)

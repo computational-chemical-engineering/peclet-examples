@@ -1,7 +1,8 @@
 #!/bin/bash
 # ==========================================================================================
-# Porous-bed REFINE weak scaling on Snellius gpu_h100 — ONE fixed physical packing (the np=1
-# upscale rung's bed: 16^3 R-units, seed 100), grid refined with the GPU count. Cells/GPU
+# Porous-bed REFINE weak scaling on Snellius gpu_h100 — ONE fixed physical packing (16^3
+# R-units, seed 100 — the committed, workstation-validated bed), grid refined with the GPU
+# count. Cells/GPU
 # varies (3-D refinement cannot hold it), so weak efficiency reads from PER-GPU throughput.
 # Physics payoff: k(N) -> k_inf per IBM (Richardson + observed order) and the cut-cell/ghost
 # k_inf cross-check. The sphere radius spans 16 -> 64 cells across the ladder.
@@ -33,11 +34,12 @@ DEM_BUILD="${DEM_BUILD:-$SUITE/dem/build_cuda}"
 VENV="${VENV:-$SUITE/flow/.venv}"
 export PYTHONPATH="$BUILD:${PYTHONPATH:-}" DEM_BUILD
 export PECLET_BIND_GPU=0 PECLET_CORE_GPU_AWARE_MPI="${GPU_AWARE:-1}"
-RES="$EXDIR/results/snellius-h100"; PACKS="$EXDIR/results/packings"
+RES="$EXDIR/results/snellius-h100"; PACKS="$EXDIR/../results/packings"
 mkdir -p "$RES" "$PACKS"
 
-# The ONE physical bed: box 16^3 R-units, phi 0.50, seed 100 (= upscale rung np=1's packing:
-# recorded rung grid 256^3 at RCELLS=16). Refinement resamples it; RCELLS scales with N.
+# The ONE physical bed: box 16^3 R-units, phi 0.50, seed 100 — the COMMITTED,
+# workstation-validated bed in ../results/packings (found automatically; re-packed with the
+# same seed only if missing). Refinement resamples it; RCELLS scales with N.
 export PHI=0.50 NSTEPS=25 WARMUP=5 MARCH_TOL=1e-5 MARCH_MAX=400
 SEED=100
 NPZ="$PACKS/packing_256x256x256_r16_phi${PHI}_s${SEED}.npz"
