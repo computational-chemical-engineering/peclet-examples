@@ -1,0 +1,66 @@
+---
+title: "Porous-bed parallel scaling"
+subtitle: "Stokes permeability through DEM-grown sphere packings — cut-cell and ghost-cell IBM, workstation to 32 H100"
+format:
+  html:
+    toc: true
+---
+
+Weak-scaling study of the full IBM pressure path on a physical porous medium: spheres grown to a
+target solid fraction with `peclet.dem` (XPBD growth mode, periodic box), then creeping flow
+through the bed with `peclet.flow`, cut-cell **and** ghost-cell IBM. Companion to the
+[all-fluid TGV study](../parallel-scaling/index.qmd); where TGV measures the solver floor, this
+measures what a real geometry costs — and adds a physics observable, the bed permeability
+$k/R^2$, whose convergence the ladders expose.
+
+## Pipeline
+
+1. **`pack_bed.py`** — grow $N$ spheres ($R{=}1$) in a periodic box to solid fraction
+   $\phi = 0.50$; the artifact is the *sphere list* (centers + scales, a small npz), not an SDF.
+2. **`spheres_bench.py`** — every MPI rank samples the analytic union-of-spheres SDF over its own
+   block (periodic images included), so one packing serves any grid resolution and nothing global
+   is gathered. Phase A measures per-step cost (warmup-excluded, per-phase breakdown, pressure
+   iterations, allreduce time); phase B marches to steady state and records $k/R^2$.
+
+## Ladders
+
+**Upscale** (`snellius/spheres_weak_gpu.sh`): 256³ cells/GPU held fixed, the domain — and the
+packing in it — doubles with the GPU count (1→32 GPUs, 16.8M→537M cells, 489→15.6k spheres,
+sphere radius fixed at 16 cells, per-rung seeds). Blocks tile exactly, so the decomposition is
+perfectly balanced at every rung. Permeability should be domain-size independent here (an RVE
+check); iterations/step should be flat — the agglomerated coarse solve (`set_pressure_bottom
+auto`) handles the growing global bottom exactly.
+
+**Refine** (`snellius/spheres_refine_gpu.sh`): one fixed physical bed (16³ R-units, seed 100),
+grid refined 256³→1024³ with the GPU count; the sphere radius spans 16→64 cells. Cells/GPU varies
+(3-D refinement can't hold it), so weak efficiency reads from per-GPU throughput. The physics
+payoff: $k(N) \to k_\infty$ per IBM with its observed order — and the cut-cell and ghost-cell
+estimates of $k_\infty$ must agree.
+
+**Levers** (at the largest allocation): legacy smoothed bottom vs the agglomerated default
+(the at-scale iteration win on the IBM path), GPU-aware vs host-staged MPI.
+
+## Results
+
+*(pending — run the ladders, then `python plot_spheres.py results/snellius-h100`)*
+
+![Upscale weak scaling](results/snellius-h100/porous_weak.png)
+
+![Refine ladder](results/snellius-h100/porous_refine.png)
+
+## Reproducing
+
+```bash
+# workstation shakedown (any MPI flow build; dem build for the packing)
+GNX=256 GNY=256 GNZ=256 RCELLS=16 SEED=100 OUT=pack.npz python pack_bed.py
+PACK=pack.npz mpirun -np 2 python spheres_bench.py
+
+# Snellius: one job per rung (queue-parallel safe), argument = GPU count
+sbatch --nodes=1 snellius/spheres_weak_gpu.sh 1
+sbatch --nodes=8 snellius/spheres_weak_gpu.sh 32
+sbatch --nodes=8 snellius/spheres_weak_gpu.sh levers
+sbatch --nodes=1 snellius/spheres_refine_gpu.sh 1
+```
+
+Pre-flight any grid/rank-count change with `flow/scripts/check_decomposition.py` before spending
+queue time.
