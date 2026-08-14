@@ -36,10 +36,12 @@ committed bed and never touches it). Same toolchain, same venv, same Kokkos pref
 already in it:
 
 ```bash
-source <peclet-examples>/examples/wall-bounded-turbulence/snellius_env.sh
+source <peclet-examples>/examples/wall-bounded-turbulence/snellius_env.sh   # MUST come first: nvcc!
 SUITE=/projects/0/prjs1022/peclet/suite
 source $SUITE/flow/.venv/bin/activate
+which nvcc && python -m nanobind --cmake_dir     # both must succeed BEFORE configuring
 PYINC=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
+rm -rf $SUITE/dem/build_cuda                     # stale caches poison Python + Kokkos (below)
 cmake -S $SUITE/dem -B $SUITE/dem/build_cuda -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH=$SUITE/extern/install/nvidia-cuda \
   -DPython_EXECUTABLE=$SUITE/flow/.venv/bin/python -DPython_INCLUDE_DIR=$PYINC
@@ -47,8 +49,21 @@ cmake --build $SUITE/dem/build_cuda -j16
 ls $SUITE/dem/build_cuda/peclet/dem/   # the module the bench imports via DEM_BUILD
 ```
 
-(`-DPython_EXECUTABLE` with capital P — the lowercase spelling is silently ignored and CMake
-falls back to the system python, which has no nanobind.)
+**Check the configure output before building** — dem's `PecletDeps.cmake` is wheel-oriented and
+*silently falls back* when a dependency isn't found, instead of failing:
+
+- `[peclet] nanobind from ...flow/.venv/...` — if the path is the base `/sw/.../Python` install,
+  the venv interpreter wasn't picked up (see cache note below).
+- NO `[peclet] building+installing kokkos` line, and Kokkos reporting device `CUDA` — if
+  `nvcc` is absent (env not sourced), `find_package(Kokkos)` against the CUDA prefix FAILS and
+  PecletDeps FetchContent-builds a vendored **OpenMP+Serial host Kokkos** without erroring.
+
+Two gotchas already hit in practice:
+- `-DPython_EXECUTABLE` with capital P — the lowercase spelling is silently ignored and CMake
+  falls back to the system python, which has no nanobind.
+- FindPython's artifact variables are **sticky**: once a build dir has configured (even
+  unsuccessfully) with the wrong interpreter, re-running with `-DPython_EXECUTABLE` changes
+  nothing — hence the unconditional `rm -rf` above.
 
 Optional pre-flight — every rung of both ladders was already verified at imbalance 1.000 with
 full MG depth, but any new (grid, np) combination can be checked without a GPU:
