@@ -93,6 +93,26 @@ if gf < 0.999:
 if ov > 0.05:
     sys.exit(f"FATAL: residual overlap {ov} > 5% of R -- packing not converged")
 
+# Independent union-volume check -- does NOT trust the sim's own overlap report. An unresolved
+# packing (contact pipeline silently inert: seen on Snellius 2026-08-14, get_max_overlap()~0 on
+# a bed whose true pairwise overlaps averaged 0.5 R) loses ~20% of the solid volume to overlaps,
+# so the voxelized union fraction falls far below the analytic phi. 8 voxels per R.
+dx = 0.125
+dims = np.maximum((box / dx).astype(int), 1)
+occ = np.zeros(dims, bool)
+nb = int(np.ceil(s.max() / dx)) + 1
+for (cx, cy, cz), sc in zip(p, s):
+    i0 = np.floor(np.array([cx, cy, cz]) / dx).astype(int)
+    sl = [np.arange(i0[k] - nb, i0[k] + nb + 2) for k in range(3)]
+    gx, gy, gz = np.meshgrid(*[(a + 0.5) * dx for a in sl], indexing="ij")
+    m = (gx - cx) ** 2 + (gy - cy) ** 2 + (gz - cz) ** 2 <= sc * sc
+    occ[np.ix_(*[a % dims[k] for k, a in enumerate(sl)])] |= m
+phi_vox = occ.mean()
+print(f"[pack] independent voxel solid fraction={phi_vox:.4f} (analytic {phi_actual:.4f})", flush=True)
+if abs(phi_vox - phi_actual) > 0.02:
+    sys.exit(f"FATAL: voxel fraction {phi_vox:.4f} != analytic {phi_actual:.4f} -- "
+             f"spheres are interpenetrating; the DEM contact solve did not act. NOT saving.")
+
 np.savez(OUT, centers=p, scales=s, box=box, radius=1.0, phi=phi_actual, seed=SEED,
          gnx=GNX, gny=GNY, gnz=GNZ, rcells=RCELLS)
 print(f"[out] {OUT}", flush=True)

@@ -1,0 +1,88 @@
+{
+ "label": "snellius-h100",
+ "np": 1,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  256,
+  256,
+  256
+ ],
+ "cells": 16777216,
+ "pack": "packing_256x256x256_r16_phi0.50_s101.npz",
+ "n_spheres": 489,
+ "phi_pack": 0.500077736850719,
+ "phi_voxel": 0.5000510215759277,
+ "seed": 101,
+ "rcells": 16.0,
+ "ibm": "cutcell",
+ "bottom": "auto",
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 7,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 464.5621013175696,
+ "mcells_per_s": 36.114043638982245,
+ "mcells_per_s_per_rank": 36.114043638982245,
+ "pressure_iters_per_step": 21.36,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.4645174780860543,
+   "min": 0.4645174780860543
+  },
+  "predictor": {
+   "max": 0.0012504801247268916,
+   "min": 0.0012504801247268916
+  },
+  "momentum": {
+   "max": 0.23571181383915246,
+   "min": 0.23571181383915246
+  },
+  "projection": {
+   "max": 0.22708800964057446,
+   "min": 0.22708800964057446
+  },
+  "pressure_allreduce": {
+   "max": 0.00019077532,
+   "min": 0.00019077532
+  },
+  "pressure_allreduce_count": {
+   "max": 112.8,
+   "min": 112.8
+  }
+ },
+ "march": {
+  "steps": 75,
+  "pressure_iters": 1160,
+  "seconds": 30.444664979120716,
+  "converged": true,
+  "u_mean": 0.02759252880959448,
+  "k_cells2": 2.759252880959448,
+  "k_over_R2": 0.010778331566247844
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn116.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    256,
+    256,
+    256
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

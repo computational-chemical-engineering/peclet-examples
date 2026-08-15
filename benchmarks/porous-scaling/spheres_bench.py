@@ -158,6 +158,15 @@ nsolid = world.allreduce(int((sdf < 0).sum()), op=MPI.SUM)
 phi_vox = nsolid / float(GNX * GNY * GNZ)
 p0(f"[sdf] built in {time.perf_counter() - t_sdf0:.1f}s  voxel solid fraction={phi_vox:.4f} "
    f"(packing {float(pk['phi']):.4f})")
+# Independent gate on the ARTIFACT, not the packer's self-report: an unresolved packing (overlapping
+# spheres) has union volume < N*V_sphere, so the sampled fraction falls below the analytic phi.
+# Seen in the wild (Snellius 2026-08-14, 2 of 6 rungs): dem's contact pipeline silently no-opped,
+# get_max_overlap() reported ~0 past pack_bed's gate, phi_voxel came out 0.40 -> k was 4.2x off.
+if abs(phi_vox - float(pk["phi"])) > 0.02:
+    p0(f"FATAL: voxel solid fraction {phi_vox:.4f} vs packing phi {float(pk['phi']):.4f} -- "
+       f"the bed in {PACK} is not a converged packing (overlapping spheres?). Refusing to run.")
+    world.Barrier()
+    raise SystemExit(1)
 
 # ---- solver ------------------------------------------------------------------------------------
 s = flow.Solver(lnx, lny, lnz)
