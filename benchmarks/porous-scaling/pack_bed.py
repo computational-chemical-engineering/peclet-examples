@@ -110,8 +110,14 @@ for (cx, cy, cz), sc in zip(p, s):
 phi_vox = occ.mean()
 print(f"[pack] independent voxel solid fraction={phi_vox:.4f} (analytic {phi_actual:.4f})", flush=True)
 if abs(phi_vox - phi_actual) > 0.02:
+    # Keep the corrupted state for forensics (spatial overlap distribution, ghost-band analysis)
+    # under a name no flow run will ever pick up.
+    bad = OUT + ".BAD.npz"
+    np.savez(bad, centers=p, scales=s, box=box, radius=1.0, phi=phi_actual, seed=SEED,
+             gnx=GNX, gny=GNY, gnz=GNZ, rcells=RCELLS, phi_voxel=phi_vox)
     sys.exit(f"FATAL: voxel fraction {phi_vox:.4f} != analytic {phi_actual:.4f} -- "
-             f"spheres are interpenetrating; the DEM contact solve did not act. NOT saving.")
+             f"spheres are interpenetrating; the DEM contact solve did not act. "
+             f"Corrupted state saved to {bad} for forensics; NOT saving a usable packing.")
 
 np.savez(OUT, centers=p, scales=s, box=box, radius=1.0, phi=phi_actual, seed=SEED,
          gnx=GNX, gny=GNY, gnz=GNZ, rcells=RCELLS)
