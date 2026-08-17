@@ -70,13 +70,16 @@ costing nothing here.
 
 ## Incidents & open issues (found by this study)
 
-- **dem packing corruption on H100** (open, dem bug): the CUDA 12.6/sm_90 build of `peclet.dem`
-  deterministically fails to resolve contacts for certain box/φ configurations (e.g. cubic
-  32 R-units at φ=0.50 — but *not* φ=0.48; probes `snellius/probe_dem*.sh`) — spheres grow
-  through each other while the solver's own overlap metric stays quiet. The **same seeds pack
-  correctly on the CPU backend of the same machine** and on CUDA 13.2/sm_120. Both pipeline ends
-  now gate on an independent voxelized solid fraction, and the corrupted-bed specimens are kept
-  (`*.BAD.npz`). Until fixed: pack on Snellius with `DEM_BUILD=$SUITE/dem/build_omp`.
+- **dem packing corruption on H100** (**RESOLVED** 2026-08-18, dem `17288f8`): a silent
+  out-of-bounds ghost-slot write — `ensureCapacity` never resized `materialId`, so the periodic
+  ghost generator wrote 1-byte strays into the neighbouring allocation. Harmless on the
+  workstation allocator's layout, catastrophic on the H100s' (contacts silently unresolved,
+  φ_voxel 0.40 instead of 0.50, while the solver's own overlap metric — which only sees tracked
+  contacts — stayed quiet). The seven-round probe ladder (`snellius/probe_dem*.sh`) eliminated
+  budget, sleeping, optimizer, toolkit, and every execution mode before `compute-sanitizer`
+  named the kernel; the post-fix probe-2 rerun passes all 12 configurations on H100. The
+  independent voxel-fraction gates added at both pipeline ends contained the incident and
+  remain as permanent defenses.
 - **Ghost-projection march instability at scale** (open, flow bug): the ghost IBM steady march
   diverges at the np=16/32 upscale rungs (large, elongated domains) with per-solve convergence
   intact — iteration counts identical under PMAXIT 300 vs 600, both bottom modes. The refine

@@ -146,12 +146,14 @@ Commit the JSONs + packings (they are the reproducibility record; the logs are n
 
 ## Gotchas (learned the hard way)
 
-- **Do NOT pack beds with `dem/build_cuda` on Snellius** until the H100 corruption bug is fixed:
-  the CUDA 12.6/sm_90 build silently fails to resolve contacts for some box/φ configurations
-  (deterministic; probe_dem2/3 in `snellius/`) — spheres grow through each other and only the
-  voxel gate catches it. Pack with the CPU build instead: `DEM_BUILD=$SUITE/dem/build_omp`
-  (probe_dem3 builds it; 16-core packing is faster than the failing GPU runs at these N anyway).
-  Workstation (CUDA 13.2/sm_120) packing is unaffected.
+- **[RESOLVED 2026-08-18] The H100 packing corruption** (probes `snellius/probe_dem*.sh`,
+  rounds 1–7): a silent out-of-bounds ghost-slot write — dem's `ensureCapacity` never resized
+  `materialId`, so `generateGhostsKokkos` wrote past it into whatever allocation came next.
+  Harmless on the workstation's allocator layout, catastrophic on the H100s' (contacts silently
+  unresolved, φ_voxel 0.40). Found by `compute-sanitizer` (probe 7), fixed in dem `17288f8`,
+  confirmed on H100 by the probe-2 rerun: all 12 configs PASS. GPU packing on Snellius is safe
+  again (requires dem ≥ `17288f8`). The voxel gates in `pack_bed.py`/`spheres_bench.py` stay —
+  they are what contained this incident, and they self-diagnose any recurrence of the class.
 
 - `WARMSTART=1` **diverges** the steady Stokes march (open solver bug) — the bench defaults it
   off; do not switch it on for these runs.
