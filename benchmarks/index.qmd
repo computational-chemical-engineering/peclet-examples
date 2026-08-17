@@ -80,6 +80,19 @@ expert-tuned reference settings.
 *flow · HPC · MPI · CPU + GPU · weak scaling · CaNS · incflo · OpenFOAM · decomposition*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Porous-bed scaling & permeability →](porous-scaling/index.qmd)
+The parallel-scaling companion on a *real geometry*: creeping flow through DEM-grown random
+sphere packings (φ = 0.50), cut-cell **and** ghost-cell IBM, 1→32 H100s. Upscale ladder
+(256³ cells/GPU, per-rung beds): cut-cell pressure iterations **flat at 21–33/step to 537 M
+cells** with permeability domain-size independent. Refine ladder (one bed, sphere radius 16→64
+cells): the two IBMs' independent $k_\infty$ estimates **agree to 0.1 %**. Also documents two
+bugs the study flushed out: a deterministic dem packing corruption specific to the CUDA
+12.6/sm_90 build, and a ghost-projection march instability at the largest elongated rungs.
+
+*flow · dem · HPC · MPI · multi-GPU · IBM · permeability · Snellius*
+:::
+
 :::
 
 ## How to read these
