@@ -21,6 +21,8 @@ Env:
     PACK          packing npz from pack_bed.py (required)
     GNX GNY GNZ   global grid (default: the packing's recorded rung grid)
     IBM           cutcell (default) | ghost
+    GPORDER       ghost closure order "matrix,rhs" (default 2,2; 1,2 = the mixed/deferred mode)
+    PUNDER        incremental-pressure under-relaxation omega_p (default 1.0 = off)
     BOTTOM        auto (default) | smoother | agglomerated  (pressure coarse-level solve)
     NSTEPS WARMUP phase-A measured / warmup steps (default 25 / 5)
     MARCH_TOL     phase-B relative steady tolerance on <u> (default 1e-5; 0 = skip phase B)
@@ -32,6 +34,8 @@ Env:
     VSWEEPS       momentum RB-GS sweep cap (default 80 -- Stokes: diffusion dominates)
     WARMSTART     1 = seed each solve from previous phi (default 0: measured DIVERGENT on the steady Stokes march -- 192^3 bed blew up by step 400; opt-in for unsteady runs only)
     MU F DT       viscosity / body force / time step (default 0.1 / 1e-3 / 60 -- regression values)
+    TRACE         1 = log <u>, max|u|,|v|,|w|, max|div| (the solve's TRUE residual) and pressure
+                  iterations every march step (default 0)
     OUT LABEL     output JSON path / free-form label
 """
 import json
@@ -83,6 +87,9 @@ WARMSTART = int(os.environ.get("WARMSTART", 0))
 MU = float(os.environ.get("MU", 0.1))
 F = float(os.environ.get("F", 1e-3))
 DT = float(os.environ.get("DT", 60.0))
+PUNDER = float(os.environ.get("PUNDER", 1.0))  # incremental-pressure under-relaxation omega_p
+GPORDER = os.environ.get("GPORDER", "2,2")  # ghost closure order "matrix,rhs" (IBM=ghost only)
+TRACE = int(os.environ.get("TRACE", 0))   # 1 = per-march-step <u>/max|u| log (divergence forensics)
 OUT = os.environ.get("OUT", f"spheres_bench_np{NP}.json")
 LABEL = os.environ.get("LABEL", "")
 
@@ -185,8 +192,12 @@ elif PRESSURE != "vcycle":
 if WARMSTART:
     s.set_pressure_warmstart(True)
 s.set_pressure_bottom(BOTTOM)
+if PUNDER != 1.0:
+    s.set_pressure_underrelax(PUNDER)
 if IBM == "ghost":
-    s.set_ghost_projection(True)  # before set_solid; MG hierarchy = binary-openness surrogate
+    _mo, _ro = (int(v) for v in GPORDER.split(","))
+    # before set_solid; MG hierarchy = binary-openness surrogate
+    s.set_ghost_projection(True, _mo, _ro)
 elif IBM != "cutcell":
     raise SystemExit(f"unknown IBM={IBM!r} (cutcell|ghost)")
 s.set_solid(sdf, cutcell_pressure=True, pressure_coarse="rediscretized")
@@ -196,6 +207,14 @@ def gmean_u():
     u = s.get_u()
     tot = world.allreduce(float(u.sum()), op=MPI.SUM)
     return tot / float(GNX * GNY * GNZ)
+
+
+def trace_u():
+    """(mean u, max|u|, max|v|, max|w|) -- per-step divergence monitor (TRACE=1 only)."""
+    u, v, w = s.get_u(), s.get_v(), s.get_w()
+    tot = world.allreduce(float(u.sum()), op=MPI.SUM)
+    mx = [world.allreduce(float(np.abs(a).max()), op=MPI.MAX) for a in (u, v, w)]
+    return (tot / float(GNX * GNY * GNZ), *mx)
 
 
 # ---- phase A: performance ---------------------------------------------------------------------
@@ -244,6 +263,11 @@ if MARCH_TOL > 0:
         s.step()
         msteps += 1
         mit += s.last_pressure_iterations()
+        if TRACE:
+            um, ux, vx, wx = trace_u()
+            p0(f"[trace] step {msteps:4d}  <u>={um:.6e}  max|u|={ux:.6e}  max|v|={vx:.6e}  "
+               f"max|w|={wx:.6e}  maxdiv={s.max_open_divergence():.4e}  "
+               f"iters={s.last_pressure_iterations()}")
         if it % CHECK_EVERY == CHECK_EVERY - 1:
             m = gmean_u()
             if it >= 3 * CHECK_EVERY and abs(m - prev) < MARCH_TOL * (abs(m) + 1e-300):
@@ -266,7 +290,7 @@ if RANK == 0:
         "global": [GNX, GNY, GNZ], "cells": cells,
         "pack": os.path.basename(PACK), "n_spheres": int(len(centers)),
         "phi_pack": float(pk["phi"]), "phi_voxel": phi_vox, "seed": int(pk["seed"]),
-        "rcells": RCELLS, "ibm": IBM, "bottom": BOTTOM,
+        "rcells": RCELLS, "ibm": IBM, "bottom": BOTTOM, "gporder": GPORDER, "punder": PUNDER,
         "mu": MU, "f": F, "dt": DT, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL,
         "mglevels": MGLEVELS, "vsweeps": VSWEEPS, "warmstart": WARMSTART,
         "nsteps": NSTEPS, "warmup": WARMUP,
