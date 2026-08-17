@@ -146,6 +146,13 @@ Commit the JSONs + packings (they are the reproducibility record; the logs are n
 
 ## Gotchas (learned the hard way)
 
+- **Do NOT pack beds with `dem/build_cuda` on Snellius** until the H100 corruption bug is fixed:
+  the CUDA 12.6/sm_90 build silently fails to resolve contacts for some box/φ configurations
+  (deterministic; probe_dem2/3 in `snellius/`) — spheres grow through each other and only the
+  voxel gate catches it. Pack with the CPU build instead: `DEM_BUILD=$SUITE/dem/build_omp`
+  (probe_dem3 builds it; 16-core packing is faster than the failing GPU runs at these N anyway).
+  Workstation (CUDA 13.2/sm_120) packing is unaffected.
+
 - `WARMSTART=1` **diverges** the steady Stokes march (open solver bug) — the bench defaults it
   off; do not switch it on for these runs.
 - SURF's sbatch drops leading `VAR=x sbatch ...` env vars — rung selection is a positional
