@@ -92,4 +92,33 @@ if [ "$ARG" = levers ]; then
   run_one $MAXN cutcell "weak_np${MAXN}_cutcell_hoststage${TAG}.json" env PECLET_CORE_GPU_AWARE_MPI=0
   run_one $MAXN ghost   "weak_np${MAXN}_ghost_smoother${TAG}.json"   env BOTTOM=smoother
 fi
+
+# Fat-block amortization ablation (suite docs/COMMUNICATION_SCALING.md §2.1): 512^3 cells/GPU
+# at 32 GPUs (2048x2048x1024 = 4.3G cells; blocks are exactly 512^3 on the 4x4x2 split,
+# ~134M cells/GPU, ~35-40GB of 94GB). Quantifies how
+# much of the weak-efficiency gap is halo amortization before any code changes. Cut-cell only
+# (the ghost march is unstable at large elongated rungs); the bed is packed on the CPU dem
+# build (H100 packing-corruption workaround, see README).
+#   sbatch --nodes=8 --time=01:30:00 spheres_weak_gpu.sh fat
+if [ "$ARG" = fat ]; then
+  [ "$MAXN" -ge 32 ] || { echo "FATAL: fat rung needs 8 nodes (32 GPUs)" >&2; exit 1; }
+  out="weak_np32_cutcell_fat${TAG}.json"
+  if [ -f "$RES/$out" ]; then echo "[skip] $out"; else
+    npz="$PACKS/packing_2048x2048x1024_r${RCELLS}_phi${PHI}_s132.npz"
+    [ -f "$npz" ] || env DEM_BUILD="$SUITE/dem/build_omp" \
+        GNX=2048 GNY=2048 GNZ=1024 SEED=132 OUT="$npz" \
+        OMP_NUM_THREADS=16 OMP_PROC_BIND=spread OMP_PLACES=threads \
+        srun --ntasks=1 --cpus-per-task=16 "$VENV/bin/python" "$EXDIR/../pack_bed.py" \
+        >> "$RES/pack.log" 2>&1 || { echo "[FATAL] fat packing failed (see $RES/pack.log)"; exit 1; }
+    echo "======= FAT: 32 GPUs x 512^3 cells/GPU : 2048x2048x1024 = 4295M  ($out) ======="
+    env GNX=2048 GNY=2048 GNZ=1024 PACK="$npz" IBM=cutcell MGLEVELS=8 \
+        LABEL="snellius-h100-fat" OUT="$RES/$out" \
+      srun --mpi=pmix --ntasks=32 --gpus-per-task=1 --gpu-bind=per_task:1 \
+      "$VENV/bin/python" "$EXDIR/../spheres_bench.py" > "$RES/${out%.json}.log" 2>&1 \
+      && grep -E "^\[(perf|march|sdf)" "$RES/${out%.json}.log" \
+      || { echo "  [FAILED fat] (full log: $RES/${out%.json}.log):"
+           grep -m1 -A6 "Traceback" "$RES/${out%.json}.log" | sed 's/^/    /'
+           grep -m3 -iE "Error:|out of memory|FATAL" "$RES/${out%.json}.log" | sed 's/^/    /'; }
+  fi
+fi
 echo "done -> $RES"
