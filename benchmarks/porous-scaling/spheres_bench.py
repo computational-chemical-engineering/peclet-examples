@@ -21,6 +21,9 @@ Env:
     PACK          packing npz from pack_bed.py (required)
     GNX GNY GNZ   global grid (default: the packing's recorded rung grid)
     IBM           cutcell (default) | ghost
+    GRID          staggered (default, flow.Solver) | collocated (flow.SolverColocated)
+    FACEINTERP    collocated cut-cell treatment: 0 = plain (default), 9 = aperture + gpCenterGrad
+                  (mode 9); ignored on the staggered grid, must be 0 with IBM=ghost
     GPORDER       ghost closure order "matrix,rhs" (default 2,2; 1,2 = the mixed/deferred mode)
     PUNDER        incremental-pressure under-relaxation omega_p (default 1.0 = off)
     BOTTOM        auto (default) | smoother | agglomerated  (pressure coarse-level solve)
@@ -72,6 +75,8 @@ GNX = int(os.environ.get("GNX", pk["gnx"]))
 GNY = int(os.environ.get("GNY", pk["gny"]))
 GNZ = int(os.environ.get("GNZ", pk["gnz"]))
 IBM = os.environ.get("IBM", "cutcell")
+GRID = os.environ.get("GRID", "staggered")       # staggered (flow.Solver) | collocated
+FACEINTERP = int(os.environ.get("FACEINTERP", 0))  # collocated cut-cell treatment (0 | 9 | ...)
 BOTTOM = os.environ.get("BOTTOM", "auto")
 NSTEPS = int(os.environ.get("NSTEPS", 25))
 WARMUP = int(os.environ.get("WARMUP", 5))
@@ -107,7 +112,8 @@ ox, oy, oz = origin
 lnx, lny, lnz = size
 
 p0(f"[cfg] global {GNX}x{GNY}x{GNZ} = {GNX * GNY * GNZ / 1e6:.1f}M cells  ranks={NP}  "
-   f"backend={flow.execution_space}  IBM={IBM}  bottom={BOTTOM}  spheres={len(centers)} "
+   f"backend={flow.execution_space}  grid={GRID}  IBM={IBM}  face_interp={FACEINTERP}  "
+   f"bottom={BOTTOM}  spheres={len(centers)} "
    f"R={RCELLS:.1f} cells  phi={float(pk['phi']):.4f}  levels={MGLEVELS}  "
    f"pressure={PRESSURE}(maxit={PMAXIT},rtol={PRTOL:g},warmstart={WARMSTART})  "
    f"steps={WARMUP}+{NSTEPS} then march(tol={MARCH_TOL:g},max={MARCH_MAX})")
@@ -176,7 +182,12 @@ if abs(phi_vox - float(pk["phi"])) > 0.02:
     raise SystemExit(1)
 
 # ---- solver ------------------------------------------------------------------------------------
-s = flow.Solver(lnx, lny, lnz)
+if GRID == "collocated":
+    s = flow.SolverColocated(lnx, lny, lnz)
+elif GRID == "staggered":
+    s = flow.Solver(lnx, lny, lnz)
+else:
+    raise SystemExit(f"unknown GRID={GRID!r} (staggered|collocated)")
 s.init_mpi(GNX, GNY, GNZ)
 s.set_rho(1.0)
 s.set_mu(MU)
@@ -192,6 +203,8 @@ elif PRESSURE != "vcycle":
 if WARMSTART:
     s.set_pressure_warmstart(True)
 s.set_pressure_bottom(BOTTOM)
+if GRID == "collocated" and FACEINTERP:
+    s.set_face_interp(FACEINTERP)   # before set_ghost_projection: ghost demands mode 0
 if PUNDER != 1.0:
     s.set_pressure_underrelax(PUNDER)
 if IBM == "ghost":
@@ -290,7 +303,7 @@ if RANK == 0:
         "global": [GNX, GNY, GNZ], "cells": cells,
         "pack": os.path.basename(PACK), "n_spheres": int(len(centers)),
         "phi_pack": float(pk["phi"]), "phi_voxel": phi_vox, "seed": int(pk["seed"]),
-        "rcells": RCELLS, "ibm": IBM, "bottom": BOTTOM, "gporder": GPORDER, "punder": PUNDER,
+        "rcells": RCELLS, "ibm": IBM, "grid": GRID, "face_interp": FACEINTERP, "bottom": BOTTOM, "gporder": GPORDER, "punder": PUNDER,
         "mu": MU, "f": F, "dt": DT, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL,
         "mglevels": MGLEVELS, "vsweeps": VSWEEPS, "warmstart": WARMSTART,
         "nsteps": NSTEPS, "warmup": WARMUP,
