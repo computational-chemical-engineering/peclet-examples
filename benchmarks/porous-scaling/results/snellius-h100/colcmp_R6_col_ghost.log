@@ -1,0 +1,18 @@
+[cfg] global 96x96x96 = 0.9M cells  ranks=1  backend=Cuda  grid=collocated  IBM=ghost  face_interp=0  bottom=auto  spheres=489 R=6.0 cells  phi=0.5001  levels=4  pressure=pcg(maxit=300,rtol=1e-08,warmstart=0)  steps=5+25 then march(tol=1e-06,max=800)
+  rank 0: block 96x96x96 at [0, 0, 0]  gcn142.local.snellius.surf.nl 0000:C6:00.0
+[sdf] built in 0.1s  voxel solid fraction=0.5003 (packing 0.5001)
+[run] warmup 5 steps...
+[run] warmup 1/5 done
+[run] warmup 2/5 done
+[run] warmup 3/5 done
+[run] warmup 4/5 done
+[run] warmup 5/5 done
+[run] step 5/25
+[run] step 10/25
+[run] step 15/25
+[run] step 20/25
+[run] step 25/25
+[perf] 248.6 ms/step  3.6 Mcell/s (3.6/rank)  pressure iters/step 49.3
+[phases, rank-max ms/step] step=248.6  predictor=0.1  momentum=19.7  projection=228.7  pressure_allreduce=0.8  allreduce_count=591
+[march] 175 steps (converged) 8358 pressure iters in 42.3s   k/R^2 = 0.0107466
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/colcmp_R6_col_ghost.json
