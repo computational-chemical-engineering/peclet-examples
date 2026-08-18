@@ -53,6 +53,22 @@ should be: every converged rung sits in $k/R^2 = 0.0108$–$0.0112$ (per-rung ra
 scatter is bed statistics, not solver noise). Ghost-cell tracks cut-cell physics on the rungs
 that converge, at roughly 4× the iterations and ~⅓ the throughput.
 
+**Halo–compute overlap + communication-avoiding smoothing** (solid vs dashed above; the
+communication-scaling work of `suite/docs/COMMUNICATION_SCALING.md`, flow `1e9c5db` + `b96dd74`,
+2026-08). The baseline's fixed toll was diagnosed as *latency-bound halo events* — ~700 per step
+(one per smoother colour per MG level per iteration), not bandwidth and not allreduces. Two
+bit-exact changes attack the event count: every distributed RB-GS sweep now overlaps its exchange
+with the interior sweep, and communication-avoiding smoothing (`PECLET_FLOW_CA`) exchanges a
+2-deep ghost layer once per red–black *pair*, re-smoothing the 1-deep ghost ring so the second
+colour needs no exchange at all. The result at np=32 cut-cell: **1323 → 759 ms/step**
+(12.7 → 22.1 Mcell/s/GPU), lifting weak efficiency **35% → 62%** — with pressure iterations and
+$k/R^2$ identical *to every printed digit* at every rung, the numerics are provably untouched.
+The ablation point (×) shows overlap alone at 13.8 Mcell/s/GPU: the win is almost entirely the
+CA halving of event count, confirming the latency diagnosis. The ghost IBM gains the same way
+where its march is stable (np=16: 6966→4281 ms/step). One anomaly: the np=8 rungs' *projection*
+phase is slower under CA (cut-cell 342→465 ms) even as momentum improves — net still faster
+(1239→988) but worth a targeted look; np=16/32 show the opposite, large, expected gains.
+
 ![Refine ladder](results/snellius-h100/porous_refine.png)
 
 **Refine.** The physics headline: on one fixed bed refined 256³→1024³ (sphere radius 16→64
@@ -95,9 +111,10 @@ costing nothing here.
 GNX=256 GNY=256 GNZ=256 RCELLS=16 SEED=100 OUT=pack.npz python pack_bed.py
 PACK=pack.npz mpirun -np 2 python spheres_bench.py
 
-# Snellius: one job per rung (queue-parallel safe), argument = GPU count
+# Snellius: one job per rung (queue-parallel safe), argument = GPU count; the optional second
+# argument is a result TAG (required after any solver change -- rungs skip existing JSONs)
 sbatch --nodes=1 snellius/spheres_weak_gpu.sh 1
-sbatch --nodes=8 snellius/spheres_weak_gpu.sh 32
+sbatch --nodes=8 snellius/spheres_weak_gpu.sh 32 overlap
 sbatch --nodes=8 snellius/spheres_weak_gpu.sh levers
 sbatch --nodes=1 snellius/spheres_refine_gpu.sh 1
 ```

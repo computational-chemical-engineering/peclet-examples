@@ -21,13 +21,22 @@ import numpy as np
 RES = sys.argv[1] if len(sys.argv) > 1 else "results/snellius-h100"
 
 
-def load(pattern):
+def tag_of(f):
+    """Result tag from the filename: weak_np<N>_<ibm>[_<tag>].json -> '' (baseline) or the tag."""
+    stem = os.path.basename(f)[: -len(".json")]
+    parts = stem.split("_")
+    return parts[3] if len(parts) > 3 else ""
+
+
+def load(pattern, tags=("",)):
+    """{(ibm, tag): [runs sorted by np]} for the requested tags; lever ablations excluded."""
     out = {}
     for f in glob.glob(os.path.join(RES, pattern)):
-        if "smoother" in f or "hoststage" in f:  # lever ablations, not ladder points
+        tag = tag_of(f)
+        if tag not in tags:  # lever ablations (smoother/hoststage/noca) and e.g. the fat rung
             continue
         d = json.load(open(f))
-        out.setdefault(d["ibm"], []).append(d)
+        out.setdefault((d["ibm"], tag), []).append(d)
     for v in out.values():
         v.sort(key=lambda d: d["np"])
     return out
@@ -54,27 +63,42 @@ def fit_order(Ns, vals):
 
 
 COLOR = {"cutcell": "C0", "ghost": "C1"}
+# result tags on the upscale ladder: '' = pre-overlap baseline (2026-08 campaign), 'overlap' =
+# halo-compute overlap + communication-avoiding smoothing (suite docs/COMMUNICATION_SCALING.md
+# items 2.2 + 2.3). Numerics are bit-identical (iterations + k agree to all digits), so the two
+# series differ only in communication cost.
+STYLE = {"": dict(ls="--", marker="o", mfc="white", alpha=0.55),
+         "overlap": dict(ls="-", marker="o")}
+LBL = {"": " (baseline)", "overlap": " (overlap+CA)"}
 
 # ---- upscale ----------------------------------------------------------------------------------
-weak = load("weak_np*.json")
+weak = load("weak_np*.json", tags=("", "overlap"))
 if any(weak.values()):
     fig, ax = plt.subplots(1, 4, figsize=(16.5, 3.6))
-    for ibm, runs in weak.items():
+    for (ibm, tag), runs in sorted(weak.items()):
         if not runs:
             continue
         nps = [d["np"] for d in runs]
         pergpu = [d["mcells_per_s_per_rank"] for d in runs]
-        ax[0].plot(nps, pergpu, "o-", color=COLOR[ibm], label=ibm)
-        ax[1].plot(nps, [100 * p / pergpu[0] for p in pergpu], "o-", color=COLOR[ibm], label=ibm)
-        ax[2].plot(nps, [d["pressure_iters_per_step"] for d in runs], "o-",
-                   color=COLOR[ibm], label=ibm)
+        st = dict(STYLE[tag], color=COLOR[ibm], label=ibm + LBL[tag])
+        ax[0].plot(nps, pergpu, **st)
+        ax[1].plot(nps, [100 * p / pergpu[0] for p in pergpu], **st)
+        if tag == "overlap":  # iterations are identical between tags -- plot once
+            ax[2].plot(nps, [d["pressure_iters_per_step"] for d in runs], "o-",
+                       color=COLOR[ibm], label=ibm)
         # physics: per-rung bed permeability, CONVERGED marches only (ghost np>=16 diverges --
-        # a documented open solver issue; its perf-phase points above remain valid)
+        # a documented open solver issue; its perf-phase points above remain valid). k is
+        # bit-identical between tags -- plot once.
         ks = [(d["np"], sane_k(d)) for d in runs
               if d.get("march", {}).get("converged") and sane_k(d)]
-        if ks:
+        if ks and tag == "overlap":
             kn, kv = zip(*ks)
             ax[3].plot(kn, kv, "o-", color=COLOR[ibm], label=ibm)
+    # the CA ablation point: np32 cutcell with PECLET_FLOW_CA=0 (overlap only, no CA smoothing)
+    noca = [json.load(open(f)) for f in glob.glob(os.path.join(RES, "weak_np*_noca.json"))]
+    for d in noca:
+        ax[0].plot([d["np"]], [d["mcells_per_s_per_rank"]], "x", ms=9, mew=2,
+                   color=COLOR[d["ibm"]], label=f"{d['ibm']} overlap, CA off")
     ax[0].set_ylabel("Mcell/s per GPU")
     ax[1].set_ylabel("weak efficiency [%]")
     ax[1].axhline(100, color="k", lw=0.5)
@@ -94,7 +118,7 @@ if any(weak.values()):
 ref = load("refine_np*.json")
 if any(ref.values()):
     fig, ax = plt.subplots(1, 3, figsize=(13, 3.6))
-    for ibm, runs in ref.items():
+    for (ibm, _tag), runs in sorted(ref.items()):
         nps = [d["np"] for d in runs]
         Ns = [d["global"][0] for d in runs]
         pergpu = [d["mcells_per_s_per_rank"] for d in runs]
