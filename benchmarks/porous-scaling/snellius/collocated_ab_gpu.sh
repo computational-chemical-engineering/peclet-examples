@@ -23,6 +23,8 @@
 #   sbatch --nodes=1 --time=03:00:00 collocated_ab_gpu.sh 16    # 256^3  1 GPU
 #   sbatch --nodes=1 --time=04:00:00 collocated_ab_gpu.sh 24    # 384^3  2 GPUs
 #   sbatch --nodes=1 --time=06:00:00 collocated_ab_gpu.sh 32    # 512^3  4 GPUs
+# Argument 3 = bed: phi050 (default) | phi060 (the dense tight-throat bed):
+#   sbatch --nodes=1 --gpus-per-node=1 --ntasks-per-node=1 collocated_ab_gpu.sh 8 "" phi060
 # ==========================================================================================
 #SBATCH --job-name=col-ab
 #SBATCH --partition=gpu_h100
@@ -50,7 +52,6 @@ mkdir -p "$RES" "$PACKS"
 # converged well below that. Phase A (25 fixed steps) is kept only for the per-step cost numbers.
 export PHI=0.50 NSTEPS=25 WARMUP=5 MARCH_TOL=1e-6 MARCH_MAX=800
 SEED=100
-NPZ="$PACKS/packing_256x256x256_r16_phi${PHI}_s${SEED}.npz"
 
 # R -> grid, MG levels (coarsest axis 8-12 cells: the agglomerated bottom solves it exactly),
 # GPUs (ghost carries a worst-case-sized overlay, ~1.1 GB per Mcell -- keep <= ~40 GB/GPU)
@@ -61,13 +62,9 @@ cfg_of () { case $1 in
 
 MAXN=$(( SLURM_NNODES * 4 ))
 
-[ -f "$NPZ" ] || env GNX=256 GNY=256 GNZ=256 RCELLS=16 SEED=$SEED OUT="$NPZ" \
-    srun --ntasks=1 --gpus-per-task=1 "$VENV/bin/python" "$EXDIR/../pack_bed.py" \
-    >> "$RES/pack.log" 2>&1 || { echo "[FATAL] packing failed (see $RES/pack.log)"; exit 1; }
-
 run_one () {  # R variant grid ibm faceinterp
   local R=$1 var=$2 grid=$3 ibm=$4 fi=$5
-  local out="colcmp_R${R}_${var}${TAG}.json"
+  local out="${PREFIX}_R${R}_${var}${TAG}.json"
   [ -f "$RES/$out" ] && { echo "[skip] $out"; return; }
   read -r G LV NP <<< "$(cfg_of $R)" || { echo "[FATAL] no cfg for R=$R"; return 1; }
   [ "$NP" -le "$MAXN" ] || { echo "[FATAL] R=$R needs $NP GPUs, allocated $MAXN" >&2; return 1; }
@@ -90,7 +87,21 @@ run_rung () {  # R
   run_one "$1" col_ghost    collocated ghost   0
 }
 
-ARG="${1:-}"; TAG="${2:+_${2}}"
+# Argument 3 selects the BED. Both are 16^3 R-unit boxes, so the R -> grid table is shared.
+#   phi050 (default) the phi=0.50 seed-100 bed        -> colcmp_R*      (the shipped ladder)
+#   phi060           the phi=0.60 seed-3 dense bed    -> colcmp060_R*   (tight throats: the
+#                    median nearest-neighbour surface gap is 0.0002 R against 0.0107 R at
+#                    phi=0.50, i.e. the spheres are AT contact -- the regime where the ghost
+#                    projection was documented to over-carry the throats)
+ARG="${1:-}"; TAG="${2:+_${2}}"; BED="${3:-phi050}"
+case "$BED" in
+  phi050) NPZ="$PACKS/packing_256x256x256_r16_phi0.50_s100.npz"; PREFIX=colcmp;;
+  phi060) NPZ="$PACKS/packing_256x256x256_r16_phi0.60_s3.npz";   PREFIX=colcmp060;;
+  *) echo "FATAL: unknown bed '$BED' (phi050|phi060)" >&2; exit 1;;
+esac
+[ -f "$NPZ" ] || { echo "FATAL: bed $NPZ is missing (pack_bed.py, or git checkout the committed one)" >&2; exit 1; }
+echo "bed: $NPZ  ->  ${PREFIX}_R*"
+
 if [ -n "$ARG" ]; then
   run_rung "$ARG"
 else

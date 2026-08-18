@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """Verdict table for the collocated second-order A/B (snellius/collocated_ab_gpu.sh).
 
-    python analyze_collocated_ab.py results/snellius-h100
+    python analyze_collocated_ab.py results/snellius-h100 [prefix]
+
+`prefix` selects the bed: colcmp (default, phi=0.50) or colcmp060 (the dense tight-throat bed).
 
 Reads colcmp_R*_<variant>.json and reports, per variant: the permeability against the staggered
 cut-cell reference k_inf, the observed order of that error, the pressure iterations per step and
@@ -16,15 +18,16 @@ import sys
 import numpy as np
 
 d = sys.argv[1] if len(sys.argv) > 1 else "results/snellius-h100"
+PRE = sys.argv[2] if len(sys.argv) > 2 else "colcmp"
 VAR = ["stag_cutcell", "col_mode0", "col_mode9", "col_ghost"]
 runs = {}
-for f in glob.glob(os.path.join(d, "colcmp_R*.json")):
+for f in glob.glob(os.path.join(d, f"{PRE}_R*.json")):
     j = json.load(open(f))
-    base = os.path.basename(f)[len("colcmp_R"):-len(".json")]
+    base = os.path.basename(f)[len(PRE) + 2:-len(".json")]
     R, var = base.split("_", 1)
     runs.setdefault(var, {})[int(R)] = j
 if not runs:
-    raise SystemExit(f"no colcmp_R*.json under {d}")
+    raise SystemExit(f"no {PRE}_R*.json under {d}")
 Rs = sorted({r for v in runs.values() for r in v})
 
 def k(var, R):
