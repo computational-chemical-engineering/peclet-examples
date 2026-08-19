@@ -44,8 +44,19 @@ if len(ref) >= 3:
     with np.errstate(all="ignore"):
         p = np.log(abs((k1 - k2) / (k2 - k3))) / np.log(R2 / R1)
     kinf = k3 + (k3 - k2) / ((R3 / R2) ** p - 1.0)
-    print(f"reference: staggered cut-cell, observed order p={p:.2f}, "
-          f"Richardson k_inf = {kinf:.6f}  (finest rung R={R3}: {k3:.6f})")
+    # GUARD: once the reference has settled onto its own noise floor the increments are no longer
+    # a clean power law -- the ratio can go negative or explode and Richardson then extrapolates
+    # nonsense (seen on the phi=0.60 bed: p = -0.21, k_inf 0.9 % below every measured rung).
+    # Detect that and fall back to the finest rung, which is the best estimate available.
+    spread = max(abs(k3 - k2), abs(k2 - k1))
+    if not (0.5 < p < 6.0) or abs(kinf - k3) > 5.0 * spread:
+        print(f"reference: staggered cut-cell — Richardson REJECTED (p={p:.2f}, "
+              f"k_inf={kinf:.6f} vs finest {k3:.6f}): the series has settled onto its noise "
+              f"floor. Using the finest rung R={R3}: k_inf = {k3:.6f}")
+        kinf = k3
+    else:
+        print(f"reference: staggered cut-cell, observed order p={p:.2f}, "
+              f"Richardson k_inf = {kinf:.6f}  (finest rung R={R3}: {k3:.6f})")
 elif ref:
     kinf = ref[-1][1]
     print(f"reference: staggered cut-cell finest rung R={ref[-1][0]}, k_inf = {kinf:.6f}")

@@ -1,0 +1,21 @@
+[cfg] global 512x512x512 = 134.2M cells  ranks=4  backend=Cuda  grid=collocated  IBM=cutcell  face_interp=9  bottom=auto  spheres=587 R=32.0 cells  phi=0.6003  levels=7  pressure=pcg(maxit=300,rtol=1e-08,warmstart=0)  steps=5+25 then march(tol=1e-06,max=800)
+  rank 0: block 256x256x512 at [0, 0, 0]  gcn136.local.snellius.surf.nl 0000:26:00.0
+  rank 1: block 256x256x512 at [0, 256, 0]  gcn136.local.snellius.surf.nl 0000:06:00.0
+  rank 2: block 256x256x512 at [256, 0, 0]  gcn136.local.snellius.surf.nl 0000:C6:00.0
+  rank 3: block 256x256x512 at [256, 256, 0]  gcn136.local.snellius.surf.nl 0000:A6:00.0
+[sdf] built in 1.1s  voxel solid fraction=0.6002 (packing 0.6003)
+[run] warmup 5 steps...
+[run] warmup 1/5 done
+[run] warmup 2/5 done
+[run] warmup 3/5 done
+[run] warmup 4/5 done
+[run] warmup 5/5 done
+[run] step 5/25
+[run] step 10/25
+[run] step 15/25
+[run] step 20/25
+[run] step 25/25
+[perf] 1285.4 ms/step  104.4 Mcell/s (26.1/rank)  pressure iters/step 42.5
+[phases, rank-max ms/step] step=1285.3  predictor=3.7  momentum=450.4  projection=830.6  pressure_allreduce=7.3  allreduce_count=218
+[march] 80 steps (converged) 1333 pressure iters in 64.1s   k/R^2 = 0.00403686
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/colcmp060_R32_col_mode9.json
