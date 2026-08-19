@@ -1,0 +1,69 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+=== ref (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda ) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.3s (6.9 ms/step)  growth_factor=1.0000  max_overlap/R=0.01741  max_asleep=0
+[pack] independent voxel solid fraction=0.4053 (analytic 0.4999)
+FATAL: voxel fraction 0.4053 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25730661/probe3_ref.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== iters200 (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda ITERS=200) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 13.5s (11.2 ms/step)  growth_factor=1.0000  max_overlap/R=0.00458  max_asleep=0
+[pack] independent voxel solid fraction=0.4042 (analytic 0.4999)
+FATAL: voxel fraction 0.4042 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25730661/probe3_iters200.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== iters400 (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda ITERS=400) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 23.2s (19.4 ms/step)  growth_factor=1.0000  max_overlap/R=0.00010  max_asleep=0
+[pack] independent voxel solid fraction=0.4042 (analytic 0.4999)
+FATAL: voxel fraction 0.4042 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25730661/probe3_iters400.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== dt0005 (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda DT=0.005) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 1998+200 steps in 11.6s (5.3 ms/step)  growth_factor=1.0000  max_overlap/R=0.00785  max_asleep=0
+[pack] independent voxel solid fraction=0.4067 (analytic 0.4999)
+FATAL: voxel fraction 0.4067 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25730661/probe3_dt0005.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== rate015 (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda RATE=0.15) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 1998+200 steps in 11.6s (5.3 ms/step)  growth_factor=1.0000  max_overlap/R=0.00349  max_asleep=0
+[pack] independent voxel solid fraction=0.4033 (analytic 0.4999)
+FATAL: voxel fraction 0.4033 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25730661/probe3_rate015.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== gentle (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda DT=0.005 ITERS=200) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 1998+200 steps in 18.1s (8.2 ms/step)  growth_factor=1.0000  max_overlap/R=0.00093  max_asleep=0
+[pack] independent voxel solid fraction=0.4045 (analytic 0.4999)
+FATAL: voxel fraction 0.4045 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25730661/probe3_gentle.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== building dem host-openmp module ===
+-- [peclet] Kokkos 5.1.1 from prefix (OPENMP;SERIAL)
+-- Found Python: /projects/0/prjs1022/peclet/suite/flow/.venv/bin/python (found suitable version "3.12.3", minimum required is "3.10") found components: Interpreter Development.Module
+-- [peclet] nanobind from /projects/0/prjs1022/peclet/suite/flow/.venv/lib/python3.12/site-packages/nanobind/cmake
+-- Build files have been written to: /projects/0/prjs1022/peclet/suite/dem/build_omp
+[ 92%] Building CXX object CMakeFiles/dem.dir/src/dem_bindings.cpp.o
+[100%] Linking CXX shared module peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+[100%] Built target dem
+=== cpu_ref (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_omp ) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 4.7s (3.9 ms/step)  growth_factor=1.0000  max_overlap/R=0.00008  max_asleep=0
+[pack] independent voxel solid fraction=0.4999 (analytic 0.4999)
+[out] /scratch-local/tec16020.25730661/probe3_cpu_ref.npz
+
+================= SUMMARY =================
+FAIL  ref ()
+FAIL  iters200 (ITERS=200)
+FAIL  iters400 (ITERS=400)
+FAIL  dt0005 (DT=0.005)
+FAIL  rate015 (RATE=0.15)
+FAIL  gentle (DT=0.005 ITERS=200)
+PASS  cpu_ref ()
+Interpretation:
+  ref FAIL + any knob PASS + cpu_ref PASS  -> dynamical runaway; budget-sensitive; arch tips it
+  ref FAIL + all knobs FAIL + cpu_ref PASS -> CUDA 12.6/sm_90 build path implicated
+  ref FAIL + cpu_ref FAIL                  -> not a GPU bug: machine env / common build config
+-rw-r----- 1 tec16020 tec16020 127920 Aug 17 00:40 /scratch-local/tec16020.25730661/probe3_dt0005.npz.BAD.npz
+-rw-r----- 1 tec16020 tec16020 127920 Aug 17 00:41 /scratch-local/tec16020.25730661/probe3_gentle.npz.BAD.npz
+-rw-r----- 1 tec16020 tec16020 127920 Aug 17 00:40 /scratch-local/tec16020.25730661/probe3_iters200.npz.BAD.npz
+-rw-r----- 1 tec16020 tec16020 127920 Aug 17 00:40 /scratch-local/tec16020.25730661/probe3_iters400.npz.BAD.npz
+-rw-r----- 1 tec16020 tec16020 127920 Aug 17 00:40 /scratch-local/tec16020.25730661/probe3_rate015.npz.BAD.npz
+-rw-r----- 1 tec16020 tec16020 127920 Aug 17 00:39 /scratch-local/tec16020.25730661/probe3_ref.npz.BAD.npz
+'/scratch-local/tec16020.25730661/probe3_dt0005.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe3_dt0005.npz.BAD.npz'
+'/scratch-local/tec16020.25730661/probe3_gentle.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe3_gentle.npz.BAD.npz'
+'/scratch-local/tec16020.25730661/probe3_iters200.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe3_iters200.npz.BAD.npz'
+'/scratch-local/tec16020.25730661/probe3_iters400.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe3_iters400.npz.BAD.npz'
+'/scratch-local/tec16020.25730661/probe3_rate015.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe3_rate015.npz.BAD.npz'
+'/scratch-local/tec16020.25730661/probe3_ref.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe3_ref.npz.BAD.npz'

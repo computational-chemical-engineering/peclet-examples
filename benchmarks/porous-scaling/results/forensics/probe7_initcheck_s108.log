@@ -1,0 +1,7 @@
+========= COMPUTE-SANITIZER
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 162.2s (135.3 ms/step)  growth_factor=1.0000  max_overlap/R=0.01618  max_asleep=0
+[pack] independent voxel solid fraction=0.4033 (analytic 0.4999)
+FATAL: voxel fraction 0.4033 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25751772/probe7_s108.npz.BAD.npz for forensics; NOT saving a usable packing.
+========= Target application returned an error
+========= ERROR SUMMARY: 0 errors

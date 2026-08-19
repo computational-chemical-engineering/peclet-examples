@@ -1,0 +1,87 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+=== phi030 : grid 512x512x512 phi=0.30 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=2347 spheres, phi=0.3000 (target 0.3) seed=108
+[pack] 999+200 steps in 2.9s (2.4 ms/step)  growth_factor=1.0000  max_overlap/R=0.00004  max_asleep=0
+[pack] independent voxel solid fraction=0.3000 (analytic 0.3000)
+[out] /scratch-local/tec16020.25726139/probe2_phi030.npz
+=== phi040 : grid 512x512x512 phi=0.40 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3129 spheres, phi=0.4000 (target 0.4) seed=108
+[pack] 999+200 steps in 3.3s (2.8 ms/step)  growth_factor=1.0000  max_overlap/R=0.00010  max_asleep=0
+[pack] independent voxel solid fraction=0.4000 (analytic 0.4000)
+[out] /scratch-local/tec16020.25726139/probe2_phi040.npz
+=== phi045 : grid 512x512x512 phi=0.45 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3520 spheres, phi=0.4500 (target 0.45) seed=108
+[pack] 999+200 steps in 8.6s (7.2 ms/step)  growth_factor=1.0000  max_overlap/R=0.00009  max_asleep=0
+[pack] independent voxel solid fraction=0.3094 (analytic 0.4500)
+FATAL: voxel fraction 0.3094 != analytic 0.4500 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25726139/probe2_phi045.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== phi048 : grid 512x512x512 phi=0.48 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3755 spheres, phi=0.4800 (target 0.48) seed=108
+[pack] 999+200 steps in 3.9s (3.2 ms/step)  growth_factor=1.0000  max_overlap/R=0.00008  max_asleep=0
+[pack] independent voxel solid fraction=0.4800 (analytic 0.4800)
+[out] /scratch-local/tec16020.25726139/probe2_phi048.npz
+=== phi050 : grid 512x512x512 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.3s (6.9 ms/step)  growth_factor=1.0000  max_overlap/R=0.00731  max_asleep=0
+[pack] independent voxel solid fraction=0.4055 (analytic 0.4999)
+FATAL: voxel fraction 0.4055 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25726139/probe2_phi050.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== box24 : grid 384x384x384 phi=0.50 seed=108 ===
+[pack] grid 384x384x384 rcells=16 -> box 24.00x24.00x24.00 R-units, N=1650 spheres, phi=0.5000 (target 0.5) seed=108
+[pack] 999+200 steps in 3.4s (2.9 ms/step)  growth_factor=1.0000  max_overlap/R=0.00007  max_asleep=0
+[pack] independent voxel solid fraction=0.4999 (analytic 0.5000)
+[out] /scratch-local/tec16020.25726139/probe2_box24.npz
+=== box28 : grid 448x448x448 phi=0.50 seed=108 ===
+[pack] grid 448x448x448 rcells=16 -> box 28.00x28.00x28.00 R-units, N=2620 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 3.7s (3.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.00010  max_asleep=0
+[pack] independent voxel solid fraction=0.5000 (analytic 0.4999)
+[out] /scratch-local/tec16020.25726139/probe2_box28.npz
+=== box30 : grid 480x480x480 phi=0.50 seed=108 ===
+[pack] grid 480x480x480 rcells=16 -> box 30.00x30.00x30.00 R-units, N=3223 spheres, phi=0.5000 (target 0.5) seed=108
+[pack] 999+200 steps in 9.4s (7.8 ms/step)  growth_factor=1.0000  max_overlap/R=0.00618  max_asleep=0
+[pack] independent voxel solid fraction=0.4056 (analytic 0.5000)
+FATAL: voxel fraction 0.4056 != analytic 0.5000 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25726139/probe2_box30.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== seed9 : grid 512x512x512 phi=0.50 seed=9 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=9
+[pack] 999+200 steps in 8.0s (6.6 ms/step)  growth_factor=1.0000  max_overlap/R=0.00573  max_asleep=0
+[pack] independent voxel solid fraction=0.4050 (analytic 0.4999)
+FATAL: voxel fraction 0.4050 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25726139/probe2_seed9.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== seed42 : grid 512x512x512 phi=0.50 seed=42 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=42
+[pack] 999+200 steps in 8.4s (7.0 ms/step)  growth_factor=1.0000  max_overlap/R=0.00800  max_asleep=0
+[pack] independent voxel solid fraction=0.4062 (analytic 0.4999)
+FATAL: voxel fraction 0.4062 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25726139/probe2_seed42.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== flat : grid 720x720x256 phi=0.50 seed=108 ===
+[pack] grid 720x720x256 rcells=16 -> box 45.00x45.00x16.00 R-units, N=3867 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 4.2s (3.5 ms/step)  growth_factor=1.0000  max_overlap/R=0.00006  max_asleep=0
+[pack] independent voxel solid fraction=0.5000 (analytic 0.4999)
+[out] /scratch-local/tec16020.25726139/probe2_flat.npz
+=== good104 : grid 512x512x256 phi=0.50 seed=104 ===
+[pack] grid 512x512x256 rcells=16 -> box 32.00x32.00x16.00 R-units, N=1956 spheres, phi=0.5001 (target 0.5) seed=104
+[pack] 999+200 steps in 3.6s (3.0 ms/step)  growth_factor=1.0000  max_overlap/R=0.00007  max_asleep=0
+[pack] independent voxel solid fraction=0.5000 (analytic 0.5001)
+[out] /scratch-local/tec16020.25726139/probe2_good104.npz
+
+================= SUMMARY =================
+PASS  phi030 (512x512x512 phi=0.30 seed=108)
+PASS  phi040 (512x512x512 phi=0.40 seed=108)
+FAIL  phi045 (512x512x512 phi=0.45 seed=108)
+PASS  phi048 (512x512x512 phi=0.48 seed=108)
+FAIL  phi050 (512x512x512 phi=0.50 seed=108)
+PASS  box24 (384x384x384 phi=0.50 seed=108)
+PASS  box28 (448x448x448 phi=0.50 seed=108)
+FAIL  box30 (480x480x480 phi=0.50 seed=108)
+FAIL  seed9 (512x512x512 phi=0.50 seed=9)
+FAIL  seed42 (512x512x512 phi=0.50 seed=42)
+PASS  flat (720x720x256 phi=0.50 seed=108)
+PASS  good104 (512x512x256 phi=0.50 seed=104)
+BAD specimens (if any): /scratch-local/tec16020.25726139/probe2_*.BAD.npz -- copy them off the node NOW
+(node-local TMPDIR is wiped at job end):
+-rw-r-----. 1 tec16020 tec16020 105904 Aug 16 18:21 /scratch-local/tec16020.25726139/probe2_box30.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 115408 Aug 16 18:20 /scratch-local/tec16020.25726139/probe2_phi045.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 16 18:20 /scratch-local/tec16020.25726139/probe2_phi050.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 16 18:21 /scratch-local/tec16020.25726139/probe2_seed42.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 16 18:21 /scratch-local/tec16020.25726139/probe2_seed9.npz.BAD.npz
+'/scratch-local/tec16020.25726139/probe2_box30.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe2_box30.npz.BAD.npz'
+'/scratch-local/tec16020.25726139/probe2_phi045.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe2_phi045.npz.BAD.npz'
+'/scratch-local/tec16020.25726139/probe2_phi050.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe2_phi050.npz.BAD.npz'
+'/scratch-local/tec16020.25726139/probe2_seed42.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe2_seed42.npz.BAD.npz'
+'/scratch-local/tec16020.25726139/probe2_seed9.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe2_seed9.npz.BAD.npz'

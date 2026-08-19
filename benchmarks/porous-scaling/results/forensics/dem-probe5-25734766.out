@@ -1,0 +1,51 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+=== node context ===
+NVIDIA H100, 595.71.05
+--- module spider CUDA (all trees):
+CUDA/12.1.1
+CUDA/12.4.0
+CUDA/12.6.0
+CUDA/12.8.0
+CUDA/12.9.1
+=== A1: dem at -O0 (cicc/host) ===
+  (build ok: /projects/0/prjs1022/peclet/suite/dem/build_cuda_O0)
+=== gpu_O0 (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda_O0) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.6s (7.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.01387  max_asleep=0
+[pack] independent voxel solid fraction=0.4029 (analytic 0.4999)
+FATAL: voxel fraction 0.4029 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25734766/probe5_gpu_O0.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== A2: dem at -O0 + ptxas -O0 (NVCC_APPEND_FLAGS) ===
+  (build ok: /projects/0/prjs1022/peclet/suite/dem/build_cuda_O0ptx)
+=== gpu_O0ptx (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda_O0ptx) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 26.4s (22.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.02604  max_asleep=0
+[pack] independent voxel solid fraction=0.4043 (analytic 0.4999)
+FATAL: voxel fraction 0.4043 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25734766/probe5_gpu_O0ptx.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== B: newest CUDA anywhere = CUDA/12.9.1 (stock is CUDA/12.6.0) ===
+
+The following have been reloaded with a version change:
+  1) CUDA/12.6.0 => CUDA/12.9.1
+
+/sw/arch/RHEL9/EB_production/2025/software/CUDA/12.9.1/bin/nvcc
+Build cuda_12.9.r12.9/compiler.36037853_0
+  (build ok: /projects/0/prjs1022/peclet/suite/dem/build_cuda_probe)
+=== gpu_newcuda (DEM_BUILD=/projects/0/prjs1022/peclet/suite/dem/build_cuda_probe) : 512^3 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.3s (7.0 ms/step)  growth_factor=1.0000  max_overlap/R=0.01367  max_asleep=0
+[pack] independent voxel solid fraction=0.4038 (analytic 0.4999)
+FATAL: voxel fraction 0.4038 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25734766/probe5_gpu_newcuda.npz.BAD.npz for forensics; NOT saving a usable packing.
+
+================= SUMMARY =================
+FAIL  gpu_O0
+FAIL  gpu_O0ptx
+FAIL  gpu_newcuda
+Interpretation (stock 12.6 GPU build FAILS, CPU passes):
+  gpu_O0 or gpu_O0ptx PASS -> nvcc 12.6 optimizer miscompile in dem's kernels (bisect opt level next)
+  gpu_newcuda PASS         -> toolkit-version bug; rebuild the suite with that CUDA
+  everything FAIL          -> UB in dem device code, sm_90-sensitive; bisect kernels with #if switches
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 09:43 /scratch-local/tec16020.25734766/probe5_gpu_O0.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 09:46 /scratch-local/tec16020.25734766/probe5_gpu_O0ptx.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 09:49 /scratch-local/tec16020.25734766/probe5_gpu_newcuda.npz.BAD.npz
+'/scratch-local/tec16020.25734766/probe5_gpu_O0.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe5_gpu_O0.npz.BAD.npz'
+'/scratch-local/tec16020.25734766/probe5_gpu_O0ptx.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe5_gpu_O0ptx.npz.BAD.npz'
+'/scratch-local/tec16020.25734766/probe5_gpu_newcuda.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe5_gpu_newcuda.npz.BAD.npz'

@@ -85,6 +85,11 @@ run_rung () {  # R
   run_one "$1" col_mode0    collocated cutcell 0
   run_one "$1" col_mode9    collocated cutcell 9
   run_one "$1" col_ghost    collocated ghost   0
+  # The Basilisk embed.h line (true-normal wall gradient): the candidate for removing the
+  # collocated accuracy ceiling. 6 = embed momentum + plain projection + openness-weighted cell
+  # correction; 7 = 6 with the wall-aware constraint.
+  run_one "$1" col_embed6   collocated cutcell 6
+  run_one "$1" col_embed7   collocated cutcell 7
 }
 
 # Argument 3 selects the BED. Both are 16^3 R-unit boxes, so the R -> grid table is shared.

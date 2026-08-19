@@ -1,0 +1,77 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+=== phi030 : grid 512x512x512 phi=0.30 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=2347 spheres, phi=0.3000 (target 0.3) seed=108
+[pack] 999+200 steps in 3.0s (2.5 ms/step)  growth_factor=1.0000  max_overlap/R=0.00004  max_asleep=0
+[pack] independent voxel solid fraction=0.3000 (analytic 0.3000)
+[out] /scratch-local/tec16020.25755015/probe2_phi030.npz
+=== phi040 : grid 512x512x512 phi=0.40 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3129 spheres, phi=0.4000 (target 0.4) seed=108
+[pack] 999+200 steps in 3.4s (2.8 ms/step)  growth_factor=1.0000  max_overlap/R=0.00006  max_asleep=0
+[pack] independent voxel solid fraction=0.4000 (analytic 0.4000)
+[out] /scratch-local/tec16020.25755015/probe2_phi040.npz
+=== phi045 : grid 512x512x512 phi=0.45 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3520 spheres, phi=0.4500 (target 0.45) seed=108
+[pack] 999+200 steps in 3.9s (3.3 ms/step)  growth_factor=1.0000  max_overlap/R=0.00006  max_asleep=0
+[pack] independent voxel solid fraction=0.4500 (analytic 0.4500)
+[out] /scratch-local/tec16020.25755015/probe2_phi045.npz
+=== phi048 : grid 512x512x512 phi=0.48 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3755 spheres, phi=0.4800 (target 0.48) seed=108
+[pack] 999+200 steps in 4.1s (3.4 ms/step)  growth_factor=1.0000  max_overlap/R=0.00007  max_asleep=0
+[pack] independent voxel solid fraction=0.4800 (analytic 0.4800)
+[out] /scratch-local/tec16020.25755015/probe2_phi048.npz
+=== phi050 : grid 512x512x512 phi=0.50 seed=108 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 4.2s (3.5 ms/step)  growth_factor=1.0000  max_overlap/R=0.00008  max_asleep=0
+[pack] independent voxel solid fraction=0.4999 (analytic 0.4999)
+[out] /scratch-local/tec16020.25755015/probe2_phi050.npz
+=== box24 : grid 384x384x384 phi=0.50 seed=108 ===
+[pack] grid 384x384x384 rcells=16 -> box 24.00x24.00x24.00 R-units, N=1650 spheres, phi=0.5000 (target 0.5) seed=108
+[pack] 999+200 steps in 3.6s (3.0 ms/step)  growth_factor=1.0000  max_overlap/R=0.00009  max_asleep=0
+[pack] independent voxel solid fraction=0.5000 (analytic 0.5000)
+[out] /scratch-local/tec16020.25755015/probe2_box24.npz
+=== box28 : grid 448x448x448 phi=0.50 seed=108 ===
+[pack] grid 448x448x448 rcells=16 -> box 28.00x28.00x28.00 R-units, N=2620 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 3.8s (3.2 ms/step)  growth_factor=1.0000  max_overlap/R=0.00010  max_asleep=0
+[pack] independent voxel solid fraction=0.4999 (analytic 0.4999)
+[out] /scratch-local/tec16020.25755015/probe2_box28.npz
+=== box30 : grid 480x480x480 phi=0.50 seed=108 ===
+[pack] grid 480x480x480 rcells=16 -> box 30.00x30.00x30.00 R-units, N=3223 spheres, phi=0.5000 (target 0.5) seed=108
+[pack] 999+200 steps in 4.0s (3.4 ms/step)  growth_factor=1.0000  max_overlap/R=0.00009  max_asleep=0
+[pack] independent voxel solid fraction=0.5000 (analytic 0.5000)
+[out] /scratch-local/tec16020.25755015/probe2_box30.npz
+=== seed9 : grid 512x512x512 phi=0.50 seed=9 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=9
+[pack] 999+200 steps in 4.3s (3.6 ms/step)  growth_factor=1.0000  max_overlap/R=0.00009  max_asleep=0
+[pack] independent voxel solid fraction=0.4999 (analytic 0.4999)
+[out] /scratch-local/tec16020.25755015/probe2_seed9.npz
+=== seed42 : grid 512x512x512 phi=0.50 seed=42 ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=42
+[pack] 999+200 steps in 4.2s (3.5 ms/step)  growth_factor=1.0000  max_overlap/R=0.00009  max_asleep=0
+[pack] independent voxel solid fraction=0.5000 (analytic 0.4999)
+[out] /scratch-local/tec16020.25755015/probe2_seed42.npz
+=== flat : grid 720x720x256 phi=0.50 seed=108 ===
+[pack] grid 720x720x256 rcells=16 -> box 45.00x45.00x16.00 R-units, N=3867 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 4.3s (3.6 ms/step)  growth_factor=1.0000  max_overlap/R=0.00008  max_asleep=0
+[pack] independent voxel solid fraction=0.5000 (analytic 0.4999)
+[out] /scratch-local/tec16020.25755015/probe2_flat.npz
+=== good104 : grid 512x512x256 phi=0.50 seed=104 ===
+[pack] grid 512x512x256 rcells=16 -> box 32.00x32.00x16.00 R-units, N=1956 spheres, phi=0.5001 (target 0.5) seed=104
+[pack] 999+200 steps in 3.7s (3.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.00006  max_asleep=0
+[pack] independent voxel solid fraction=0.5002 (analytic 0.5001)
+[out] /scratch-local/tec16020.25755015/probe2_good104.npz
+
+================= SUMMARY =================
+PASS  phi030 (512x512x512 phi=0.30 seed=108)
+PASS  phi040 (512x512x512 phi=0.40 seed=108)
+PASS  phi045 (512x512x512 phi=0.45 seed=108)
+PASS  phi048 (512x512x512 phi=0.48 seed=108)
+PASS  phi050 (512x512x512 phi=0.50 seed=108)
+PASS  box24 (384x384x384 phi=0.50 seed=108)
+PASS  box28 (448x448x448 phi=0.50 seed=108)
+PASS  box30 (480x480x480 phi=0.50 seed=108)
+PASS  seed9 (512x512x512 phi=0.50 seed=9)
+PASS  seed42 (512x512x512 phi=0.50 seed=42)
+PASS  flat (720x720x256 phi=0.50 seed=108)
+PASS  good104 (512x512x256 phi=0.50 seed=104)
+BAD specimens (if any): /scratch-local/tec16020.25755015/probe2_*.BAD.npz -- copy them off the node NOW
+(node-local TMPDIR is wiped at job end):

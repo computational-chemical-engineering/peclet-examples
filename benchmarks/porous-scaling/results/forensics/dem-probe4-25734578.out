@@ -1,0 +1,10 @@
+CUDA/12.6.0
+
+================= SUMMARY =================
+SKIP  gpu_O0 (build failed)
+SKIP  gpu_newcuda (no CUDA module newer than 12.6.0)
+Interpretation (reference: stock CUDA-12.6 GPU build FAILS this config, CPU passes):
+  gpu_O0 PASS                    -> nvcc/ptxas 12.6 OPTIMIZER miscompile in dem's kernels
+  gpu_O0 FAIL + gpu_newcuda PASS -> toolkit-version bug; rebuild the suite with the newer CUDA
+  both FAIL                      -> arch-specific misbehaviour surviving -O0 and toolkits:
+                                    suspect UB in dem device code (sm_90-sensitive); bisect kernels

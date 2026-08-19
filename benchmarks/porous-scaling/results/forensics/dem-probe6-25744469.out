@@ -1,0 +1,51 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+=== ref_default () : 512^3 phi=0.50 seed=108, stock build ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.5s (7.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.01068  max_asleep=0
+[pack] independent voxel solid fraction=0.4052 (analytic 0.4999)
+FATAL: voxel fraction 0.4052 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25744469/probe6_ref_default.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== no_graph (PECLET_DEM_NO_GRAPH=1) : 512^3 phi=0.50 seed=108, stock build ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.5s (7.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.00996  max_asleep=0
+[pack] independent voxel solid fraction=0.4043 (analytic 0.4999)
+FATAL: voxel fraction 0.4043 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25744469/probe6_no_graph.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== plain_launch (PECLET_DEM_NO_GRAPH=1 PECLET_DEM_NO_FUSED=1) : 512^3 phi=0.50 seed=108, stock build ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.9s (7.4 ms/step)  growth_factor=1.0000  max_overlap/R=0.00321  max_asleep=0
+[pack] independent voxel solid fraction=0.4044 (analytic 0.4999)
+FATAL: voxel fraction 0.4044 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25744469/probe6_plain_launch.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== fused_forced (PECLET_DEM_FUSED=1) : 512^3 phi=0.50 seed=108, stock build ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.5s (7.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.00787  max_asleep=0
+[pack] independent voxel solid fraction=0.4054 (analytic 0.4999)
+FATAL: voxel fraction 0.4054 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25744469/probe6_fused_forced.npz.BAD.npz for forensics; NOT saving a usable packing.
+=== full_recolor (PECLET_DEM_NO_INCR_COLOR=1) : 512^3 phi=0.50 seed=108, stock build ===
+[pack] grid 512x512x512 rcells=16 -> box 32.00x32.00x32.00 R-units, N=3911 spheres, phi=0.4999 (target 0.5) seed=108
+[pack] 999+200 steps in 8.5s (7.1 ms/step)  growth_factor=1.0000  max_overlap/R=0.00484  max_asleep=0
+[pack] independent voxel solid fraction=0.4076 (analytic 0.4999)
+FATAL: voxel fraction 0.4076 != analytic 0.4999 -- spheres are interpenetrating; the DEM contact solve did not act. Corrupted state saved to /scratch-local/tec16020.25744469/probe6_full_recolor.npz.BAD.npz for forensics; NOT saving a usable packing.
+
+================= SUMMARY =================
+FAIL  ref_default ()
+FAIL  no_graph (PECLET_DEM_NO_GRAPH=1)
+FAIL  plain_launch (PECLET_DEM_NO_GRAPH=1 PECLET_DEM_NO_FUSED=1)
+FAIL  fused_forced (PECLET_DEM_FUSED=1)
+FAIL  full_recolor (PECLET_DEM_NO_INCR_COLOR=1)
+Interpretation:
+  plain_launch PASS + no_graph PASS + ref FAIL     -> CUDA-graph replay path is the bug
+      (workaround everywhere: PECLET_DEM_NO_GRAPH=1; then chase cudaGraphExecUpdate)
+  plain_launch PASS + no_graph FAIL                -> fused barrier ALSO bad on H100 (two bugs
+      or shared substrate); workaround: NO_GRAPH=1 + NO_FUSED=1
+  full_recolor PASS + ref FAIL                     -> incremental-colouring carry is the bug
+  everything FAIL                                  -> in the kernels themselves after all;
+      bisect narrowphase/solver with #if next
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 19:35 /scratch-local/tec16020.25744469/probe6_full_recolor.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 19:35 /scratch-local/tec16020.25744469/probe6_fused_forced.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 19:34 /scratch-local/tec16020.25744469/probe6_no_graph.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 19:35 /scratch-local/tec16020.25744469/probe6_plain_launch.npz.BAD.npz
+-rw-r-----. 1 tec16020 tec16020 127920 Aug 17 19:34 /scratch-local/tec16020.25744469/probe6_ref_default.npz.BAD.npz
+'/scratch-local/tec16020.25744469/probe6_full_recolor.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe6_full_recolor.npz.BAD.npz'
+'/scratch-local/tec16020.25744469/probe6_fused_forced.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe6_fused_forced.npz.BAD.npz'
+'/scratch-local/tec16020.25744469/probe6_no_graph.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe6_no_graph.npz.BAD.npz'
+'/scratch-local/tec16020.25744469/probe6_plain_launch.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe6_plain_launch.npz.BAD.npz'
+'/scratch-local/tec16020.25744469/probe6_ref_default.npz.BAD.npz' -> '/gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/probe6_ref_default.npz.BAD.npz'

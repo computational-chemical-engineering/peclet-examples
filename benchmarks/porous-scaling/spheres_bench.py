@@ -76,7 +76,10 @@ GNY = int(os.environ.get("GNY", pk["gny"]))
 GNZ = int(os.environ.get("GNZ", pk["gnz"]))
 IBM = os.environ.get("IBM", "cutcell")
 GRID = os.environ.get("GRID", "staggered")       # staggered (flow.Solver) | collocated
-FACEINTERP = int(os.environ.get("FACEINTERP", 0))  # collocated cut-cell treatment (0 | 9 | ...)
+# Collocated scheme. ALWAYS passed explicitly below: since flow made mode 9 ("gauge-exact") the
+# default, a falsy-guarded call would have made FACEINTERP=0 a silent no-op and run the default
+# instead of the plain path -- i.e. the mode-0 baseline would quietly become mode 9.
+FACEINTERP = int(os.environ.get("FACEINTERP", 9))
 BOTTOM = os.environ.get("BOTTOM", "auto")
 NSTEPS = int(os.environ.get("NSTEPS", 25))
 WARMUP = int(os.environ.get("WARMUP", 5))
@@ -203,8 +206,8 @@ elif PRESSURE != "vcycle":
 if WARMSTART:
     s.set_pressure_warmstart(True)
 s.set_pressure_bottom(BOTTOM)
-if GRID == "collocated" and FACEINTERP:
-    s.set_face_interp(FACEINTERP)   # before set_ghost_projection: ghost demands mode 0
+if GRID == "collocated":
+    s.set_face_interp(FACEINTERP)   # explicit, incl. 0; before set_ghost_projection
 if PUNDER != 1.0:
     s.set_pressure_underrelax(PUNDER)
 if IBM == "ghost":
@@ -219,6 +222,26 @@ s.set_solid(sdf, cutcell_pressure=True, pressure_coarse="rediscretized")
 def gmean_u():
     u = s.get_u()
     tot = world.allreduce(float(u.sum()), op=MPI.SUM)
+    return tot / float(GNX * GNY * GNZ)
+
+
+def gmean_flux():
+    """Superficial velocity from the FACE volume flux, alpha_f * uf_x, averaged over all x-faces.
+
+    This is the quantity the divergence operator actually conserves (div(alpha*uf) = 0 to the
+    solve tolerance), so the flux through every x-plane is identical and this is a clean
+    estimator. The cell-mean <u> is a DIFFERENT estimator: on the collocated grid the cell field
+    is only approximately divergence-free, and it is reconstructed from phi by the cell gradient.
+    Comparing the two localises whether a permeability bias lives in the constraint or in the
+    cell reconstruction. On the staggered grid u IS the face field, so the two agree by
+    construction (up to the alpha weighting)."""
+    try:
+        uf = s.get_uf() if GRID == "collocated" else s.get_u()
+    except Exception:
+        return float("nan")
+    if uf is None or getattr(uf, "size", 0) == 0:
+        return float("nan")
+    tot = world.allreduce(float((s.get_ox() * uf).sum()), op=MPI.SUM)
     return tot / float(GNX * GNY * GNZ)
 
 
@@ -288,13 +311,16 @@ if MARCH_TOL > 0:
             prev = m
     twall = world.allreduce(time.perf_counter() - t0, op=MPI.MAX)
     umean = gmean_u()
+    fmean = gmean_flux()
     k_cells = MU * umean / F               # superficial Darcy permeability, cell^2
     k_R2 = k_cells / (RCELLS * RCELLS)     # in units of the sphere radius squared
+    kf_R2 = MU * fmean / F / (RCELLS * RCELLS)   # same, from the conserved FACE flux
     march = {"steps": msteps, "pressure_iters": mit, "seconds": twall,
-             "converged": msteps < MARCH_MAX, "u_mean": umean,
-             "k_cells2": k_cells, "k_over_R2": k_R2}
+             "converged": msteps < MARCH_MAX, "u_mean": umean, "flux_mean": fmean,
+             "k_cells2": k_cells, "k_over_R2": k_R2, "k_over_R2_face": kf_R2}
     p0(f"[march] {msteps} steps ({'converged' if march['converged'] else 'CAP'}) "
-       f"{mit} pressure iters in {twall:.1f}s   k/R^2 = {k_R2:.6g}")
+       f"{mit} pressure iters in {twall:.1f}s   k/R^2 = {k_R2:.6g}  "
+       f"k_face/R^2 = {kf_R2:.6g}")
 
 if RANK == 0:
     out = {

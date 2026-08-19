@@ -1,0 +1,776 @@
+========= COMPUTE-SANITIZER
+[pack] grid 512x512x256 rcells=16 -> box 32.00x32.00x16.00 R-units, N=1956 spheres, phi=0.5001 (target 0.5) seed=104
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,69,0) in block (8,0,0)
+=========     Address 0x153bacfff632 is out of bounds
+=========     and is 11 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,10,0) in block (8,0,0)
+=========     Address 0x153bacfff633 is out of bounds
+=========     and is 12 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,16,0) in block (8,0,0)
+=========     Address 0x153bacfff634 is out of bounds
+=========     and is 13 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,8,0) in block (9,0,0)
+=========     Address 0x153bacfff631 is out of bounds
+=========     and is 10 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,74,0) in block (10,0,0)
+=========     Address 0x153bacfff630 is out of bounds
+=========     and is 9 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,98,0) in block (11,0,0)
+=========     Address 0x153bacfff628 is out of bounds
+=========     and is 1 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,80,0) in block (13,0,0)
+=========     Address 0x153bacfff635 is out of bounds
+=========     and is 14 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,24,0) in block (14,0,0)
+=========     Address 0x153bacfff636 is out of bounds
+=========     and is 15 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,119,0) in block (4,0,0)
+=========     Address 0x153bacfff629 is out of bounds
+=========     and is 2 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,12,0) in block (5,0,0)
+=========     Address 0x153bacfff62f is out of bounds
+=========     and is 8 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,110,0) in block (6,0,0)
+=========     Address 0x153bacfff62c is out of bounds
+=========     and is 5 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,31,0) in block (6,0,0)
+=========     Address 0x153bacfff62d is out of bounds
+=========     and is 6 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,52,0) in block (6,0,0)
+=========     Address 0x153bacfff62e is out of bounds
+=========     and is 7 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,3,0) in block (1,0,0)
+=========     Address 0x153bacfff62b is out of bounds
+=========     and is 4 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Invalid __global__ write of size 1 bytes
+=========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+=========     by thread (0,14,0) in block (2,0,0)
+=========     Address 0x153bacfff62a is out of bounds
+=========     and is 3 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========     Host Frame:cuLaunchKernel [0x368d1a]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame: [0x15aa7]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:cudaLaunchKernel [0x759f0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame: [0x147878]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamSynchronize.
+=========     Saved host backtrace up to driver entry point at error
+=========     Host Frame: [0x464105]
+=========                in /lib64/libcuda.so.1
+=========     Host Frame:cudaStreamSynchronize [0x757ba]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/lib/libcudart.so.12
+=========     Host Frame:Kokkos::Impl::cuda_stream_synchronize(CUstream_st*, Kokkos::Impl::CudaInternal const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0x2a8a87]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x147303]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x266125]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x3edcf]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame: [0x272d37]
+=========                in /projects/0/prjs1022/peclet/suite/dem/build_cuda/peclet/dem/_dem.cpython-312-x86_64-linux-gnu.so
+=========     Host Frame:PyObject_Vectorcall in Objects/call.c:325 [0x21ddbe]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyEval_EvalFrameDefault.cold in Python/bytecodes.c:2706 [0x113de0]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:PyEval_EvalCode in Python/ceval.c:578 [0x2bf028]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_eval_code_obj in Python/pythonrun.c:1722 [0x2e1c56]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:run_mod in Python/pythonrun.c:1743 [0x2dcdea]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:pyrun_file in Python/pythonrun.c:1643 [0x2f5c70]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_SimpleFileObject in Python/pythonrun.c:433 [0x2f455a]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:_PyRun_AnyFileObject in Python/pythonrun.c:78 [0x2f4303]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_RunMain in Modules/main.c:709 [0x2ed846]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:Py_BytesMain in Modules/main.c:763 [0x2a81f6]
+=========                in /sw/arch/RHEL9/EB_production/2024/software/Python/3.12.3-GCCcore-13.3.0/lib/libpython3.12.so.1.0
+=========     Host Frame:__libc_start_call_main [0x2a60f]
+=========                in /lib64/libc.so.6
+=========     Host Frame:__libc_start_main [0x2a6bf]
+=========                in /lib64/libc.so.6
+=========     Host Frame:_start [0x1064]
+=========                in /gpfs/work4/0/prjs1022/peclet/suite/flow/.venv/bin/python
+========= 
+cudaStreamSynchronize(stream) error( cudaErrorLaunchFailure): unspecified launch failure /projects/0/prjs1022/peclet/suite/extern/src/kokkos/core/src/Cuda/Kokkos_Cuda_Instance.cpp:158
+Backtrace:
+[0x153dcba77a75] Kokkos::Impl::save_stacktrace()
+[0x153dcba56f6c] Kokkos::Impl::host_abort(char const*)
+[0x153dcba7d913] Kokkos::Impl::cuda_internal_error_abort(cudaError, char const*, char const*, int)
+[0x153dcba7dae7] 
+[0x153dcb91c304] 
+[0x153dcba3b126] 
+[0x153dcb813dd0] 
+[0x153dcba47d38] 
+[0x153e0676fdbf] PyObject_Vectorcall
+[0x153e06665de1] 
+[0x153e06811029] PyEval_EvalCode
+[0x153e06833c57] 
+[0x153e0682edeb] 
+[0x153e06847c71] 
+[0x153e0684655b] _PyRun_SimpleFileObject
+[0x153e06846304] _PyRun_AnyFileObject
+[0x153e0683f847] Py_RunMain
+[0x153e067fa1f7] Py_BytesMain
+[0x153e0627e610] 
+[0x153e0627e6c0] __libc_start_main
+[0x401065] _start
+========= Error: process didn't terminate successfully
+========= Target application returned an error
+========= ERROR SUMMARY: 16 errors

@@ -1,0 +1,65 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+sanitizer: /sw/arch/RHEL9/EB_production/2024/software/CUDA/12.6.0/bin/compute-sanitizer
+=== memcheck on s108 (512x512x512 seed=108) -> probe7_memcheck_s108.log ===
+========= ERROR SUMMARY: 32 errors
+    exit=99 sanitizer-flagged-lines=33
+    ========= Invalid __global__ write of size 1 bytes
+    =========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+    =========     by thread (0,8,0) in block (28,0,0)
+    =========     Address 0x14f0b91fd3e3 is out of bounds
+    =========     and is 28 bytes after the nearest allocation at 0x14f0b91fc400 of size 4040 bytes
+    =========     Saved host backtrace up to driver entry point at kernel launch time
+    =========     Host Frame:cuLaunchKernel [0x368d1a]
+    --
+    ========= Invalid __global__ write of size 1 bytes
+    =========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+    =========     by thread (0,22,0) in block (28,0,0)
+    =========     Address 0x14f0b91fd3e4 is out of bounds
+    =========     and is 28 bytes before the nearest allocation at 0x14f0b91fd400 of size 136 bytes
+    =========     Saved host backtrace up to driver entry point at kernel launch time
+    =========     Host Frame:cuLaunchKernel [0x368d1a]
+    --
+    ========= Invalid __global__ write of size 1 bytes
+    =========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+    =========     by thread (0,36,0) in block (8,0,0)
+    =========     Address 0x14f0b91fd3da is out of bounds
+    =========     and is 19 bytes after the nearest allocation at 0x14f0b91fc400 of size 4040 bytes
+    =========     Saved host backtrace up to driver entry point at kernel launch time
+    =========     Host Frame:cuLaunchKernel [0x368d1a]
+=== initcheck on s108 (512x512x512 seed=108) -> probe7_initcheck_s108.log ===
+========= ERROR SUMMARY: 0 errors
+[pack] independent voxel solid fraction=0.4033 (analytic 0.4999)
+    exit=1 sanitizer-flagged-lines=1
+=== racecheck on s108 (512x512x512 seed=108) -> probe7_racecheck_s108.log ===
+[pack] independent voxel solid fraction=0.4053 (analytic 0.4999)
+    exit=99 sanitizer-flagged-lines=0
+=== memcheck on s104 (512x512x256 seed=104) -> probe7_memcheck_s104.log ===
+========= ERROR SUMMARY: 16 errors
+    exit=99 sanitizer-flagged-lines=17
+    ========= Invalid __global__ write of size 1 bytes
+    =========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+    =========     by thread (0,69,0) in block (8,0,0)
+    =========     Address 0x153bacfff632 is out of bounds
+    =========     and is 11 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+    =========     Saved host backtrace up to driver entry point at kernel launch time
+    =========     Host Frame:cuLaunchKernel [0x368d1a]
+    --
+    ========= Invalid __global__ write of size 1 bytes
+    =========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+    =========     by thread (0,10,0) in block (8,0,0)
+    =========     Address 0x153bacfff633 is out of bounds
+    =========     and is 12 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+    =========     Saved host backtrace up to driver entry point at kernel launch time
+    =========     Host Frame:cuLaunchKernel [0x368d1a]
+    --
+    ========= Invalid __global__ write of size 1 bytes
+    =========     at void Kokkos::Impl::cuda_parallel_launch_local_memory<Kokkos::Impl::ParallelFor<peclet::dem::generateGhostsKokkos(int, int, peclet::dem::Domain, float, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[4], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *[3], Kokkos::CudaSpace>, Kokkos::View<float *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<int, Kokkos::CudaSpace>, Kokkos::View<int *, Kokkos::CudaSpace>, Kokkos::View<unsigned char *, Kokkos::CudaSpace>)::[lambda(int) (instance 1)], Kokkos::RangePolicy<Kokkos::Cuda>, Kokkos::Cuda>>(T1)+0x17f0
+    =========     by thread (0,16,0) in block (8,0,0)
+    =========     Address 0x153bacfff634 is out of bounds
+    =========     and is 13 bytes after the nearest allocation at 0x153bacffee00 of size 2088 bytes
+    =========     Saved host backtrace up to driver entry point at kernel launch time
+    =========     Host Frame:cuLaunchKernel [0x368d1a]
+
+Deliverable: the four probe7_*.log files in snellius/results/snellius-h100/ --
+copy them back with the .out; the first 'Invalid ... of size N' block names the
+guilty kernel + access.
