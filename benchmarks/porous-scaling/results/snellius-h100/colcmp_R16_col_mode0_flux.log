@@ -1,0 +1,19 @@
+srun: Step created for StepId=25817342.1
+[cfg] global 256x256x256 = 16.8M cells  ranks=1  backend=Cuda  grid=collocated  IBM=cutcell  face_interp=0  bottom=auto  spheres=489 R=16.0 cells  phi=0.5001  levels=6  pressure=pcg(maxit=300,rtol=1e-08,warmstart=0)  steps=5+25 then march(tol=1e-06,max=800)
+  rank 0: block 256x256x256 at [0, 0, 0]  gcn122.local.snellius.surf.nl 0000:A6:00.0
+[sdf] built in 0.5s  voxel solid fraction=0.5001 (packing 0.5001)
+[run] warmup 5 steps...
+[run] warmup 1/5 done
+[run] warmup 2/5 done
+[run] warmup 3/5 done
+[run] warmup 4/5 done
+[run] warmup 5/5 done
+[run] step 5/25
+[run] step 10/25
+[run] step 15/25
+[run] step 20/25
+[run] step 25/25
+[perf] 552.7 ms/step  30.4 Mcell/s (30.4/rank)  pressure iters/step 30.8
+[phases, rank-max ms/step] step=552.7  predictor=1.6  momentum=249.9  projection=300.7  pressure_allreduce=0.3  allreduce_count=160
+[march] 450 steps (converged) 6173 pressure iters in 177.7s   k/R^2 = 0.0105837  k_face/R^2 = 0.0105374
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/colcmp_R16_col_mode0_flux.json

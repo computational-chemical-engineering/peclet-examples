@@ -1,0 +1,109 @@
+{
+ "label": "snellius-h100",
+ "np": 2,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  384,
+  384,
+  384
+ ],
+ "cells": 56623104,
+ "pack": "packing_256x256x256_r16_phi0.50_s100.npz",
+ "n_spheres": 489,
+ "phi_pack": 0.500077736850719,
+ "phi_voxel": 0.5000708897908529,
+ "seed": 100,
+ "rcells": 24.0,
+ "ibm": "ghost",
+ "grid": "collocated",
+ "face_interp": 0,
+ "bottom": "auto",
+ "gporder": "2,2",
+ "punder": 1.0,
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 6,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 2936.984155867249,
+ "mcells_per_s": 19.279335874823616,
+ "mcells_per_s_per_rank": 9.639667937411808,
+ "pressure_iters_per_step": 69.96,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 2.9369364973343908,
+   "min": 2.936936451587826
+  },
+  "predictor": {
+   "max": 0.0031619000434875487,
+   "min": 0.003156691752374172
+  },
+  "momentum": {
+   "max": 0.41113755317404865,
+   "min": 0.4108459569886327
+  },
+  "projection": {
+   "max": 2.5219794346764686,
+   "min": 2.5216888365335763
+  },
+  "pressure_allreduce": {
+   "max": 0.00645398956,
+   "min": 0.0036918372000000004
+  },
+  "pressure_allreduce_count": {
+   "max": 837.96,
+   "min": 837.96
+  }
+ },
+ "march": {
+  "steps": 75,
+  "pressure_iters": 5147,
+  "seconds": 217.6357402978465,
+  "converged": true,
+  "u_mean": 0.06256824906726825,
+  "flux_mean": 0.06245300478306692,
+  "k_cells2": 6.256824906726826,
+  "k_over_R2": 0.010862543240845185,
+  "k_over_R2_face": 0.010842535552615785
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    192,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

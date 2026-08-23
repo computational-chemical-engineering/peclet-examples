@@ -1,0 +1,102 @@
+[cfg] global 384x384x384 = 56.6M cells  ranks=2  backend=Cuda  grid=collocated  IBM=cutcell  face_interp=6  bottom=auto  spheres=587 R=24.0 cells  phi=0.6003  levels=6  pressure=pcg(maxit=300,rtol=1e-08,warmstart=0)  steps=5+25 then march(tol=1e-06,max=800)
+  rank 0: block 192x384x384 at [0, 0, 0]  gcn85.local.snellius.surf.nl 0000:26:00.0
+  rank 1: block 192x384x384 at [192, 0, 0]  gcn85.local.snellius.surf.nl 0000:C6:00.0
+[sdf] built in 0.7s  voxel solid fraction=0.6003 (packing 0.6003)
+[run] warmup 5 steps...
+[run] warmup 1/5 done
+[run] warmup 2/5 done
+[run] warmup 3/5 done
+[run] warmup 4/5 done
+[run] warmup 5/5 done
+[run] step 5/25
+[run] step 10/25
+[run] step 15/25
+[run] step 20/25
+[run] step 25/25
+[perf] 627.2 ms/step  90.3 Mcell/s (45.1/rank)  pressure iters/step 11.9
+[phases, rank-max ms/step] step=627.1  predictor=13.1  momentum=407.2  projection=206.1  pressure_allreduce=0.7  allreduce_count=63
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; returning zero correction
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; return[march] 800 steps (CAP) 418 pressure iters in 368.0s   k/R^2 = nan  k_face/R^2 = nan
+[out] /gpfs/work4/0/prjs1022/peclet/peclet-examples/benchmarks/porous-scaling/snellius/results/snellius-h100/colcmp060_R24_col_embed6_flux.json
+peclet::flow CutcellMG::solvePCG: preconditioner produced non-finite z; return

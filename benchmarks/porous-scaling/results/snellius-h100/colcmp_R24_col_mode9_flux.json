@@ -1,0 +1,109 @@
+{
+ "label": "snellius-h100",
+ "np": 2,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  384,
+  384,
+  384
+ ],
+ "cells": 56623104,
+ "pack": "packing_256x256x256_r16_phi0.50_s100.npz",
+ "n_spheres": 489,
+ "phi_pack": 0.500077736850719,
+ "phi_voxel": 0.5000708897908529,
+ "seed": 100,
+ "rcells": 24.0,
+ "ibm": "cutcell",
+ "grid": "collocated",
+ "face_interp": 9,
+ "bottom": "auto",
+ "gporder": "2,2",
+ "punder": 1.0,
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 6,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 783.5870400816202,
+ "mcells_per_s": 72.26140952267664,
+ "mcells_per_s_per_rank": 36.13070476133832,
+ "pressure_iters_per_step": 20.76,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.7835390871763229,
+   "min": 0.7835384301096201
+  },
+  "predictor": {
+   "max": 0.003161693438887596,
+   "min": 0.0031553094275295736
+  },
+  "momentum": {
+   "max": 0.4113353631645441,
+   "min": 0.41100880078971386
+  },
+  "projection": {
+   "max": 0.36841592244803906,
+   "min": 0.3680914712324739
+  },
+  "pressure_allreduce": {
+   "max": 0.00094105824,
+   "min": 0.00053946504
+  },
+  "pressure_allreduce_count": {
+   "max": 108.84,
+   "min": 108.84
+  }
+ },
+ "march": {
+  "steps": 90,
+  "pressure_iters": 1355,
+  "seconds": 62.34252915903926,
+  "converged": true,
+  "u_mean": 0.06265877296246895,
+  "flux_mean": 0.06253529993655862,
+  "k_cells2": 6.265877296246895,
+  "k_over_R2": 0.010878259194873082,
+  "k_over_R2_face": 0.01085682290565254
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    192,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

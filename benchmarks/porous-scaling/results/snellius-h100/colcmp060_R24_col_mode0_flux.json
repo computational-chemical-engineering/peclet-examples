@@ -1,0 +1,109 @@
+{
+ "label": "snellius-h100",
+ "np": 2,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  384,
+  384,
+  384
+ ],
+ "cells": 56623104,
+ "pack": "packing_256x256x256_r16_phi0.60_s3.npz",
+ "n_spheres": 587,
+ "phi_pack": 0.6002978149925808,
+ "phi_voxel": 0.6002832165470829,
+ "seed": 3,
+ "rcells": 24.0,
+ "ibm": "cutcell",
+ "grid": "collocated",
+ "face_interp": 0,
+ "bottom": "auto",
+ "gporder": "2,2",
+ "punder": 1.0,
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 6,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 826.1712025664747,
+ "mcells_per_s": 68.5367679533033,
+ "mcells_per_s_per_rank": 34.26838397665165,
+ "pressure_iters_per_step": 24.52,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.8261230604164302,
+   "min": 0.8261175221391022
+  },
+  "predictor": {
+   "max": 0.0026460452005267142,
+   "min": 0.0026457927376031874
+  },
+  "momentum": {
+   "max": 0.40166742008179424,
+   "min": 0.4013040384463966
+  },
+  "projection": {
+   "max": 0.42121649442240594,
+   "min": 0.42085153752937915
+  },
+  "pressure_allreduce": {
+   "max": 0.0010836026,
+   "min": 0.00089165268
+  },
+  "pressure_allreduce_count": {
+   "max": 127.52,
+   "min": 127.52
+  }
+ },
+ "march": {
+  "steps": 455,
+  "pressure_iters": 7298,
+  "seconds": 315.341393860057,
+  "converged": true,
+  "u_mean": 0.02262130770902655,
+  "flux_mean": 0.022534032242401896,
+  "k_cells2": 2.262130770902655,
+  "k_over_R2": 0.003927310366150443,
+  "k_over_R2_face": 0.003912158375416996
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    192,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

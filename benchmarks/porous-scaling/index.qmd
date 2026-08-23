@@ -94,6 +94,39 @@ agglomerated bottom is a wash (24.2 iters/step both) at this box/depth — the a
 bottom's win lives in deeper hierarchies and long boxes (see the channel-scaling study), while
 costing nothing here.
 
+## Collocated schemes on the fixed beds (colcmp / colcmp060, 2026-08)
+
+The same two fixed beds carry the collocated-scheme A/B
+(`snellius/collocated_ab_gpu.sh` -> `analyze_collocated_ab.py results/snellius-h100 [colcmp060]`),
+R = 5..32 cells/radius, staggered cut-cell as the same-rung reference. Error in $k/R^2$ against
+the staggered reference and the finest-rung cost:
+
+| scheme | φ=0.50: R=8 → 32 err% | φ=0.60: R=8 → 32 err% | p.iters @R32 | ms/step @R32 |
+|---|---|---|---|---|
+| staggered cut-cell (ref) | — | — | 37 | 1185 |
+| collocated `plain` (mode 0) | −4.52 → −1.23 (order ~1) | −7.19 → −1.72 (order ~1) | 45 | 1335 |
+| collocated `gauge-exact` (mode 9) | −0.77 → **+0.29** | −2.25 → **+0.39** | 43 | 1285 |
+| collocated `ghost` | −0.34 → **+0.14** | −1.43 → **+0.22** | 92 | 4260 |
+
+Notes:
+
+- **Interpretation changed 2026-08 (read `flow/doc/collocated_invisible_subspace.md`):** the
+  gauge-exact "+0.3–0.4 % asymptote" is not a truncation ceiling — it is the bias of an
+  *attractor family* of steady states (a support-inconsistency of the gradient/constraint pair)
+  plus, at these march settings, a rotational-update instability. The ghost scheme is family-free
+  (unique, unconditionally stable, protocol-independent), and its asymptote here (+0.14/+0.22 %)
+  was *reproduced to three digits* by the independent clean-protocol campaign — it is the ghost's
+  own small discretization bias, now the production-candidate trade: robustness + ~0.2 % bias at
+  2.3–3.6× the cost. `set_collocated_scheme("ghost")` selects it since flow `ec693a1`.
+- **Face-flux estimator** (`*_flux` reruns): the flux-based $k$ agrees with the cell-mean $k$ to
+  −0.11 % (φ=0.50) / −0.22 % (φ=0.60) at R=32, converging ~O(h²) — the two estimators measure
+  the same limit, closing the estimator item of the refutation catalogue.
+- **Embed variants (modes 6/7) diverged at every bed rung** (`k = nan`): root-caused post-hoc
+  (flow `4732b17`) — a degenerate-sliver wall-drag gain at grid/surface-grazing cells, fixed by
+  a resolution-scale floor; the repaired modes remain unstable on beds for a deeper reason
+  (non-adjoint pressure pair) and are retired as scheme candidates. The archived nan runs are
+  the incident record.
+
 ## Incidents & open issues (found by this study)
 
 - **dem packing corruption on H100** (**RESOLVED** 2026-08-18, dem `17288f8`): a silent
@@ -106,11 +139,15 @@ costing nothing here.
   named the kernel; the post-fix probe-2 rerun passes all 12 configurations on H100. The
   independent voxel-fraction gates added at both pipeline ends contained the incident and
   remain as permanent defenses.
-- **Ghost-projection march instability at scale** (open, flow bug): the ghost IBM steady march
-  diverges at the np=16/32 upscale rungs (large, elongated domains) with per-solve convergence
-  intact — iteration counts identical under PMAXIT 300 vs 600, both bottom modes. The refine
-  ladder (cubic, same peak cell count) is stable. Likely related to the warmstart divergence on
-  steady marches; needs a flow-side investigation.
+- **Ghost-projection march instability at scale** (open, under active de-confounding 2026-08-23):
+  the ghost IBM steady march diverges at the np=16/32 upscale rungs with per-solve convergence
+  intact. Progress: the recorded rungs ran the PURE (2,2) closures (not the quarantined (1,2)
+  mixed mode — verified from the JSONs' `gporder`); the same 7823-sphere np=16 bed marched
+  SINGLE-RANK at R=8 is stable (`s116probe`), R≥12 exceeds one H100 (the ghost overlay's
+  ~1.6 KB/cell); the divergence needs ≥7823 spheres *at R=16* (np=8/3911 converges, refine
+  np=32/489 converges). The remaining bed-size-vs-rank-count confounder is split by the
+  submitted np=8-on-the-np=16-bed rung (`s116np8`). Tracking: flow
+  `doc/collocated_paper_plan.md` row 46.
 - The perf-phase numbers of the diverged ghost runs are valid (divergence builds over hundreds
   of march steps) and are included in the scaling panels; their $k$ values are excluded.
 

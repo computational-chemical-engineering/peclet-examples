@@ -1,0 +1,109 @@
+{
+ "label": "snellius-h100",
+ "np": 2,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  384,
+  384,
+  384
+ ],
+ "cells": 56623104,
+ "pack": "packing_256x256x256_r16_phi0.50_s100.npz",
+ "n_spheres": 489,
+ "phi_pack": 0.500077736850719,
+ "phi_voxel": 0.5000708897908529,
+ "seed": 100,
+ "rcells": 24.0,
+ "ibm": "cutcell",
+ "grid": "collocated",
+ "face_interp": 0,
+ "bottom": "auto",
+ "gporder": "2,2",
+ "punder": 1.0,
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 6,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 832.2867564484477,
+ "mcells_per_s": 68.03316712814626,
+ "mcells_per_s_per_rank": 34.01658356407313,
+ "pressure_iters_per_step": 23.48,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.8322384402528406,
+   "min": 0.8322383522801101
+  },
+  "predictor": {
+   "max": 0.0026498507149517537,
+   "min": 0.0026449342630803585
+  },
+  "momentum": {
+   "max": 0.41117178786545994,
+   "min": 0.4108791518956423
+  },
+  "projection": {
+   "max": 0.41776439277455213,
+   "min": 0.4174686534702778
+  },
+  "pressure_allreduce": {
+   "max": 0.0009709008,
+   "min": 0.00062066276
+  },
+  "pressure_allreduce_count": {
+   "max": 123.4,
+   "min": 123.4
+  }
+ },
+ "march": {
+  "steps": 380,
+  "pressure_iters": 6394,
+  "seconds": 274.17410406982526,
+  "converged": true,
+  "u_mean": 0.061454034003612906,
+  "flux_mean": 0.06133504304987263,
+  "k_cells2": 6.145403400361291,
+  "k_over_R2": 0.01066910312562724,
+  "k_over_R2_face": 0.010648444973936222
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    192,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

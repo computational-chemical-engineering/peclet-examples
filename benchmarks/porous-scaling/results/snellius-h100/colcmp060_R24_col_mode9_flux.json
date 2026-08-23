@@ -1,0 +1,109 @@
+{
+ "label": "snellius-h100",
+ "np": 2,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  384,
+  384,
+  384
+ ],
+ "cells": 56623104,
+ "pack": "packing_256x256x256_r16_phi0.60_s3.npz",
+ "n_spheres": 587,
+ "phi_pack": 0.6002978149925808,
+ "phi_voxel": 0.6002832165470829,
+ "seed": 3,
+ "rcells": 24.0,
+ "ibm": "cutcell",
+ "grid": "collocated",
+ "face_interp": 9,
+ "bottom": "auto",
+ "gporder": "2,2",
+ "punder": 1.0,
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 6,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 817.5063004158437,
+ "mcells_per_s": 69.26320197311914,
+ "mcells_per_s_per_rank": 34.63160098655957,
+ "pressure_iters_per_step": 23.8,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.8174548182077706,
+   "min": 0.8174506010860205
+  },
+  "predictor": {
+   "max": 0.0031365655176341534,
+   "min": 0.003133238833397627
+  },
+  "momentum": {
+   "max": 0.4014980228431523,
+   "min": 0.40119283894076946
+  },
+  "projection": {
+   "max": 0.4121774304099381,
+   "min": 0.41186584493145345
+  },
+  "pressure_allreduce": {
+   "max": 0.00110023824,
+   "min": 0.0007936375199999999
+  },
+  "pressure_allreduce_count": {
+   "max": 124.52,
+   "min": 124.52
+  }
+ },
+ "march": {
+  "steps": 60,
+  "pressure_iters": 1020,
+  "seconds": 42.553353999275714,
+  "converged": true,
+  "u_mean": 0.023234111405424817,
+  "flux_mean": 0.02314387524877893,
+  "k_cells2": 2.3234111405424818,
+  "k_over_R2": 0.004033699896775142,
+  "k_over_R2_face": 0.004018033897357453
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    192,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

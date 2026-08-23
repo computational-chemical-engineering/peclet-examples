@@ -1,0 +1,109 @@
+{
+ "label": "snellius-h100",
+ "np": 2,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  384,
+  384,
+  384
+ ],
+ "cells": 56623104,
+ "pack": "packing_256x256x256_r16_phi0.60_s3.npz",
+ "n_spheres": 587,
+ "phi_pack": 0.6002978149925808,
+ "phi_voxel": 0.6002832165470829,
+ "seed": 3,
+ "rcells": 24.0,
+ "ibm": "cutcell",
+ "grid": "staggered",
+ "face_interp": 0,
+ "bottom": "auto",
+ "gporder": "2,2",
+ "punder": 1.0,
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 6,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 850.0097271986306,
+ "mcells_per_s": 66.61465414826752,
+ "mcells_per_s_per_rank": 33.30732707413376,
+ "pressure_iters_per_step": 25.88,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 0.8499580183811486,
+   "min": 0.8499568654224277
+  },
+  "predictor": {
+   "max": 0.002094711996614933,
+   "min": 0.002093501668423414
+  },
+  "momentum": {
+   "max": 0.40147448556497695,
+   "min": 0.4010642325691879
+  },
+  "projection": {
+   "max": 0.4458505485393107,
+   "min": 0.445435494761914
+  },
+  "pressure_allreduce": {
+   "max": 0.00115418136,
+   "min": 0.0009048058
+  },
+  "pressure_allreduce_count": {
+   "max": 135.4,
+   "min": 135.4
+  }
+ },
+ "march": {
+  "steps": 220,
+  "pressure_iters": 5720,
+  "seconds": 190.49195047887042,
+  "converged": true,
+  "u_mean": 0.02315153374637248,
+  "flux_mean": 0.023098737001882506,
+  "k_cells2": 2.3151533746372484,
+  "k_over_R2": 0.004019363497634112,
+  "k_over_R2_face": 0.004010197396160157
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:26:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "gcn85.local.snellius.surf.nl",
+   "gpu": "0000:C6:00.0",
+   "origin": [
+    192,
+    0,
+    0
+   ],
+   "size": [
+    192,
+    384,
+    384
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}

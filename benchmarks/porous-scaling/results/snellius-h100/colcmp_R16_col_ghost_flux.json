@@ -1,0 +1,94 @@
+{
+ "label": "snellius-h100",
+ "np": 1,
+ "backend": "Cuda",
+ "omp_threads": "16",
+ "global": [
+  256,
+  256,
+  256
+ ],
+ "cells": 16777216,
+ "pack": "packing_256x256x256_r16_phi0.50_s100.npz",
+ "n_spheres": 489,
+ "phi_pack": 0.500077736850719,
+ "phi_voxel": 0.5000743865966797,
+ "seed": 100,
+ "rcells": 16.0,
+ "ibm": "ghost",
+ "grid": "collocated",
+ "face_interp": 0,
+ "bottom": "auto",
+ "gporder": "2,2",
+ "punder": 1.0,
+ "mu": 0.1,
+ "f": 0.001,
+ "dt": 60.0,
+ "pressure": "pcg",
+ "pmaxit": 300,
+ "prtol": 1e-08,
+ "mglevels": 6,
+ "vsweeps": 80,
+ "warmstart": 0,
+ "nsteps": 25,
+ "warmup": 5,
+ "ms_per_step": 1348.3246628940105,
+ "mcells_per_s": 12.443009062809695,
+ "mcells_per_s_per_rank": 12.443009062809695,
+ "pressure_iters_per_step": 54.04,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 1.348278650548309,
+   "min": 1.348278650548309
+  },
+  "predictor": {
+   "max": 0.001895749382674694,
+   "min": 0.001895749382674694
+  },
+  "momentum": {
+   "max": 0.24976803936064243,
+   "min": 0.24976803936064243
+  },
+  "projection": {
+   "max": 1.0961476168967783,
+   "min": 1.0961476168967783
+  },
+  "pressure_allreduce": {
+   "max": 0.00103635448,
+   "min": 0.00103635448
+  },
+  "pressure_allreduce_count": {
+   "max": 647.4,
+   "min": 647.4
+  }
+ },
+ "march": {
+  "steps": 40,
+  "pressure_iters": 2198,
+  "seconds": 54.95853015920147,
+  "converged": true,
+  "u_mean": 0.02779582896505503,
+  "flux_mean": 0.02768309307034466,
+  "k_cells2": 2.779582896505503,
+  "k_over_R2": 0.010857745689474622,
+  "k_over_R2_face": 0.010813708230603384
+ },
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "gcn122.local.snellius.surf.nl",
+   "gpu": "0000:A6:00.0",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    256,
+    256,
+    256
+   ]
+  }
+ ],
+ "gpu_aware_env": "1"
+}
