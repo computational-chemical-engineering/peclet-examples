@@ -183,3 +183,57 @@ reorient it — else document the fixed-orientation variant).
    pattern) so image/blockage corrections cancel; and check δ or wake scales fit the box.
 5. Every example self-contained per STYLE_GUIDE.md; digitized literature data as small CSVs in
    `literature/` with provenance in `references.bib`; log dead ends to ISSUES.md.
+
+---
+
+## OPEN FOR REVIEW (raised while executing this plan, 2026-08-30)
+
+Things the plan did not resolve that materially change numerics or the API. The conservative option
+was taken in each case and is stated; none is settled.
+
+1. **The reaction-force gate's wording, after R0.** The plan asks for "the momentum-balance identity
+   ΣF = f·N_fluid … with advection on … to solver residual". Implementing R0 showed that form is
+   *not* the identity once advection is on: the full discrete statement is
+
+       Σ_bodies F = f·N_fluid + Σ fb + Σ_i A_i − Σ_i (ρ/dt)(u_i − uⁿ_i)
+
+   and `Σ_i A_i` — the advection operator's own net momentum flux through the cut walls — is nonzero
+   (**−0.965% of f·N at N=32, −0.369% at N=48**, converging like O(h^2.4)). With it carried, the
+   budget closes to **−6.8e-15 / −3.7e-15**, i.e. round-off, which is what the gate actually wanted
+   to establish. Conservative option taken: **report** `Σ A` through a new
+   `reaction_budget_terms()` and state the identity in full, rather than absorb it (which would turn
+   a solver property into an invisible force bias) or change the advection stencil at cut cells
+   (which would perturb every validated result resting on the momentum operator). Written up as
+   §7 item 8 of `suite/docs/ANALYTIC_SDF_GEOMETRY.md`.
+
+2. **E2's "the geometry never moves, so there is no rebuild cost" is wrong as the API stands.**
+   `set_instance_motion` uploads the instance velocities, but the wall-velocity fields (`uBc_`,
+   `uwCell_`) and the momentum operator's inhomogeneous term are built inside
+   `set_solid_from_scene` — so a time-varying wall velocity has **no effect at all** until the
+   geometry is rebuilt. Conservative option taken: call `rebuild_geometry()` every step (correct;
+   the transforms are unchanged so the geometry is re-derived identically, and u/P are preserved),
+   at roughly 3× the cost of a plain step. The cheap fix, if this becomes a pattern, is a
+   `refresh_wall_velocity()` entry point that runs `buildWallVelocity()` + `rebuildStencils()`
+   without re-sampling the SDF — a small, well-factored addition, deliberately NOT made here
+   because it is a solver API change outside the Phase-0 rungs the plan authorises.
+
+3. **E2's box-calibration prescription is wrong at finite frequency.** The plan says to "CALIBRATE
+   the box (measure the steady drag λ_box in the same box) and normalize". Measured, that
+   *over*-corrects badly: the steady Stokeslet is long-ranged (1/r), so the steady periodic
+   correction is large (λ_box = 1.710 at φ = 0.0141, against Hasimoto's 1.700 for a simple-cubic
+   array — 0.56%, an independent check of the calibration itself), whereas the **oscillatory**
+   Stokeslet decays like e^{−r/δ}/r and its images are exponentially screened, ~e^{−L/δ} = 1.3e-03
+   at δ/R = 1 in an L/R = 6.7 box. Dividing by λ_box therefore removes a correction that is not
+   there. Conservative option taken: report the **raw** coefficient against Stokes (1851) together
+   with an explicit error budget — screened viscous images e^{−L/δ}, potential-part images (R/L)³,
+   the unscreened k=0 momentum mode O(φ), and discretisation O(h²) — and separate them with a grid
+   ladder at fixed L/R.
+
+4. **A uniform body force used to pin the mean flow is not free.** The first E2 driver pinned
+   ⟨u⟩ = 0 with a per-step uniform body force (the settling-gate pattern). It works — ⟨u⟩ held to
+   3.8e-10 of U₀ — but the force it applies exerts a generalised-buoyancy force on the body that the
+   unbounded theory does not contain, measured at ~8% of the drag at δ/R = 1. Conservative option
+   taken: **do not pin the mean** in the oscillating case; let it oscillate (it is set by momentum
+   conservation, with no mean pressure gradient in a periodic box) and quantify its residual effect
+   as part of the error budget above. The steady calibration keeps the classic fixed-body,
+   body-force-driven form, where the same objection does not arise.

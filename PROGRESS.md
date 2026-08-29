@@ -1,9 +1,39 @@
 # Overnight build progress
 
-**NEXT CAMPAIGN (2026-08-30): the SDF-showcase batch — see `PLAN_SDF_SHOWCASE.md`** (tennis-racket
-/ oscillating-sphere / ten-Cate / Pall-ring pack+flow / stirred-column + stretch cases, each with a
-quantitative literature or exact-solution gate, plus the three suite-side prerequisite rungs
-R0–R2). Written by the SDF-campaign agent; execute per that spec.
+## SDF-SHOWCASE CAMPAIGN (2026-08-30, in progress) — `PLAN_SDF_SHOWCASE.md`
+
+Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
+
+### Phase 0 — suite-side rungs (all landed and pushed, submodules then umbrella)
+- [x] **R0** flow: explicit advection in the reaction budget (`flow f61dfaa`). Gate: the identity
+      closes to **−6.8e-15 (N=32) / −3.7e-15 (N=48)** at Re_d = 23.3 with advection on; settling
+      gate unchanged at slip ratio **0.9989**; flow fingerprint `u_sum 6.74193610583927948e+05`
+      bit-identical at 4 threads. Exposed a *solver* property, not a budget gap — the advection
+      operator's cut-wall momentum flux, **−0.965% of f·N at N=32, −0.369% at N=48** — now reported
+      through a new `reaction_budget_terms()`. See OPEN FOR REVIEW 1 in the plan.
+- [x] **R1** dem: `set_wall_transform` + `wall_sdf_at` (`dem d820f23`). Gate: placed-vs-authored wall
+      SDF **bitwise identical** over 4000 probes; absolute (100 identical calls bitwise stable) and
+      returns home bitwise; a barrel's self-axis rotation moves its SDF by **2.4e-06** (the float32
+      floor) and a drum bed's bulk COM by **6.1e-05 grain radii**; the per-grain spread is bounded
+      by a rotated-vs-rotated control.
+- [x] **R2** dem: `set_external_torques` (same commit). Gate: principal-axis spin-up exact to dem's
+      float32 floor (**1.8e-05 … 3.4e-05** at 4000 steps, growing with step count); non-principal
+      axis vs a scipy DOP853 Euler-equation reference **4.9e-04 at dt=1e-3, order 0.94–1.00**;
+      `L_world(t) − L_world(0) = τt` to **3.0e-04 … 9.3e-04**. dem 8/8 kernel + 24/24 MPI ctests.
+- [x] umbrella bumped + `docs/ANALYTIC_SDF_GEOMETRY.md` updated (`peclet 6371a73`): Layer 3 rung 5,
+      §7 item 1 → v2 scope, §7 item 5 RESOLVED, new §7 item 8.
+
+### Phase 1 — examples with no prerequisites
+- [x] **E1 `tennis-racket`** — the Dzhanibekov flip from an analytic CSG particle. First flip within
+      **0.020%** of the torque-free Euler equations at dt=5e-4 (0.0031% at half that, sign-reversed);
+      elliptic closed form and the machine-precision ODE agree to **7 digits** (8.759483); |L| drift
+      **9.3e-03** and E drift **1.9e-02** over four flips (float32, not truncation — halving dt does
+      not reduce it); minor/major-axis controls tilt **1.04°/0.87°** and do not flip.
+- [~] **E2 `oscillating-sphere`** — unsteady Stokes drag vs Stokes (1851). Driver works; steady box
+      calibration validated independently (**λ_box = 1.710 vs Hasimoto 1.700, 0.56%**). Two plan
+      premises corrected in flight — see OPEN FOR REVIEW 2–4.
+- [~] **E4a `pall-ring-packing`**
+- [~] **E7 `nonsphere-drag`**
 
 
 Working through a batch of single-phase-flow benchmark examples for the gallery.
