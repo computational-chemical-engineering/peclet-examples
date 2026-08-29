@@ -1,5 +1,11 @@
 # Overnight build progress
 
+**NEXT CAMPAIGN (2026-08-30): the SDF-showcase batch — see `PLAN_SDF_SHOWCASE.md`** (tennis-racket
+/ oscillating-sphere / ten-Cate / Pall-ring pack+flow / stirred-column + stretch cases, each with a
+quantitative literature or exact-solution gate, plus the three suite-side prerequisite rungs
+R0–R2). Written by the SDF-campaign agent; execute per that spec.
+
+
 Working through a batch of single-phase-flow benchmark examples for the gallery.
 Each example is **self-contained** (creates its own SDF, sets all parameters
 inline — no `channels.py`-style imports), executed against the local CPU build
