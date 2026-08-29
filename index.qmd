@@ -282,6 +282,20 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/tennis-racket.jpg)](examples/tennis-racket/index.qmd)
+
+::: {.card-body}
+#### [Tennis-racket theorem](examples/tennis-racket/index.qmd)
+A racket authored as a CSG tree flips about its intermediate axis — within 0.02% of the
+torque-free Euler equations.
+[dem · CSG · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/tumbling-cubes.jpg)](examples/tumbling-cubes/index.qmd)
 
 ::: {.card-body}

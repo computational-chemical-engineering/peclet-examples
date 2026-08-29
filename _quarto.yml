@@ -61,6 +61,8 @@ website:
             text: "Rotating drum (moving SDF walls)"
           - href: examples/tumbling-cubes/index.qmd
             text: "Tumbling cubes (non-spherical, GPU)"
+          - href: examples/tennis-racket/index.qmd
+            text: "Tennis-racket theorem (analytic particle, exact)"
       - text: "CFD-DEM"
         menu:
           - href: examples/fluidized-bed/index.qmd
