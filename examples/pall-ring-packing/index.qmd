@@ -250,11 +250,20 @@ Fifty rings dropped into a box that is **periodic in $x$ and $z$** (so there are
 all) onto an analytic floor, then tapped twice and quenched.
 
 ::: {.callout-important}
-## Two `peclet.dem` traps this page hit
-`set_positions` **resets every particle to shape 0**, so `set_shape_ids` must come *after* it. And
-`add_scene_shape` does not size the contact buffers, so a `Simulation` must be constructed with a
-capacity well above the particle count — otherwise contacts are silently dropped (grains fall
-through the floor) and, at this size, the run corrupts the heap and aborts. Both are logged in
+## A `peclet.dem` trap, and a bug this page found and got fixed
+`set_positions` **resets every particle to shape 0**, so `set_shape_ids` must come *after* it —
+that one is permanent, and it is in the docstring.
+
+The second was a real defect. Writing this page, composed-tree grains fell straight through the
+floor, and at 48 rings × 1625 shell probes the run corrupted the heap and aborted around step 2000.
+Both were the same cause: every contact buffer was sized from the particle capacity *at the moment
+a shape was registered*, while `demStep` grows that capacity on **every** step (it adds ghost
+headroom), so the buffers were left behind and the narrow phase's boundary contacts — appended
+after the body-body ones — fell off the end. `add_scene_shape` also never called the sizing routine
+at all, which every sibling adder does. Fixed in `peclet.dem` (`growContactBuffers` now runs
+wherever the capacity grows), with a regression that drops composed-tree grains onto a plane from a
+deliberately small construction capacity. The workaround this page originally carried —
+constructing the `Simulation` far larger than the particle count — is no longer needed. See
 [ISSUES.md](../../ISSUES.md).
 :::
 
@@ -272,7 +281,7 @@ while len(pos) < N:                 # a loose non-overlapping cloud to drop from
 pos = np.asarray(pos, dtype=np.float32)
 quat0 = rng.normal(size=(N, 4)); quat0 /= np.linalg.norm(quat0, axis=1)[:, None]
 
-sim = pdem.Simulation(600)          # NOT N+8 — see the callout above
+sim = pdem.Simulation(N + 8)        # the buffers now follow the capacity; no headroom needed
 sim.set_domain((0.0, -1.2, 0.0), (L, 60.0, L))
 sim.enable_periodicity(True, False, True)
 sim.set_gravity(0.0, -9.81, 0.0)
@@ -498,11 +507,12 @@ plt.show()
 ```
 
 Each ring touches `{python} "%.2f" % Z_MEAN` others on average, counting a contact only where one
-ring's probes are strictly *inside* the other's tree. That is below the isostatic bound of about 4
-that a jammed frictional packing of non-spherical rigid bodies needs, and it is the same finding as
-the residual jitter above, seen structurally: this is a **loose, quasi-static bed held partly by
-interlocking**, not a jammed pack. A denser pack would need a harder protocol (more taps, a longer
-quench, or compaction under a lid) — and would give a lower $\varepsilon$.
+ring's probes are strictly *inside* the other's tree. That sits at about the isostatic bound —
+roughly 4 contacts per body for a frictional packing of rigid non-spherical shapes, where friction
+supplies the tangential constraints — so the bed is *marginally* rigid rather than comfortably
+jammed. Together with the residual jitter above, the honest description is a **loose bed held
+partly by interlocking**. A denser pack would need a harder protocol (more taps, a longer quench,
+or compaction under a lid) and would give a lower $\varepsilon$.
 
 The ring axes come out at
 $\lvert\cos\theta\rvert =$ `{python} "%.3f" % cos_v.mean()` ± `{python} "%.3f" % SEM` against
@@ -615,6 +625,13 @@ import os
 print("pall_ring_pack.npz: %d rings, %.1f kB — the tree is stored too, so a consumer needs "
       "nothing but this file." % (N, os.path.getsize("pall_ring_pack.npz") / 1024))
 print("\ntotal page runtime %.0f s" % (time.time() - T_PAGE))
+
+# Release the simulation's device allocations before the interpreter exits. Kokkos aborts if a
+# View outlives Kokkos::finalize, and with a 1625-probe shell the contact buffers are large enough
+# that the abort kills the Jupyter kernel mid-render rather than merely printing a backtrace.
+import gc
+del sim
+gc.collect()
 ```
 
 ## Results
@@ -642,8 +659,8 @@ bed's $\varepsilon =$ `{python} "%.3f" % EPS` and an industrial 0.94 is geometri
 failure.
 
 Three caveats stated rather than buried. The bed is **loose and quasi-static**: mean coordination
-`{python} "%.2f" % Z_MEAN` is under the isostatic ~4, so this is not a jammed packing and
-$\varepsilon$ is correspondingly on the high side. The max contact overlap reaches
+`{python} "%.2f" % Z_MEAN` sits at the isostatic ~4 rather than above it, so this is a marginally
+rigid bed rather than a jammed packing, and $\varepsilon$ is correspondingly on the high side. The max contact overlap reaches
 `{python} "%.0f%%" % (100 * MAXOV / T)` of the wall thickness — the price of a point-shell contact
 model on a thin, concave body — though the volume actually covered by two rings at once is only
 `{python} "%.4f%%" % (100 * OVLAP)` of the bed, so it does not move the porosity. And the bed does
