@@ -282,6 +282,20 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/rotating-sphere-torque.jpg)](examples/rotating-sphere-torque/index.qmd)
+
+::: {.card-body}
+#### [Rotating sphere torque](examples/rotating-sphere-torque/index.qmd)
+A negative result, fully diagnosed: the torque is 31% low because the viscous operator drops
+∇uᵀ — which carries exactly a third of it, and vanishes from the force.
+[flow · torque · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/moving-sphere-drag.jpg)](examples/moving-sphere-drag/index.qmd)
 
 ::: {.card-body}

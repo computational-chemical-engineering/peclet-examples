@@ -73,13 +73,30 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       δ/h = 4.05/5.06/6.32, box independent to **0.1%** between L/D = 7.5 and 10, and a
       half-amplitude bracket lands on the same δ/h curve.
 
+- [x] **`rotating-sphere-torque`** (requested) — a **negative result, fully diagnosed**. The Stokes
+      torque 8πμa³Ω is exact and a sphere is invariant under its own rotation, so the geometry never
+      moves: the cleanest possible torque test. The discrete-reaction torque is **−31.0%**, flat over
+      a factor of 8 in box volume, 3.4 in solid fraction, 2 in R/h, and from 600 to 4000 steps. Net
+      force on the same runs: **1e-13**. Cause, exact: the viscous operator is the Laplacian
+      ∇·(μ∇u), not ∇·[μ(∇u+∇uᵀ)]; for the rotlet (∇uᵀ)·n is exactly **half** of (∇u)·n pointwise on
+      the surface, so the transpose carries exactly **one third** of the torque — predicted −33.33%,
+      measured −31.0%. It hides because that term integrates to **zero in the force** but not under
+      the r× weighting. Same plateau Maitri et al. (2018) measured (34.34/33.04/33.24/33.32%) on the
+      Deen et al. (2012) IBM. A second, independent defect: the **traction** torque drifts linearly
+      with step count on a steady field (−26% → +83%) because the cut-cell operator decouples
+      solid-centred pressure cells — std(P) is 7.3e-07 and constant in the fluid, 2.5e-04 → 1.6e-03
+      and linear in the solid. **Consequence: E8 (Jeffery orbit) is BLOCKED, not merely unbuilt.**
+
 ### Not done this session (Phase 2/3 remainder)
 - [ ] **E3a `ten-cate-sphere`** — a **verified data sheet is now in the plan** (all four cases'
       properties, the recomputed Abraham u_∞, the measured peak velocities 0.0363 / 0.0571 / 0.0869 /
       0.1226 m/s, the release geometry, and the wall-correction trap). Ready to execute.
 - [ ] **E4b `pall-ring-flow`** — E4a's frozen `.npz` carries the tree and is its input.
-- [ ] **E3b `drafting-kissing-tumbling`**, **E8 `jeffery-orbit`**, **E9 `dumbbell-sedimentation`**.
-      E8 is the gate that would let `ResolvedCfdDem`'s reaction torque be turned on by default.
+- [ ] **E3b `drafting-kissing-tumbling`** — force-only, so unblocked; needs a two-body resolved run.
+- [!] **E8 `jeffery-orbit`** — **BLOCKED** on the torque (see `rotating-sphere-torque`). It would be
+      ~31% off and the error is not visible in any force-based check.
+- [ ] **E9 `dumbbell-sedimentation`** — force-only in the fixed-orientation variant, so unblocked;
+      the freely-reorienting variant is blocked with E8.
 
 ### Suite fixes the examples produced
 - **dem `53fab35`** (+ `5c53d41`, `326deb2`) — two out-of-bounds writes found by the pall-ring
