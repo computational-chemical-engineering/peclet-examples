@@ -282,6 +282,20 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/nonsphere-drag.jpg)](examples/nonsphere-drag/index.qmd)
+
+::: {.card-body}
+#### [Non-spherical Stokes drag](examples/nonsphere-drag/index.qmd)
+Equal-volume drag ratios, validated against the exact Oberbeck spheroid — then a cube whose
+drag is orientation-independent to 0.14%, as its symmetry demands.
+[flow · CSG · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/oscillating-sphere.jpg)](examples/oscillating-sphere/index.qmd)
 
 ::: {.card-body}

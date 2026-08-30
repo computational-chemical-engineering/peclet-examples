@@ -45,6 +45,8 @@ website:
             text: "Wall-bounded turbulence (DNS vs MKM, HPC)"
           - href: examples/oscillating-sphere/index.qmd
             text: "Oscillating sphere (unsteady Stokes drag, exact)"
+          - href: examples/nonsphere-drag/index.qmd
+            text: "Non-spherical Stokes drag (spheroids, cubes)"
       - text: "Packings & porous"
         menu:
           - href: examples/zick-homsy/index.qmd
