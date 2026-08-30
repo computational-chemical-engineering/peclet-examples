@@ -323,3 +323,60 @@ table above, and the shape of the approach and the bottom-wall deceleration qual
 example is otherwise as the E3a entry describes: tank as a static scene instance (an inverted box),
 sphere as a second instance, `ResolvedCfdDem`-style loop with the reaction force. Cases E2–E4 need
 R0 (landed).
+
+---
+
+## Handoff notes for the remaining E items (2026-08-31, for the next executor)
+
+Everything above stands; these are the session facts that are not obvious from the specs alone.
+
+**Reference implementations to copy:** `examples/rotating-sphere-torque/index.qmd` is the current
+best template for a flow-side resolved example (scene encoding, ladder structure, results-table
+conventions, the `ResolvedCfdDem` spin-decay driver); `examples/tennis-racket/index.qmd` for a
+dem-side one. `render_example.sh` is current; dem numeric claims at `OMP_NUM_THREADS=1` on the
+HOST build only.
+
+**E8 `jeffery-orbit` — now the highest-value target, and its groundwork is done.**
+- The torque is fixed (flow `16e91ec`) and gated: `rotation_gate.py` in `.sdf-campaign-probes/`
+  is the pattern to follow (part A statics, part B the dem hand-off). Expect the same ~+2–3%
+  aperture-level accuracy on torque.
+- `ResolvedCfdDem(..., apply_torque=True)` works and is validated; **`set_inv_inertia` with the
+  physical principal inertia first is mandatory** (dem's default is not the grain's — the
+  documented divergence trap).
+- The Couette: two plate instances as STATIC geometry carrying opposite `lin_vel` — use the new
+  `refresh_wall_velocity()` per step (they never move), NOT `rebuild_geometry()`. The ellipsoid
+  leaf is bound-only and that is fine: E7 measured bound-vs-exact leaves giving drag identical to
+  six digits (the cut-cell geometry uses the zero set and crossings, never the distance).
+- The ellipsoid spins, so its GEOMETRY moves each step: the particle instance does need
+  `set_instance_transform` + `rebuild_geometry` (fresh-cell seeding is already the default and is
+  what makes this clean; see `moving-sphere-drag`).
+- Gate: T = (2π/γ̇)(r + 1/r) at r = 2 and 4. Watch the two timescales: the orbit period is long
+  compared to the shear time — budget the run, and the plates must be far enough apart that the
+  gradient at the particle is the nominal γ̇ (measure it in an empty-channel control first).
+- A PASSING Jeffery orbit is the agreed justification to flip `apply_torque` default to True
+  (with an inertia guard in dem); say so in the commit if it passes.
+
+**E3a `ten-cate-sphere`:** the verified data sheet is in this file (§ E3a data sheet). Gate against
+u(t) in the REAL box from rest — never against a wall-corrected terminal velocity (the correction
+never establishes; τ_wall = 6.5–41 s vs 1–3.3 s fall times). E2–E4 need advection: on, and carried
+by the reaction budget since R0. The tank = inverted-box static instance; `rho/mu/dt` before
+`set_solid`.
+
+**E4b `pall-ring-flow`:** input = `examples/pall-ring-packing/pall_ring_pack.npz` (positions,
+quaternions, node_ints/node_reals, home_root, bounding_radius — self-contained). Claim is the
+Ergun/Stichlmair BAND, never %-agreement. Measure and report `set_solid_from_scene` time — the
+certified-difference pruning was E4a's design decision and this page is where it pays.
+
+**E9 / E3b:** fully unblocked. E9's freely-reorienting variant uses the same
+apply_torque machinery as E8; do E8 first so its gate covers this.
+
+**Traps that cost this session real time (beyond the plan's standing list):**
+- Editing a qmd — even only its YAML — invalidates the freeze and re-executes on next render.
+- A page ending while holding a large dem `Simulation` can kill the Jupyter kernel at teardown;
+  `del sim; gc.collect()` at the end of the last cell.
+- `sleep`-free waiting: renders at N=200³ run ~12 min/case on the RTX 5080; N=240³ OOMs 16 GB.
+- The VoF campaign is concurrently active in `flow` (uncommitted work orders in the working tree):
+  stage NAMED paths only, never `git add -A` in flow, and if you must touch a file they hold
+  dirty, commit your hunks via a filtered patch (`git apply --cached`).
+- Literature numbers: `references.bib` entries are Crossref-verified; keep that bar (a guessed
+  Dütsch DOI in this session was a 404).
