@@ -29,11 +29,41 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       elliptic closed form and the machine-precision ODE agree to **7 digits** (8.759483); |L| drift
       **9.3e-03** and E drift **1.9e-02** over four flips (float32, not truncation — halving dt does
       not reduce it); minor/major-axis controls tilt **1.04°/0.87°** and do not flip.
-- [~] **E2 `oscillating-sphere`** — unsteady Stokes drag vs Stokes (1851). Driver works; steady box
-      calibration validated independently (**λ_box = 1.710 vs Hasimoto 1.700, 0.56%**). Two plan
-      premises corrected in flight — see OPEN FOR REVIEW 2–4.
-- [~] **E4a `pall-ring-packing`**
-- [~] **E7 `nonsphere-drag`**
+- [x] **E2 `oscillating-sphere`** — unsteady Stokes drag vs Stokes (1851), complex. Headline
+      **0.23%** at δ/R = 1 in the largest box (C = +2.00245 −1.21741i against +2.00000 −1.22222i);
+      the δ/R sweep at L/R = 10 runs 0.25 / 0.29 / 0.43 / 0.95 / 2.48% over δ/R ∈ [0.5, 2.5], the
+      last point being where δ reaches L/4 and the screening stops. Box ladder 2.48 → 0.43 → 0.23%.
+      Steady calibration vs Hasimoto–Sangani–Acrivos: −1.50 / −0.47 / **−0.15%** at
+      c = 0.0141 / 0.0042 / 0.0018, with the superficial-vs-interstitial convention settled ON THE
+      DATA (fitted B = 0.90 vs the exact 1; interstitial gives 1.34). Three plan premises corrected
+      — OPEN FOR REVIEW 2–4 — plus one bookkeeping error larger than any of them: the backward-Euler
+      wall BC belongs at t^{n+1}, and imposing it at t^n rotates the fitted phase by ωΔt.
+- [x] **E4a `pall-ring-packing`** — a certified-difference Pall ring, poured and measured.
+      Certificate: **0.00%** of exterior probes violate the exactness bound (min slack +1.9e-12)
+      against **24.68%** for the same solid built from the sign-exact leaf. ε = **0.797** ± 0.0007,
+      f_env = 0.585, coordination 4.04, 0 rattlers, orientation |cos θ| = 0.469 ± 0.042. The claim
+      is a **band and a mechanism**, not a percentage: holding the one measured f_env fixed and
+      varying only the wall thickness walks ε from 0.741 (t/D = 0.16, the ceramic band) to 0.957.
+- [x] **E5 `stirred-column`** (Phase 2, needs R1) — a pitched-blade impeller whose geometry actually
+      sweeps. Lacey index **0.061 → 0.918** in five revolutions over 40 fixed bins × 553 grains;
+      median peak grain speed **1.01×** the blade-tip speed (worst single sample 1.40×), **0** grains
+      outside the column, two 1-thread runs bitwise identical. Literature comparison stated as
+      qualitative — the meridional recirculation pattern of Remy et al. (2009), not their numbers.
+- [~] **E7 `nonsphere-drag`** — equal-volume drag ratios validated against the exact Oberbeck
+      spheroid solution before being used to predict cube/superquadric values.
+
+### Suite fixes the examples produced
+- **dem `53fab35`** (+ `5c53d41`, `326deb2`) — two out-of-bounds writes found by the pall-ring
+  pour: the raw narrow-phase contact count used as a loop bound over `maxContacts`-sized views, and
+  **twelve** capacity-sized per-body arrays never resized when the SoA grew. Measured effect beyond
+  not crashing: mean coordination 3.38 → 4.04 and peak contact overlap 63% → 32% of the wall.
+- **dem `6d27ba4`** — `step()`'s docstring claimed `dt=0` uses the configured time step; it does
+  not, it runs a dynamics-free relaxation step. And the default **body-body** friction is zero,
+  which silently lets a deep bed leak through an analytic wall (found building E5).
+- **coupling `3b24934`** — `ResolvedCfdDem` can hand dem the reaction torque, **off by default**:
+  the force's exactness rests on `-grad(pi)` telescoping over an owner region and that argument does
+  not survive taking the first moment (|T|/(|F|R) = 3.2e-07 on a sphere whose true torque is exactly
+  zero, against the traction integral's 5.0e-14).
 
 
 Working through a batch of single-phase-flow benchmark examples for the gallery.

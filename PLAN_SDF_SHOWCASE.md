@@ -237,3 +237,52 @@ was taken in each case and is stated; none is settled.
    conservation, with no mean pressure gradient in a periodic box) and quantify its residual effect
    as part of the error budget above. The steady calibration keeps the classic fixed-body,
    body-force-driven form, where the same objection does not arise.
+
+---
+
+## E3a data sheet — ten Cate et al. (2002), verified from the paper
+
+Gathered 2026-08-30 so the example can be executed without re-doing the literature work. Every
+number below was read from the paper (TU Delft open copy of the AIP typeset article) or recomputed
+and cross-checked against it; the provenance of each is stated.
+
+**Geometry.** Tank 100 × 100 × 160 mm. Sphere: nylon, d = 15 mm, ρ_p = 1120 kg/m³, released
+**from rest** on the tank axis with its **bottom apex** 120 mm above the floor — Fig. 6's caption
+defines h/d_p as the gap from the bottom apex, and Fig. 8(a) starts at h/d_p = 8.0 = 120/15 — so the
+**centre starts at 127.5 mm** in the 160 mm tank.
+
+**Cases** (Table I; the printed viscosity header is an erratum, the values are Pa·s):
+
+| case | ρ_f (kg/m³) | μ (Pa·s) | u_∞ (m/s) | Re | St | **u_max measured (m/s)** |
+|---|---|---|---|---|---|---|
+| E1 | 970 | 0.373 | 0.03829 | 1.5 | 0.19 | **0.0363** |
+| E2 | 965 | 0.212 | 0.05992 | 4.1 | 0.53 | **0.0571** |
+| E3 | 962 | 0.113 | 0.09062 | 11.6 | 1.50 | **0.0869** |
+| E4 | 960 | 0.058 | 0.12839 | 31.9 | 4.13 | **0.1226** |
+
+`u_∞` is **not measured** — it is the terminal velocity of a sphere in an INFINITE medium from the
+Abraham (1970) drag correlation, recomputed here (solving that correlation reproduces the paper's
+printed Re to 3 s.f.: 1.49, 4.09, 11.57, 31.88). Table II's `u_max/u_∞` column gives the
+experimental ratios **0.947 / 0.953 / 0.959 / 0.955**, and the last column of the table above is
+ratio × recomputed u_∞. Honest error bar ±1%, dominated by unstated fluid-property/temperature
+uncertainty; the ratios themselves are ±0.05%. No tabulated experimental u_max exists — Table III
+gives u_max in lattice units for the simulations only — but Fig. 8(b) plots u in m/s for E1 and E4
+and both are consistent with the table to ±0.002.
+
+**Why 0.947 and not 0.69 — the trap to avoid.** The classical steady wall correction for a sphere on
+the axis of a duct (Ladenburg/Faxén, K = 1 − 2.104λ + 2.09λ³ with λ = a/R = 0.15) predicts a **31%**
+slowdown, and even the loosest classical geometry (parallel plates) only reaches 0.851 — so a
+measured 0.947 looks impossible. It is not: **the steady wall correction never establishes**. The
+particle relaxation time is τ ≈ 0.054 s (E1), but the wall correction is carried by vorticity
+diffusing across the container half-width, τ_wall = (L/2)²/ν = **6.5, 11.4, 21.3, 41.4 s** for
+E1–E4, against fall times of only **3.3, 2.1, 1.4, 1.0 s**. The sphere reaches the bottom before the
+container-scale Stokes field exists. The paper reasons the same way at the particle scale and says
+so; its own LBM runs in the real 100 × 100 × 160 box give 0.894 / 0.950 / 0.955 / 0.947, an
+independent confined-domain calculation reproducing ≈0.95 rather than 0.69–0.85.
+
+**Consequence for the gate:** do **not** compare against a wall-corrected steady terminal velocity.
+Simulate the real box, release from rest at h/d_p = 8.0, and compare u(t) — the peak against the
+table above, and the shape of the approach and the bottom-wall deceleration qualitatively. The
+example is otherwise as the E3a entry describes: tank as a static scene instance (an inverted box),
+sphere as a second instance, `ResolvedCfdDem`-style loop with the reaction force. Cases E2–E4 need
+R0 (landed).
