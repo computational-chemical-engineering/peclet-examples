@@ -206,7 +206,31 @@ was taken in each case and is stated; none is settled.
    (which would perturb every validated result resting on the momentum operator). Written up as
    §7 item 8 of `suite/docs/ANALYTIC_SDF_GEOMETRY.md`.
 
-2. **E2's "the geometry never moves, so there is no rebuild cost" is wrong as the API stands.**
+2. **E2's "the geometry never moves, so there is no rebuild cost" — RESOLVED 2026-08-30:
+   `refresh_wall_velocity()` implemented (flow `23a8c82`).** The observation below stood; the
+   conservative workaround has been replaced by the entry point it was pointing at.
+   `refreshWallVelocity()` runs `buildWallVelocity()` + `rebuildStencils()` and nothing else, and
+   refuses if an instance transform has changed since the last geometry build (it does not
+   re-sample the SDF, the apertures, the ownership field or the pressure operator, so on a body
+   that had actually moved it would silently continue on stale geometry).
+
+   *Gated on exactness, not approximation:* over 60 steps of a cos-driven wall velocity it gives
+   **bitwise-identical** u, v, w and P to `rebuild_geometry()` (max\|diff\| 0.000e+00, all four),
+   with the reaction force agreeing to 3.7e-15 — the documented atomics floor. Cost on CUDA at
+   N = 48: the **call** is 4.0 → 1.4 ms, **2.8× cheaper**, which against a 12.4 ms bare step is
+   about **16% off the driver's per-step total**. Both numbers are quoted because the 2.8× alone
+   would overstate what a caller saves: the refresh still rebuilds the momentum stencils, which are
+   the bulk of a geometry rebuild.
+
+   *And it surfaced a real bug, live on the `rebuild_geometry` path too.* `buildWallVelocity`
+   returned early when `hasMotion_` went false, leaving previously-built `uBc_`/`uwCell_`
+   **stranded** — and `wallVelView()` keys off the field's extent, not `hasMotion_`, so a body
+   whose velocity the caller set back to zero kept its old wall velocity folded into the momentum
+   operator indefinitely. The fields are now zeroed instead. Gated: a body stopped and refreshed is
+   bitwise identical to one that never moved, while the same run *without* the refresh differs by
+   1.9e-02 in u and 5.2e-02 in P — exhibited, not asserted.
+
+   *(original observation)* **The API as it stood.**
    `set_instance_motion` uploads the instance velocities, but the wall-velocity fields (`uBc_`,
    `uwCell_`) and the momentum operator's inhomogeneous term are built inside
    `set_solid_from_scene` — so a time-varying wall velocity has **no effect at all** until the
@@ -217,8 +241,21 @@ was taken in each case and is stated; none is settled.
    without re-sampling the SDF — a small, well-factored addition, deliberately NOT made here
    because it is a solver API change outside the Phase-0 rungs the plan authorises.
 
-3. **E2's box-calibration prescription is wrong at finite frequency.** The plan says to "CALIBRATE
-   the box (measure the steady drag λ_box in the same box) and normalize". Measured, that
+3. **E2's box-calibration prescription is wrong at finite frequency — and nothing in the solver is
+   missing.** This is a statement about the *reference*, not about the code, and it is worth being
+   explicit because a 40% number invites the opposite reading. The plan says to "CALIBRATE the box
+   (measure the steady drag λ_box in the same box) and normalize". Doing so *introduces* a ~40%
+   error rather than removing one, because at finite frequency there is no large image correction
+   left to remove: the steady Stokeslet decays as 1/r (hence Hasimoto's 1.7601 c^{1/3} term and a
+   65% effect at this dilution), while the **oscillatory** Stokeslet decays as e^{−r/δ}/r and its
+   images are exponentially suppressed — e^{−L/δ} = 1.3e-03 at δ/R = 1 in that box, and 1.6e-06 at
+   L/R = 13.3. Finite frequency screens the box.
+
+   *The positive evidence that nothing is missing:* the **uncorrected** measurement converges onto
+   Stokes (1851) as the box grows — 2.48% → 0.43% → **0.23%**, with both the real and the imaginary
+   part right. A missing physical term would plateau under that refinement, not converge. What
+   remains at 0.23% is identified rather than left over: the unscreened k = 0 momentum mode, the one
+   long-range channel that survives the screening, which is O(c). Measured, that
    *over*-corrects badly: the steady Stokeslet is long-ranged (1/r), so the steady periodic
    correction is large (λ_box = 1.710 at φ = 0.0141, against Hasimoto's 1.700 for a simple-cubic
    array — 0.56%, an independent check of the calibration itself), whereas the **oscillatory**

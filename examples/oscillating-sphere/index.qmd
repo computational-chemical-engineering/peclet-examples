@@ -201,11 +201,21 @@ print("       superficial  A=%+.4f  B=%+.4f          interstitial  A=%+.4f  B=%+
 
 ## Step 2 — Oscillate the wall
 
-`set_instance_motion` sets the instance's rigid-body velocity. One thing the API does *not* do is
-refresh the wall-velocity fields on its own: those are built where the geometry is
-(`set_solid_from_scene`), so a **time-varying** wall velocity needs `rebuild_geometry()` each step.
-The transforms never change, so the geometry comes back identical and the velocity and pressure
-fields are preserved across the call — it costs time, not accuracy.
+`set_instance_motion` sets the instance's rigid-body velocity, but it does not on its own reach the
+fields that carry it into the solve: the momentum operator's no-slip datum and the cut-cell
+projection's wall flux are both built where the geometry is, in `set_solid_from_scene`. A
+**time-varying** wall velocity therefore needs one call per step to rebuild them.
+
+`refresh_wall_velocity()` is that call. It re-derives the wall-velocity fields and the momentum
+stencils and nothing else, and it refuses if an instance transform has changed since the last
+geometry build — because it does *not* re-sample the SDF, the apertures or the pressure operator,
+and on a body that had actually moved it would silently continue on stale geometry. For this page
+the transforms never change, which is exactly its scope.
+
+The alternative is `rebuild_geometry()`, which re-derives everything and gives **bitwise-identical**
+fields here; it costs 4.0 ms against 1.4 ms at $N=48$ on this GPU, against a bare step of 12.4 ms.
+That is a 2.8× cheaper call and about 16% off the driver's per-step total — worth having, and worth
+stating both ways rather than quoting only the 2.8×.
 
 ```{python}
 #| label: driver
@@ -234,7 +244,7 @@ def _oscillate(n, r, delta, spp, nper, fitp):
         # larger than everything else on this page.
         now = (it + 1) * dt
         s.set_instance_motion(0, lin_vel=[U0 * np.cos(om * now), 0.0, 0.0])
-        s.rebuild_geometry()                    # refreshes the wall-velocity fields
+        s.refresh_wall_velocity()               # the geometry is static; only the BC moves
         s.step()
         force.append(float(np.asarray(s.hydro_force_torque_reaction())[0][0][0]))
         t.append(now)
@@ -420,7 +430,9 @@ geometry and the reaction force are not the uncertain part.
 - **Change the shape.** Any `peclet.core.geom` tree can replace the sphere leaf; the drag is then a
   prediction rather than a check.
 - **Move the geometry for real.** `set_instance_transform` + `rebuild_geometry` translates the body
-  instead of only its boundary condition — the right route once $A/R$ is not small.
+  instead of only its boundary condition — the right route once $A/R$ is not small, and the one
+  case where `refresh_wall_velocity` is not enough (it refuses, rather than running on stale
+  geometry).
 
 ## Reproduce this
 
