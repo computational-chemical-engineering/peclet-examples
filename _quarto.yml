@@ -47,6 +47,8 @@ website:
             text: "Oscillating sphere (unsteady Stokes drag, exact)"
           - href: examples/nonsphere-drag/index.qmd
             text: "Non-spherical Stokes drag (spheroids, cubes)"
+          - href: examples/moving-sphere-drag/index.qmd
+            text: "Moving sphere: spurious force oscillations (vs Blackburn)"
       - text: "Packings & porous"
         menu:
           - href: examples/zick-homsy/index.qmd

@@ -60,6 +60,19 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       **bound-only** geometry leaf gives drag identical to a distance-exact one to six digits,
       because the cut-cell geometry uses the zero level set and the crossings, not the distance.
 
+### Follow-up (requested after the batch): moving geometry
+- [x] **`moving-sphere-drag`** — the sphere PHYSICALLY translates through the grid. Spurious force
+      oscillation measured with the literature's own metric (Seo & Mittal Eq. 12 second difference)
+      plus a 5-harmonic residual: **3.07e-02 against a static-geometry floor of 6.98e-04**, i.e. 44×,
+      with a **resolution-independent +2.6…+2.9% drag bias** on top (+2.91/+2.61/+2.71% at
+      R/h = 6.4/9.6/12.8 — refinement was never going to fix it). Refining Δt makes it **worse**
+      (2.80e-02 → 4.13e-02), the literature's signature that the source is spatial.
+      **Fresh-cell seeding** (new `set_fresh_cell_seed`, now the flow default) takes the oscillation
+      to **9.55e-04**, within 1.4× of the non-moving floor, and the bias to −0.04%. Beyond Stokes,
+      the peak drag converges onto Blackburn (2002) Table II: **+10.27 → +2.10 → −0.42%** at
+      δ/h = 4.05/5.06/6.32, box independent to **0.1%** between L/D = 7.5 and 10, and a
+      half-amplitude bracket lands on the same δ/h curve.
+
 ### Not done this session (Phase 2/3 remainder)
 - [ ] **E3a `ten-cate-sphere`** — a **verified data sheet is now in the plan** (all four cases'
       properties, the recomputed Abraham u_∞, the measured peak velocities 0.0363 / 0.0571 / 0.0869 /

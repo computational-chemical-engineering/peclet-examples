@@ -282,6 +282,20 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/moving-sphere-drag.jpg)](examples/moving-sphere-drag/index.qmd)
+
+::: {.card-body}
+#### [Moving sphere: does the drag spike?](examples/moving-sphere-drag/index.qmd)
+The classic immersed-boundary pathology, measured — and the fresh-cell fix that removes a
+resolution-independent 2.6% drag bias. Finite Re within 0.4% of Blackburn (2002).
+[flow · moving geometry · IBM]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/nonsphere-drag.jpg)](examples/nonsphere-drag/index.qmd)
 
 ::: {.card-body}
