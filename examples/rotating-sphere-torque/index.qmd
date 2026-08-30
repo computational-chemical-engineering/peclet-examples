@@ -1,6 +1,6 @@
 ---
-title: "Torque on a rotating sphere: a negative result"
-subtitle: "The Stokes torque 8πμa³Ω is exact and the geometry never moves, which makes this the cleanest possible test of a resolved solver's torque. peclet.flow fails it — by 31%, structurally — and this page establishes exactly how."
+title: "Torque on a rotating sphere: a negative result, then a fix"
+subtitle: "The Stokes torque 8πμa³Ω is exact and the geometry never moves — the cleanest possible torque test. peclet.flow failed it by a structural 31%, the cause turned out to be derivable in three lines, and the fix is a closed-form wall term with no reconstruction in it."
 author: "Peclet"
 date: "2026-08-31"
 categories: [flow, IBM, verification, analytic, torque, GPU]
@@ -12,37 +12,100 @@ jupyter: python3
 
 ## What you'll learn
 
-Most of this gallery reports things that work. This one reports something that does not, because the
-measurement is unambiguous and the consequence matters: **`peclet.flow` can compute the force on a
-resolved body to round-off, and cannot yet compute the torque.**
-
-A sphere spinning at angular velocity $\Omega$ in unbounded quiescent Stokes flow feels
+A sphere of radius $a$ spinning at angular velocity $\Omega$ in unbounded quiescent Stokes flow
+feels
 
 $$
 \mathbf{T} = -8\pi\mu a^{3}\,\boldsymbol\Omega ,
 $$ {#eq-stokes-torque}
 
-exactly. The test is unusually clean for three reasons: the answer is closed-form with no series and
-no fitted constant; a sphere is invariant under rotation about its own axis, so **the geometry never
-moves** — no fresh cells, no rebuild, none of the [moving-boundary
-machinery](../moving-sphere-drag/index.qmd) is in play; and the net *force* is zero by symmetry, so
-the same run checks that too.
+exactly — no series, no fitted constant. And a sphere is invariant under rotation about its own
+axis, so the geometry never moves: no fresh cells, no rebuild, none of the
+[moving-boundary machinery](../moving-sphere-drag/index.qmd). That makes this the sharpest torque
+test a resolved solver can face.
 
-## The two ways the solver can report a torque
+When this page was first written, `peclet.flow` **failed it by 31%** — structurally, in a way no
+refinement touched — while computing the *force* on the same runs to $10^{-13}$. This page keeps
+that measurement, because how the failure was pinned down is the useful part; then it derives the
+cause exactly, applies the fix, and gates it. The one-sentence version: **the missing torque was the
+transposed velocity gradient's wall traction, it equals $\mu\,(\mathbf n\times\boldsymbol\Omega)$
+pointwise on a rigid rotating wall, its force integral is zero — which is why no force gate ever saw
+it — and it carries exactly one third of @eq-stokes-torque.**
 
-Both come from the same design note, and this page is the first thing to put a number on either.
+## The measurement that started it
 
-- **The reconstructed traction**, `hydro_force_torque` — integrates $(-p\mathbf I + \mu(\nabla
-  \mathbf u + \nabla\mathbf u^{\mathsf T}))$ against the exact aperture wall-area vector. Its
-  *force* is known to under-read by a resolution-independent ~29%, which is why it is kept as a
-  diagnostic only.
-- **The discrete reaction**, `hydro_force_torque_reaction` — takes the force from the momentum the
-  fluid actually lost. Per fluid cell $R_i = -\nabla\pi_i + F_{\text{wall},i}$; summed over a body's
-  owner region the $\nabla\pi$ telescopes to the region boundary, which for a single body in a
-  periodic box is identically zero. **That is why the force is exact** — gated to $-8.8\times
-  10^{-15}$ elsewhere in this suite. The torque takes the *first moment* of the same quantity, and
-  $\sum \mathbf r \times \nabla\pi$ over a periodic box is **not** zero, because $\mathbf r$ is not
-  periodic. Nothing guarantees the torque.
+The discrete-reaction route (`hydro_force_torque_reaction`) takes the force from the momentum the
+fluid actually lost. Per fluid cell $R_i = -\nabla\pi_i + F_{\text{wall},i}$; summed over a body's
+owner region the $\nabla\pi$ telescopes away, and the force identity is gated elsewhere to
+$-8.8\times10^{-15}$. The torque takes the first moment of the same data. Measured against
+@eq-stokes-torque, before the fix (peclet-flow `1a01769`, the recorded numbers):
+
+| $N$ | $R/h$ | $c$ | reaction torque error | net force $/\mu R^2\Omega$ |
+|---|---|---|---|---|
+| 64 | 9.6 | 1.4e-02 | **−30.54%** | 5e-13 |
+| 96 | 9.6 | 4.2e-03 | **−31.58%** | 3e-13 |
+| 128 | 9.6 | 1.8e-03 | **−31.82%** | 4e-14 |
+| 96 | 14.4 | 1.4e-02 | **−31.04%** | 2e-12 |
+| 128 | 19.2 | 1.4e-02 | **−31.00%** | 1e-13 |
+
+A factor of eight in box volume, 3.4 in solid fraction, two in $R/h$, and 600 → 4000 steps: the
+deficit did not move. Not the periodic box (a periodic correction must vanish as $c\to0$), not the
+grid, not convergence — and the same runs get the force exactly right. A **structural** −31%.
+
+## The diagnosis, exact
+
+The momentum operator discretises the Laplacian form $\mu\nabla^2\mathbf u = \nabla\cdot(\mu\nabla
+\mathbf u)$, so the momentum the fluid loses through the wall is the Laplacian-form flux
+$\mu\,\partial\mathbf u/\partial n$. The physical traction is $\mu(\nabla\mathbf u +
+\nabla\mathbf u^{\mathsf T})\cdot\mathbf n$. The two differ by the transposed term — which vanishes
+*in the interior* for constant $\mu$ and a solenoidal field
+($\nabla\cdot(\nabla\mathbf u^{\mathsf T}) = \nabla(\nabla\cdot\mathbf u) = 0$), but not as a
+boundary traction.
+
+Now the three lines. On a rigid no-slip wall moving with angular velocity $\boldsymbol\Omega$, the
+fluid velocity equals the rigid-body field $\mathbf u_w$, so all *tangential* derivatives of
+$\mathbf u$ on the surface equal those of $\mathbf u_w$ — and $\nabla\mathbf u_w =
+[\boldsymbol\Omega\times]$, the constant spin tensor. Splitting the gradient into tangential and
+normal parts and using continuity (which kills the $\mathbf n\,(\partial\mathbf u/\partial n \cdot
+\mathbf n)$ piece, because the spin tensor is traceless on the tangent plane):
+
+$$
+(\nabla\mathbf u)^{\mathsf T}\cdot\mathbf n \;=\; \mathbf n\times\boldsymbol\Omega
+\qquad\text{pointwise on the wall, exactly.}
+$$ {#eq-nxo}
+
+No interior information whatsoever — only the wall's own angular velocity and the local normal.
+Three consequences, each checkable:
+
+- **Force:** $\oint \mu(\mathbf n\times\boldsymbol\Omega)\,\mathrm dA = \mu\left(\oint\mathbf
+  n\,\mathrm dA\right)\times\boldsymbol\Omega = 0$ over any closed surface. The force identity was
+  never wrong, and no force-based validation could ever have caught this.
+- **Torque:** $\oint a\mathbf n\times\mu(\mathbf n\times\boldsymbol\Omega)\,\mathrm dA =
+  -\tfrac{8\pi}{3}\mu a^3\boldsymbol\Omega$ — exactly **one third** of @eq-stokes-torque. Predicted
+  deficit −33.3%, measured −31.0%, the gap being discretisation.
+- **Translation:** $\boldsymbol\Omega = 0 \Rightarrow$ nothing. Every settling and drag result was
+  always clean.
+
+@eq-nxo was verified against the analytic rotlet to $3\times10^{-11}$ pointwise before anything was
+implemented. And it is not a novel observation: Maitri et al. [-@maitri2018] measured the same
+resolution-independent 33–34% plateau on the IBM of Deen et al. [-@deen2012], which omits the same
+term, with the stated cause that the transposed terms carry a third of the analytic torque.
+
+## The fix
+
+Since @eq-nxo needs only wall kinematics and geometry, the correction is a closed-form surface
+integral over the cut cells,
+
+$$
+\Delta\mathbf T \;=\; \mu \sum_{\text{cut cells}} \mathbf r \times
+\left(\mathbf n\,\mathrm dA \times \boldsymbol\Omega\right),
+$$ {#eq-fix}
+
+with $\mathbf n\,\mathrm dA$ the **exact aperture wall-area vector** the solver already carries. No
+near-wall velocity gradient, no reconstruction, no new field — the ingredients that made the
+traction route unreliable never enter. It is identically zero when nothing rotates, so every
+existing result is bit-identical, and the force is deliberately left untouched (adding a discretely
+zero term would only inject rounding into an identity gated at $10^{-15}$).
 
 ```{python}
 #| label: bootstrap
@@ -65,259 +128,186 @@ from peclet import flow as sdflow
 plt.rcParams.update({"figure.dpi": 130, "font.size": 9, "axes.axisbelow": True,
                      "figure.facecolor": "white", "savefig.bbox": "tight"})
 RHO, MU = 1.0, 0.1
-NU = MU / RHO
 KN_R, KI_I, KI_R = 16, 2, 17
-OMEGA = 1e-3                       # rotational Reynolds number rho*Omega*a^2/mu is then O(1)
+OMEGA = 1e-3
 ```
-
-## The setup
-
-One sphere at the centre of a periodic box, spinning about $z$. `set_instance_motion` carries the
-angular velocity; `set_solid_from_scene` builds the geometry once and it is never rebuilt, because
-a rotating sphere does not change shape.
 
 ```{python}
 #| label: driver
-def run(N, R, steps=1000, dt=20.0):
+def spin(N, R, steps=1000, dt=20.0):
     x0 = 0.5 * N
     node_ints = np.array([1, -1, -1], dtype=np.int32)
     node_reals = np.zeros(KN_R); node_reals[0] = R
     node_reals[14] = 1.0; node_reals[15] = 1.0
     inst_ints = np.zeros((1, KI_I), dtype=np.int32); inst_ints[0] = (0, -1)
-    inst_reals = np.zeros((1, KI_R))
-    inst_reals[0, 0:3] = (x0, x0, x0)
+    inst_reals = np.zeros((1, KI_R)); inst_reals[0, 0:3] = (x0, x0, x0)
     inst_reals[0, 6] = 1.0; inst_reals[0, 7] = 1.0
-
     s = sdflow.Solver(N, N, N)
     s.set_rho(RHO); s.set_mu(MU); s.set_dt(dt)
-    s.set_advection(False)                       # Stokes: @eq-stokes-torque is the exact answer
+    s.set_advection(False)
     s.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(node_ints, node_reals, inst_ints.ravel(), inst_reals.ravel(), periodic=True)
-    s.set_instance_motion(0, lin_vel=[0.0, 0.0, 0.0], ang_vel=[0.0, 0.0, OMEGA],
-                          center=[x0, x0, x0])
+    s.set_instance_motion(0, lin_vel=[0, 0, 0], ang_vel=[0, 0, OMEGA], center=[x0, x0, x0])
     s.set_solid_from_scene(True)
-
     t0 = time.time()
     for _ in range(steps):
         s.step()
-    reaction = np.asarray(s.hydro_force_torque_reaction())
-    traction = np.asarray(s.hydro_force_torque())
+    react = np.asarray(s.hydro_force_torque_reaction())
     exact = 8 * np.pi * MU * R ** 3 * OMEGA
-    return dict(Texact=exact, Treact=abs(reaction[1][0][2]), Ttrac=abs(traction[1][0][2]),
-                Fnet=np.linalg.norm(reaction[0][0]) / (MU * R ** 2 * OMEGA),
+    return dict(T=abs(react[1][0][2]), Texact=exact,
+                Fnet=np.linalg.norm(react[0][0]) / (MU * R ** 2 * OMEGA),
                 c=(4 / 3) * np.pi * R ** 3 / N ** 3, N=N, R=R, wall=time.time() - t0)
 ```
 
-## The measurement
-
-Two ladders. Growing the **box** at fixed sphere resolution isolates the periodic-array effect;
-refining the **grid** at fixed solid fraction isolates discretisation. If the deficit were either
-of those, one of the two would move it.
+## Step 1 — The same ladders, after the fix
 
 ```{python}
 #| label: ladders
-print("  N    R/h    c        T_exact       T_reaction     err      T_traction     err     |F|net")
+BEFORE = {(64, 9.6): -30.54, (96, 9.6): -31.58, (128, 9.6): -31.82,
+          (96, 14.4): -31.04, (128, 19.2): -31.00}
+print("  N    R/h    c        T/T_exact - 1   (before the fix)   net force")
 rows = []
-for N, R in ((64, 9.6), (96, 9.6), (128, 9.6), (96, 14.4)):
-    r = run(N, R)
+for N, R in ((64, 9.6), (96, 9.6), (128, 9.6), (96, 14.4), (128, 19.2)):
+    r = spin(N, R)
     rows.append(r)
-    print("  %3d  %5.2f  %.2e  %.6e  %.6e  %+7.2f%%  %.6e  %+7.2f%%  %.1e"
-          % (N, R, r["c"], r["Texact"], r["Treact"], 100 * (r["Treact"] / r["Texact"] - 1),
-             r["Ttrac"], 100 * (r["Ttrac"] / r["Texact"] - 1), r["Fnet"]))
-```
-
-The reaction column is flat: a factor of eight in box volume, 3.4 in solid fraction and two in
-$R/h$ move it by less than a percentage point. The traction column is not flat — and the reason is
-not resolution at all.
-
-## Step 2 — The traction torque never settles
-
-Run one case and watch, rather than taking a single reading at an arbitrary step count.
-
-```{python}
-#| label: trace
-N, R = 96, 14.4
-x0 = 0.5 * N
-node_ints = np.array([1, -1, -1], dtype=np.int32)
-node_reals = np.zeros(KN_R); node_reals[0] = R
-node_reals[14] = 1.0; node_reals[15] = 1.0
-inst_ints = np.zeros((1, KI_I), dtype=np.int32); inst_ints[0] = (0, -1)
-inst_reals = np.zeros((1, KI_R)); inst_reals[0, 0:3] = (x0, x0, x0)
-inst_reals[0, 6] = 1.0; inst_reals[0, 7] = 1.0
-s = sdflow.Solver(N, N, N)
-s.set_rho(RHO); s.set_mu(MU); s.set_dt(20.0); s.set_advection(False)
-s.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
-s.set_pressure_multigrid(True, levels=4)
-s.set_scene(node_ints, node_reals, inst_ints.ravel(), inst_reals.ravel(), periodic=True)
-s.set_instance_motion(0, lin_vel=[0, 0, 0], ang_vel=[0, 0, OMEGA], center=[x0, x0, x0])
-s.set_solid_from_scene(True)
-
-# split the pressure into the fluid and the solid interior
-g = np.arange(N).astype(float)
-X, Y, Z = np.meshgrid(g, g, g, indexing="ij")
-inside = (np.sqrt((X - x0) ** 2 + (Y - x0) ** 2 + (Z - x0) ** 2) - R < 0).ravel()
-
-Texact = 8 * np.pi * MU * R ** 3 * OMEGA
-trace = []
-print("  step |  reaction err |  traction err | max|u|     std(P) FLUID   std(P) SOLID")
-for k in range(1, 9):
-    for _ in range(200):
-        s.step()
-    react = abs(np.asarray(s.hydro_force_torque_reaction())[1][0][2])
-    trac = abs(np.asarray(s.hydro_force_torque())[1][0][2])
-    u = np.asarray(s.get_u()); P = np.asarray(s.get_p()).ravel()
-    trace.append((200 * k, react / Texact - 1, trac / Texact - 1,
-                  np.abs(u).max(), P[~inside].std(), P[inside].std()))
-    print("  %4d |   %+7.2f%%    |   %+7.2f%%    | %.4e  %.4e     %.4e"
-          % (200 * k, 100 * trace[-1][1], 100 * trace[-1][2], trace[-1][3], trace[-1][4],
-             trace[-1][5]))
-```
-
-The velocity field is **steady to four digits from step 200 onward**, and the reaction torque
-settles onto its −31% within a few hundred steps and then holds to six digits. The traction torque
-does neither: it walks steadily upward, crossing the exact answer on its way past.
-
-The last two columns say why. The pressure **in the fluid** is constant — it is also tiny, as it
-should be, since the physical pressure field of a rotating sphere in Stokes flow is uniform. The
-pressure **inside the solid** grows linearly with step count, and the traction torque tracks it.
-Those cells are decoupled from the fluid by the cut-cell pressure operator, so nothing constrains
-their value; the incremental scheme keeps accumulating into them, and the surface integral reads
-them.
-
-```{python}
-#| label: fig-trace
-#| fig-cap: "Left: the two torque routes against step count on a velocity field that stopped changing at step 200. Right: the pressure spread, split between the fluid and the solid interior — the fluid is flat, the solid drifts, and the traction torque follows the solid."
-#| code-fold: true
-tt = np.array([t[0] for t in trace])
-fig, (a1, a2) = plt.subplots(1, 2, figsize=(7.2, 2.9))
-a1.plot(tt, [100 * t[1] for t in trace], "o-", color="#4c72b0", label="discrete reaction")
-a1.plot(tt, [100 * t[2] for t in trace], "s-", color="#c44e52", label="reconstructed traction")
-a1.axhline(0, color="0.3", ls="--", lw=1.0)
-a1.set_xlabel("steps"); a1.set_ylabel("error in $T_z$ [%]")
-a1.legend(fontsize=7.5, frameon=False); a1.grid(alpha=0.3)
-a2.plot(tt, [t[4] for t in trace], "o-", color="#4c72b0", label="fluid")
-a2.plot(tt, [t[5] for t in trace], "s-", color="#c44e52", label="solid interior")
-a2.set_yscale("log"); a2.set_xlabel("steps"); a2.set_ylabel("std$(P)$")
-a2.legend(fontsize=7.5, frameon=False); a2.grid(which="both", alpha=0.3)
-plt.tight_layout(); plt.show()
+    print("  %3d  %5.1f  %.1e     %+6.2f%%          (%+.2f%%)        %.1e   (%3.0f s)"
+          % (N, R, r["c"], 100 * (r["T"] / r["Texact"] - 1), BEFORE[(N, R)], r["Fnet"],
+             r["wall"]))
 ```
 
 ```{python}
 #| label: fig-ladders
-#| fig-cap: "Relative error in the computed torque. The reaction route sits at −31% and does not care about the box or the grid; the traction route scatters over forty percentage points. The dashed line is the exact answer."
+#| fig-cap: "The rotating-sphere torque error, before (the recorded structural −31%, grey) and after the transposed-stress wall term (blue). The remaining few percent is the aperture first-moment discretisation, and it converges on both ladders."
 #| code-fold: true
-fig, ax = plt.subplots(figsize=(6.0, 3.0))
-lab = ["$N$=%d, $R/h$=%.1f" % (r["N"], r["R"]) for r in rows]
+fig, ax = plt.subplots(figsize=(6.2, 3.0))
+lab = ["$N$=%d\n$R/h$=%.1f" % (r["N"], r["R"]) for r in rows]
 x = np.arange(len(rows))
-ax.bar(x - 0.18, [100 * (r["Treact"] / r["Texact"] - 1) for r in rows], 0.34,
-       color="#4c72b0", label="discrete reaction")
-ax.bar(x + 0.18, [100 * (r["Ttrac"] / r["Texact"] - 1) for r in rows], 0.34,
-       color="#c44e52", label="reconstructed traction")
+ax.bar(x - 0.18, [BEFORE[(r["N"], r["R"])] for r in rows], 0.34, color="0.75",
+       label="before (recorded)")
+ax.bar(x + 0.18, [100 * (r["T"] / r["Texact"] - 1) for r in rows], 0.34, color="#4c72b0",
+       label="with the wall term")
 ax.axhline(0, color="0.3", lw=1.0, ls="--")
+ax.axhline(-100 / 3, color="#c44e52", lw=0.9, ls=":", label="−33.3% (the exact third)")
 ax.set_xticks(x); ax.set_xticklabels(lab, fontsize=7.5)
 ax.set_ylabel("error in $T_z$ vs $8\\pi\\mu a^3\\Omega$ [%]")
 ax.legend(fontsize=8, frameon=False); ax.grid(axis="y", alpha=0.3)
 plt.show()
 ```
 
-## Step 3 — What the ladders rule out
+Two things to notice. The before-bars sit on the dotted line at −33.3% to within discretisation —
+the *failure itself* confirmed the diagnosis. And the after-bars **converge**: box growth moves
+`{python} "%.2f%% -> %.2f%% -> %.2f%%" % tuple(100*(r["T"]/r["Texact"]-1) for r in rows[:3])`
+and grid refinement `{python} "%.2f%% -> %.2f%%" % tuple(100*(r["T"]/r["Texact"]-1) for r in (rows[3], rows[4]))`,
+tracking the solver's own aperture first-moment accuracy — a discretisation error now, not a
+missing term.
 
-**Not the periodic box.** The first three rows hold the sphere at $R/h = 9.6$ and grow the box, a
-factor of eight in volume and 3.4 in solid fraction. The reaction error moves by less than a
-percentage point. A periodic-array correction must vanish as $c \to 0$; this does not.
+## Step 2 — The loop closed: a sphere that spins *down*
 
-**Not the grid.** The last row doubles $R/h$ at fixed $c$. Same answer.
+The point of the torque is the resolved CFD-DEM coupling. With `apply_torque=True`,
+`ResolvedCfdDem` hands the reaction torque to `peclet.dem`, which integrates Euler's equations. A
+freely spinning sphere with physical inertia $I = \tfrac{2}{5}mR^2$ must decay at the rate
+$1/\tau = 8\pi\mu R^3\lambda_{\text{rot}}/I$, with $\lambda_{\text{rot}}$ the **same box's** own
+rotational drag from Step 1 — the calibration pattern that makes the discretisation bias cancel
+between calibration and prediction.
 
-**Not the time step or convergence.** The reaction torque is unchanged from 600 to 4000 steps to
-six digits, on a velocity field that stopped moving long before.
+```{python}
+#| label: decay
+from peclet import dem as pdem
+from peclet_coupling.resolved import ResolvedCfdDem
 
-**Not the force.** The net force comes out at the level of $10^{-13}$ of $\mu R^2\Omega$, which is
-what symmetry demands — the same run that gets the torque wrong gets the force exactly right.
+N, R, DT = 64, 9.6, 5.0
+RHO_P = 5.0
+m = RHO_P * 4 / 3 * np.pi * R ** 3
+I = 0.4 * m * R ** 2
+lam = rows[0]["T"] / rows[0]["Texact"]          # the same box's calibrated rotational drag
+tau = I / (8 * np.pi * MU * R ** 3 * lam)
+nstep = int(1.2 * tau / DT)
+print("tau_pred = I / (8 pi mu R^3 lambda_rot) = %.1f   (%d coupled steps)" % (tau, nstep))
 
-So there are **two independent defects**, and both now have a mechanism.
+d = pdem.Simulation(8)
+d.set_gravity(0.0, 0.0, 0.0)
+d.set_sphere_shape(1.0)
+d.set_global_scale(R)
+d.set_positions(np.array([[0.5 * N, 0.5 * N, 0.5 * N]], dtype=np.float32))
+d.set_inv_mass(np.array([1.0 / m], dtype=np.float32))
+d.set_inv_inertia(np.array([[1.0 / I] * 3], dtype=np.float32))   # PHYSICAL inertia: mandatory
+d.set_angular_velocities(np.array([[0.0, 0.0, OMEGA]], dtype=np.float32))
 
-## Step 4 — Why
+s = sdflow.Solver(N, N, N)
+s.set_rho(RHO); s.set_mu(MU); s.set_dt(DT); s.set_advection(False)
+s.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
+s.set_pressure_multigrid(True, levels=4)
+drv = ResolvedCfdDem(s, d, radius=R, mu=MU, rho_f=RHO, fluid_dt=DT, dem_substeps=10,
+                     periodic=True, rho_p=RHO_P, buoyancy=False, move=True, apply_torque=True)
+ts, oms = [], []
+for k in range(nstep):
+    drv.step()
+    ts.append((k + 1) * DT)
+    oms.append(float(np.asarray(d.get_angular_velocities())[0, 2]))
+ts = np.array(ts); oms = np.array(oms)
+mfit = ts <= tau
+rate = -np.polyfit(ts[mfit], np.log(oms[mfit] / OMEGA), 1)[0]
+print("Omega fell to %.3f Omega0 over %.0f time units" % (oms[-1] / OMEGA, ts[-1]))
+print("fitted decay rate x tau_pred = %.4f   (1 = the box's own calibrated drag)" % (rate * tau))
+```
 
-**The traction torque reads unconstrained data.** The cut-cell pressure operator decouples cells
-whose centre lies inside the solid; nothing pins their value, and the incremental scheme accumulates
-into them without bound. The surface integral samples pressure at cut cells, some of which are
-solid-centred, so it picks that drift up. The fluid solution is untouched — which is why every
-*drag* result in this gallery is unaffected, and why this shows up only in a case whose physical
-pressure is uniform and therefore has nothing to mask it.
+```{python}
+#| label: fig-decay
+#| fig-cap: "A freely spinning resolved sphere decaying under its own hydrodynamic torque, integrated by peclet.dem. The dashed line is the prediction from the same box's calibrated drag; the late-time departure is the co-rotating fluid feeding back — physics, not error."
+#| code-fold: true
+fig, ax = plt.subplots(figsize=(5.6, 3.0))
+ax.semilogy(ts / tau, oms / OMEGA, "o-", ms=3, color="#4c72b0", label="dem-integrated")
+ax.semilogy(ts / tau, np.exp(-ts / tau), "--", color="#c44e52",
+            label=r"$e^{-t/\tau}$, $\tau$ from the same box")
+ax.set_xlabel(r"$t/\tau$"); ax.set_ylabel(r"$\Omega/\Omega_0$")
+ax.legend(fontsize=8, frameon=False); ax.grid(which="both", alpha=0.3)
+plt.show()
+```
 
-**The reaction torque is missing the transposed velocity gradient.** The viscous operator here is
-the Laplacian $\nabla\cdot(\mu\nabla\mathbf u)$, not the full stress divergence
-$\nabla\cdot\!\left[\mu(\nabla\mathbf u + \nabla\mathbf u^{\mathsf T})\right]$. For constant
-$\mu$ and a divergence-free field the two agree in the interior, because
-$\nabla\cdot(\nabla\mathbf u^{\mathsf T}) = \nabla(\nabla\cdot\mathbf u) = 0$ — but they do **not**
-agree on a *boundary traction*, and the reaction budget's wall term is exactly a boundary traction.
-For a rotating sphere the transposed part carries exactly a third of the torque, so a route built
-on the Laplacian alone recovers exactly two thirds of it.
+## What is still not right
 
-**And the third is exact.** For the isolated Stokes rotlet $\mathbf u = (\mathbf A\times\mathbf
-r)/r^3$ with $\mathbf A = a^3\boldsymbol\Omega$, on the surface $|\mathbf x| = a$ with
-$\mathbf n = \mathbf x/a$,
+The **reconstructed-traction** torque (`hydro_force_torque`, the diagnostic route) has an unrelated
+defect this page found on the way: on a perfectly steady field it drifts linearly with step count,
+because the cut-cell pressure operator decouples solid-centred cells, nothing pins their value, the
+incremental scheme accumulates into them, and the surface integral samples them. Measured: std$(P)$
+over fluid cells constant at $7\times10^{-7}$; over solid cells linear, $2.5\times10^{-4}
+\to 1.6\times10^{-3}$ over 4000 steps, the traction torque tracking it from −26% to +83%. That
+route stays a diagnostic; the fix (pinning the decoupled gauge cells) is logged in the design note
+and deferred. Every coupling-facing quantity uses the reaction route.
 
-$$
-(\nabla\mathbf u)\cdot\mathbf n = -\frac{2(\mathbf A\times\mathbf x)}{a^{4}},
-\qquad
-(\nabla\mathbf u^{\mathsf T})\cdot\mathbf n = -\frac{(\mathbf A\times\mathbf x)}{a^{4}} .
-$$ {#eq-transpose}
+## Results
 
-The transposed part is exactly **half** of the plain gradient *pointwise on the surface*, so it is
-one third of their sum before any integration and no cancellation can rescue it. With uniform
-pressure and $\oint \mathbf x\times(\mathbf A\times\mathbf x)\,\mathrm dS = \frac{8\pi}{3}a^4\mathbf
-A$, the full traction gives $-8\pi\mu a^3\Omega$ and the Laplacian-only traction gives exactly
-$-\frac{16}{3}\pi\mu a^3\Omega$ — **two thirds**. The prediction is therefore $-33.33\%$, and we
-measure $-31.0\%$; the couple of points between them are discretisation, and the deficit deepens
-toward the prediction as the box grows.
+| claim | measured | reference |
+|---|---|---|
+| reaction torque, before the fix (recorded) | **−31.0%**, flat under all refinement | @eq-stokes-torque |
+| the missing term, derived | $(\nabla\mathbf u)^{\mathsf T}\mathbf n = \mathbf n\times\boldsymbol\Omega$, verified to 3e-11 | exactly $\tfrac13$ of the torque, 0 of the force |
+| **reaction torque, with the wall term** | `{python} "%+.2f%% / %+.2f%% / %+.2f%%" % tuple(100*(r["T"]/r["Texact"]-1) for r in rows[:3])` — **converging** | @eq-stokes-torque |
+| net force on the same runs | `{python} "%.0e" % max(r["Fnet"] for r in rows)` | 0 by symmetry |
+| **spin-decay through the full dem loop** | rate × τ = `{python} "%.4f" % (rate*tau)` | 1 (same-box calibration) |
+| force gates after the change | bit-identical | — |
 
-**Why a solver can carry this invisibly.** The transposed term integrates to **zero in the net
-force** — Gauss's theorem plus continuity — but it does not cancel under the $\mathbf r\times$
-weighting of the torque. A code validated on drag alone will never see it. That is the single best
-argument for making the rotating sphere a standing gate.
-
-This is not a novel observation. Maitri et al. [-@maitri2018] ran precisely this a-priori test —
-prescribe the exact rotlet, integrate the surface stress, compare to $8\pi\mu a^3\Omega$ — on the
-earlier immersed-boundary method of Deen et al. [-@deen2012], which omits the same term, and
-measured **34.34 / 33.04 / 33.24 / 33.32%** at $a/h = 5, 10, 20, 40$: a resolution-independent
-plateau, with the stated cause that *"the ignored transposed terms contribute 1/3 of the total
-analytical torque value"*. Our −31.0% is the same plateau in a different code.
-
-It also explains why the obvious repair fails. Reading $R_i = -\nabla\pi_i + F_{\text{wall},i}$, one
-might add $\sum\mathbf r\times\nabla\pi$ back with the momentum operator's own staggered pressure
-gradient. That was tried: it moves the error from −31% to **−84%**. The pressure moment is not the
-missing piece, because the missing piece is in the *viscous* term.
-
-## Consequences, stated plainly
-
-- `ResolvedCfdDem`'s `apply_torque` stays **off by default**. That was already the case on the
-  grounds that the torque was *unvalidated*; it is now on the grounds that it is *wrong*, by a
-  known mechanism, by about a third.
-- A freely rotating resolved grain is not yet supported by this solver. Anything that depends on
-  the hydrodynamic torque — a Jeffery orbit, a rotating non-spherical settler, torque-driven
-  segregation — is blocked until this is fixed, and would silently be 31% off if attempted.
-- The **force** is unaffected. Everything the resolved CFD-DEM loop currently does rests on the
-  force, which is exact by an argument this measurement does not touch.
+The headline: **the torque went from a structural −31% to
+`{python} "%+.2f%%" % (100*(rows[2]["T"]/rows[2]["Texact"]-1))` and converging, with a correction
+derived in closed form rather than fitted** — and the first freely rotating resolved particle in
+this suite decays at `{python} "%.3f×" % (rate*tau)` its own box's calibrated drag. The Jeffery
+orbit, blocked when this page was a pure negative result, is now buildable.
 
 ## Adapt this yourself
 
-- **Use this as the gate.** @eq-stokes-torque has no fitted constant, the geometry is static and the
-  run is a couple of minutes. Any candidate torque implementation should be held to it before
-  anything else — and the a-priori version is cheaper still: prescribe the exact rotlet, integrate
-  the stress, and skip the flow solve entirely, which is how Maitri et al. isolated the same term.
-- **Then go beyond Stokes.** With a working torque, the natural next references are the rotary
-  oscillation (exact, the rotational analogue of the [oscillating
-  sphere](../oscillating-sphere/index.qmd)) and the finite-Reynolds-number torque of a steadily
-  rotating sphere.
-- **Check your own solver.** The recipe transfers: spin a sphere, take the torque, compare to
-  $8\pi\mu a^3\Omega$, and refine the box and the grid separately. Two ladders and an exact answer
-  is all it takes to tell a bias from a bug.
+- **Keep it as a gate.** Spin a sphere, compare to $8\pi\mu a^3\Omega$, refine box and grid
+  separately. Two ladders and an exact answer distinguish a bias from a bug — that recipe found
+  this, diagnosed it, and verified the fix.
+- **Check your own solver for the same term.** If your momentum equation is the Laplacian form and
+  your force comes from a momentum budget, your torque is missing $\mu(\mathbf
+  n\times\boldsymbol\Omega)$ too — and no drag validation will ever show it.
+- **Free rotation, now.** `set_inv_inertia` with the physical inertia, then
+  `ResolvedCfdDem(..., apply_torque=True)`. The inertia is mandatory: dem's default is not your
+  grain's, and a torque against a wrong inertia spins up at an arbitrary rate.
 
 ## Reproduce this
 
 ```bash
-PECLET_LOCAL_BUILD=/path/to/suite/flow/build_l3_cuda \
+PECLET_LOCAL_BUILD=/path/to/suite/flow/build_l3_cuda:/path/to/suite/dem/build_l4_omp:/path/to/suite/coupling/python \
   quarto render examples/rotating-sphere-torque/index.qmd --execute
 ```

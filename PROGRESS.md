@@ -85,7 +85,14 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       Deen et al. (2012) IBM. A second, independent defect: the **traction** torque drifts linearly
       with step count on a steady field (−26% → +83%) because the cut-cell operator decouples
       solid-centred pressure cells — std(P) is 7.3e-07 and constant in the fluid, 2.5e-04 → 1.6e-03
-      and linear in the solid. **Consequence: E8 (Jeffery orbit) is BLOCKED, not merely unbuilt.**
+      and linear in the solid. ~~Consequence: E8 blocked.~~ **SOLVED 2026-08-31 (flow `16e91ec`):**
+      the missing traction on a rigid rotating no-slip wall is **μ(n×Ω) pointwise** — derivable in
+      three lines from the rigid-body tangential derivatives plus continuity, rotlet-verified to
+      3e-11 — with force integral **zero** (why no force gate ever saw it) and torque integral
+      exactly **one third**. The fix integrates μ r×(n dA×Ω) over the cut cells with the exact
+      apertures: closed form, no reconstruction. Gate: −31% → **+3.47/+2.42/+2.19%** converging;
+      spin-decay through `ResolvedCfdDem` `apply_torque=True` at **1.0389×** the same-box calibrated
+      drag. The page is rewritten as *negative result → diagnosis → fix → gate*. **E8 UNBLOCKED.**
 
 ### Not done this session (Phase 2/3 remainder)
 - [ ] **E3a `ten-cate-sphere`** — a **verified data sheet is now in the plan** (all four cases'
@@ -93,10 +100,10 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       0.1226 m/s, the release geometry, and the wall-correction trap). Ready to execute.
 - [ ] **E4b `pall-ring-flow`** — E4a's frozen `.npz` carries the tree and is its input.
 - [ ] **E3b `drafting-kissing-tumbling`** — force-only, so unblocked; needs a two-body resolved run.
-- [!] **E8 `jeffery-orbit`** — **BLOCKED** on the torque (see `rotating-sphere-torque`). It would be
-      ~31% off and the error is not visible in any force-based check.
-- [ ] **E9 `dumbbell-sedimentation`** — force-only in the fixed-orientation variant, so unblocked;
-      the freely-reorienting variant is blocked with E8.
+- [ ] **E8 `jeffery-orbit`** — **unblocked** (the torque is fixed and gated statically +
+      dynamically); ready to build on `apply_torque=True` with a physical inertia.
+- [ ] **E9 `dumbbell-sedimentation`** — fully unblocked (both variants) now that the torque is
+      fixed.
 
 ### Suite fixes the examples produced
 - **dem `53fab35`** (+ `5c53d41`, `326deb2`) — two out-of-bounds writes found by the pall-ring

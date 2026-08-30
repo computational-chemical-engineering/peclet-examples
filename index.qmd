@@ -286,8 +286,8 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::: {.card-body}
 #### [Rotating sphere torque](examples/rotating-sphere-torque/index.qmd)
-A negative result, fully diagnosed: the torque is 31% low because the viscous operator drops
-∇uᵀ — which carries exactly a third of it, and vanishes from the force.
+A negative result, then a fix: the missing wall term is μ(n×Ω) in closed form. −31% → +2.2%
+converging, and the first freely rotating resolved particle decays at 1.04× its box's own drag.
 [flow · torque · exact]{.tags}
 
 :::
