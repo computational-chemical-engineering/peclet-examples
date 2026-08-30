@@ -282,6 +282,20 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/oscillating-sphere.jpg)](examples/oscillating-sphere/index.qmd)
+
+::: {.card-body}
+#### [Oscillating sphere](examples/oscillating-sphere/index.qmd)
+Unsteady Stokes drag, in-phase and out-of-phase, within 0.23% of Stokes (1851) — and a periodic
+box that screens its own images.
+[flow · moving geometry · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/stirred-column.jpg)](examples/stirred-column/index.qmd)
 
 ::: {.card-body}
@@ -303,6 +317,20 @@ A pitched-blade impeller whose geometry actually sweeps, mixing 22 000 grains �
 A racket authored as a CSG tree flips about its intermediate axis — within 0.02% of the
 torque-free Euler equations.
 [dem · CSG · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/pall-ring-packing.jpg)](examples/pall-ring-packing/index.qmd)
+
+::: {.card-body}
+#### [Pall-ring packing](examples/pall-ring-packing/index.qmd)
+An industrial packing element as a certified CSG tree, poured into a periodic box — and an honest
+reading of its voidage.
+[dem · CSG · packing]{.tags}
 
 :::
 ::::

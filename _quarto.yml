@@ -43,6 +43,8 @@ website:
             text: "Rayleigh–Bénard convection (3-D, GPU)"
           - href: examples/wall-bounded-turbulence/index.qmd
             text: "Wall-bounded turbulence (DNS vs MKM, HPC)"
+          - href: examples/oscillating-sphere/index.qmd
+            text: "Oscillating sphere (unsteady Stokes drag, exact)"
       - text: "Packings & porous"
         menu:
           - href: examples/zick-homsy/index.qmd
@@ -63,6 +65,8 @@ website:
             text: "Tumbling cubes (non-spherical, GPU)"
           - href: examples/tennis-racket/index.qmd
             text: "Tennis-racket theorem (analytic particle, exact)"
+          - href: examples/pall-ring-packing/index.qmd
+            text: "Pall-ring packing (composed CSG particle)"
           - href: examples/stirred-column/index.qmd
             text: "Stirred column (rotating analytic stirrer)"
       - text: "CFD-DEM"

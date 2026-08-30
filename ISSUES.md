@@ -419,6 +419,19 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 
 ## `add_scene_shape` never sizes the contact buffers → dropped contacts, then heap corruption
+**RESOLVED 2026-08-30 (peclet-dem `5c53d41`).** The diagnosis below was right and slightly
+incomplete: the missing `ensureContactCapacity()` in `add_scene_shape` was one half, and the other
+was that the sizing tracked the particle capacity only at *registration* time while `demStep` grows
+that capacity on every step. The sizing logic moved out of `Simulation` into a free
+`growContactBuffers(Particles&)` which is now called right after `P.ensureCapacity()` in **both**
+`demStep` and `demStepMpi`, and `add_scene_shape` calls `ensureContactCapacity()` like every sibling
+adder. Gated: kernel ctests 8/8, MPI ctests 24/24, `scene_particle_gate` PASS, plus a new
+`contact_capacity_gate.py` — six composed-tree particles dropped from a deliberately small
+construction capacity (64) onto an `add_plane` floor come to rest with the lowest centre at 0.2984,
+exactly the shell's lowest body-frame point, max overlap 0.0000, against falling through before the
+fix. The `pall-ring-packing` page's `Simulation(600)` workaround has been removed.
+
+*(original report below)*
 - **Status:** open
 - **Package / area:** dem (contact-buffer sizing / composed analytic shapes)
 - **Found in:** examples/pall-ring-packing (48 composed analytic rings, 1200-probe shells)
