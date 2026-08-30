@@ -543,3 +543,17 @@ configuration (the staggered u-point half a cell inside the solid could carry th
 its masked value), or detect the case in `set_solid_from_scene` — a moving instance whose surface
 produces zero cut cells on some axis — and warn loudly. The failure is completely silent and looks
 like "the solver ignores set_instance_motion".
+
+## flow: per-body reaction attribution carried the owner-boundary pressure flux → RESOLVED (flow `1d95260`)
+*(found building `examples/ten-cate-sphere`, 2026-08-31)*
+
+A sphere prescribed to translate through the closed ten-Cate tank read **half** its physical drag
+(λ = 0.62 against a hard floor of 1.36), while the identical sphere in a single-instance periodic
+box read a healthy 1.42. Cause: per-body attribution sums the reaction over the owner partition,
+and the pressure flux through the partition's mid-surfaces transfers force between bodies — zero
+in the total (pairwise), zero for one instance, cancelling for symmetric arrays, and **worth a
+factor 2.2 for a sphere inside a tank**. The same defect gave the Jeffery orbit a −44% period
+(spheroid between two plates). Fixed in flow `1d95260` by removing the shared-cell π from both
+sides of every cross-owner fluid–fluid face; the 4-sphere gate's per-sphere spread dropped
+4.9e-03 → 5.7e-09 (that spread *was* this flux). Anyone comparing per-body forces from a
+multi-instance resolved run made before this fix should re-run.
