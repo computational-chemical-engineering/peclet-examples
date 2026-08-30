@@ -416,3 +416,94 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   surface (tangential warm-start strength / manifold-level friction arms on the dilated flowing
   layer). Candidate probes: per-contact (not manifold-averaged) tangential arms; tangential
   warm-start decay on separating-reforming contacts.
+
+
+## `add_scene_shape` never sizes the contact buffers → dropped contacts, then heap corruption
+- **Status:** open
+- **Package / area:** dem (contact-buffer sizing / composed analytic shapes)
+- **Found in:** examples/pall-ring-packing (48 composed analytic rings, 1200-probe shells)
+- **Observed:** two symptoms of one cause.
+  1. **Silent contact drop.** Register a `SHAPE_SCENE` particle with `add_scene_shape`, add a
+     boundary with `add_plane`, and the particles fall straight through it: a 6-ring test ended at
+     `ymin = -2.29` after 400 steps with only 3 manifolds. Adding *any* analytic wall — even one
+     placed 400 units away, purely as a side effect — makes the SAME plane work
+     (`ymin = 0.491`, 14 manifolds).
+  2. **Heap corruption mid-run.** At 48 rings × 1625 probes the run aborts inside `step()` around
+     step 2000–2200 with `corrupted double-linked list` / `free(): invalid next size` /
+     `Segmentation fault` (Python `faulthandler` puts the frame squarely in `s.step(DT)`, not at
+     teardown). The bed is healthy at that point — `ymin` stable at 0.50, manifolds plateaued at
+     ~238, max overlap 0.006 — so it is not a physics blow-up.
+- **Expected:** registering a shape sizes the contact buffers for it, as `add_shape`,
+  `add_sdf_wall` and `add_analytic_wall` all do (they call `ensureContactCapacity()`).
+- **Repro:** `Simulation(N + 8)` → `add_scene_shape(...)` → `add_plane(...)` → `set_positions` →
+  step. Contrast with the same script that also registers a far-away `add_analytic_wall`.
+- **Notes / cause:** `Simulation::addSceneShape` (dem `src/sim.hpp`) ends at `uploadShapes()` and
+  never calls `ensureContactCapacity()`, unlike every other registration path. Worse, the sizing
+  it would use is stale by the first step anyway: `demStep` calls
+  `P.ensureCapacity(calculateGhostCapacity(...))` **every step**, and that helper returns
+  `nReal + estGhosts + 4096`, so `P_.capacity` jumps from ~56 to >4200 on step 1 — growing every
+  per-slot array while leaving every `maxContacts`-sized view at the size derived from the OLD
+  capacity. `ensureContactCapacity`'s own comment names this exact failure mode ("any view left at
+  the old size is an out-of-bounds write once the count grows past it — silent device corruption
+  on GPU, heap corruption on host backends").
+  Two candidate fixes, both cheap: call `ensureContactCapacity()` at the end of `addSceneShape`,
+  and re-run it whenever `ensureCapacity()` actually grows the capacity.
+  **Workaround used in the example:** construct the `Simulation` with a capacity far above the
+  particle count (`Simulation(600)` for 48 rings) *and* register an analytic wall after the shape,
+  so the contact views are over-provisioned before the first step. With that, 3500 steps run clean.
+
+## Point-shell contacts on a thin-walled concave particle: persistent overlap and a jitter floor
+- **Status:** open (modelling limitation, not obviously a bug)
+- **Package / area:** dem (point-shell narrow phase)
+- **Found in:** examples/pall-ring-packing
+- **Observed:** a poured bed of 48 Pall rings (wall thickness 0.12 D, probe spacing 0.030 D — i.e.
+  the probes resolve the wall by the usual feature/3 rule) never comes to rest under gravity:
+  kinetic energy plateaus at ~1 (against a bed gravitational scale of ~315) and the maximum contact
+  overlap sits at 0.05–0.10, i.e. 40–80% of the wall thickness, indefinitely. Raising the position
+  iterations 6 → 10 did not fix it. An explicit velocity quench (×0.96 per step for 900 steps) does
+  bring it down — overlap to 0.030 (25% of the wall) and KE to ~0.2 — but the bed is quasi-static,
+  not static.
+- **Expected:** a frictional bed of rigid bodies settling to a static pack with overlaps small
+  compared with the smallest feature.
+- **Repro:** examples/pall-ring-packing, drop the quench phase from the protocol.
+- **Notes:** rings interlock — a rim threads a window, a web enters a bore — so contact regions are
+  concave-on-concave, where a point shell registers penetration only once a probe is already well
+  inside the other body and the recovery direction is a CSG ridge normal. Hypotheses worth
+  separating: (a) probe density is adequate for the wall but not for the *ridge* set; (b) the
+  manifold reduction averages contact arms across a genuinely multi-region contact; (c) XPBD
+  position projection cannot resolve a mutually interlocked pair in the iteration budget. The
+  measured consequence is small for a volume claim — the volume covered by two rings at once is
+  0.017% of the bed — but it would matter for a force/stress claim.
+
+---
+
+## dem: the default body–body material is frictionless, and a deep bed leaks through an analytic wall
+*(found building `examples/stirred-column`, 2026-08-30)*
+
+**Symptom.** A 20 500-grain bed settling in an inverted-cylinder analytic wall pushed grains
+straight through the container: after 1200 settle steps the lowest grain centre was at $y = -0.29$
+with the floor at $y = 0$ and a grain radius of 0.4 — i.e. 1.7 radii *below* the floor — and the
+outermost centre was 0.5 *outside* the side wall. Once the stirrer started turning, peak grain
+speeds reached 41–65 against a blade-tip speed of 10, a four-to-six-fold energy injection.
+
+**Cause.** `add_analytic_wall(..., restitution, friction)` sets the *particle–wall* material, which
+I had set. What I had not set was the *body–body* material, and `peclet.dem`'s default is
+**frictionless with zero restitution**. A frictionless deep bed behaves like a liquid: it transmits
+full hydrostatic pressure to the base and walls, and the XPBD position solve cannot hold that with
+the default iteration count, so grains squeeze through the boundary.
+
+**Fix.** `sim.set_material_params(0.2, 0.0, 0.5)`. With friction the same bed, same iteration
+counts (4, 4) and same time step gives a minimum wall SDF of **+0.38 against a grain radius of
+0.40** (grains resting on the wall, not through it), **zero** escapes, and a maximum grain–grain
+overlap of 1e-3. Raising the position-solve iterations from (4,4) to (24,12) and halving `dt`
+changed the leakage not at all in the frictionless case, which is what identified the material
+rather than the solver as the cause.
+
+**Suggested for the suite.** Either default the body–body friction to something non-zero, or make
+`add_analytic_wall` / the first `step()` warn when a bed of more than a few layers is simulated with
+`friction == 0`. The failure is silent and looks exactly like a solver-convergence bug, which cost
+real time to chase.
+
+**Also noted.** `Simulation.step`'s docstring says "dt=0 uses the configured time step", while the
+measured behaviour (recorded in the suite's design notes) is that `step()` with no argument advances
+nothing. Whichever is intended, the two disagree — the docstring should be corrected.
