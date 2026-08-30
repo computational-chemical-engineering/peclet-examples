@@ -520,3 +520,26 @@ real time to chase.
 **Also noted.** `Simulation.step`'s docstring says "dt=0 uses the configured time step", while the
 measured behaviour (recorded in the suite's design notes) is that `step()` with no argument advances
 nothing. Whichever is intended, the two disagree — the docstring should be corrected.
+
+## flow: a wall face exactly on a lattice plane makes a MOVING wall silently inert
+*(found building `examples/jeffery-orbit`, 2026-08-31)*
+
+**Symptom.** Two plate instances (box leaves, half-thickness 8.0, centred at y = 8 and N−8) driven
+with opposite `lin_vel` produced **exactly zero** flow: `max|u| = 0.0` after hundreds of steps,
+no error, no warning.
+
+**Cause.** The plate faces sat at y = 16.0 and y = N−16.0 — exactly on lattice planes. A perfectly
+grid-aligned face produces **no cut cells**: every cell is fully fluid or fully solid, all
+apertures are 0 or 1. The moving-wall no-slip datum enters the momentum operator only through the
+cut-cell modification (`ibmModifyStencil` folding `uBc_`), so with no cut rows the wall behaves as
+a *stationary* no-slip (the masked-zero coupling) and its velocity goes nowhere. Verified: moving
+the half-thickness from 8.0 to 8.3 — faces off the lattice planes — gives the correct Couette
+profile with the measured shear equal to nominal to 5e-6 relative.
+
+**Workaround.** Keep analytic-wall faces off lattice planes (any fractional offset works).
+
+**Suggested for the suite.** Either extend the wall-velocity fold to the aligned-face
+configuration (the staggered u-point half a cell inside the solid could carry the wall velocity as
+its masked value), or detect the case in `set_solid_from_scene` — a moving instance whose surface
+produces zero cut cells on some axis — and warn loudly. The failure is completely silent and looks
+like "the solver ignores set_instance_motion".
