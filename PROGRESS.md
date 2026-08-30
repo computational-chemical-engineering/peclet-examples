@@ -49,8 +49,24 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       median peak grain speed **1.01×** the blade-tip speed (worst single sample 1.40×), **0** grains
       outside the column, two 1-thread runs bitwise identical. Literature comparison stated as
       qualitative — the meridional recirculation pattern of Remy et al. (2009), not their numbers.
-- [~] **E7 `nonsphere-drag`** — equal-volume drag ratios validated against the exact Oberbeck
-      spheroid solution before being used to predict cube/superquadric values.
+- [x] **E7 `nonsphere-drag`** — equal-volume drag ratios, validated against the exact Oberbeck
+      spheroid before predicting anything. Sphere calibration **−0.62%** vs Hasimoto–Sangani–Acrivos
+      with a fixed point independent of dt to 3.7e-04; prolate AR=2 **−1.57%** axial / **+2.90%**
+      broadside vs exact (box shift −1.8%/+2.2% in the same directions — box-limited, not
+      model-limited); **cube orientation-independent to 0.14%**, as cubic symmetry demands, at
+      1.08846 against the tabulated χ = 1.08 ± 0.01; rounded cubes 1.08363 / 1.04143 vs Štrakl et
+      al. Three results beyond the gate: Leith's 9% orientation spread for a cube is a correlation
+      artefact; Haider–Levenspiel has NO Stokes limit (B(ψ) > 0 ⇒ C_D → 24/Re for every ψ); and a
+      **bound-only** geometry leaf gives drag identical to a distance-exact one to six digits,
+      because the cut-cell geometry uses the zero level set and the crossings, not the distance.
+
+### Not done this session (Phase 2/3 remainder)
+- [ ] **E3a `ten-cate-sphere`** — a **verified data sheet is now in the plan** (all four cases'
+      properties, the recomputed Abraham u_∞, the measured peak velocities 0.0363 / 0.0571 / 0.0869 /
+      0.1226 m/s, the release geometry, and the wall-correction trap). Ready to execute.
+- [ ] **E4b `pall-ring-flow`** — E4a's frozen `.npz` carries the tree and is its input.
+- [ ] **E3b `drafting-kissing-tumbling`**, **E8 `jeffery-orbit`**, **E9 `dumbbell-sedimentation`**.
+      E8 is the gate that would let `ResolvedCfdDem`'s reaction torque be turned on by default.
 
 ### Suite fixes the examples produced
 - **dem `53fab35`** (+ `5c53d41`, `326deb2`) — two out-of-bounds writes found by the pall-ring
