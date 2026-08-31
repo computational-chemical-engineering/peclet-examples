@@ -112,12 +112,21 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       edge-on **1.02485 (+0.07%) → 1.02532 (+0.12%)** vs 2·0.64514/2^{1/3} (Stimson–Jeffery);
       broadside **1.19998 (+4.32%) → 1.18250 (+2.80%)** toward 2·0.72462/2^{1/3} (Jeffrey–Onishi).
       (Chosen over sedimentation: steady drag is the claim the exact solutions actually gate.)
-- [~] **E3a `ten-cate-sphere`** — page written against the paper's Table I/II (viscosity-header
-      erratum noted; u_∞ = Abraham correlation, the paper's own Re definition). First render ran
-      **8 h without finishing**: the only loop exit was gap < 0.35·Dp and the Stokes floor approach
-      is asymptotic. Loop now bounded (kmax cap + post-peak stop at −v < 0.45·v_peak + gap < 0.5·Dp);
-      re-render in flight.
-- [ ] **E3b `drafting-kissing-tumbling`** — unblocked, not started (stretch).
+- [x] **E3a `ten-cate-sphere`** (`e1008a1`) — SHIPPED as a **diagnosed negative result** (the
+      rotating-sphere-torque precedent). Passes: Galileo similarity 1%, towed-vs-free-fall
+      consistency 2%, unconfined periodic control 1.03 of the screened expectation. Fails,
+      diagnosed: E1 peak u/u∞ = 0.781/0.777/0.749 (d/h 8/12/16) vs measured 0.947 —
+      resolution-flat at the **creeping** confined value, invariant to dt/2, sweeps ×3.3,
+      SOU→Koren, advection off; E3/E4 coupled falls **exceed u∞** (2.16/1.87); Newton audit on a
+      towed Re-32 sphere leaks +0.32 W. One suspect: the **advective cut-wall flux** (suite §7
+      item 8; addendum with these numbers pushed, suite `4f754b1`). En route: first render hung 8 h
+      (asymptotic-only loop exit — now kmax + post-peak stop, armed past 0.6 u* only), MG-hostile
+      odd grid cost 10× (549→56 s per fall), virtual-mass stabilizer (ma = 2ρfVp, lagged
+      compensation) for the ρp/ρf = 1.15 explicit-coupling ring-up.
+- [ ] **E3b `drafting-kissing-tumbling`** — **DEFERRED with cause**: DKT is finite-Re coupled
+      two-body motion, the exact regime E3a just measured as quantitatively broken (creeping-valued
+      confinement + momentum leak). Building it before the §7-item-8 solver fix would ship a
+      known-bad benchmark. It becomes the natural second regression page after the fix.
 
 ### Suite fixes the examples produced
 - **dem `53fab35`** (+ `5c53d41`, `326deb2`) — two out-of-bounds writes found by the pall-ring
