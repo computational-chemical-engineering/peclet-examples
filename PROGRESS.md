@@ -94,16 +94,30 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       spin-decay through `ResolvedCfdDem` `apply_torque=True` at **1.0389×** the same-box calibrated
       drag. The page is rewritten as *negative result → diagnosis → fix → gate*. **E8 UNBLOCKED.**
 
-### Not done this session (Phase 2/3 remainder)
-- [ ] **E3a `ten-cate-sphere`** — a **verified data sheet is now in the plan** (all four cases'
-      properties, the recomputed Abraham u_∞, the measured peak velocities 0.0363 / 0.0571 / 0.0869 /
-      0.1226 m/s, the release geometry, and the wall-correction trap). Ready to execute.
-- [ ] **E4b `pall-ring-flow`** — E4a's frozen `.npz` carries the tree and is its input.
-- [ ] **E3b `drafting-kissing-tumbling`** — force-only, so unblocked; needs a two-body resolved run.
-- [ ] **E8 `jeffery-orbit`** — **unblocked** (the torque is fixed and gated statically +
-      dynamically); ready to build on `apply_torque=True` with a physical inertia.
-- [ ] **E9 `dumbbell-sedimentation`** — fully unblocked (both variants) now that the torque is
-      fixed.
+### Phase 2/3 remainder — executed 2026-08-30/31
+- [x] **E8 `jeffery-orbit`** (`954e711`) — prolate spheroid r=2 tumbling in wall-driven shear,
+      torque-coupled through `set_external_torques` with the physical Jeffery inertia. Half-period
+      via φ-crossings separated by π (transient-immune): **−3.42% (96³) / −5.01% (128³)** against
+      T = (2π/γ̇)(r + 1/r). En route it exposed the **−44% period** that became the v4 owner-flux
+      attribution fix (flow `1d95260`), and the **lattice-plane trap** (plate faces on a grid plane
+      → zero cut cells → moving wall silently inert; PLATE half-thickness must be off-lattice, 8.3).
+      r=4 at b=3.5h is a documented **failure** (needs b≳5h ⇒ ≥160³) and is out of CASES.
+- [x] **E4b `pall-ring-flow`** (`797effd`) — Stokes flow through E4a's frozen 41-ring pour.
+      Certified-vs-shell `set_solid`: **0.21 s vs 0.88 s (4.1×)**. Ergun with the **Sauter**
+      diameter Dp = 6V/S (V=0.268, S=6.561 per unit-radius ring — envelope Dp is 2.9× off):
+      measured/Ergun = **0.96 / 0.96 / 0.96 / 0.95** over the ladder. Per-ring reaction-drag
+      density resolved in the bulk window y ∈ [1.0, 4.47].
+- [x] **E9 `dumbbell-drag`** (`0e682dc`) — touching equal-sphere dumbbell vs the exact bispherical
+      solutions, drag ratio K to the equal-volume sphere in the SAME box so the box cancels:
+      edge-on **1.02485 (+0.07%) → 1.02532 (+0.12%)** vs 2·0.64514/2^{1/3} (Stimson–Jeffery);
+      broadside **1.19998 (+4.32%) → 1.18250 (+2.80%)** toward 2·0.72462/2^{1/3} (Jeffrey–Onishi).
+      (Chosen over sedimentation: steady drag is the claim the exact solutions actually gate.)
+- [~] **E3a `ten-cate-sphere`** — page written against the paper's Table I/II (viscosity-header
+      erratum noted; u_∞ = Abraham correlation, the paper's own Re definition). First render ran
+      **8 h without finishing**: the only loop exit was gap < 0.35·Dp and the Stokes floor approach
+      is asymptotic. Loop now bounded (kmax cap + post-peak stop at −v < 0.45·v_peak + gap < 0.5·Dp);
+      re-render in flight.
+- [ ] **E3b `drafting-kissing-tumbling`** — unblocked, not started (stretch).
 
 ### Suite fixes the examples produced
 - **dem `53fab35`** (+ `5c53d41`, `326deb2`) — two out-of-bounds writes found by the pall-ring
@@ -117,6 +131,11 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
   the force's exactness rests on `-grad(pi)` telescoping over an owner region and that argument does
   not survive taking the first moment (|T|/(|F|R) = 3.2e-07 on a sphere whose true torque is exactly
   zero, against the traction integral's 5.0e-14).
+- **flow `1d95260` (v4, owner-flux attribution)** — with several bodies, the per-body reaction
+  force/torque mis-attributed the π-flux across owner-region boundaries (fluid–fluid staggered
+  faces whose two cells have different owners). Fix removes it pairwise (`hydro_reaction_owner_flux`,
+  each side's own min-imaged lever). Found by E8's −44% Jeffery period; sphere-in-tank drag went
+  λ = 0.62 → correct.
 
 
 Working through a batch of single-phase-flow benchmark examples for the gallery.
