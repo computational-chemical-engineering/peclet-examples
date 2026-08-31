@@ -341,6 +341,20 @@ A spheroid tumbling in shear through a full resolved rotational loop — the hal
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/dumbbell-drag.jpg)](examples/dumbbell-drag/index.qmd)
+
+::: {.card-body}
+#### [Dumbbell drag](examples/dumbbell-drag/index.qmd)
+Two fused spheres against the exact bispherical solutions — the axial drag to 0.1%, and the
+anisotropy that turns a settling doublet broadside-on.
+[flow · CSG · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/nonsphere-drag.jpg)](examples/nonsphere-drag/index.qmd)
 
 ::: {.card-body}

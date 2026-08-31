@@ -53,6 +53,8 @@ website:
             text: "Rotating sphere torque (negative result → fix)"
           - href: examples/jeffery-orbit/index.qmd
             text: "Jeffery orbit (spheroid tumbling in shear)"
+          - href: examples/dumbbell-drag/index.qmd
+            text: "Dumbbell drag (two fused spheres, bispherical exact)"
       - text: "Packings & porous"
         menu:
           - href: examples/zick-homsy/index.qmd
