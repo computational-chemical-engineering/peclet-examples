@@ -61,6 +61,8 @@ website:
             text: "Random packed bed (dem → flow)"
           - href: examples/ring-packed-bed/index.qmd
             text: "Ring packed-bed permeability (dem → flow)"
+          - href: examples/pall-ring-flow/index.qmd
+            text: "Pall-ring bed flow (analytic hand-off, vs Ergun)"
           - href: examples/pore-mesh-voronoi/index.qmd
             text: "Pore-space Voronoi mesh (dem → voro)"
       - text: "Granular (DEM)"

@@ -282,6 +282,20 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/pall-ring-flow.jpg)](examples/pall-ring-flow/index.qmd)
+
+::: {.card-body}
+#### [Pall-ring bed flow](examples/pall-ring-flow/index.qmd)
+The frozen dem pack becomes flow geometry analytically; the pressure drop lands within 5% of
+Ergun fed the pack's own measured porosity and Sauter diameter.
+[flow · dem · porous]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/jeffery-orbit.jpg)](examples/jeffery-orbit/index.qmd)
 
 ::: {.card-body}
