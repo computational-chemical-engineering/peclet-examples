@@ -359,8 +359,8 @@ anisotropy that turns a settling doublet broadside-on.
 
 ::: {.card-body}
 #### [Sedimenting sphere (ten Cate)](examples/ten-cate-sphere/index.qmd)
-The classic settling benchmark as an honest negative result: the coupling checks out to 2%,
-and the miss it measures pins the solver's sharpest open item — the advective cut-wall flux.
+The classic settling benchmark as an honest negative result — one that already bought a real
+solver fix, kept measuring after it landed, and still stands as the sharpest open problem.
 [flow · dem · coupling · negative result]{.tags}
 
 :::
