@@ -1,0 +1,308 @@
+---
+title: "A sphere settling in a closed tank, vs ten Cate's PIV"
+subtitle: "The benchmark every resolved-particle code runs: a 15 mm nylon sphere falling through silicone oil in a closed tank, measured by PIV at four Reynolds numbers — here an honest negative result: the coupled machinery checks out to 2%, and the miss it measures is the missing advective cut-wall flux, now the solver's sharpest open item."
+author: "Peclet"
+date: "2026-08-31"
+categories: [flow, dem, coupling, moving-geometry, verification, GPU]
+jupyter: python3
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/ten-cate-sphere/index.ipynb){target="_blank"}
+&nbsp;GPU example — the frozen page reads correctly without a solver.
+
+## What you'll learn
+
+ten Cate, Nieuwstadt, Derksen & Van den Akker [-@tencate2002] dropped a single sphere through
+silicone oil in a closed tank and measured its velocity by PIV, at four viscosities spanning
+$\mathrm{Re} = 1.5$ to $31.9$. It has become *the* validation case for resolved particle-laden
+codes, because everything is finite and honest: the tank confines, the sphere accelerates from
+rest, and the wall it lands on is part of the problem.
+
+Here the whole configuration is analytic: the **tank is a scene instance** (a box-difference —
+the periodic domain just wraps its solid shell) and the sphere is a second instance whose position
+comes from `peclet.dem`, driven by the discrete-reaction force each step. Advection is on and
+carried by the reaction budget (rung R0).
+
+Two things to know before comparing numbers:
+
+::: {.callout-important}
+## The interesting physics: the steady wall correction never establishes
+The classical steady wall correction (Ladenburg/Faxén) predicts a **~31%** slowdown for this
+geometry ($d/W = 0.15$) — yet the experiment measures $u_{\max}/u_\infty = 0.947$. Both are right.
+The steady correction is the sphere interacting with the long-range $1/r$ Stokes disturbance
+reflected by the walls; at these Reynolds numbers that far field is destroyed — screened at the
+inertial length $\ell \sim \nu/u = 0.7\,d$ (E1) and shorter, and never given time to establish
+anyway ($\tau_{\rm wall} = (W/2)^2/\nu = 6.5$–$41$ s against fall times of $1$–$3.3$ s). The
+experiment's ≈0.95 is what's left: essentially the unbounded terminal velocity. **Reproducing it
+is therefore a test of a solver's finite-Re far field, not of its Stokes drag** — which is
+exactly the muscle this page ends up probing.
+:::
+
+::: {.callout-note}
+## This example found and fixed a solver defect before it could run at all
+The first drag measurement in this tank read **half** the physical value. The cause was per-body
+force *attribution*: with two instances (sphere + tank), the pressure flux through the owner
+partition's mid-surface transferred a factor-2.2 of the sphere's drag to the tank — invisible in
+every single-instance and symmetric gate the suite had. Fixed in `peclet-flow 1d95260`; the
+per-sphere spread of the 4-sphere gate dropped six orders of magnitude as a side effect. See
+[ISSUES.md](../../ISSUES.md).
+:::
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    for p in _local.split(os.pathsep):
+        sys.path.insert(0, p)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+```
+
+```{python}
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+from peclet import flow as sdflow
+from peclet import dem as pdem
+from peclet.core import geom
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 9, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+
+# The four experiments, from the paper's Table I (the printed viscosity-header unit is an
+# erratum; values are Pa s). u_inf is NOT measured: it is the unbounded terminal velocity from
+# the Abraham correlation, which is how the paper defines Re. u_max/u_inf are the measured
+# ratios from Table II.
+CASES = {   #     rho_f     mu      u_inf   ratio   Re
+    "E1": (970., 0.373, 0.03829, 0.947,  1.5),
+    "E2": (965., 0.212, 0.05992, 0.953,  4.1),
+    "E3": (962., 0.113, 0.09062, 0.959, 11.6),
+    "E4": (960., 0.058, 0.12839, 0.955, 31.9)}
+RHO_P_SI, D_SI, G_SI = 1120., 0.015, 9.81
+```
+
+## The setup, in dynamic similarity
+
+Everything is nondimensionalized by the sphere diameter and $u_\infty$: matching Re, the density
+ratio $\rho_p/\rho_f$ and the dimensionless gravity $G = g\,d/u_\infty^2$ reproduces the
+experiment's dimensionless trajectory exactly (the Galileo numbers match to three digits, which is
+the check that the scaling is right). The sphere starts **from rest** with its **bottom apex 120 mm
+above the floor** — centre at $8.5\,d$, the paper's Fig. 6/8 convention.
+
+```{python}
+#| label: driver
+USTAR, WALL = 0.02, 4.3          # u_inf in cell units; tank wall thickness (off-lattice: 4.3)
+KI_I, KI_R = 2, 17
+
+def run_case(case, DH, sweeps=60, gpu_dt=None):
+    rho_f, mu_si, u_inf, ratio_exp, Re = CASES[case]
+    # Grid: round UP to multiples of 8 so the 4-level multigrid can actually coarsen (a 62-wide
+    # grid has one factor of two); the extra padding goes into the wall thickness.
+    NX = int(np.ceil((100 / 15 * DH + 2 * WALL) / 8) * 8)
+    NY = int(np.ceil((160 / 15 * DH + 2 * WALL) / 8) * 8)
+    WX = (NX - 100 / 15 * DH) / 2
+    WY = (NY - 160 / 15 * DH) / 2
+    NU = USTAR * DH / Re
+    GSTAR = G_SI * D_SI / u_inf ** 2 * USTAR ** 2 / DH
+    RATIO = RHO_P_SI / rho_f
+    # dt: a fraction of the particle response time, and small enough that the sphere moves a
+    # fraction of a cell per rebuild
+    tau = RATIO * DH * Re / (18 * USTAR)
+    dt = gpu_dt if gpu_dt else min(max(tau / 12, 1.0), 0.35 / USTAR / 4)
+    b = geom.SceneBuilder()
+    slab = b.add_leaf("box", [NX * 0.7, NY * 0.7, NX * 0.7])
+    cavity = b.add_leaf("box", [(NX - 2 * WX) / 2, (NY - 2 * WY) / 2, (NX - 2 * WX) / 2])
+    tank = b.add_difference(slab, cavity)
+    sph = b.add_leaf("sphere", [DH / 2])
+    ni, nr, _, _ = b.encode()
+    OFF = 0.3                       # shift the tank so no wall sits exactly on a grid plane
+    x0 = 0.5 * NX + OFF
+    y0 = WY + OFF + 8.5 * DH
+    ii = np.zeros((2, KI_I), dtype=np.int32); ir = np.zeros((2, KI_R))
+    ii[0] = (tank, -1); ir[0, 0:3] = (0.5 * NX + OFF, 0.5 * NY + OFF, 0.5 * NX + OFF)
+    ir[0, 6] = 1.0; ir[0, 7] = 1.0
+    ii[1] = (sph, -1); ir[1, 0:3] = (x0, y0, x0); ir[1, 6] = 1.0; ir[1, 7] = 1.0
+    s = sdflow.Solver(NX, NY, NX)
+    s.set_rho(1.0); s.set_mu(NU); s.set_dt(dt); s.set_advection(True)
+    s.set_velocity_solver_params(sweeps); s.set_pressure_solver_params(20)
+    s.set_pressure_multigrid(True, levels=4)
+    s.set_scene(np.asarray(ni, np.int32), np.asarray(nr, float), ii.ravel(), ir.ravel(),
+                periodic=True)
+    s.set_solid_from_scene(True)
+
+    m = RATIO * (np.pi / 6) * DH ** 3
+    Vp = (np.pi / 6) * DH ** 3
+    # Virtual-mass stabilization for the explicit coupling: at rho_p/rho_f = 1.15 the resolved
+    # hydrodynamic force contains an added-mass part evaluated one step late, which rings — and
+    # near the floor the added mass grows and the ringing diverges. Integrating with m + ma and
+    # adding the lagged ma*a back keeps every steady and smooth trajectory EXACT (m dv/dt = F - Fg
+    # when a is converged) while cutting the loop gain on the fluctuation.
+    ma = 2.0 * Vp
+    d = pdem.Simulation(8)
+    d.set_gravity(0.0, 0.0, 0.0)
+    d.set_sphere_shape(1.0)
+    d.set_positions(np.array([[x0, y0, x0]], dtype=np.float32))
+    d.set_inv_mass(np.array([1.0 / (m + ma)], dtype=np.float32))
+    d.set_inv_inertia(np.array([[0, 0, 0]], dtype=np.float32))   # translation-only, like the paper
+    Fg = (RATIO - 1.0) * Vp * GSTAR       # buoyant weight (the fluid carries no hydrostatic field)
+    # Hard bound: 2.2x the time to fall the full release height at 0.8 u*. The physical stops
+    # below (near-floor gap, deep post-peak deceleration) fire first; this cannot hang.
+    kmax = int(2.2 * (8.5 * DH / (0.8 * USTAR)) / dt)
+    t0 = time.time(); tr = []; vpk = 0.0; a_prev = np.zeros(3)
+    for k in range(kmax):
+        p = np.asarray(d.get_positions())[0].astype(float)
+        v = np.asarray(d.get_velocities())[0].astype(float)
+        s.set_instance_transform(1, p.tolist())
+        s.set_instance_motion(1, lin_vel=v.tolist())
+        s.rebuild_geometry(); s.step()
+        F = np.asarray(s.hydro_force_torque_reaction())[0][1].astype(float)
+        F[1] -= Fg
+        F += ma * a_prev
+        d.set_external_forces(np.array([F], dtype=np.float32))
+        for _ in range(10):
+            d.step(dt / 10)
+        a_prev = (np.asarray(d.get_velocities())[0].astype(float) - v) / dt
+        tr.append(((k + 1) * dt, p[1] - (WY + OFF) - DH / 2, v[1]))   # gap = bottom apex to floor
+        vpk = max(vpk, -v[1])
+        if tr[-1][1] < 0.5 * DH:
+            break                          # sub-cell gap: lubrication unresolved, dem would take over
+        if vpk > 0.6 * USTAR and -v[1] < 0.45 * vpk:
+            break                          # well past the peak: the approach to rest is asymptotic
+            # (armed only past 0.6 u*: the start-up transient's dip must not trigger it)
+    tr = np.array(tr)
+    return dict(t=tr[:, 0], gap=tr[:, 1] / DH, v=tr[:, 2] / USTAR, case=case, DH=DH,
+                ratio_exp=ratio_exp, Re=Re, u_inf=u_inf, wall=time.time() - t0,
+                nstep=len(tr), dt=dt)
+```
+
+## E1: the resolution ladder
+
+The coarsest case first, three times: $d/h = 8, 12, 16$. The number to watch is the peak
+settling velocity against the measured $u_{\max}/u_\infty = 0.947$ — and it does **not** get
+there. It converges, resolution-flat, onto ≈0.78: the *creeping-flow* confined value. Hold that
+thought; the diagnosis follows the plots.
+
+```{python}
+#| label: ladder
+lad = []
+print("  d/h |  grid          steps  dt   | peak u/u_inf   measured   error   |  time")
+for DH in (8, 12, 16):
+    r = run_case("E1", DH)
+    pk = np.abs(r["v"]).max()
+    lad.append((DH, r, pk))
+    NX = int(np.ceil((100 / 15 * DH + 2 * WALL) / 8) * 8)
+    NY = int(np.ceil((160 / 15 * DH + 2 * WALL) / 8) * 8)
+    print("  %3d | %3dx%3dx%3d  %5d  %4.1f |    %.4f       %.3f    %+6.2f%%  | %4.0f s"
+          % (DH, NX, NY, NX, r["nstep"], r["dt"], pk, r["ratio_exp"],
+             100 * (pk / r["ratio_exp"] - 1), r["wall"]))
+```
+
+## All four Reynolds numbers
+
+```{python}
+#| label: cases
+DH_RUN = 12
+runs = {"E1": lad[1][1]}
+for case in ("E2", "E3", "E4"):
+    runs[case] = run_case(case, DH_RUN)
+print("  case  Re    | peak u/u_inf   measured    error  | steps   time")
+rows = []
+for case in ("E1", "E2", "E3", "E4"):
+    r = runs[case]
+    pk = np.abs(r["v"]).max()
+    rows.append((case, r, pk))
+    flag = "   <-- UNPHYSICAL (exceeds u_inf)" if pk > 1.0 else ""
+    print("  %s  %5.1f |    %.4f       %.3f    %+6.2f%% | %5d  %4.0f s%s"
+          % (case, r["Re"], pk, r["ratio_exp"], 100 * (pk / r["ratio_exp"] - 1),
+             r["nstep"], r["wall"], flag))
+```
+
+```{python}
+#| label: fig-traj
+#| fig-cap: "Settling velocity against time, in the experiment's units. Crosses mark the measured peak velocities (Table II ratios times the Abraham u∞). E1 and E2 fall short of the crosses by 14–18% (the creeping-valued confinement documented below); E3 and E4 blow through the unbounded terminal velocity — impossible physically, and the plainest exhibit of the missing advective cut-wall flux."
+#| code-fold: true
+fig, ax = plt.subplots(figsize=(6.4, 3.6))
+cols = {"E1": "#4c72b0", "E2": "#55a868", "E3": "#dd8452", "E4": "#c44e52"}
+for case, r, pk in rows:
+    u_scale = r["u_inf"]                                # u* = 1 corresponds to u_inf (m/s)
+    t_scale = (D_SI / r["DH"]) / (r["u_inf"] / USTAR)   # seconds per time unit
+    ax.plot(r["t"] * t_scale, -r["v"] * u_scale, color=cols[case], lw=1.3,
+            label="%s (Re %.1f)" % (case, r["Re"]))
+    ax.axhline(r["ratio_exp"] * r["u_inf"], color=cols[case], lw=0.6, ls=":")
+    tpk = r["t"][np.argmax(np.abs(r["v"]))] * t_scale
+    ax.plot([tpk], [r["ratio_exp"] * r["u_inf"]], "x", color=cols[case], ms=8, mew=2)
+ax.set_xlabel("t [s]"); ax.set_ylabel("settling velocity [m/s]")
+ax.legend(fontsize=8, frameon=False); ax.grid(alpha=0.3)
+plt.show()
+```
+
+```{python}
+#| label: fig-gap
+#| fig-cap: "The same runs against the gap between the sphere's bottom apex and the floor, the paper's Fig. 8(a) coordinate: higher Re carries the sphere closer to the wall before the deceleration bites."
+#| code-fold: true
+fig, ax = plt.subplots(figsize=(6.0, 3.2))
+for case, r, pk in rows:
+    ax.plot(r["gap"], -r["v"], color=cols[case], lw=1.3, label=case)
+ax.set_xlim(8.2, 0); ax.set_xlabel("gap / d  (bottom apex to floor)")
+ax.set_ylabel(r"$u / u_\infty$"); ax.legend(fontsize=8, frameon=False); ax.grid(alpha=0.3)
+plt.show()
+```
+
+## Results — an honest negative, fully diagnosed
+
+| claim | measured | reference |
+|---|---|---|
+| Galileo-number match of the scaling (E1) | 34.9 vs 34.6 | dynamic similarity holds |
+| internal consistency: towed drag vs free-fall balance (E1) | agree to 2% | the coupling loop is sound |
+| E1 peak $u/u_\infty$, $d/h = 8 \to 12 \to 16$ | `{python} "%.3f / %.3f / %.3f" % tuple(l[2] for l in lad)` | 0.947 measured — **not reached** |
+| E1 effective drag ratio $W/(3\pi\mu d\,u_{\rm peak})$ | ≈ 1.67 | ≈ the *creeping* confined value; experiment ⇒ 1.38 |
+| E2 at $d/h = 12$ | `{python} "%.3f" % rows[1][2]` | 0.953 (−14%) |
+| E3 / E4 at $d/h = 12$ | `{python} " / ".join("%.3f" % r[2] for r in rows[2:])` | **unphysical** — both exceed $u_\infty$ |
+
+**What is right.** The similarity scaling (Galileo numbers match to 1%), the coupled machinery
+(a towed sphere's quasi-steady drag and the free fall's force balance agree to 2% — two
+independent measurements of the same curve), the qualitative shape (acceleration from rest,
+plateau, bottom-wall deceleration), and the same setup with the tank removed: in a large periodic
+box the sphere settles at 1.03 of the screened expectation at $\mathrm{Re}=1.5$.
+
+**What is wrong, precisely.** In the tank, the simulation delivers the **creeping-flow** confined
+drag at every resolution: the E1 plateau is flat at 0.78 for $d/h = 8, 12, 16$, unchanged by
+halving $\Delta t$, by tripling the velocity-solver sweeps, and by swapping the SOU advection
+scheme for Koren TVD. The finite-Re screening that the experiment shows (and that the callout
+above explains) never develops around the moving sphere. At the higher Reynolds numbers the
+failure changes sign and grows: E3 and E4 accelerate **past the unbounded terminal velocity**,
+which no drag law permits, and a Newton check on a towed E4 sphere finds the per-body reaction
+forces of sphere and tank summing to $0.32\,W$ instead of zero — the advective part of the
+momentum budget leaks at the cut wall.
+
+**Where it points.** All of it is one suspect: the **advective momentum flux through the moving
+cut wall**, the term the reaction budget does not yet carry and the momentum operator does not
+yet see — the open item logged as §7-8 of the suite's analytic-geometry review before this page
+was attempted, now with numbers attached. Fixing it is solver work in `peclet.flow`, not
+example work; this page is frozen as the measurement that motivates it, the way the
+[rotating-sphere torque](../rotating-sphere-torque/index.qmd) page documented its −31% before the
+transpose-traction fix landed. The full probe ladder (tow, periodic control, Newton audit,
+scheme/dt/sweep sensitivities) is in the repo's [ISSUES.md](../../ISSUES.md).
+
+The measured peaks carry an honest ±1% themselves (Table II ratios times an $u_\infty$
+recomputed from the Abraham correlation, with unstated fluid-temperature uncertainty) — far
+tighter than the −14…−18% deficit, which is therefore real.
+
+## Adapt this yourself
+
+- **Re-run it after the fix.** This page is the regression test for the advective cut-wall flux:
+  when flow carries it, E1's ladder should climb from 0.78 toward 0.947 and E3/E4's peaks drop
+  below $u_\infty$ — with not one line of this page changing.
+- **Push to touchdown.** Below gap ≈ 0.5 d the lubrication film is sub-cell; `peclet.dem`'s
+  contact model is built for exactly that hand-off — give the sphere a restitution and let it land.
+- **Do it in SI.** The similarity scaling is three lines; running in physical units changes
+  nothing but the numbers' size.
+
+## Reproduce this
+
+```bash
+PECLET_LOCAL_BUILD=/path/to/suite/flow/build_l3_cuda:/path/to/suite/dem/build_l4_omp:/path/to/suite/core/python/build_geom \
+  quarto render examples/ten-cate-sphere/index.qmd --execute
+```

@@ -557,3 +557,37 @@ factor 2.2 for a sphere inside a tank**. The same defect gave the Jeffery orbit 
 sides of every cross-owner fluid–fluid face; the 4-sphere gate's per-sphere spread dropped
 4.9e-03 → 5.7e-09 (that spread *was* this flux). Anyone comparing per-body forces from a
 multi-instance resolved run made before this fix should re-run.
+
+## flow: confined finite-Re moving-body drag is creeping-valued; high-Re coupled fall unphysical → OPEN (suite §7 item 8)
+*(found building `examples/ten-cate-sphere`, 2026-08-31 — the page ships as a diagnosed negative result)*
+
+**Symptom.** The ten Cate (2002) settling benchmark fails quantitatively at every Re while every
+internal-consistency control passes. E1 (Re 1.5): peak u/u∞ converges resolution-flat
+(d/h = 8/12/16) onto ≈0.78 vs measured 0.947 — exactly the *creeping* confined value
+(effective K ≈ 1.67 vs the experiment's 1.38). E3/E4 (Re 11.6/31.9): the coupled sphere
+accelerates **past u∞** (peaks ≈2.2/1.9 u∞), which no drag law permits.
+
+**Probe ladder** (all at d/h = 8 unless noted; scripts tc_probe*.py, session scratchpad):
+- dt ×½, velocity sweeps 60→200, SOU→Koren TVD: E1 plateau unchanged (0.781/0.779/0.781/0.785).
+- Advection OFF: 0.794 — advection contributes ≈nothing at Re 1.5 where the experiment needs +19%.
+- **Tow probe** (prescribed U = 0.947 u*, no dem): F/W = 1.244 — consistent with the free fall
+  (1.244·0.777/0.947 = 1.02) and ≈ the creeping confinement correction 1/0.76.
+- **Periodic control** (no tank, back-pressure body force): settles at 1.032 of the screened
+  expectation — the solver is healthy unconfined; the defect needs the tank.
+- **Newton audit** (towed E4): F_sphere + F_tank = **+0.32 W** with advection on (−0.001 W at E1
+  with advection off) — the advective momentum budget leaks at the moving cut wall.
+
+**Diagnosis.** All one suspect: the advective momentum flux through the moving cut wall — the
+O(h) wall term §7 item 8 of suite/docs/ANALYTIC_SDF_GEOMETRY.md measured at −0.4…−1% on a STATIC
+bed and deliberately reported-not-fixed. For a moving body it is two orders larger and kills both
+the inertial screening of the wall correction (E1/E2) and outright momentum conservation (E3/E4).
+Fix = momentum-operator work in flow (conservative cut-wall advective flux with wall velocity),
+not example work. The page is the regression test waiting for it.
+
+**Two traps fixed en route, kept for reuse:**
+- Grid sizes must feed the 4-level MG factors of two: the original NX=62 tank (one factor of 2)
+  ran 10× slower per step than NX=64 (549 s vs 56 s per E1-d/h=8 fall).
+- Explicit resolved coupling at ρp/ρf = 1.15 rings and near-floor diverges: the standard
+  virtual-mass stabilizer (integrate with m + ma, add the lagged ma·a back, ma = 2ρfVp) removes
+  it without touching converged dynamics; the post-peak stop must arm only past 0.6 u* or the
+  start-up transient's dip triggers it (bit the d/h=16 rung: 160-step run, peak 0.41).

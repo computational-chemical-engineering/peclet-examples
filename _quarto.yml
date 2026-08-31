@@ -55,6 +55,8 @@ website:
             text: "Jeffery orbit (spheroid tumbling in shear)"
           - href: examples/dumbbell-drag/index.qmd
             text: "Dumbbell drag (two fused spheres, bispherical exact)"
+          - href: examples/ten-cate-sphere/index.qmd
+            text: "Sedimenting sphere (ten Cate et al. 2002)"
       - text: "Packings & porous"
         menu:
           - href: examples/zick-homsy/index.qmd
