@@ -577,12 +577,40 @@ accelerates **past u∞** (peaks ≈2.2/1.9 u∞), which no drag law permits.
 - **Newton audit** (towed E4): F_sphere + F_tank = **+0.32 W** with advection on (−0.001 W at E1
   with advection off) — the advective momentum budget leaks at the moving cut wall.
 
-**Diagnosis.** All one suspect: the advective momentum flux through the moving cut wall — the
-O(h) wall term §7 item 8 of suite/docs/ANALYTIC_SDF_GEOMETRY.md measured at −0.4…−1% on a STATIC
-bed and deliberately reported-not-fixed. For a moving body it is two orders larger and kills both
-the inertial screening of the wall correction (E1/E2) and outright momentum conservation (E3/E4).
+**Diagnosis (2026-08-31, superseded in part — see the update below).** All one suspect: the
+advective momentum flux through the moving cut wall — the O(h) wall term §7 item 8 of
+suite/docs/ANALYTIC_SDF_GEOMETRY.md measured at −0.4…−1% on a STATIC bed and deliberately
+reported-not-fixed. For a moving body it is two orders larger and kills both the inertial
+screening of the wall correction (E1/E2) and outright momentum conservation (E3/E4).
 Fix = momentum-operator work in flow (conservative cut-wall advective flux with wall velocity),
 not example work. The page is the regression test waiting for it.
+
+**UPDATE 2026-08-31 — the fix landed and this page did NOT recover.** `peclet-flow fb1a1a7`
+(rung A0 of `flow/doc/advective_cutwall_flux_plan.md`) feeds the local rigid-body wall velocity
+into the momentum advection's inputs, on both the explicit and the implicit-FOU paths. Static
+scenes are byte-identical (60/60 MPI ctests, regression +0.00%); `PECLET_FLOW_ADV_WALLVEL=0` is
+the ablation. What it fixed, and what it did not:
+
+- **Fixed — the momentum leak.** Newton audit, towed E4: `F_sphere + F_tank` **+0.32 W → −0.033 W**,
+  now smaller than the same probe's advection-OFF residual (−0.070 W). Towed E4 drag
+  **1.544 → 1.087 W**.
+- **Fixed — finite-Re moving-body drag against an external reference.** The `moving-sphere-drag`
+  page's Blackburn (2002) peak `Cd` ladder: **+10.16 / +10.27 / +2.10 / −0.42 / +6.71 % →
+  −0.76 / −0.66 / −2.13 / −2.17 / −0.54 %**. Worst case 10.3 % → 2.2 %.
+- **NOT fixed — this benchmark.** E1 peaks (d/h = 8/12/16) **0.781 / 0.777 / 0.749 →
+  0.803 / 0.797 / 0.766** against the measured 0.947, still resolution-flat; E3 / E4 peaks
+  **2.16 / 1.87 → 2.03 / 1.77 × u∞**, still above u∞. Re-rendered with zero page edits.
+
+So the confined finite-Re drag deficit is **not** the advective cut-wall flux. Three new leads
+replace the old diagnosis: (1) towed and free-falling now DISAGREE at E4 — the towed sphere's
+drag exceeds its weight at 0.955 u*, which predicts a terminal velocity below u∞, while the
+coupled fall peaks at 1.77 u∞ (at E1 the two agree to 2 %), so the coupled loop or the transient
+is the suspect at high Re; (2) the unconfined periodic control moved **1.032 → 1.084**, i.e. the
+wall-velocity extension changes the drag ~5 % on a body nowhere near a confining wall; (3) the
+Blackburn ladder is now flat at −0.7…−2.2 % where it used to converge — a small
+resolution-independent deficit replaced a large resolution-dependent excess. **The page's closing
+prediction ("E1's ladder should climb from 0.78 toward 0.947 and E3/E4's peaks drop below u∞")
+is now measured false and needs rewriting before the new numbers are published.**
 
 **Two traps fixed en route, kept for reuse:**
 - Grid sizes must feed the 4-level MG factors of two: the original NX=62 tank (one factor of 2)
