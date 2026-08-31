@@ -231,12 +231,123 @@ pipeline.
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/pall-ring-flow.jpg)](examples/pall-ring-flow/index.qmd)
+
+::: {.card-body}
+#### [Pall-ring bed flow](examples/pall-ring-flow/index.qmd)
+The frozen dem pack becomes flow geometry analytically; the pressure drop lands within 5% of
+Ergun fed the pack's own measured porosity and Sauter diameter.
+[flow · dem · porous]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/pore-network-extraction.jpg)](examples/pore-network-extraction/index.qmd)
+
+::: {.card-body}
+#### [Pore-network extraction](examples/pore-network-extraction/index.qmd)
+Watershed the SDF into pores and read exact throat conductances straight off a resolved
+Stokes solution.
+[pnm · flow]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/pore-mesh-voronoi.jpg)](examples/pore-mesh-voronoi/index.qmd)
 
 ::: {.card-body}
 #### [Pore-space Voronoi mesh](examples/pore-mesh-voronoi/index.qmd)
 Tessellate the void space of a packing into a graded polyhedral mesh with the `voro` engine.
 [dem → voro · meshing]{.tags}
+
+:::
+::::
+:::::
+
+::::::
+
+## Resolved particles & moving geometry
+
+:::::: {.section-lead}
+Bodies the fluid actually resolves: analytic CSG shapes as cut-cell geometry, walls and particles
+that move through the grid, and the exactly conservative reaction force and torque that couple
+them to `dem`. Every page here is gated against an exact solution — and two of them document the
+solver defects they uncovered on the way.
+::::::
+
+:::::: {.grid}
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/oscillating-sphere.jpg)](examples/oscillating-sphere/index.qmd)
+
+::: {.card-body}
+#### [Oscillating sphere](examples/oscillating-sphere/index.qmd)
+Unsteady Stokes drag, in-phase and out-of-phase, within 0.23% of Stokes (1851) — and a periodic
+box that screens its own images.
+[flow · moving geometry · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/moving-sphere-drag.jpg)](examples/moving-sphere-drag/index.qmd)
+
+::: {.card-body}
+#### [Moving sphere: does the drag spike?](examples/moving-sphere-drag/index.qmd)
+The classic immersed-boundary pathology, measured — and the fresh-cell fix that removes a
+resolution-independent 2.6% drag bias. Finite Re within 0.4% of Blackburn (2002).
+[flow · moving geometry · IBM]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/rotating-sphere-torque.jpg)](examples/rotating-sphere-torque/index.qmd)
+
+::: {.card-body}
+#### [Rotating sphere torque](examples/rotating-sphere-torque/index.qmd)
+A negative result, then a fix: the missing wall term is μ(n×Ω) in closed form. −31% → +2.2%
+converging, and the first freely rotating resolved particle decays at 1.04× its box's own drag.
+[flow · torque · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/jeffery-orbit.jpg)](examples/jeffery-orbit/index.qmd)
+
+::: {.card-body}
+#### [Jeffery orbit](examples/jeffery-orbit/index.qmd)
+A spheroid tumbling in shear through a full resolved rotational loop — the half-period within
+3–5% of Jeffery's exact 1922 solution, and the bug hunt that made it possible.
+[flow · dem · torque · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/nonsphere-drag.jpg)](examples/nonsphere-drag/index.qmd)
+
+::: {.card-body}
+#### [Non-spherical Stokes drag](examples/nonsphere-drag/index.qmd)
+Equal-volume drag ratios, validated against the exact Oberbeck spheroid — then a cube whose
+drag is orientation-independent to 0.14%, as its symmetry demands.
+[flow · CSG · exact]{.tags}
 
 :::
 ::::
@@ -275,90 +386,6 @@ Pack arbitrary shapes — capsules, stars, imported meshes — via signed-distan
 #### [Rotating drum](examples/rotating-drum/index.qmd)
 A moving SDF wall drives continuous avalanching at a steady dynamic angle of repose.
 [dem · moving walls]{.tags}
-
-:::
-::::
-:::::
-
-::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
-:::: {.gallery-card}
-[![](assets/gallery/pall-ring-flow.jpg)](examples/pall-ring-flow/index.qmd)
-
-::: {.card-body}
-#### [Pall-ring bed flow](examples/pall-ring-flow/index.qmd)
-The frozen dem pack becomes flow geometry analytically; the pressure drop lands within 5% of
-Ergun fed the pack's own measured porosity and Sauter diameter.
-[flow · dem · porous]{.tags}
-
-:::
-::::
-:::::
-
-::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
-:::: {.gallery-card}
-[![](assets/gallery/jeffery-orbit.jpg)](examples/jeffery-orbit/index.qmd)
-
-::: {.card-body}
-#### [Jeffery orbit](examples/jeffery-orbit/index.qmd)
-A spheroid tumbling in shear through a full resolved rotational loop — the half-period within
-3–5% of Jeffery's exact 1922 solution, and the bug hunt that made it possible.
-[flow · dem · torque · exact]{.tags}
-
-:::
-::::
-:::::
-
-::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
-:::: {.gallery-card}
-[![](assets/gallery/rotating-sphere-torque.jpg)](examples/rotating-sphere-torque/index.qmd)
-
-::: {.card-body}
-#### [Rotating sphere torque](examples/rotating-sphere-torque/index.qmd)
-A negative result, then a fix: the missing wall term is μ(n×Ω) in closed form. −31% → +2.2%
-converging, and the first freely rotating resolved particle decays at 1.04× its box's own drag.
-[flow · torque · exact]{.tags}
-
-:::
-::::
-:::::
-
-::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
-:::: {.gallery-card}
-[![](assets/gallery/moving-sphere-drag.jpg)](examples/moving-sphere-drag/index.qmd)
-
-::: {.card-body}
-#### [Moving sphere: does the drag spike?](examples/moving-sphere-drag/index.qmd)
-The classic immersed-boundary pathology, measured — and the fresh-cell fix that removes a
-resolution-independent 2.6% drag bias. Finite Re within 0.4% of Blackburn (2002).
-[flow · moving geometry · IBM]{.tags}
-
-:::
-::::
-:::::
-
-::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
-:::: {.gallery-card}
-[![](assets/gallery/nonsphere-drag.jpg)](examples/nonsphere-drag/index.qmd)
-
-::: {.card-body}
-#### [Non-spherical Stokes drag](examples/nonsphere-drag/index.qmd)
-Equal-volume drag ratios, validated against the exact Oberbeck spheroid — then a cube whose
-drag is orientation-independent to 0.14%, as its symmetry demands.
-[flow · CSG · exact]{.tags}
-
-:::
-::::
-:::::
-
-::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
-:::: {.gallery-card}
-[![](assets/gallery/oscillating-sphere.jpg)](examples/oscillating-sphere/index.qmd)
-
-::: {.card-body}
-#### [Oscillating sphere](examples/oscillating-sphere/index.qmd)
-Unsteady Stokes drag, in-phase and out-of-phase, within 0.23% of Stokes (1851) — and a periodic
-box that screens its own images.
-[flow · moving geometry · exact]{.tags}
 
 :::
 ::::

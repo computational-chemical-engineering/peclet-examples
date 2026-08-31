@@ -65,6 +65,8 @@ website:
             text: "Pall-ring bed flow (analytic hand-off, vs Ergun)"
           - href: examples/pore-mesh-voronoi/index.qmd
             text: "Pore-space Voronoi mesh (dem → voro)"
+          - href: examples/pore-network-extraction/index.qmd
+            text: "Pore-network extraction (DNS → throat conductances)"
       - text: "Granular (DEM)"
         menu:
           - href: examples/sdf-particle-packing/index.qmd
