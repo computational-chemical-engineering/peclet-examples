@@ -282,6 +282,20 @@ A moving SDF wall drives continuous avalanching at a steady dynamic angle of rep
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/jeffery-orbit.jpg)](examples/jeffery-orbit/index.qmd)
+
+::: {.card-body}
+#### [Jeffery orbit](examples/jeffery-orbit/index.qmd)
+A spheroid tumbling in shear through a full resolved rotational loop — the half-period within
+3–5% of Jeffery's exact 1922 solution, and the bug hunt that made it possible.
+[flow · dem · torque · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/rotating-sphere-torque.jpg)](examples/rotating-sphere-torque/index.qmd)
 
 ::: {.card-body}

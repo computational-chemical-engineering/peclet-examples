@@ -51,6 +51,8 @@ website:
             text: "Moving sphere: spurious force oscillations (vs Blackburn)"
           - href: examples/rotating-sphere-torque/index.qmd
             text: "Rotating sphere torque (negative result → fix)"
+          - href: examples/jeffery-orbit/index.qmd
+            text: "Jeffery orbit (spheroid tumbling in shear)"
       - text: "Packings & porous"
         menu:
           - href: examples/zick-homsy/index.qmd
