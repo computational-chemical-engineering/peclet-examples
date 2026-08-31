@@ -123,6 +123,19 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       (asymptotic-only loop exit — now kmax + post-peak stop, armed past 0.6 u* only), MG-hostile
       odd grid cost 10× (549→56 s per fall), virtual-mass stabilizer (ma = 2ρfVp, lagged
       compensation) for the ρp/ρf = 1.15 explicit-coupling ring-up.
+### The A0 solver rung the benchmark bought (2026-08-31)
+- [x] **Advective cut-wall flux, rung A0** (flow `fb1a1a7` + `469ab7f`, suite `918cf9f`) — the
+      `ten-cate-sphere` page's diagnosis paid off as a real solver fix: the momentum-advection
+      kernels read `maskVelocity`'s solid ZEROS, and zero is the wall velocity only for a static
+      wall. Feeding them the rigid-body `u_wall` closed the towed-E4 Newton leak
+      **+0.322 → −0.033 W** (below that probe's own advection-off floor, −0.070) and cut
+      `moving-sphere-drag`'s Blackburn finite-Re peak-Cd error from **10.3% to 2.2%** worst case.
+      Static scenes **byte-identical** (60/60 MPI ctests np=1,2,4; regression +0.00% every metric).
+      **ten-cate did NOT recover** (E1 0.803/0.797/0.766 vs 0.947; E3/E4 still above u∞) ⇒ the
+      confined finite-Re deficit is a DIFFERENT defect and rung A1 is **not** indicated. Both
+      affected pages rewritten + re-rendered (the moving-sphere δ/h "convergence" story was largely
+      this error decaying). Three live threads recorded in the plan doc.
+
 - [ ] **E3b `drafting-kissing-tumbling`** — **DEFERRED with cause**: DKT is finite-Re coupled
       two-body motion, the exact regime E3a just measured as quantitatively broken (creeping-valued
       confinement + momentum leak). Building it before the §7-item-8 solver fix would ship a
