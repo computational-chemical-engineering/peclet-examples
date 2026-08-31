@@ -33,7 +33,7 @@ Env:
     CHECK_EVERY   phase-B convergence check interval (default 5)
     MGLEVELS      pressure MG depth (default 7; solver clamps to the achievable depth)
     PRESSURE      pcg (default) | vcycle   (ghost runs its own MG-BiCGStab driver either way)
-    PMAXIT PRTOL  pressure iterations cap / tolerance (default 300 / 1e-8)
+    PMAXIT PRTOL  pressure iterations cap / tolerance (default 300 / 1e-8); PRESSURE=fcg selects flexible CG
     VSWEEPS       momentum RB-GS sweep cap (default 80 -- Stokes: diffusion dominates)
     WARMSTART     1 = seed each solve from previous phi (default 0: measured DIVERGENT on the steady Stokes march -- 192^3 bed blew up by step 400; opt-in for unsteady runs only)
     MU F DT       viscosity / body force / time step (default 0.1 / 1e-3 / 60 -- regression values)
@@ -201,8 +201,10 @@ s.set_velocity_solver_params(VSWEEPS)
 s.set_pressure_multigrid(True, MGLEVELS)
 if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
+elif PRESSURE == "fcg":
+    s.set_pressure_fcg(True, PMAXIT, PRTOL)
 elif PRESSURE != "vcycle":
-    raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|vcycle)")
+    raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|vcycle|fcg)")
 if WARMSTART:
     s.set_pressure_warmstart(True)
 s.set_pressure_bottom(BOTTOM)
