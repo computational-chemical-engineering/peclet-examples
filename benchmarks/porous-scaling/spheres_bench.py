@@ -203,8 +203,10 @@ if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
 elif PRESSURE == "fcg":
     s.set_pressure_fcg(True, PMAXIT, PRTOL)
+elif PRESSURE == "cheby":
+    s.set_pressure_chebyshev(True, PMAXIT, PRTOL)
 elif PRESSURE != "vcycle":
-    raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|vcycle|fcg)")
+    raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|vcycle|fcg|cheby)")
 if WARMSTART:
     s.set_pressure_warmstart(True)
 s.set_pressure_bottom(BOTTOM)
