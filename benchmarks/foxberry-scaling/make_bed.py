@@ -40,41 +40,66 @@ from peclet import dem  # noqa: E402
 NSPH = int(os.environ.get("NSPHERES", 5000))
 HOLDUP = float(os.environ.get("HOLDUP", 0.45))
 SEED = int(os.environ.get("SEED", 0))
-PERIODIC = int(os.environ.get("PERIODIC", 0))
+# BED selects the geometry. "walls" is the faithful FoxBerry reproduction (default).
+BED = os.environ.get("BED", "walls")
+if BED not in ("walls", "periodic", "yz-periodic"):
+    raise SystemExit(f"unknown BED={BED!r} (walls|periodic|yz-periodic)")
+PERIODIC = int(os.environ.get("PERIODIC", 0)) or BED == "periodic"   # PERIODIC=1 kept as an alias
+if PERIODIC:
+    BED = "periodic"
 DT = float(os.environ.get("DT", 0.01))
 RATE = float(os.environ.get("RATE", 0.3))
 RELAX = int(os.environ.get("RELAX", 200))
 ITERS = int(os.environ.get("ITERS", 100))
 
 # The particle region in physical units. FoxBerry's is (L - 8dx, H, D) at 400^3 = (0.98, 1, 1),
-# with the bed shifted +4dx in x; the periodic variant fills the whole unit box instead.
+# with the bed shifted +4dx in x; the triply-periodic variant fills the whole unit box instead.
 REGION = np.array([1.0, 1.0, 1.0]) if PERIODIC else np.array([0.98, 1.0, 1.0])
 vol_sphere = 4.0 / 3.0 * np.pi
 r_phys = (HOLDUP * REGION.prod() / (NSPH * vol_sphere)) ** (1.0 / 3.0)
 box = REGION / r_phys                     # packing box in units of the sphere radius (R = 1)
 phi = NSPH * vol_sphere / box.prod()      # == HOLDUP by construction
 
-_kind = "_periodic" if PERIODIC else ""
+_kind = {"walls": "_walls", "periodic": "_periodic", "yz-periodic": ""}[BED]
 OUT = os.environ.get(
     "OUT", f"results/packing_foxberry{_kind}_n{NSPH}_phi{HOLDUP:g}_s{SEED}.npz")
+_desc = {"walls": "WALL-CONFINED (faithful FoxBerry)", "periodic": "TRIPLY-PERIODIC",
+         "yz-periodic": "y/z-periodic, x-clipped (LEGACY)"}[BED]
 
-print(f"[bed] {'TRIPLY-PERIODIC' if PERIODIC else 'FoxBerry (y/z-periodic)'}  N={NSPH} "
-      f"holdup={HOLDUP} -> r={r_phys:.7f} (D/dx={2 * r_phys * 384:.2f} cells at 384^3, "
-      f"{2 * r_phys * 400:.2f} at 400^3)  box={box[0]:.3f}x{box[1]:.3f}x{box[2]:.3f} R-units  "
-      f"phi={phi:.4f}  seed={SEED}", flush=True)
+print(f"[bed] {_desc}  N={NSPH} holdup={HOLDUP} -> r={r_phys:.7f} "
+      f"(D/dx={2 * r_phys * 384:.2f} cells at 384^3, {2 * r_phys * 400:.2f} at 400^3)  "
+      f"box={box[0]:.3f}x{box[1]:.3f}x{box[2]:.3f} R-units  phi={phi:.4f}  seed={SEED}",
+      flush=True)
 
 sim = dem.Simulation(NSPH)
 sim.initialize(shape_type=1, radius=1.0)
 half = box / 2.0
-sim.set_domain(tuple(-half), tuple(half))
-sim.enable_periodicity(True, True, True)
+if BED == "walls":
+    # Six inward-facing planes on the region boundary, exactly FoxBerry's confinement: its
+    # generator insets centers by radius+clearance on every non-periodic axis and then pushes
+    # overlaps apart within those bounds, so whole spheres sit inside the region and nothing is
+    # clipped by the inlet/outlet or the side walls. Growing against walls reproduces that
+    # directly -- and unlike a periodic bed it can be used with FoxBerry's own BCs.
+    # The domain is given slack so the box faces never act as a second (periodic) boundary.
+    sim.set_domain(tuple(-half * 1.5), tuple(half * 1.5))
+    sim.enable_periodicity(False, False, False)
+    for _ax in range(3):
+        for _sgn in (-1.0, 1.0):
+            _p = [0.0, 0.0, 0.0]; _p[_ax] = _sgn * half[_ax]
+            _n = [0.0, 0.0, 0.0]; _n[_ax] = -_sgn          # inward
+            sim.add_plane(_p[0], _p[1], _p[2], _n[0], _n[1], _n[2])
+else:
+    sim.set_domain(tuple(-half), tuple(half))
+    sim.enable_periodicity(True, True, True)
 sim.set_gravity(0.0, 0.0, 0.0)
 sim.set_material_params(0.0, 0.0, 0.0)  # inelastic: kinetic energy drained, packing settles
 sim.set_solver_iterations(ITERS, ITERS)
 
 rng = np.random.default_rng(SEED)
 pos = np.empty((NSPH, 4), np.float32)
-pos[:, :3] = rng.uniform(-half, half, (NSPH, 3))
+_lo = -half + (1.0 if BED == "walls" else 0.0)
+_hi = half - (1.0 if BED == "walls" else 0.0)
+pos[:, :3] = rng.uniform(_lo, _hi, (NSPH, 3))
 pos[:, 3] = 1.0
 sim.set_positions(pos)
 sim.set_velocities(np.zeros((NSPH, 4), np.float32))
@@ -92,7 +117,8 @@ gf = sim.get_growth_factor()
 p = np.asarray(sim.get_positions()).reshape(-1, 3).astype(np.float64)
 s = np.asarray(sim.get_scales()).astype(np.float64)
 p += half  # store in [0, box)
-p %= box
+if BED != "walls":
+    p %= box   # wrap periodic images; a wall-confined bed is already inside by construction
 print(f"[bed] {grow_steps}+{RELAX} steps in {t1 - t0:.1f}s  growth_factor={gf:.4f}  "
       f"max_overlap/R={ov:.5f}", flush=True)
 if gf < 0.999:
@@ -111,7 +137,11 @@ for (cx, cy, cz), sc in zip(p, s):
     sl = [np.arange(i0[k] - nb, i0[k] + nb + 2) for k in range(3)]
     gx, gy, gz = np.meshgrid(*[(a + 0.5) * dx for a in sl], indexing="ij")
     m = (gx - cx) ** 2 + (gy - cy) ** 2 + (gz - cz) ** 2 <= sc * sc
-    occ[np.ix_(*[a % dims[k] for k, a in enumerate(sl)])] |= m
+    if BED == "walls":
+        keep = [np.flatnonzero((a >= 0) & (a < dims[k])) for k, a in enumerate(sl)]
+        occ[np.ix_(*[sl[k][keep[k]] for k in range(3)])] |= m[np.ix_(*keep)]
+    else:
+        occ[np.ix_(*[a % dims[k] for k, a in enumerate(sl)])] |= m
 phi_vox = occ.mean()
 print(f"[bed] independent voxel solid fraction={phi_vox:.4f} (analytic {phi:.4f})", flush=True)
 if abs(phi_vox - phi) > 0.02:
@@ -121,7 +151,7 @@ if abs(phi_vox - phi) > 0.02:
 os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
 np.savez(OUT, centers=p, scales=s, box=box, radius=1.0, phi=phi, seed=SEED,
          region=REGION, r_phys=r_phys, holdup=HOLDUP, nspheres=NSPH,
-         xperiodic=bool(PERIODIC))
+         xperiodic=bool(PERIODIC), bed=BED)
 print(f"[out] {OUT}", flush=True)
 sys.stdout.flush()
 os._exit(0)  # skip Kokkos atexit teardown abort

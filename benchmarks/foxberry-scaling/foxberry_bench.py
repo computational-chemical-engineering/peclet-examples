@@ -108,22 +108,29 @@ if CASE == "packed":
     if not PACK:
         raise SystemExit("PACK=<packing npz from make_bed.py> is required for CASE=packed")
     pk = np.load(PACK)
-    XPER = bool(pk["xperiodic"]) if "xperiodic" in pk.files else False
+    BED = str(pk["bed"]) if "bed" in pk.files else (
+        "periodic" if ("xperiodic" in pk.files and bool(pk["xperiodic"])) else "yz-periodic")
+    XPER = BED == "periodic"
     # FoxBerry shifts the bed 4 cells (of ITS 400^3 grid) off the inlet -- a physical 0.01, kept
     # as such at any resolution. The triply-periodic bed fills the box and is not shifted.
     SHIFT_X = 0.0 if XPER else 4.0 / 400.0
+    # "walls" is the faithful FoxBerry bed: grown against six planes on the region boundary, so
+    # whole spheres sit inside [0.01, 0.99] x [0,1] x [0,1] and NO axis is periodic. Its SDF
+    # therefore takes no images at all. (FoxBerry's own generator insets centers by
+    # radius+clearance on every non-periodic axis -- verified in ObjectCoordinateGenerator.cpp --
+    # so its bed is wall-confined in all three directions, not clipped and not y/z-periodic.)
     # A y/z-only bed under fully periodic BCs has a broken seam at x=0/1: a sphere clipped at one
     # face does not continue at the other, and the 4-cell margins become a clear slot spanning the
     # whole cross-section -- a short circuit for a body-force-driven flow. Refuse rather than
     # silently measure that.
-    if BCMODE == "periodic" and not XPER:
+    if BCMODE == "periodic" and BED != "periodic":
         raise SystemExit(
             f"BCMODE=periodic needs a TRIPLY-periodic bed, but {os.path.basename(PACK)} is "
-            f"y/z-periodic only (FoxBerry placement). Regenerate with PERIODIC=1 make_bed.py.")
-    if BCMODE == "foxberry" and XPER:
+            f"bed={BED}. Regenerate with BED=periodic make_bed.py.")
+    if BCMODE in ("foxberry", "walls") and BED == "periodic":
         raise SystemExit(
-            f"BCMODE=foxberry expects the FoxBerry bed (4-cell inlet/outlet margins), but "
-            f"{os.path.basename(PACK)} is triply periodic. Use the default bed.")
+            f"BCMODE={BCMODE} expects a wall-confined or FoxBerry-placed bed, but "
+            f"{os.path.basename(PACK)} is triply periodic. Use the BED=walls bed.")
 
 from peclet import flow  # noqa: E402
 
@@ -176,9 +183,11 @@ if CASE == "packed":
     zc = oz + np.arange(lnz) + 0.5
     blk_lo = np.array([ox, oy, oz], np.float64)
     blk_hi = blk_lo + np.array([lnx, lny, lnz], np.float64)
-    _sx = (-1, 0, 1) if XPER else (0,)
+    _im = {"periodic": ((-1, 0, 1), (-1, 0, 1), (-1, 0, 1)),   # triply periodic
+           "yz-periodic": ((0,), (-1, 0, 1), (-1, 0, 1)),      # legacy: y/z images, x clipped
+           "walls": ((0,), (0,), (0,))}[BED]                   # wall-confined: no images at all
     shifts = [np.array([sx, sy, sz], np.float64) * GN
-              for sx in _sx for sy in (-1, 0, 1) for sz in (-1, 0, 1)]
+              for sx in _im[0] for sy in _im[1] for sz in _im[2]]
     for sh in shifts:
         cs = c_cells + sh
         reach = r_cells + BAND
@@ -196,14 +205,18 @@ if CASE == "packed":
     nsolid = world.allreduce(int((sdf < 0).sum()), op=MPI.SUM)
     phi_vox = nsolid / float(GN**3)
     nsph = int(pk["nspheres"])
-    if XPER:
+    if BED == "periodic":
         # Triply periodic: the union fills the box, so the voxel fraction IS the holdup.
         phi_exp, lo, hi = float(pk["holdup"]), 0.01, 0.01
+    elif BED == "walls":
+        # Wall-confined: every sphere is whole and inside, so the domain fraction is exactly
+        # holdup x region volume = 0.45 x 0.98, with no clipping loss.
+        phi_exp, lo, hi = float(pk["holdup"]) * float(np.prod(pk["region"])), 0.01, 0.01
     else:
         # y/z-periodic: holdup over the 0.98-wide region, less the caps clipped at the x ends.
         phi_exp, lo, hi = float(pk["holdup"]) * 0.98, 0.03, 0.005
     p0(f"[sdf] built in {time.perf_counter() - t0:.1f}s  domain solid fraction={phi_vox:.4f} "
-       f"(expected {phi_exp:.4f}, bed {'triply periodic' if XPER else 'y/z-periodic, x-clipped'})")
+       f"(expected {phi_exp:.4f}, bed={BED})")
     if not (phi_exp - lo < phi_vox < phi_exp + hi):
         p0(f"FATAL: solid fraction {phi_vox:.4f} out of range -- bad bed/mapping. Refusing.")
         world.Barrier()
@@ -319,7 +332,7 @@ if RANK == 0:
         "omp_threads": os.environ.get("OMP_NUM_THREADS", ""),
         "global": [GNX, GNY, GNZ], "cells": cells,
         "n_spheres": nsph, "phi_voxel": phi_vox,
-        "pack": os.path.basename(os.environ.get("PACK", "")), "bed_xperiodic": XPER,
+        "pack": os.path.basename(os.environ.get("PACK", "")), "bed": BED,
         "uin": UIN, "mu": MU, "dt": DT, "adv": ADV, "bcmode": BCMODE,
         "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL,
         "mglevels": MGLEVELS, "decomp_levels": DECOMP_LEVELS,

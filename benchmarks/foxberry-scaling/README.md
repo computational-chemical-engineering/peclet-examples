@@ -11,27 +11,34 @@ independent, so they are selected together by name:
 | config | FoxBerry | here |
 |---|---|---|
 | **single** | Case 2, single-phase 3D flow | unit box, inlet u=1, outlet, 4 no-slip walls, ρ=1, μ=1, dt=Co·dx/u, 100 steps |
-| **packed** | Case 3, packed-bed IBM | same box/BCs, inlet u=0.001, 5000 spheres at holdup 0.45, cut-cell IBM — **BLOCKED, see "Open issue"** |
-| **packed-periodic** | (no FoxBerry counterpart) | the same bed and cell count, but **fully periodic and body-force driven**, on a triply-periodic bed — the valid way to price peclet's packed-bed step while `packed` is blocked |
+| **packed** | Case 3, packed-bed IBM | same box/BCs, inlet u=0.001, 5000 spheres at holdup 0.45, cut-cell IBM, on the **wall-confined** bed |
+| **packed-periodic** | (no FoxBerry counterpart) | the same bed and cell count, but **fully periodic and body-force driven**, on a triply-periodic bed — a clean periodic reference |
 
-`packed-periodic` is *not* a FoxBerry reproduction: the boundary conditions differ. It is the same
-problem *size* (same cells, same 5000 spheres, same holdup, same sphere radius to 0.7 %), so it
-prices the per-step cost of an IBM bed of that scale honestly, and it is the configuration to
-report until the open issue is fixed. The plot labels it as such.
+`packed` is the faithful reproduction. `packed-periodic` is *not* — the boundary conditions differ.
+It is the same problem *size* (same cells, same 5000 spheres, same holdup, same sphere radius to
+0.7 %); it was introduced when `packed` was believed blocked, and is retained as a periodic
+reference. The plot labels it as such.
 
-**The two beds are different artifacts and are not interchangeable.** FoxBerry places sphere
-*centers* in [0.01, 0.99] with radius 0.0276, so its spheres are clipped by the inlet/outlet
-planes and the bed is periodic in y/z only. Run *that* bed under periodic BCs and the geometry has
-a broken seam at x=0/1 — a sphere cut at one face does not continue at the other, and the margins
-become a clear slot spanning the whole cross-section, a short circuit for a body-force-driven
-flow. So `packed-periodic` uses its own triply-periodic bed (`PERIODIC=1 make_bed.py`, holdup 0.45
-over the full unit box, r = 0.0278004), and `foxberry_bench.py` **refuses** either mismatched
-pairing rather than silently measuring it.
+**The beds are different artifacts and are not interchangeable**, so `make_bed.py` produces each by
+name (`BED=walls|periodic`) and `foxberry_bench.py` **refuses** a mismatched pairing:
 
-> **Status: `single` and `packed-periodic` run and are the reportable configurations; `packed`
-> (FoxBerry's own BCs on the bed) is BLOCKED on a solver convergence defect found while setting
-> this up.** See "Open issue" below — it caps or diverges the pressure solve, and a capped run is
-> invalid, not merely slow. Do not report `packed` timings until it is fixed.
+- **`BED=walls` (default, the faithful one).** FoxBerry's `ObjectCoordinateGenerator` places centers
+  uniformly in a box inset by `radius + clearance` on every non-periodic axis, then pushes overlaps
+  apart within those bounds (verified in `ObjectCoordinateGenerator.cpp`, lines 182–189) — so its
+  bed is **wall-confined in all three directions**, whole spheres inside
+  [0.01, 0.99] × [0, 1] × [0, 1], nothing clipped. Reproduced here by growing the packing against
+  six `dem` planes on the region boundary: measured protrusion 1e-6 R, zero overlap, physical x-span
+  0.01 … 0.98997, and a sampled domain solid fraction of **exactly 0.4410 = 0.45 × 0.98**.
+- **`BED=periodic`.** Triply periodic over the full unit box (r = 0.0278004), for `packed-periodic`.
+
+*An earlier version of this benchmark used a y/z-periodic bed whose spheres were clipped at the
+inlet and outlet. That is not what FoxBerry does, and it produced a false "cut-cell IBM + open BCs
+is broken" finding — with the correct bed, Case 3 runs. The legacy bed is kept only as the
+reproducer for the narrower defect it did expose (see the open issue below).*
+
+> **Status: all three configurations run.** `packed` needs the fp64 operator build like any dense
+> bed (see below). The narrower open-face defect that the legacy bed exposed is still open, but it
+> does not affect these runs.
 
 ## Results (Snellius genoa, 2026-09-01)
 
@@ -258,15 +265,17 @@ Six, prioritized in **[`suite/docs/SCALING_ISSUES.md`](../../../suite/docs/SCALI
 read that first if you are picking any of them up. Ordered *silently wrong* before *visibly broken*
 before *slow*:
 
-1. **Cut-cell IBM + open domain BCs does not solve** (blocker; blocks FoxBerry's actual Case 3).
-2. **Float operator storage silently invalidates dense-bed runs** (the default build; fp64 is both
+1. **Float operator storage silently invalidates dense-bed runs** (the default build; fp64 is both
    correct and ~2× faster here).
-3. **MG depth capped by the per-rank block** — the whole strong-scaling deficit.
+2. **MG depth capped by the per-rank block** — the whole strong-scaling deficit.
+3. **Solid intersecting an open domain face stalls the solve** — narrow, and *not* what it first
+   looked like: the original "cut-cell IBM + open BCs is a blocker" finding was an artifact of a bed
+   whose spheres were clipped at the inlet/outlet. With the correct bed, Case 3 runs.
 4. **Intermittent multi-node hang in warmup** (cost two rungs of this ladder).
 5. Velocity multigrid is single-rank only — impact here unverified, worth a `VSWEEPS` sweep.
 6. `check_decomposition.py` too slow to pre-flight the high rungs.
 
-The sections below are the detail for 2, 4 and 1 respectively.
+The sections below are the detail for 1, 4 and 3 respectively.
 
 ## The packed configs need the fp64 operator build
 
@@ -332,67 +341,57 @@ one; and `PECLET_CORE_GPU_AWARE_MPI=0` / the host-staged halo path to isolate th
 A stack dump from one hung rank (`gdb -p` on the compute node) would settle it in one shot and is
 worth more than any amount of black-box bisection.
 
-## Open issue — cut-cell IBM + open boundaries stalls the pressure solve
+## Open issue — solid intersecting an OPEN domain face stalls the pressure solve
 
-**Found 2026-09-01 while setting this benchmark up. This blocks the `packed` case and is a
-genuine solver defect, not a tuning problem.** It needs to be addressed before the packed-bed
-comparison means anything.
+**Corrected 2026-09-01, the same day it was found.** This was first written up as "cut-cell IBM +
+inflow/outflow BCs does not solve", and reported as the blocker for FoxBerry's Case 3. That was
+**wrong**. The bed used to find it had spheres *clipped by the inlet and outlet planes* — an
+artifact of how that bed was built, not a property of the configuration. With FoxBerry's actual
+placement (whole spheres, clear of the open faces) the identical configuration converges, and
+Case 3 is reproducible.
 
-The FoxBerry packed-bed configuration is *cut-cell IBM together with inflow/outflow domain
-boundaries* — a combination that, as far as the test matrix goes, **nothing in `flow` covers**:
-no `tests/kokkos_mpi` test calls `setDomainBc` and `setSolid` together, and none of the
-`verify_*_sdflow.py` domain-BC scripts carries an immersed solid. The porous studies are all
-periodic; the BC studies are all all-fluid.
+The real defect is the narrower one: **solid that *cuts* an open (inflow/outflow) face** stalls the
+cut-cell pressure solve. Measured A/B, everything identical at 128³ (μ=1, dt=0.78, `MGLEVELS=4`,
+MG-PCG rtol 1e-8, cap 300) except the bed:
 
-Measured on the committed bed at 100³, μ=1, dt=1, MG depth 3, MG-PCG rtol 1e-8 (cap 200):
+| bed | pressure iters | capped | final `max｜div(open·u)｜` |
+|---|---|---|---|
+| whole spheres inside [0.01, 0.99] (`BED=walls`) | **32.7** (max 37) | none | 9.6e-05 → **1.95e-06** over 42 steps |
+| spheres clipped by the inlet/outlet (legacy bed) | 260.8 (max 300) | **5 of 6 steps** | 4.0e-03 |
 
-| configuration | pressure iters/step | final `max｜div(open·u)｜` |
-|---|---|---|
-| all-fluid + inlet/outlet/4 walls (`CASE=single`) | 27.5 | 7.4e-09 |
-| packed bed + **periodic** (`BCMODE=periodic`) | 15.0 | 2.9e-10 |
-| packed bed + **6 no-slip walls** (`BCMODE=walls`) | 17.0 | 2.0e-09 |
-| **packed bed + inlet/outlet/4 walls (FoxBerry)** | **200 = CAP** | **2.5e-03** |
+The healthy row keeps improving — over 42 steps its divergence falls to 1.95e-06, its iteration
+count settles at 29.2, and `<u>` tracks the inlet to 2 % (1.018e-3 against 1.0e-3).
 
-Each ingredient alone is healthy. Only the combination fails, and it fails by six orders of
-magnitude in the divergence residual — the projection is simply not being solved.
+The coarser earlier evidence still localizes *which* boundary is implicated, since it was all taken
+on the clipped bed: that geometry is healthy under periodic BCs (15 iterations) and under six
+no-slip walls (17), and an all-fluid domain is healthy under the open BCs (27) — so it is the
+open-boundary treatment meeting solid *at that boundary*, not either alone. At `MGLEVELS` ≤ 2 the
+clipped case diverges outright (NaN, 1e+268, 0 iterations); `BOTTOM=smoother` also caps, so the
+agglomerated bottom is exonerated; FCG caps and Chebyshev NaNs.
 
-Depth and bottom-solver dependence (same case, cap raised to 300):
+It sits inside a wider gap: **nothing in `flow` combines solid with domain BCs at all** — no
+`tests/kokkos_mpi` test calls `setDomainBc` with `setSolid`, and no `verify_*_sdflow.py` domain-BC
+script carries an immersed solid. Suspected mechanism (how a cut cell on an open face reconciles the
+operator openness α, Dirichlet with mean-removal off, against the flux openness β), a
+minimal-reproducer plan, and the option of *rejecting* the configuration outright rather than fixing
+it: [`flow/doc/cutcell_openbc_convergence.md`](../../../suite/flow/doc/cutcell_openbc_convergence.md).
 
-- `MGLEVELS=3, BOTTOM=smoother` — still caps at 300. **Not the agglomerated bottom.**
-- `MGLEVELS=2` — **diverges**: `<u>` = NaN, `max|div|` = inf, and the driver reports *0*
-  iterations (it breaks down immediately rather than iterating).
-- `MGLEVELS=1` — **diverges**: `max|div|` = 1.8e+268, again 0 iterations.
-- `PRESSURE=cheby` at depth 3 — **diverges** to NaN (0.5 iters/step).
-- `PRESSURE=fcg` at depth 3 — caps at 200, like PCG.
+Reproduce the A/B:
 
-So the shallow hierarchy blows up outright and the deeper one merely stalls; no choice of outer
-Krylov driver survives, and the agglomerated bottom is exonerated.
+```bash
+for bed in walls n; do
+  case $bed in
+    walls) P=results/packing_foxberry_walls_n5000_phi0.45_s0.npz ;;
+    n)     P=results/packing_foxberry_n5000_phi0.45_s0.npz ;;
+  esac
+  PYTHONPATH=~/Codes/suite/flow/build_mpi PACK=$P CASE=packed BCMODE=foxberry \
+    GN=128 NSTEPS=6 WARMUP=2 MGLEVELS=4 PMAXIT=300 \
+    OMP_NUM_THREADS=8 OMP_PROC_BIND=false python foxberry_bench.py 2>&1 |
+    grep -E "^\[(sdf|perf|sanity)"
+done
+```
 
-**Where to look.** `flow/CLAUDE.md` documents that open boundaries split the face openness into
-two roles — the *operator* openness α (0 at walls/inflow for Neumann, open at outflow for the
-Dirichlet p=0 ghost) and the *flux* openness β (open at inflow and outflow so their flux is
-counted). The walls-only ablation passing while inflow/outflow fails points at the **Dirichlet
-(outflow) half** of that split meeting the cut-cell aperture rediscretization: `CutcellMG`
-re-imposes boundary face openness on every coarse level and `applyOutflowGhost` holds the
-outflow ghost at 0, but the coarse-level *cut-cell* openness at an open face is exactly the
-place where a rediscretized aperture and a Dirichlet ghost have to agree. That the mean-removal
-is switched off on the outflow path (the operator is non-singular there) makes an inconsistent
-coarse operator fatal rather than merely inaccurate. WO-H fixed the Neumann counterpart
-(`applyNeumannGhost`) for the all-fluid case in 2026-08-30; this looks like the cut-cell-side
-sibling of that class of bug.
-
-**Suggested next steps** (each cheap, none run yet):
-1. Bisect the BC set: outflow-only (+5 periodic), inflow-only, then inflow+outflow, to confirm
-   the outflow face is the trigger.
-2. Move the bed away from the open faces (it currently starts 4 cells from the inlet, FoxBerry's
-   rule) and see whether the stall tracks *cut cells near an open boundary* specifically.
-3. Read out the preconditioner symmetry directly with `PECLET_FLOW_MG_DEBUG=2` (`pr` ≈ 0 iff M is
-   symmetric w.r.t. the fine operator) and compare the four rows of the table above — the
-   WO-H instrument, reused.
-4. `PECLET_FLOW_MG_BCGHOST=0` as the ablation that restores the pre-WO-H ghost, to check whether
-   the new Neumann ghost interacts with cut cells at an open face.
-5. Once understood, the gate belongs in `tests/kokkos_mpi` as the first test that combines
-   `setDomainBc` with `setSolid`.
-
-The ablation knobs used above are kept in the driver (`BCMODE=foxberry|walls|periodic`) precisely
-so this table can be regenerated after a fix.
+**The methodological lesson is worth more than the defect.** An A/B is only as good as its claim
+that A and B differ in one thing. The bed was doing double duty — "the geometry" and "the thing that
+touches the boundary" — and conflating those produced a confident, wrong, top-priority finding that
+also declared a reproducible benchmark case unreproducible.

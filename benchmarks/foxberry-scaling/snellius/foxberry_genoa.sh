@@ -66,7 +66,7 @@ run_one () {  # config out
   local cfg=$1 out=$2 case bc pack
   case "$cfg" in
     single)          case=single; bc=foxberry; pack="" ;;
-    packed)          case=packed; bc=foxberry; pack="$BEDS/packing_foxberry_n5000_phi0.45_s0.npz" ;;
+    packed)          case=packed; bc=foxberry; pack="$BEDS/packing_foxberry_walls_n5000_phi0.45_s0.npz" ;;
     packed-periodic) case=packed; bc=periodic; pack="$BEDS/packing_foxberry_periodic_n5000_phi0.45_s0.npz" ;;
     *) echo "  [FATAL] unknown config '$cfg' (single|packed|packed-periodic)"; return 1 ;;
   esac
