@@ -107,6 +107,7 @@ LABEL = os.environ.get("LABEL", "")
 pk = None
 XPER = False
 SHIFT_X = 0.0
+BED = ""  # no bed for CASE=single
 if CASE == "packed":
     PACK = os.environ.get("PACK", "")
     if not PACK:
