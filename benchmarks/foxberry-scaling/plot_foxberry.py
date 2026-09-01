@@ -147,3 +147,42 @@ for case in ("single", "packed"):
             if v and (best is None or v < best):
                 best = v
         print(row + f"  {(f'{tf / best:.1f}x' if best else '-'):>14}")
+
+# ---- diagnosis figure: where the strong-scaling deficit actually comes from ------------------
+fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.2))
+for case, bc, gn, lab, col, mk in [
+        ("single", "foxberry", 384, "single-phase 384³", "tab:red", "s"),
+        ("single", "foxberry", 400, "single-phase 400³", "tab:orange", "^"),
+        ("packed", "periodic", 384, "packed bed 384³ (periodic)", "tab:green", "o")]:
+    rows = [d for d in cpu_rows
+            if d.get("case") == case and d.get("bcmode", "foxberry") == bc
+            and d["global"][0] == gn and not capped(d)]
+    if not rows:
+        continue
+    pts = sorted({(d["np"], d["pressure_iters_per_step"], d["ms_per_step"]) for d in rows})
+    n = [p[0] for p in pts]
+    a1.loglog(n, [p[1] for p in pts], ls="--", lw=2, marker=mk, color=col, label=lab)
+    a2.loglog(n, [p[2] / p[1] for p in pts], ls="--", lw=2, marker=mk, color=col, label=lab)
+a1.set_title("Pressure iterations per step")
+a1.set_ylabel("iterations")
+a2.set_title("Time per pressure iteration")
+a2.set_ylabel("ms / iteration")
+# ideal on the right panel = perfect strong scaling of the per-iteration work. Drawn BEFORE the
+# axis formatting, or its autoscale resets the fixed rank ticks.
+ns = np.array([24, 1536], float)
+a2.loglog(ns, 2200.6 * ns[0] / ns, ls="-", lw=1, color="g")
+a2.annotate("ideal", (1536, 2200.6 * 24 / 1536), fontsize=8, color="g", va="top", ha="right")
+for ax in (a1, a2):
+    ax.set_xlabel("Number of processors")
+    ax.set_xscale("log")
+    ax.xaxis.minorticks_off()
+    ax.xaxis.set_major_locator(ticker.FixedLocator(FB_PROCS))
+    ax.xaxis.set_major_formatter(ticker.FixedFormatter([str(p) for p in FB_PROCS]))
+    ax.set_xlim(20, 1900)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25, which="major")
+fig.suptitle("Where the strong-scaling deficit comes from: iterations grow (left), while the work "
+             "per iteration scales better than ideal (right)", fontsize=10)
+fig.tight_layout()
+fig.savefig("scaling_diagnosis.png", dpi=160, bbox_inches="tight")
+print("[plot] scaling_diagnosis.png")

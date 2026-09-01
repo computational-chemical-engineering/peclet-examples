@@ -55,6 +55,21 @@ trade is.
 :::
 
 ::: {.g-col-12 .g-col-md-6}
+### [peclet.flow vs FoxBerry: strong scaling →](foxberry-scaling/index.qmd)
+Head-to-head on **FoxBerry's own** 64M-cell benchmark cases — single-phase flow and a
+5000-sphere packed bed — 24 → 1536 cores on Snellius, plotted onto FoxBerry's own
+graphs. peclet is **8–9× faster** single-phase and **4–6×** on the bed, but scales
+*worse*: efficiency falls to 67 % at 1536 cores where FoxBerry's AMG holds near-ideal
+halving. The page shows why, and the answer is encouraging — time per pressure
+iteration scales **super-linearly**; the entire deficit is the iteration count rising
+because the geometric multigrid stops coarsening when a per-rank block turns odd.
+**Provisional:** the packed case uses periodic BCs, and the coarse-grid defect should
+be fixed before the ladder is re-run.
+
+*flow · parallel scaling · code comparison · multigrid · provisional*
+:::
+
+::: {.g-col-12 .g-col-md-6}
 ### [Channel DNS multi-GPU scaling on Snellius H100 →](channel-scaling/index.qmd)
 The performance companion to the [wall-bounded turbulence](../examples/wall-bounded-turbulence/index.qmd)
 DNS: measured **weak scaling** of the distributed incompressible solver on NVIDIA H100 with GPU-aware

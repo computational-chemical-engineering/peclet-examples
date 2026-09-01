@@ -1,0 +1,112 @@
+---
+title: "peclet.flow vs FoxBerry — strong scaling"
+subtitle: "Head-to-head on FoxBerry's own 64M-cell benchmark cases, 24 → 1536 cores on Snellius"
+format:
+  html:
+    toc: true
+---
+
+::: {.callout-important title="Provisional"}
+**These numbers are provisional and the study is paused.** The packed-bed curve uses **periodic
+boundary conditions**, not FoxBerry's inlet/outlet — a same-size stand-in, not a reproduction of
+their case. More importantly, the campaign surfaced a **coarse-grid problem in the pressure
+multigrid** that caps how far peclet can strong-scale, and the honest reading is that it should be
+fixed before the ladder is re-run and published. The scaling *shape* here is a measurement of that
+defect as much as of the solver.
+:::
+
+Reproduces the two 3-D strong-scaling cases of FoxBerry's `scaling/Scaling.cpp` with `peclet.flow`,
+so the results drop straight onto FoxBerry's own graphs: log–log, execution time per step against
+processor count, ~64M cells, the ladder 24 → 1536. Both codes are pure MPI, one rank per core, on
+Snellius `genoa` nodes (192 cores each).
+
+## What is being compared
+
+| | FoxBerry | peclet.flow |
+|---|---|---|
+| Pressure solve | AMG (Trilinos/MueLu), tol 1e-14 | geometric multigrid + MG-PCG, rtol 1e-8 |
+| Grid | 401³ = 64.5M | 384³ = 56.6M |
+| Momentum | implicit, Chebyshev-preconditioned | implicit, Red–Black Gauss–Seidel |
+
+The grid differs because peclet's geometric multigrid coarsens an axis only while it stays even, so
+an odd dimension never coarsens at all — 401³ would cripple the pressure solve for reasons unrelated
+to parallelism. Among even neighbours the *factorization* decides everything: 384 = 2⁷·3 gives seven
+halvings and divides the whole rank ladder cleanly, where 400 = 2⁴·25 gives four. Measured at np=24,
+384³ achieves imbalance 1.000 with all 7 levels against 400³'s 1.42 and 5. A 400³ series is kept as
+a cell-count-matched control, and the gap between the two curves *is* the price of grid
+factorization.
+
+## Case 1 — single-phase flow
+
+Unit box, inlet u=1, outlet, four no-slip walls, ρ=μ=1, 100 steps.
+
+![](scaling_single.png)
+
+**peclet is 8.0–9.4× faster than FoxBerry up to 384 cores, 6.0× at 1536.** The gap narrows at the
+top because FoxBerry scales better: its published curve sits essentially on ideal halving across the
+whole ladder, while peclet's efficiency falls to 67 % at 1536.
+
+## Case 2 — packed bed, 5000 spheres
+
+Same box, 5000 static spheres at solid holdup 0.45 (φ = 0.45), cut-cell IBM, D/Δ ≈ 21 cells.
+**Periodic BCs and a triply-periodic bed** — same cell count, same particle count, same holdup and
+sphere radius to 0.7 %, but *not* FoxBerry's boundary conditions.
+
+![](scaling_packed.png)
+
+**3.7–5.7× faster than FoxBerry over 24 → 384 cores.** Beyond that the pressure solve stops
+converging within its iteration cap and those points are rejected as invalid rather than plotted —
+384 cores is the measured ceiling of the IBM path on this problem, and the reason is the same
+coarse-grid defect the callout mentions.
+
+## Why the scaling falls off — and why it is fixable
+
+The deficit is **not communication**. It decomposes exactly:
+
+$$\text{speedup} \;=\; \frac{\text{per-iteration speedup}}{\text{iteration-count growth}}
+\;=\; \frac{100.0\times}{2.33\times} \;=\; 42.9\times \quad (\text{single-phase, } 24 \to 1536)$$
+
+![](scaling_diagnosis.png)
+
+The right panel is the good news: time *per pressure iteration* improves 100× over a 64× rank
+increase — **156 % efficiency, super-linear**, because the shrinking block fits cache better. The
+left panel is the problem: the solve needs 2.33× more iterations at 1536 cores than at 24.
+
+That happens because a multigrid level here coarsens an axis only if **every rank's block** is even
+on it — coarse levels are required to be the fine decomposition coarsened *in place*, which keeps
+the transfer operators purely local. When no axis qualifies the hierarchy simply stops. At 1536
+ranks each block is 24×48×32, which stops at 3×6×4, so the hierarchy is several levels shorter than
+the global grid would allow, and the preconditioner weakens accordingly.
+
+**This is an implementation limit, not a property of multigrid**, and it is exactly what FoxBerry's
+AMG does not suffer from: MueLu *repartitions its coarse levels onto fewer ranks* rather than
+stopping. The standard fix is the same idea — let a coarse level live on its own coarser partition
+and pay one redistribution inside the transfer, shedding ranks as the grid shrinks until the
+coarsest level is solved on one. PETSc calls it `PCTELESCOPE`, MueLu `RepartitionFactory`, hypre a
+redundant coarse solve, DUNE *accumulation*. peclet already has the *endpoint* of this (its
+agglomerated bottom solve); what is missing is the intermediate steps.
+
+On the packed bed the two effects compound: the starved hierarchy weakens the preconditioner enough
+to push the high-contrast cut-cell operator back over its convergence threshold, which is why that
+case falls off a cliff at 1536 rather than degrading gracefully. So the fix is worth more than its
+33 % headline suggests — on the IBM path it plausibly buys the ability to run at all above ~400
+cores.
+
+## Reading the numbers fairly
+
+- The 24/48/96 rungs sit on one `--exclusive` node, so they have up to 8× the memory bandwidth per
+  rank of the 192-rank run. That *flatters the baseline* and therefore understates the efficiencies
+  quoted above; the apples-to-apples segment is 192 → 1536 (1, 2, 4, 8 full nodes).
+- 384³ is 12 % fewer cells than FoxBerry's 64.5M, and Δx is 4 % larger.
+- Runs whose pressure solve hit its iteration cap on **any** step are rejected, not plotted: a
+  capped step's time is set by the cap rather than by convergence.
+- The bed is `peclet.dem`-grown at FoxBerry's N, holdup and radius; their PRNG is not reproducible
+  outside FoxBerry, so the beds are statistically equivalent rather than identical.
+
+## Reproducing
+
+Everything — driver, bed generator, Snellius job scripts, result JSONs and the runbook — is in
+[`benchmarks/foxberry-scaling/`](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/foxberry-scaling).
+The campaign's full findings, prioritized, are in the suite's `docs/SCALING_ISSUES.md`; the
+coarse-grid item is written up with the standard remedies in `docs/DECOMPOSITION_AND_MULTIGRID.md`
+§2.8 and open problem 1.
