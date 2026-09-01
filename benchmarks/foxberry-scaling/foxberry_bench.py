@@ -41,6 +41,9 @@ Env:
     VSWEEPS VRTOL momentum RB-GS sweep cap / tolerance stop (default 200 / 1e-3)
     BOTTOM        auto (default) | smoother | agglomerated
     ADV           1 = explicit Koren TVD advection (default), 0 = off
+    TELESCOPE     1 = coarse-level telescoping of the pressure MG (merge ORB siblings onto fewer
+                  ranks when a block turns odd and keep coarsening; docs/MG_TELESCOPING_PLAN.md).
+                  Default 0. Needs a flow build with set_pressure_telescope.
     BCMODE        foxberry (default: inlet/outlet/4 walls) | periodic (ABLATION: fully periodic
                   box driven by a body force instead -- isolates the cut-cell/domain-BC
                   interaction from the bed itself; see README "Open issue")
@@ -92,6 +95,7 @@ PRTOL = float(os.environ.get("PRTOL", 1e-8))
 VSWEEPS = int(os.environ.get("VSWEEPS", 200))
 VRTOL = float(os.environ.get("VRTOL", 1e-3))
 BOTTOM = os.environ.get("BOTTOM", "auto")
+TELESCOPE = int(os.environ.get("TELESCOPE", 0))
 ADV = int(os.environ.get("ADV", 1))
 BCMODE = os.environ.get("BCMODE", "foxberry")
 if BCMODE not in ("foxberry", "periodic", "walls"):
@@ -141,10 +145,24 @@ origin, size = flow.mpi_block(GNX, GNY, GNZ)
 ox, oy, oz = origin
 lnx, lny, lnz = size
 
+# The pressure-MG ladder this configuration builds, as a pure function (no collective): the
+# record of how deep the hierarchy got and where it telescoped -- the quantity the whole scaling
+# story turns on. Recorded in the JSON; printed by rank 0.
+HIER = None
+if hasattr(flow, "predict_hierarchy"):
+    HIER = [{"global": list(g), "ranks": r, "block0": list(b), "ratio": list(q), "telescope": t}
+            for g, r, b, q, t in flow.predict_hierarchy(GNX, GNY, GNZ, NP, MGLEVELS, bool(TELESCOPE))]
+    if RANK == 0:
+        cg = HIER[-1]["global"]
+        print(f"[mg] {len(HIER)} levels, coarsest {cg[0]}x{cg[1]}x{cg[2]} on {HIER[-1]['ranks']} "
+              f"rank(s), telescopes at levels "
+              f"{[i for i, h in enumerate(HIER) if h['telescope']] or 'none'}", flush=True)
+
 p0(f"[cfg] case={CASE}  global {GNX}^3 = {GNX**3 / 1e6:.1f}M cells  ranks={NP}  "
    f"backend={flow.execution_space}  uin={UIN:g}  dt={DT:g}  mu={MU:g}  adv={ADV}  "
    f"levels={MGLEVELS} decomp={DECOMP_LEVELS}  pressure={PRESSURE}(maxit={PMAXIT},"
    f"rtol={PRTOL:g})  momentum(sweeps<={VSWEEPS},rtol={VRTOL:g})  bottom={BOTTOM}  "
+   f"telescope={TELESCOPE}  "
    f"steps={WARMUP}+{NSTEPS}")
 
 _bus = "-"
@@ -240,6 +258,10 @@ elif PRESSURE == "cheby":
 elif PRESSURE != "vcycle":
     raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|vcycle|fcg|cheby)")
 s.set_pressure_bottom(BOTTOM)
+if TELESCOPE:
+    if not hasattr(s, "set_pressure_telescope"):
+        raise SystemExit("TELESCOPE=1 but this flow build has no set_pressure_telescope")
+    s.set_pressure_telescope(True)
 
 # Domain BCs (before geometry): west inlet, east outlet, four no-slip walls -- FoxBerry's map.
 if BCMODE == "foxberry":
@@ -336,7 +358,8 @@ if RANK == 0:
         "uin": UIN, "mu": MU, "dt": DT, "adv": ADV, "bcmode": BCMODE,
         "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL,
         "mglevels": MGLEVELS, "decomp_levels": DECOMP_LEVELS,
-        "vsweeps": VSWEEPS, "vrtol": VRTOL, "bottom": BOTTOM,
+        "vsweeps": VSWEEPS, "vrtol": VRTOL, "bottom": BOTTOM, "telescope": TELESCOPE,
+        "hierarchy": HIER,
         "nsteps": NSTEPS, "warmup": WARMUP,
         "ms_per_step": ms_step, "seconds_total": wall,
         "mcells_per_s": mcells, "mcells_per_s_per_rank": mcells / NP,
