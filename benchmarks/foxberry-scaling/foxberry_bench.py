@@ -307,6 +307,7 @@ phases = ("step", "predictor", "momentum", "projection", "pressure_allreduce")
 acc = {p: [] for p in phases}
 acc["pressure_allreduce_count"] = []
 iters = []
+msweeps = []
 world.Barrier()
 t0 = time.perf_counter()
 _hb = max(1, NSTEPS // 10)
@@ -319,6 +320,7 @@ for istep in range(NSTEPS):
         acc[p].append(t[p])
     acc["pressure_allreduce_count"].append(t["pressure_allreduce_count"])
     iters.append(s.last_pressure_iterations())
+    msweeps.append(t.get("momentum_sweeps", -1))
 t1 = time.perf_counter()
 wall = world.allreduce(t1 - t0, op=MPI.MAX)
 stats = {}
@@ -338,7 +340,8 @@ umean = gmean_u()
 maxdiv = s.max_open_divergence()
 p0(f"[perf] {ms_step:.1f} ms/step ({wall:.1f}s for {NSTEPS} steps)  {mcells:.1f} Mcell/s "
    f"({mcells / NP:.2f}/rank)  pressure iters/step {it_mean:.1f} (max {it_max}"
-   + (f", {it_capped}/{NSTEPS} steps CAPPED -- INVALID)" if it_capped else ")"))
+   + (f", {it_capped}/{NSTEPS} steps CAPPED -- INVALID)" if it_capped else ")")
+   + f"  momentum sweeps/step {float(np.mean(msweeps)):.1f} (cap {VSWEEPS})")
 p0("[phases, rank-max ms/step] "
    + "  ".join(f"{p}={1e3 * stats[p]['max']:.1f}" for p in phases)
    + f"  allreduce_count={stats['pressure_allreduce_count']['max']:.0f}")
@@ -366,6 +369,7 @@ if RANK == 0:
         "mcells_per_s": mcells, "mcells_per_s_per_rank": mcells / NP,
         "pressure_iters_per_step": it_mean, "pressure_iters_max": it_max,
         "pressure_steps_capped": it_capped, "phase_seconds_per_step": stats,
+        "momentum_sweeps_per_step": float(np.mean(msweeps)), "momentum_sweeps_max": int(max(msweeps)),
         "u_mean_final": umean, "max_div_final": maxdiv,
         "blocks": [{"rank": rr, "host": hh, "gpu": bb, "origin": list(oo), "size": list(ss)}
                    for rr, hh, bb, oo, ss in _blocks],
