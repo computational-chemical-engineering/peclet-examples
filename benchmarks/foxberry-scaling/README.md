@@ -33,11 +33,63 @@ pairing rather than silently measuring it.
 > this up.** See "Open issue" below — it caps or diverges the pressure solve, and a capped run is
 > invalid, not merely slow. Do not report `packed` timings until it is fixed.
 
-**First measured point (2026-09-01, genoa, 192 ranks = 1 full node, single-phase, 400³):**
-**21.8 s/step against FoxBerry's 42.2 — 1.9× faster**, at 155.5 pressure iterations/step and a
-final `max|div(open·u)|` of 7.2e-09 (converged, not capped). The projection is 85 % of the step
-(18.6 s of 21.8), so the iteration count is where any further win lives — and it is high precisely
-because of the 400³ factorization discussed below, which is why 384³ is now the default grid.
+## Results (Snellius genoa, 2026-09-01)
+
+384³ = 56.6M cells, pure MPI (one rank per core), 192 cores/node. `single` uses the default float
+build; `packed-periodic` uses the fp64 operator build (see below — the float build is invalid there).
+
+| ranks | FoxBerry single | **peclet single** | iters | FoxBerry packed | **peclet packed-per.** | iters |
+|---|---|---|---|---|---|---|
+| 24 | 327 | **36.5** (9.0×) | 16.6 | 385 | **67.9** (5.7×) | 52.4 |
+| 48 | 166 | **19.1** (8.7×) | 16.6 | 184 | **33.8** (5.4×) | 52.2 |
+| 96 | 84.3 | **8.95** (9.4×) | 16.5 | 98.3 | **17.7** (5.5×) | 61.6 |
+| 192 | 42.2 | **5.30** (8.0×) | 22.7 | 48 | **10.3** (4.7×) | 65.5 |
+| 384 | 21.1 | **2.48** (8.5×) | 24.9 | 24.2 | **6.19** (3.9×) | 81.7 |
+| 768 | 10.6 |  — (hung, see below) | — | 12 | — | — |
+| 1536 | 5.08 | **0.852** (6.0×) | 38.7 | 5.44 | — | — |
+
+Seconds per step; the bracket is peclet's speedup over FoxBerry. Every run converged
+(`max|div(open·u)|` 2e-10…2e-09 single-phase, 2e-13…9e-13 packed/fp64); capped runs are excluded by
+`plot_foxberry.py` on principle, since a capped step time is set by `PMAXIT` rather than by
+convergence.
+
+**peclet is 8.0–9.4× faster than FoxBerry on the single-phase case and 3.9–5.7× on the packed bed**,
+narrowing at the top of the ladder because FoxBerry scales better than peclet does.
+
+### Is the scaling linear?
+
+Close to linear to 384 ranks, then not. Single-phase efficiency against the np=24 baseline:
+100 % → 96 % → **102 %** → 86 % → 92 % → **67 %** at 1536. The packed bed behaves the same way
+(100 → 100 → 96 → 83 → 69 %).
+
+The loss decomposes exactly, and it is **not communication**:
+
+```
+speedup = (per-iteration speedup) / (iteration-count growth)
+42.9x   =        100.0x           /         2.33x            (single-phase, 24 -> 1536)
+```
+
+Time *per pressure iteration* improves 100× over a 64× rank increase — **156 % efficiency,
+super-linear**, because the shrinking block fits cache better. The entire wall-clock deficit is the
+pressure solve needing 2.33× more iterations (16.6 → 38.7). That is the multigrid depth being capped
+by the *per-rank block*: at np=1536 each block is 24×48×32, which stops coarsening at 3×6×4, so the
+hierarchy is several levels shorter than the global grid would allow. The projection's share of the
+step tracks it exactly, 39 % → 67 %.
+
+**This is an implementation limit, not a property of multigrid, and it is now the top open item**
+— coarse levels are required to be the fine decomposition coarsened *in place*, so the hierarchy
+stops rather than redistributing onto fewer ranks. FoxBerry's MueLu repartitions its coarse levels
+and consequently holds near-ideal halving across the whole ladder. Written up with the standard
+remedies (PETSc `PCTELESCOPE`, MueLu `RepartitionFactory`, hypre's redundant coarse solve) in
+[`suite/docs/DECOMPOSITION_AND_MULTIGRID.md`](../../../suite/docs/DECOMPOSITION_AND_MULTIGRID.md)
+§2.8 and open problem 1.
+
+Two caveats on reading the table. The 24/48/96 rungs sit on one `--exclusive` node, so they have up
+to 8× the memory bandwidth per rank of the 192-rank run; that *flatters the baseline* and therefore
+understates the efficiencies above. And 400³ shows the same mechanism amplified — iterations climb
+96 → 191 between np=48 and np=384, efficiency falls to 63 % — so a 12 % difference in cell count
+buys a 7.7× difference in iteration count at np=384. That is the price of grid factorization,
+measured.
 
 ## Deliberate deviations from FoxBerry
 
@@ -226,18 +278,32 @@ all 20.0); and turning advection off changes nothing (still capped, same answer)
 **The single-phase configs are low-contrast and converge fine in float** (16–39 iterations), so the
 single ladder does not need the fp64 build and its numbers stand as published.
 
-## Open issue — np = 768 stalls on 384³
+## Open issue — intermittent hang in warmup at multi-node scale
 
-Reproducible; recorded rather than diagnosed. The single-phase config at **np = 768 (4 genoa
-nodes) hangs in warmup** — two independent allocations each sat >18 minutes without finishing two
-warmup steps, at full CPU on every rank (which proves nothing either way: OpenMPI busy-polls a
-blocked collective). The neighbouring rungs are healthy on the same build and grid — np = 384 does
-2.48 s/step, np = 1536 does 0.85 s/step — so this is specific to 768, not a scaling wall. Its
-per-rank block is a uniform 48×48×32 at imbalance 1.000. The 400³ np = 1536 job showed the same
-symptom, and there the decomposition is visibly pathological (**imbalance 4.000**). When someone
-picks this up: rerun with `PECLET_FLOW_AGGLOM_EXTENT=1000000` to take the agglomerated coarse
-solve out of the picture, which would separate a coarse-solve collective from a halo one. The
-ladder is reported without np = 768.
+Reproducible in aggregate, intermittent per job; recorded rather than diagnosed, and the reason two
+cells of the results table are empty.
+
+Some multi-node runs hang in the **first warmup step** and never emit another line, at full CPU on
+every rank — which distinguishes nothing by itself, since OpenMPI busy-polls a blocked collective.
+Observed:
+
+| run | nodes | outcome |
+|---|---|---|
+| single 384³ np=768 | 4 | hung, **twice**, in two independent allocations (>18 min each) |
+| single 400³ np=1536 | 8 | hung (>75 min); its decomposition is also pathological, **imbalance 4.000** |
+| packed-periodic 384³ np=1536 | 8 | hung (>44 min) — **but an earlier attempt cleared warmup in 28 s** |
+
+That last row is the informative one: the same configuration both hung and ran, so this is not a
+deterministic function of rank count, and np=768 is not special — it is an intermittent failure that
+happens to have hit np=768 twice. Healthy neighbours on the same build and grid (np=384 at 2.48
+s/step, np=1536 single at 0.852 s/step) rule out a scaling wall.
+
+When someone picks this up, the cheap discriminators are: rerun with
+`PECLET_FLOW_AGGLOM_EXTENT=1000000` to take the agglomerated coarse solve (a global `Allgatherv`
+inside every V-cycle) out of the picture, which separates a coarse-solve collective from a halo
+one; and `PECLET_CORE_GPU_AWARE_MPI=0` / the host-staged halo path to isolate the exchange engine.
+A stack dump from one hung rank (`gdb -p` on the compute node) would settle it in one shot and is
+worth more than any amount of black-box bisection.
 
 ## Open issue — cut-cell IBM + open boundaries stalls the pressure solve
 

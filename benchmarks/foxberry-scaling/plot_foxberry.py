@@ -50,13 +50,22 @@ def load(resdir):
     return out
 
 
+def capped(d):
+    """A run whose pressure solve hit its iteration cap every step is INVALID, not slow: the step
+    time is then set by PMAXIT rather than by convergence. Drop it rather than plot it."""
+    return d["pressure_iters_per_step"] >= d["pmaxit"] - 0.5
+
+
 def pick(rows, case, bcmode, gn, gpu=False):
     """Sorted [(np, seconds_per_step)] for one series, from the JSON fields."""
-    sel = [(d["np"], d["ms_per_step"] / 1e3) for d in rows
-           if d.get("case") == case
-           and d.get("bcmode", "foxberry") == bcmode
-           and d["global"][0] == gn
-           and ((d.get("backend") == "Cuda") == gpu)]
+    sel, drop = [], []
+    for d in rows:
+        if (d.get("case") != case or d.get("bcmode", "foxberry") != bcmode
+                or d["global"][0] != gn or (d.get("backend") == "Cuda") != gpu):
+            continue
+        (drop if capped(d) else sel).append((d["np"], d["ms_per_step"] / 1e3))
+    for n, t in sorted(set(drop)):
+        print(f"  (dropped np={n}: capped at {int(rows[0]['pmaxit'])} pressure iters — invalid)")
     return sorted(set(sel))
 
 
