@@ -15,6 +15,7 @@
 #
 # Then:  sbatch build_fb.sh cpu      # -> fb/flow/build_omp_mpi   (genoa runs)
 #        sbatch build_fb.sh h100     # -> fb/flow/build_cuda_mpi  (gpu_h100 runs)
+#        sbatch --export=ALL,DOUBLE=1 build_fb.sh cpu   # -> build_omp_mpi_d (fp64 MReal)
 #
 # Reuses the already-bootstrapped $SUITE/extern/install/<backend> prefix and the shared venv.
 # ==========================================================================================
@@ -31,11 +32,21 @@ TARGET="${1:-cpu}"
 SUITE="${SUITE:-/projects/0/prjs1022/peclet/suite}"
 EXDIR="${SLURM_SUBMIT_DIR:-$PWD}"
 
+# DOUBLE=1 builds the fp64 operator-storage variant (-DPECLET_FLOW_MREAL_DOUBLE) into a
+# *_d build dir. Needed for the packed-bed configs: with float MReal the singular row-sum
+# identity A.1 = 0 breaks at ~eps_f32/row, the MG-PCG residual floors at 5e-9..6e-8 and then
+# rebounds, so a high-contrast bed burns its iteration cap (flow CLAUDE.md, WO-M). Costs ~12%
+# step time and ~10% memory. The single-phase configs are low-contrast and do not need it.
+DSUF=""; DFLAGS=()
+if [ "${DOUBLE:-0}" = "1" ]; then
+  DSUF="_d"; DFLAGS=(-DCMAKE_CXX_FLAGS=-DPECLET_FLOW_MREAL_DOUBLE)
+fi
+
 case "$TARGET" in
-  cpu)  BACKEND=host-openmp;  BUILD="$SUITE/fb/flow/build_omp_mpi"
+  cpu)  BACKEND=host-openmp;  BUILD="$SUITE/fb/flow/build_omp_mpi$DSUF"
         module purge; module load 2024 gompi/2024a
         module load Python/3.12.3-GCCcore-13.3.0 2>/dev/null || true ;;
-  h100) BACKEND=nvidia-cuda;  BUILD="$SUITE/fb/flow/build_cuda_mpi"
+  h100) BACKEND=nvidia-cuda;  BUILD="$SUITE/fb/flow/build_cuda_mpi$DSUF"
         source "$EXDIR/../../../examples/wall-bounded-turbulence/snellius_env.sh" ;;
   *) echo "usage: sbatch build_fb.sh [cpu|h100]"; exit 1 ;;
 esac
@@ -47,7 +58,7 @@ VENV="$SUITE/flow/.venv"
 source "$VENV/bin/activate"
 PYINC=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
 
-echo "[fb-build] target=$TARGET backend=$BACKEND"
+echo "[fb-build] target=$TARGET backend=$BACKEND MReal=${DOUBLE:+double}${DOUBLE:-float}"
 echo "[fb-build] flow $(git -C $SUITE/fb/flow log -1 --format=%h)  core $(git -C $SUITE/fb/core log -1 --format=%h)"
 
 # FindPython's artifact variables are sticky: a build dir that once configured with the wrong
@@ -58,7 +69,7 @@ cmake -S "$SUITE/fb/flow" -B "$BUILD" -DCMAKE_BUILD_TYPE=Release \
   -DPython_EXECUTABLE="$VENV/bin/python" \
   -DPython_INCLUDE_DIR="$PYINC" \
   -DCMAKE_PREFIX_PATH="$SUITE/extern/install/$BACKEND" \
-  -DMPIEXEC_EXECUTABLE="$(which mpirun)"
+  -DMPIEXEC_EXECUTABLE="$(which mpirun)" "${DFLAGS[@]}"
 cmake --build "$BUILD" -j"$(nproc)"
 
 echo

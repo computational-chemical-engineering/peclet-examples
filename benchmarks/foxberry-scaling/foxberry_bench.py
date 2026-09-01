@@ -306,6 +306,10 @@ p0(f"[sanity] <u>={umean:.6e} (superficial; -> {UIN:g} at steady state)  "
 if RANK == 0:
     out = {
         "label": LABEL, "case": CASE, "np": NP, "backend": flow.execution_space,
+        # Which module was imported -- the float vs -DPECLET_FLOW_MREAL_DOUBLE build is not
+        # otherwise visible from Python, and it decides whether a high-contrast bed converges.
+        "build": os.path.basename(os.path.dirname(os.path.dirname(
+            os.path.dirname(flow.__file__)))) if hasattr(flow, "__file__") else "",
         "omp_threads": os.environ.get("OMP_NUM_THREADS", ""),
         "global": [GNX, GNY, GNZ], "cells": cells,
         "n_spheres": nsph, "phi_voxel": phi_vox,

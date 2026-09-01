@@ -1,0 +1,428 @@
+{
+ "label": "snellius-genoa",
+ "case": "single",
+ "np": 24,
+ "backend": "OpenMP",
+ "omp_threads": "1",
+ "global": [
+  384,
+  384,
+  384
+ ],
+ "cells": 56623104,
+ "n_spheres": 0,
+ "phi_voxel": 0.0,
+ "pack": "",
+ "bed_xperiodic": false,
+ "uin": 1.0,
+ "mu": 1.0,
+ "dt": 0.00026041666666666666,
+ "adv": 1,
+ "bcmode": "foxberry",
+ "pressure": "pcg",
+ "pmaxit": 200,
+ "prtol": 1e-08,
+ "mglevels": 7,
+ "decomp_levels": 7,
+ "vsweeps": 200,
+ "vrtol": 0.001,
+ "bottom": "auto",
+ "nsteps": 20,
+ "warmup": 2,
+ "ms_per_step": 36530.48905499745,
+ "seconds_total": 730.609781099949,
+ "mcells_per_s": 1.5500231577724755,
+ "mcells_per_s_per_rank": 0.06458429824051981,
+ "pressure_iters_per_step": 16.6,
+ "phase_seconds_per_step": {
+  "step": {
+   "max": 36.53034689851338,
+   "min": 36.529011519521006
+  },
+  "predictor": {
+   "max": 3.398776970640756,
+   "min": 3.3028343275887893
+  },
+  "momentum": {
+   "max": 18.922595619782804,
+   "min": 18.82898393844953
+  },
+  "projection": {
+   "max": 14.269386606209446,
+   "min": 14.236450466699898
+  },
+  "pressure_allreduce": {
+   "max": 0.2851684669999999,
+   "min": 0.008042924199999999
+  },
+  "pressure_allreduce_count": {
+   "max": 50.8,
+   "min": 50.8
+  }
+ },
+ "u_mean_final": 1.0000000000000002,
+ "max_div_final": 2.2947661335217162e-10,
+ "blocks": [
+  {
+   "rank": 0,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 1,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 2,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    96,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 3,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    0,
+    0,
+    192
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 4,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    0,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 5,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    96,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 6,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    0,
+    192,
+    0
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 7,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    192,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 8,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    288,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 9,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    0,
+    192,
+    192
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 10,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    192,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 11,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    64,
+    288,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 12,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    192,
+    0,
+    0
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 13,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    0,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 14,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    96,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 15,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    192,
+    0,
+    192
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 16,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    0,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 17,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    96,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 18,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    192,
+    192,
+    0
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 19,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    192,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 20,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    288,
+    0
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 21,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    192,
+    192,
+    192
+   ],
+   "size": [
+    64,
+    192,
+    192
+   ]
+  },
+  {
+   "rank": 22,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    192,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  },
+  {
+   "rank": 23,
+   "host": "tcn935.local.snellius.surf.nl",
+   "gpu": "-",
+   "origin": [
+    256,
+    288,
+    192
+   ],
+   "size": [
+    128,
+    96,
+    192
+   ]
+  }
+ ],
+ "gpu_aware_env": ""
+}

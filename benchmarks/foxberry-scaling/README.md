@@ -189,6 +189,56 @@ python plot_foxberry.py          # -> scaling_single.png, scaling_packed.png + t
 
 Commit the JSONs; the logs are not committed.
 
+## The packed configs need the fp64 operator build
+
+**Any packed-bed config at 384³ must run against a `-DPECLET_FLOW_MREAL_DOUBLE` build**
+(`sbatch --export=ALL,DOUBLE=1 build_fb.sh cpu` -> `fb/flow/build_omp_mpi_d`, selected at run time
+with `--export=ALL,BUILD=...build_omp_mpi_d`). This is not a preference: with the default float
+build the run is invalid.
+
+The bed at 384³ (R = 10.7 cells, phi = 0.45) crosses the coefficient-contrast threshold of flow's
+documented **WO-M** defect — float operator storage breaks the singular row-sum identity `A·1 = 0`
+at ~eps_f32 per row, so the MG-PCG residual floors at 5e-9…6e-8 and then rebounds, and the solve
+burns its iteration cap without ever meeting an rtol of 1e-8. Measured on this bed:
+
+| build / driver / tolerance | pressure iters | `max｜div｜` | `<u>` | s/step |
+|---|---|---|---|---|
+| float, PCG rtol 1e-8 | **300 = CAP** | 2.314e-10 | 1.803374e-04 | 280+ (np=1, 16 thr) |
+| float, PCG rtol 1e-6 | **36.5** | 2.313e-10 | 1.803374e-04 | 60.2 (np=1, 16 thr) |
+| float, Chebyshev | 252.5 | 2.314e-10 | 1.803374e-04 | 243 (np=1, 16 thr) |
+| float, FCG rtol 1e-8 | 300 = CAP | 2.314e-10 | 1.803374e-04 | 291 (np=1, 16 thr) |
+| float, PCG, advection OFF | 300 = CAP | 2.314e-10 | 1.803375e-04 | 306 (np=1, 16 thr) |
+| **fp64, PCG rtol 1e-8** | **71.0** | **1.086e-12** | — | **10.9 (np=192)** |
+
+The tell is that `<u>` and `max|div|` are *identical to seven digits* across every float row: the
+solve reaches its physical answer in ~36 iterations and spends the remaining ~264 chasing a
+residual below the storage floor. The fp64 build is not merely more correct — it is **~2× faster
+in wall clock** (71 iterations rather than a 200 cap) and lands two orders lower in divergence,
+which is why it is the configuration to report. Chebyshev does converge in float, as flow's docs
+predict for the contrast problem, but at 3.5× the iterations of fp64: usable, not preferable.
+
+The onset is sharp in resolution and nothing else. The same bed converges in **11 iterations at
+128³** and **20 at 256³** in float, and only caps at 384³. It reproduces at **np = 1**, so MPI is
+not involved (np=1 and np=4 at 256³ agree to every digit). A 100× `dt` sweep at 128³ moves
+iterations 9.5 -> 11; the bottom solver is irrelevant (`auto` vs `smoother`, coarsest 4³ vs 8³ —
+all 20.0); and turning advection off changes nothing (still capped, same answer).
+
+**The single-phase configs are low-contrast and converge fine in float** (16–39 iterations), so the
+single ladder does not need the fp64 build and its numbers stand as published.
+
+## Open issue — np = 768 stalls on 384³
+
+Reproducible; recorded rather than diagnosed. The single-phase config at **np = 768 (4 genoa
+nodes) hangs in warmup** — two independent allocations each sat >18 minutes without finishing two
+warmup steps, at full CPU on every rank (which proves nothing either way: OpenMPI busy-polls a
+blocked collective). The neighbouring rungs are healthy on the same build and grid — np = 384 does
+2.48 s/step, np = 1536 does 0.85 s/step — so this is specific to 768, not a scaling wall. Its
+per-rank block is a uniform 48×48×32 at imbalance 1.000. The 400³ np = 1536 job showed the same
+symptom, and there the decomposition is visibly pathological (**imbalance 4.000**). When someone
+picks this up: rerun with `PECLET_FLOW_AGGLOM_EXTENT=1000000` to take the agglomerated coarse
+solve out of the picture, which would separate a coarse-solve collective from a halo one. The
+ladder is reported without np = 768.
+
 ## Open issue — cut-cell IBM + open boundaries stalls the pressure solve
 
 **Found 2026-09-01 while setting this benchmark up. This blocks the `packed` case and is a
