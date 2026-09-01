@@ -82,8 +82,10 @@ CO = float(os.environ.get("CO", 0.1))
 DT = float(os.environ.get("DT", CO * H / UIN))
 NSTEPS = int(os.environ.get("NSTEPS", 100))
 WARMUP = int(os.environ.get("WARMUP", 2))
-MGLEVELS = int(os.environ.get("MGLEVELS", 5))
-DECOMP_LEVELS = int(os.environ.get("DECOMP_LEVELS", 5))
+# 7 is the full depth of 384 (= 2^7*3); the solver clamps to what the grid and the per-rank block
+# actually allow, so this is also correct on 400^3 (which stops at 5: 400->200->100->50->25).
+MGLEVELS = int(os.environ.get("MGLEVELS", 7))
+DECOMP_LEVELS = int(os.environ.get("DECOMP_LEVELS", 7))
 PRESSURE = os.environ.get("PRESSURE", "pcg")
 PMAXIT = int(os.environ.get("PMAXIT", 200))
 PRTOL = float(os.environ.get("PRTOL", 1e-8))
@@ -97,14 +99,31 @@ if BCMODE not in ("foxberry", "periodic", "walls"):
 RHO, MU = 1.0, float(os.environ.get("MU", 1.0))
 OUT = os.environ.get("OUT", f"fb_{CASE}_np{NP}.json")
 LABEL = os.environ.get("LABEL", "")
-SHIFT_X = 4.0 / 400.0                     # FoxBerry: bed shifted 4 cells (of the 400^3 grid)
 
 pk = None
+XPER = False
+SHIFT_X = 0.0
 if CASE == "packed":
     PACK = os.environ.get("PACK", "")
     if not PACK:
         raise SystemExit("PACK=<packing npz from make_bed.py> is required for CASE=packed")
     pk = np.load(PACK)
+    XPER = bool(pk["xperiodic"]) if "xperiodic" in pk.files else False
+    # FoxBerry shifts the bed 4 cells (of ITS 400^3 grid) off the inlet -- a physical 0.01, kept
+    # as such at any resolution. The triply-periodic bed fills the box and is not shifted.
+    SHIFT_X = 0.0 if XPER else 4.0 / 400.0
+    # A y/z-only bed under fully periodic BCs has a broken seam at x=0/1: a sphere clipped at one
+    # face does not continue at the other, and the 4-cell margins become a clear slot spanning the
+    # whole cross-section -- a short circuit for a body-force-driven flow. Refuse rather than
+    # silently measure that.
+    if BCMODE == "periodic" and not XPER:
+        raise SystemExit(
+            f"BCMODE=periodic needs a TRIPLY-periodic bed, but {os.path.basename(PACK)} is "
+            f"y/z-periodic only (FoxBerry placement). Regenerate with PERIODIC=1 make_bed.py.")
+    if BCMODE == "foxberry" and XPER:
+        raise SystemExit(
+            f"BCMODE=foxberry expects the FoxBerry bed (4-cell inlet/outlet margins), but "
+            f"{os.path.basename(PACK)} is triply periodic. Use the default bed.")
 
 from peclet import flow  # noqa: E402
 
@@ -141,10 +160,11 @@ if RANK == 0:
 phi_vox = 0.0
 nsph = 0
 if CASE == "packed":
-    # Rank-local analytic SDF: union of spheres in cell units.  The bed was packed periodically
-    # in the region (0.98, 1, 1); images are applied in y/z (period 1 = the domain height/depth,
-    # so wall-crossing spheres are filled consistently from the other side) but NOT in x -- the
-    # 4-cell inlet/outlet margins stay clear, exactly FoxBerry's placement rule.
+    # Rank-local analytic SDF: union of spheres in cell units.  Periodic images are applied on
+    # every axis the BED is periodic on -- y/z always (period 1 = the domain height/depth, so a
+    # wall-crossing sphere is filled consistently from the other side), and x as well for the
+    # triply-periodic bed. For the FoxBerry bed x is deliberately NOT wrapped: its spheres are
+    # clipped at the inlet/outlet, which is what its placement rule produces.
     t0 = time.perf_counter()
     r_phys = float(pk["r_phys"])
     c_cells = (pk["centers"] * r_phys + np.array([SHIFT_X, 0.0, 0.0])) * GN
@@ -156,8 +176,9 @@ if CASE == "packed":
     zc = oz + np.arange(lnz) + 0.5
     blk_lo = np.array([ox, oy, oz], np.float64)
     blk_hi = blk_lo + np.array([lnx, lny, lnz], np.float64)
-    shifts = [np.array([0.0, sy, sz]) * GN
-              for sy in (-1, 0, 1) for sz in (-1, 0, 1)]
+    _sx = (-1, 0, 1) if XPER else (0,)
+    shifts = [np.array([sx, sy, sz], np.float64) * GN
+              for sx in _sx for sy in (-1, 0, 1) for sz in (-1, 0, 1)]
     for sh in shifts:
         cs = c_cells + sh
         reach = r_cells + BAND
@@ -175,11 +196,15 @@ if CASE == "packed":
     nsolid = world.allreduce(int((sdf < 0).sum()), op=MPI.SUM)
     phi_vox = nsolid / float(GN**3)
     nsph = int(pk["nspheres"])
-    # Expected: holdup*0.98 minus the caps clipped at the (non-periodic) x-ends of the bed.
-    phi_exp = float(pk["holdup"]) * 0.98
+    if XPER:
+        # Triply periodic: the union fills the box, so the voxel fraction IS the holdup.
+        phi_exp, lo, hi = float(pk["holdup"]), 0.01, 0.01
+    else:
+        # y/z-periodic: holdup over the 0.98-wide region, less the caps clipped at the x ends.
+        phi_exp, lo, hi = float(pk["holdup"]) * 0.98, 0.03, 0.005
     p0(f"[sdf] built in {time.perf_counter() - t0:.1f}s  domain solid fraction={phi_vox:.4f} "
-       f"(region holdup*0.98={phi_exp:.4f}; x-end clipping accounts for ~0.005)")
-    if not (phi_exp - 0.03 < phi_vox < phi_exp + 0.005):
+       f"(expected {phi_exp:.4f}, bed {'triply periodic' if XPER else 'y/z-periodic, x-clipped'})")
+    if not (phi_exp - lo < phi_vox < phi_exp + hi):
         p0(f"FATAL: solid fraction {phi_vox:.4f} out of range -- bad bed/mapping. Refusing.")
         world.Barrier()
         raise SystemExit(1)
@@ -284,6 +309,7 @@ if RANK == 0:
         "omp_threads": os.environ.get("OMP_NUM_THREADS", ""),
         "global": [GNX, GNY, GNZ], "cells": cells,
         "n_spheres": nsph, "phi_voxel": phi_vox,
+        "pack": os.path.basename(os.environ.get("PACK", "")), "bed_xperiodic": XPER,
         "uin": UIN, "mu": MU, "dt": DT, "adv": ADV, "bcmode": BCMODE,
         "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL,
         "mglevels": MGLEVELS, "decomp_levels": DECOMP_LEVELS,

@@ -19,8 +19,14 @@ Env (all optional):
     NSPHERES  number of particles          (default 5000, the FoxBerry value)
     HOLDUP    solid fraction of the region (default 0.45)
     SEED      RNG seed for initial positions (default 0, matching FoxBerry's seed)
+    PERIODIC  0 (default) = the FoxBerry region (0.98, 1, 1), bed shifted +4dx in x so it is
+              periodic in y/z only and clipped at the inlet/outlet.
+              1 = a TRIPLY-periodic bed filling the whole unit box, for BCMODE=periodic runs.
+              A y/z-only bed run under fully periodic BCs has a broken geometric seam at x=0/1
+              (a sphere clipped at one face does not continue at the other), so the two must
+              match -- foxberry_bench.py refuses the mismatched combination.
     DT RATE RELAX ITERS   dem growth controls (pack_bed.py defaults)
-    OUT       output npz (default results/packing_foxberry_n<N>_phi<H>_s<SEED>.npz)
+    OUT       output npz (default results/packing_foxberry[_periodic]_n<N>_phi<H>_s<SEED>.npz)
 """
 import os
 import sys
@@ -34,23 +40,28 @@ from peclet import dem  # noqa: E402
 NSPH = int(os.environ.get("NSPHERES", 5000))
 HOLDUP = float(os.environ.get("HOLDUP", 0.45))
 SEED = int(os.environ.get("SEED", 0))
+PERIODIC = int(os.environ.get("PERIODIC", 0))
 DT = float(os.environ.get("DT", 0.01))
 RATE = float(os.environ.get("RATE", 0.3))
 RELAX = int(os.environ.get("RELAX", 200))
 ITERS = int(os.environ.get("ITERS", 100))
 
-# The FoxBerry particle region, physical units (unit box, 4-cell inlet/outlet margins at 400^3).
-REGION = np.array([0.98, 1.0, 1.0])
+# The particle region in physical units. FoxBerry's is (L - 8dx, H, D) at 400^3 = (0.98, 1, 1),
+# with the bed shifted +4dx in x; the periodic variant fills the whole unit box instead.
+REGION = np.array([1.0, 1.0, 1.0]) if PERIODIC else np.array([0.98, 1.0, 1.0])
 vol_sphere = 4.0 / 3.0 * np.pi
 r_phys = (HOLDUP * REGION.prod() / (NSPH * vol_sphere)) ** (1.0 / 3.0)
 box = REGION / r_phys                     # packing box in units of the sphere radius (R = 1)
 phi = NSPH * vol_sphere / box.prod()      # == HOLDUP by construction
 
-OUT = os.environ.get("OUT", f"results/packing_foxberry_n{NSPH}_phi{HOLDUP:g}_s{SEED}.npz")
+_kind = "_periodic" if PERIODIC else ""
+OUT = os.environ.get(
+    "OUT", f"results/packing_foxberry{_kind}_n{NSPH}_phi{HOLDUP:g}_s{SEED}.npz")
 
-print(f"[bed] N={NSPH} holdup={HOLDUP} -> r={r_phys:.7f} (D/dx={2 * r_phys * 400:.2f} cells "
-      f"at 400^3)  box={box[0]:.3f}x{box[1]:.3f}x{box[2]:.3f} R-units  phi={phi:.4f}  "
-      f"seed={SEED}", flush=True)
+print(f"[bed] {'TRIPLY-PERIODIC' if PERIODIC else 'FoxBerry (y/z-periodic)'}  N={NSPH} "
+      f"holdup={HOLDUP} -> r={r_phys:.7f} (D/dx={2 * r_phys * 384:.2f} cells at 384^3, "
+      f"{2 * r_phys * 400:.2f} at 400^3)  box={box[0]:.3f}x{box[1]:.3f}x{box[2]:.3f} R-units  "
+      f"phi={phi:.4f}  seed={SEED}", flush=True)
 
 sim = dem.Simulation(NSPH)
 sim.initialize(shape_type=1, radius=1.0)
@@ -109,7 +120,8 @@ if abs(phi_vox - phi) > 0.02:
 
 os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
 np.savez(OUT, centers=p, scales=s, box=box, radius=1.0, phi=phi, seed=SEED,
-         region=REGION, r_phys=r_phys, holdup=HOLDUP, nspheres=NSPH)
+         region=REGION, r_phys=r_phys, holdup=HOLDUP, nspheres=NSPH,
+         xperiodic=bool(PERIODIC))
 print(f"[out] {OUT}", flush=True)
 sys.stdout.flush()
 os._exit(0)  # skip Kokkos atexit teardown abort

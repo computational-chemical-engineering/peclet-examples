@@ -1,11 +1,14 @@
 #!/usr/bin/env python
-"""Plot the foxberry-scaling results in the exact style of FoxBerry's
-scaling_single_phase_packed_bed.py, overlaying the FoxBerry reference numbers so the two codes
-are directly comparable: loglog, x = number of processors (MPI ranks x 1 thread), y = execution
-time per step [s], plus the ideal-halving line anchored at each curve's first point.
+"""Plot the foxberry-scaling results in the style of FoxBerry's
+scaling_single_phase_packed_bed.py, overlaying the FoxBerry reference numbers so the two codes are
+directly comparable: loglog, x = number of processors (MPI ranks x 1 thread), y = execution time
+per step [s], plus the ideal-halving line anchored at each curve's first point.
 
-peclet GPU results (foxberry_gpu.sh) are drawn as horizontal dashed levels labeled "N x H100" --
-a GPU count has no honest position on a core-count axis.
+Series are selected from the JSON CONTENTS (case / bcmode / grid / backend), not from filenames,
+so renaming a result never silently drops or mislabels a curve.
+
+peclet GPU results are drawn as horizontal dashed levels labeled "N x H100" -- a GPU count has no
+honest position on a core-count axis.
 
 Usage:  python plot_foxberry.py [--results results/snellius-genoa] [--gpu results/snellius-h100]
 """
@@ -27,69 +30,106 @@ FB = {
     "packed": np.array([3.85e2, 1.84e2, 9.83e1, 4.8e1, 2.42e1, 1.2e1, 5.44e0]),
 }
 TITLE = {
-    "single": "Scaling single phase flow 3D (64M cells)",
-    "packed": "Scaling packed bed flow 3D (64M cells, 5000 particles)",
+    "single": "Scaling single phase flow 3D (~64M cells)",
+    "packed": "Scaling packed bed flow 3D (~64M cells, 5000 particles)",
 }
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--results", default="results/snellius-genoa")
 ap.add_argument("--gpu", default="results/snellius-h100")
-ap.add_argument("--tag", default="", help="only JSONs with this tag suffix")
 args = ap.parse_args()
 
 
-def collect(resdir, prefix, key):
-    """-> sorted [(n, seconds_per_step, json)] for fb_<case>_<prefix><n><tag>.json files."""
-    rows = []
+def load(resdir):
+    out = []
     for f in sorted(glob.glob(os.path.join(resdir, "fb_*.json"))):
-        base = os.path.basename(f)[:-5]
-        parts = base.split("_")
-        if len(parts) < 3 or not parts[2].startswith(prefix):
-            continue
-        tag = "_".join(parts[3:])
-        if tag != args.tag.lstrip("_"):
-            continue
-        d = json.load(open(f))
-        rows.append((parts[1], int(parts[2][len(prefix):]), d["ms_per_step"] / 1e3, d))
-    return [(n, t, d) for c, n, t, d in rows if c == key]
+        try:
+            out.append(json.load(open(f)))
+        except Exception as e:
+            print(f"  (skipping unreadable {os.path.basename(f)}: {e})")
+    return out
+
+
+def pick(rows, case, bcmode, gn, gpu=False):
+    """Sorted [(np, seconds_per_step)] for one series, from the JSON fields."""
+    sel = [(d["np"], d["ms_per_step"] / 1e3) for d in rows
+           if d.get("case") == case
+           and d.get("bcmode", "foxberry") == bcmode
+           and d["global"][0] == gn
+           and ((d.get("backend") == "Cuda") == gpu)]
+    return sorted(set(sel))
 
 
 def ideal(x, y0):
     return y0 * x[0] / np.asarray(x, float)
 
 
+cpu_rows, gpu_rows = load(args.results), load(args.gpu)
+
+# (case, bcmode, grid, label, colour, marker) -- the peclet series drawn on each figure.
+SERIES = {
+    "single": [
+        ("single", "foxberry", 384, "peclet.flow 384³ (56.6M)", "tab:red", "s"),
+        ("single", "foxberry", 400, "peclet.flow 400³ (64.0M)", "tab:orange", "^"),
+    ],
+    "packed": [
+        ("packed", "periodic", 384, "peclet.flow 384³, PERIODIC BCs", "tab:red", "s"),
+        ("packed", "periodic", 400, "peclet.flow 400³, PERIODIC BCs", "tab:orange", "^"),
+        ("packed", "foxberry", 384, "peclet.flow 384³, FoxBerry BCs", "tab:brown", "v"),
+    ],
+}
+
 for case in ("single", "packed"):
     fig, ax = plt.subplots()
-    ax.loglog(FB_PROCS, FB[case], ls="--", linewidth=2.0, marker="o", label="FoxBerry")
-    ax.loglog(FB_PROCS, ideal(FB_PROCS, FB[case][0]), ls="-", linewidth=1.0, color="g",
-              label="ideal")
-    cpu = collect(args.results, "np", case)
-    if cpu:
-        n = [r[0] for r in cpu]
-        t = [r[1] for r in cpu]
-        ax.loglog(n, t, ls="--", linewidth=2.0, marker="s", color="tab:red", label="peclet.flow")
-        ax.loglog(n, ideal(n, t[0]), ls="-", linewidth=1.0, color="g")
-    for ng, tg, _ in collect(args.gpu, "gpu", case):
-        ax.axhline(tg, ls=":", linewidth=1.2, color="tab:purple")
-        ax.annotate(f"{ng}x H100", (FB_PROCS[0], tg), fontsize=8, color="tab:purple",
-                    va="bottom")
+    ax.loglog(FB_PROCS, FB[case], ls="--", lw=2.0, marker="o", color="tab:blue",
+              label="FoxBerry 401³ (64.5M)")
+    ax.loglog(FB_PROCS, ideal(FB_PROCS, FB[case][0]), ls="-", lw=1.0, color="g", label="ideal")
+
+    print(f"\n{TITLE[case]}")
+    header = f"  {'procs':>6}  {'FoxBerry':>10}"
+    drawn = []
+    for c, bc, gn, lab, col, mk in SERIES[case]:
+        pts = pick(cpu_rows, c, bc, gn)
+        if not pts:
+            continue
+        n = [p[0] for p in pts]
+        t = [p[1] for p in pts]
+        ax.loglog(n, t, ls="--", lw=2.0, marker=mk, color=col, label=lab)
+        ax.loglog(n, ideal(n, t[0]), ls="-", lw=0.8, color=col, alpha=0.4)
+        drawn.append((lab, dict(pts)))
+        header += f"  {lab.replace('peclet.flow ', ''):>26}"
+    for c, bc, gn, lab, col, mk in SERIES[case]:
+        for ng, tg in pick(gpu_rows, c, bc, gn, gpu=True):
+            ax.axhline(tg, ls=":", lw=1.2, color="tab:purple")
+            ax.annotate(f"{ng}x H100 ({gn}³)", (FB_PROCS[0], tg), fontsize=8,
+                        color="tab:purple", va="bottom")
+
     ax.set_title(TITLE[case])
     ax.set_xlabel("Number of processors")
     ax.set_ylabel("Execution time per step [s]")
     ax.xaxis.minorticks_off()
     ax.xaxis.set_major_locator(ticker.FixedLocator(FB_PROCS))
     ax.xaxis.set_major_formatter(ticker.FixedFormatter([str(p) for p in FB_PROCS]))
-    ax.legend()
+    ax.legend(fontsize=8)
+    if case == "packed" and any("PERIODIC" in d[0] for d in drawn):
+        ax.text(0.02, 0.02,
+                "peclet packed curve uses PERIODIC BCs + a triply-periodic bed:\n"
+                "same cell count and particle count, different boundary conditions.",
+                transform=ax.transAxes, fontsize=7, va="bottom", color="dimgray")
     out = f"scaling_{case}.png"
     fig.savefig(out, dpi=160, bbox_inches="tight")
     print(f"[plot] {out}")
 
-    print(f"\n{TITLE[case]}")
-    print(f"  {'procs':>6}  {'FoxBerry s/step':>15}  {'peclet s/step':>14}  {'speedup':>8}")
-    cpu_map = {n: t for n, t, _ in cpu}
+    if not drawn:
+        print("  (no peclet results yet)")
+        continue
+    print(header + f"  {'speedup vs FB':>14}")
     for p, tf in zip(FB_PROCS, FB[case]):
-        tp = cpu_map.get(p)
-        print(f"  {p:>6}  {tf:>15.3g}  " +
-              (f"{tp:>14.3g}  {tf / tp:>8.1f}x" if tp else f"{'-':>14}  {'-':>8}"))
-    for n, t, _ in collect(args.gpu, "gpu", case):
-        print(f"  {n:>4}xH100  {'-':>13}  {t:>14.3g}")
+        row = f"  {p:>6}  {tf:>10.3g}"
+        best = None
+        for lab, m in drawn:
+            v = m.get(p)
+            row += f"  {(f'{v:.3g}' if v else '-'):>26}"
+            if v and (best is None or v < best):
+                best = v
+        print(row + f"  {(f'{tf / best:.1f}x' if best else '-'):>14}")

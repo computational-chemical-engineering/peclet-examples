@@ -5,38 +5,66 @@ Reproduces the two 3-D strong-scaling cases of FoxBerry's `scaling/Scaling.cpp` 
 (`FoxBerry/scaling/scaling_single_phase_packed_bed.py`): loglog, x = number of processors,
 y = **execution time per step [s]**, 64M cells, the ladder 24 … 1536.
 
-| case | FoxBerry | here |
+Three **configurations**, each naming a (case, BC mode, bed) triple — those three are not
+independent, so they are selected together by name:
+
+| config | FoxBerry | here |
 |---|---|---|
-| **single** | Case 2, single-phase 3D flow | unit box, inlet u=1, outlet, 4 no-slip walls, ρ=1, μ=1, dt=2.5e-4, 100 steps |
-| **packed** | Case 3, packed-bed IBM | same box/BCs, inlet u=0.001, dt=0.25, 5000 spheres at holdup 0.45, cut-cell IBM, 100 steps |
+| **single** | Case 2, single-phase 3D flow | unit box, inlet u=1, outlet, 4 no-slip walls, ρ=1, μ=1, dt=Co·dx/u, 100 steps |
+| **packed** | Case 3, packed-bed IBM | same box/BCs, inlet u=0.001, 5000 spheres at holdup 0.45, cut-cell IBM — **BLOCKED, see "Open issue"** |
+| **packed-periodic** | (no FoxBerry counterpart) | the same bed and cell count, but **fully periodic and body-force driven**, on a triply-periodic bed — the valid way to price peclet's packed-bed step while `packed` is blocked |
 
-> **Status: the `single` case runs and is validated on Snellius; the `packed` case is BLOCKED on a
-> solver convergence defect found while setting this up.** See "Open issue" below — the packed
-> configuration currently caps or diverges the pressure solve, and a capped run is invalid, not
-> merely slow. Do not report packed-bed timings until it is fixed.
+`packed-periodic` is *not* a FoxBerry reproduction: the boundary conditions differ. It is the same
+problem *size* (same cells, same 5000 spheres, same holdup, same sphere radius to 0.7 %), so it
+prices the per-step cost of an IBM bed of that scale honestly, and it is the configuration to
+report until the open issue is fixed. The plot labels it as such.
 
-**First measured point (2026-09-01, genoa, 192 ranks = 1 full node, single-phase):**
+**The two beds are different artifacts and are not interchangeable.** FoxBerry places sphere
+*centers* in [0.01, 0.99] with radius 0.0276, so its spheres are clipped by the inlet/outlet
+planes and the bed is periodic in y/z only. Run *that* bed under periodic BCs and the geometry has
+a broken seam at x=0/1 — a sphere cut at one face does not continue at the other, and the margins
+become a clear slot spanning the whole cross-section, a short circuit for a body-force-driven
+flow. So `packed-periodic` uses its own triply-periodic bed (`PERIODIC=1 make_bed.py`, holdup 0.45
+over the full unit box, r = 0.0278004), and `foxberry_bench.py` **refuses** either mismatched
+pairing rather than silently measuring it.
+
+> **Status: `single` and `packed-periodic` run and are the reportable configurations; `packed`
+> (FoxBerry's own BCs on the bed) is BLOCKED on a solver convergence defect found while setting
+> this up.** See "Open issue" below — it caps or diverges the pressure solve, and a capped run is
+> invalid, not merely slow. Do not report `packed` timings until it is fixed.
+
+**First measured point (2026-09-01, genoa, 192 ranks = 1 full node, single-phase, 400³):**
 **21.8 s/step against FoxBerry's 42.2 — 1.9× faster**, at 155.5 pressure iterations/step and a
 final `max|div(open·u)|` of 7.2e-09 (converged, not capped). The projection is 85 % of the step
 (18.6 s of 21.8), so the iteration count is where any further win lives — and it is high precisely
-because of the 400³ factorization discussed under "pre-flight" below. The rest of the ladder is
-queued.
+because of the 400³ factorization discussed below, which is why 384³ is now the default grid.
 
 ## Deliberate deviations from FoxBerry
 
 All are recorded in every result JSON.
 
-- **400³ = 64.0M cells, not 401³ = 64.5M.** peclet's geometric multigrid coarsens an axis only
-  while it stays even, so an **odd dimension never coarsens at all** (measured elsewhere: 3.2×
-  the step time at 384×128×255 vs …×256). 401³ would cripple the pressure solve for reasons that
-  have nothing to do with parallel scaling. `dx = 1/400 = 0.0025` is *identical* to FoxBerry's,
-  so the particle resolution is unchanged at D/dx = 22.09 and the cell count differs by 0.8 %.
-  Note 400 = 2⁴·25 gives only 4 halvings (coarsest 25³, handled by the agglomerated bottom);
-  384³ = 56.6M would give 7, and is the grid to use if MG depth ever needs to be the variable.
+- **384³ = 56.6M cells (default), not 401³ = 64.5M.** peclet's geometric multigrid coarsens an
+  axis only while it stays even, so an **odd dimension never coarsens at all** (measured
+  elsewhere: 3.2× the step time at 384×128×255 vs …×256). 401³ would cripple the pressure solve
+  for reasons that have nothing to do with parallel scaling. Among the even neighbours the
+  *factorization* then decides everything: 384 = 2⁷·3 gives seven halvings and divides the whole
+  rank ladder cleanly, where 400 = 2⁴·25 gives four. Measured at np=24 with 7 levels requested:
+
+  | grid | aligned-ORB imbalance | coarse-first imbalance | MG levels achieved |
+  |---|---|---|---|
+  | 384³ | **1.000** | **1.000** | **7** |
+  | 400³ | 1.422 | 1.030 | 5 / 4 |
+
+  384³ is 12 % fewer cells than FoxBerry's 64.5M and `dx = 1/384` makes the spheres 21.35 cells
+  across instead of 22.09 (−3.4 %) — a smaller problem, not a different one, and the difference is
+  stated on the plot. A **400³ series** (`--export=ALL,GN=400`) is kept alongside it as the
+  cell-count-matched reference; the gap between the two curves *is* the price of grid
+  factorization, which is worth having measured rather than argued about.
 - **The bed is `peclet.dem`-grown, not FoxBerry's generator.** Same N = 5000, same holdup 0.45,
-  same radius r = 0.0276138 (from FoxBerry's own formula), same region (0.98, 1, 1) shifted +4dx
-  in x. FoxBerry's seeded PRNG sequence is not reproducible outside FoxBerry, so the beds are
-  statistically equivalent rather than identical — irrelevant for a timing comparison.
+  same radius from FoxBerry's own formula (r = 0.0276138 over their region; 0.0278004 for the
+  triply-periodic variant over the full box). FoxBerry's seeded PRNG sequence is not reproducible
+  outside FoxBerry, so the beds are statistically equivalent rather than identical — irrelevant
+  for a timing comparison.
 - **Initial velocity 0**, where FoxBerry starts at the inlet velocity (`flow` has no velocity
   setter). Immaterial for per-step timing; two warmup steps precede every measurement.
 - **Solver tolerances are peclet production settings**, not FoxBerry's 1e-14: MG-PCG at
@@ -49,7 +77,7 @@ All are recorded in every result JSON.
 
 | file | what |
 |---|---|
-| `make_bed.py` | grows the 5000-sphere bed with `peclet.dem`, writes `results/packing_foxberry_n5000_phi0.45_s0.npz` (committed — the reproducibility record) |
+| `make_bed.py` | grows the 5000-sphere beds with `peclet.dem` — the FoxBerry bed by default, the triply-periodic one with `PERIODIC=1`. Both npz files are committed as the reproducibility record. |
 | `foxberry_bench.py` | the benchmark driver (both cases), one JSON per run |
 | `plot_foxberry.py` | FoxBerry-style loglog plots with their reference curve overlaid, plus a comparison table |
 | `snellius/foxberry_genoa.sh` | CPU strong scaling, genoa (192 cores/node), the 24…1536 ladder |
@@ -61,14 +89,16 @@ The bed is committed, so nothing needs `dem` unless it is being regenerated:
 
 ```bash
 source ~/Codes/suite/.venv/bin/activate
-DEM_BUILD=~/Codes/suite/dem/build python make_bed.py     # only to regenerate
+DEM_BUILD=~/Codes/suite/dem/build            python make_bed.py   # FoxBerry bed
+DEM_BUILD=~/Codes/suite/dem/build PERIODIC=1 python make_bed.py   # triply-periodic bed
 ```
 
 Local smoke test (small grid, an OpenMP `PECLET_FLOW_MPI=ON` build):
 
 ```bash
 PYTHONPATH=~/Codes/suite/flow/build_mpi \
-  PACK=results/packing_foxberry_n5000_phi0.45_s0.npz CASE=single GN=100 NSTEPS=3 \
+  CASE=packed BCMODE=periodic GN=96 NSTEPS=2 WARMUP=1 \
+  PACK=results/packing_foxberry_periodic_n5000_phi0.45_s0.npz \
   OMP_NUM_THREADS=8 OMP_PROC_BIND=false python foxberry_bench.py
 ```
 
@@ -78,23 +108,30 @@ queue-parallel safe, and **resumable**: finished JSONs are skipped, so a timeout
 resubmitting the same line. After any solver change pass a tag as argument 2, or the stale JSONs
 are silently reported as the new numbers.
 
-The **case list is argument 3**, not an env var — `CASES=single sbatch …` is silently dropped by
-SURF's sbatch and runs the default (both cases). Measured the hard way on 2026-09-01.
+The **config list is argument 3**, not an env var — `CASES=single sbatch …` is silently dropped by
+SURF's sbatch and runs the default. Measured the hard way on 2026-09-01.
+
+`--mem=0` is in the script and matters: **`--exclusive` alone does not give you the node's
+memory.** SLURM still caps the job at ~1792 MiB × ntasks, so a 24-rank job gets ~43 GB of genoa's
+336 GB and is OOM-killed at this problem size (job 26280702, "Detected 2 oom_kill events"). Only
+the ≤96-rank single-node rungs are exposed — at 192 ranks/node the per-task allowance already sums
+to the whole node.
 
 ```bash
 cd <peclet-examples>/benchmarks/foxberry-scaling/snellius
-# arg1 = ranks, arg2 = result tag ("" for none), arg3 = case list
-sbatch --nodes=1 --time=03:00:00 --export=ALL,NSTEPS=20 foxberry_genoa.sh 24 "" single
-sbatch --nodes=1 --time=02:30:00 --export=ALL,NSTEPS=20 foxberry_genoa.sh 48 "" single
-sbatch --nodes=1 --time=02:00:00 --export=ALL,NSTEPS=40 foxberry_genoa.sh 96 "" single
-sbatch --nodes=1 foxberry_genoa.sh 192  "" single
-sbatch --nodes=2 foxberry_genoa.sh 384  "" single
-sbatch --nodes=4 foxberry_genoa.sh 768  "" single
-sbatch --nodes=8 foxberry_genoa.sh 1536 "" single
-sbatch --nodes=1 foxberry_gpu.sh 4 "" single            # H100 comparison
+# arg1 = ranks, arg2 = result tag ("" for none), arg3 = config list
+sbatch --nodes=1 --time=03:00:00 --mem=0 --export=ALL,NSTEPS=20 foxberry_genoa.sh 24 "" "single packed-periodic"
+sbatch --nodes=1 --time=03:00:00 --mem=0 --export=ALL,NSTEPS=20 foxberry_genoa.sh 48 "" "single packed-periodic"
+sbatch --nodes=1 --time=02:00:00 --mem=0 --export=ALL,NSTEPS=50 foxberry_genoa.sh 96 "" "single packed-periodic"
+sbatch --nodes=1 foxberry_genoa.sh 192  "" "single packed-periodic"
+sbatch --nodes=2 foxberry_genoa.sh 384  "" "single packed-periodic"
+sbatch --nodes=4 foxberry_genoa.sh 768  "" "single packed-periodic"
+sbatch --nodes=8 foxberry_genoa.sh 1536 "" "single packed-periodic"
+sbatch --nodes=1 foxberry_gpu.sh 4 "" "single packed-periodic"          # H100 comparison
+sbatch --nodes=1 --mem=0 --export=ALL,GN=400 foxberry_genoa.sh 192      # the 400^3 series
 ```
 
-Keep the case list at `single` until the open issue below is resolved.
+Do not add `packed` to the config list until the open issue below is resolved.
 
 **Shorten the measured window at the low rungs.** The default is 100 steps, but 24 ranks costs
 roughly eight times the 192-rank step time (~175 s/step), so 100 steps would need ~5 h and blow

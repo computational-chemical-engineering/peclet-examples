@@ -32,21 +32,30 @@ VENV="${VENV:-$SUITE/flow/.venv}"
 export PYTHONPATH="$BUILD:${PYTHONPATH:-}"
 export PECLET_BIND_GPU=0 PECLET_CORE_GPU_AWARE_MPI="${GPU_AWARE:-1}"
 RES="$EXDIR/results/snellius-h100"; mkdir -p "$RES"
-PACK="$EXDIR/../results/packing_foxberry_n5000_phi0.45_s0.npz"
-[ -f "$PACK" ] || { echo "FATAL: bed not found: $PACK (git pull peclet-examples)"; exit 1; }
+BEDS="$EXDIR/../results"
 
 N="${1:?usage: sbatch --nodes=N foxberry_gpu.sh <gpus> [tag]}"
 TAG="${2:+_${2}}"
 MAXN=$(( SLURM_NNODES * 4 ))
 [ "$N" -le "$MAXN" ] || { echo "FATAL: N=$N GPUs need $(( (N+3)/4 )) nodes, allocated $SLURM_NNODES" >&2; exit 1; }
 
-export PACK GN=400 NSTEPS=100 WARMUP=2
+export GN="${GN:-384}" NSTEPS="${NSTEPS:-100}" WARMUP="${WARMUP:-2}"
 
-run_one () {  # case out
-  local case=$1 out=$2
+# CONFIG = (case, BC mode, bed); see foxberry_genoa.sh for the full note.
+run_one () {  # config out
+  local cfg=$1 out=$2 case bc pack
+  case "$cfg" in
+    single)          case=single; bc=foxberry; pack="" ;;
+    packed)          case=packed; bc=foxberry; pack="$BEDS/packing_foxberry_n5000_phi0.45_s0.npz" ;;
+    packed-periodic) case=packed; bc=periodic; pack="$BEDS/packing_foxberry_periodic_n5000_phi0.45_s0.npz" ;;
+    *) echo "  [FATAL] unknown config '$cfg' (single|packed|packed-periodic)"; return 1 ;;
+  esac
   [ -f "$RES/$out" ] && { echo "[skip] $out"; return; }
-  echo "======= $case : 400^3, $N GPUs  ($out) ======="
-  env CASE=$case LABEL="snellius-h100" OUT="$RES/$out" \
+  if [ -n "$pack" ] && [ ! -f "$pack" ]; then
+    echo "  [FATAL] bed not found: $pack (git pull peclet-examples)"; return 1
+  fi
+  echo "======= $cfg : ${GN}^3, $N GPUs  ($out) ======="
+  env CASE=$case BCMODE=$bc PACK="$pack" LABEL="snellius-h100" OUT="$RES/$out" \
     srun --mpi=pmix --ntasks=$N --gpus-per-task=1 --gpu-bind=per_task:1 \
     "$VENV/bin/python" "$EXDIR/../foxberry_bench.py" > "$RES/${out%.json}.log" 2>&1 \
     && grep -E "^\[(cfg|sdf|perf|sanity)" "$RES/${out%.json}.log" \
@@ -57,7 +66,7 @@ run_one () {  # case out
 }
 
 # Argument 3 = which cases to run (ARGUMENT, not env: SURF sbatch drops leading VAR=x).
-for case in ${3:-${CASES:-packed single}}; do
-  run_one "$case" "fb_${case}_gpu${N}${TAG}.json"
+for cfg in ${3:-${CASES:-single packed-periodic}}; do
+  run_one "$cfg" "fb_${cfg}_g${GN}_gpu${N}${TAG}.json"
 done
 echo "done -> $RES"
