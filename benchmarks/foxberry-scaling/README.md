@@ -46,7 +46,7 @@ build; `packed-periodic` uses the fp64 operator build (see below — the float b
 | 192 | 42.2 | **5.30** (8.0×) | 22.7 | 48 | **10.3** (4.7×) | 65.5 |
 | 384 | 21.1 | **2.48** (8.5×) | 24.9 | 24.2 | **6.19** (3.9×) | 81.7 |
 | 768 | 10.6 |  — (hung, see below) | — | 12 | — | — |
-| 1536 | 5.08 | **0.852** (6.0×) | 38.7 | 5.44 | — | — |
+| 1536 | 5.08 | **0.852** (6.0×) | 38.7 | 5.44 | *invalid — caps* | 122† |
 
 Seconds per step; the bracket is peclet's speedup over FoxBerry. Every run converged
 (`max|div(open·u)|` 2e-10…2e-09 single-phase, 2e-13…9e-13 packed/fp64); capped runs are excluded by
@@ -55,6 +55,17 @@ convergence.
 
 **peclet is 8.0–9.4× faster than FoxBerry on the single-phase case and 3.9–5.7× on the packed bed**,
 narrowing at the top of the ladder because FoxBerry scales better than peclet does.
+
+† **The packed bed does not survive np=1536 even in fp64**, and that is a finding rather than a
+gap. Both runs land on **122.2 mean iterations with individual steps at the 200 cap**, and they agree to
+every digit in `<u>` and `max|div|` — this is deterministic, not a flaky draw. The step time
+*regresses* to 16.9 / 17.3 s against 6.19 s at np=384 — peclet goes from 3.9× faster than FoxBerry to slower. Meanwhile np=384
+reproduces to 5 % across two runs (6.19 / 6.52 s, 81.7 iterations both times), so this is the rank
+count and not the draw. The mechanism links the two top issues: the starved hierarchy (issue 3) weakens the
+preconditioner enough to push the high-contrast bed back over the convergence threshold (issue 2).
+**384 ranks is therefore the measured strong-scaling ceiling of the IBM path on this problem** — a
+much lower one than the single-phase case's, and the reason fixing issue 3 is worth more than its
+33 % headline suggests.
 
 ### Is the scaling linear?
 
@@ -240,6 +251,22 @@ python plot_foxberry.py          # -> scaling_single.png, scaling_packed.png + t
 ```
 
 Commit the JSONs; the logs are not committed.
+
+## Issues this campaign surfaced
+
+Six, prioritized in **[`suite/docs/SCALING_ISSUES.md`](../../../suite/docs/SCALING_ISSUES.md)** —
+read that first if you are picking any of them up. Ordered *silently wrong* before *visibly broken*
+before *slow*:
+
+1. **Cut-cell IBM + open domain BCs does not solve** (blocker; blocks FoxBerry's actual Case 3).
+2. **Float operator storage silently invalidates dense-bed runs** (the default build; fp64 is both
+   correct and ~2× faster here).
+3. **MG depth capped by the per-rank block** — the whole strong-scaling deficit.
+4. **Intermittent multi-node hang in warmup** (cost two rungs of this ladder).
+5. Velocity multigrid is single-rank only — impact here unverified, worth a `VSWEEPS` sweep.
+6. `check_decomposition.py` too slow to pre-flight the high rungs.
+
+The sections below are the detail for 2, 4 and 1 respectively.
 
 ## The packed configs need the fp64 operator build
 

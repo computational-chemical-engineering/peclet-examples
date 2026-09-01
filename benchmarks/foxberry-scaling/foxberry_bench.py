@@ -290,13 +290,19 @@ for key, v in acc.items():
     m = float(np.mean(v))
     stats[key] = {"max": world.allreduce(m, op=MPI.MAX), "min": world.allreduce(m, op=MPI.MIN)}
 it_mean = float(np.mean(iters))
+# The MAX matters as much as the mean: a run where only SOME steps cap has a mean below PMAXIT
+# and looks converged, while its step time is part convergence and part cap. Recorded so the
+# plotter can reject it (measured 2026-09-01: np=1536 packed averaged 122 with steps at 200).
+it_max = int(np.max(iters))
+it_capped = int(np.sum(np.asarray(iters) >= PMAXIT))
 cells = GN**3
 ms_step = 1e3 * wall / NSTEPS
 mcells = cells * NSTEPS / wall / 1e6
 umean = gmean_u()
 maxdiv = s.max_open_divergence()
 p0(f"[perf] {ms_step:.1f} ms/step ({wall:.1f}s for {NSTEPS} steps)  {mcells:.1f} Mcell/s "
-   f"({mcells / NP:.2f}/rank)  pressure iters/step {it_mean:.1f}")
+   f"({mcells / NP:.2f}/rank)  pressure iters/step {it_mean:.1f} (max {it_max}"
+   + (f", {it_capped}/{NSTEPS} steps CAPPED -- INVALID)" if it_capped else ")"))
 p0("[phases, rank-max ms/step] "
    + "  ".join(f"{p}={1e3 * stats[p]['max']:.1f}" for p in phases)
    + f"  allreduce_count={stats['pressure_allreduce_count']['max']:.0f}")
@@ -321,7 +327,8 @@ if RANK == 0:
         "nsteps": NSTEPS, "warmup": WARMUP,
         "ms_per_step": ms_step, "seconds_total": wall,
         "mcells_per_s": mcells, "mcells_per_s_per_rank": mcells / NP,
-        "pressure_iters_per_step": it_mean, "phase_seconds_per_step": stats,
+        "pressure_iters_per_step": it_mean, "pressure_iters_max": it_max,
+        "pressure_steps_capped": it_capped, "phase_seconds_per_step": stats,
         "u_mean_final": umean, "max_div_final": maxdiv,
         "blocks": [{"rank": rr, "host": hh, "gpu": bb, "origin": list(oo), "size": list(ss)}
                    for rr, hh, bb, oo, ss in _blocks],

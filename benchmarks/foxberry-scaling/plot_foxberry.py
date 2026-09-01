@@ -51,9 +51,14 @@ def load(resdir):
 
 
 def capped(d):
-    """A run whose pressure solve hit its iteration cap every step is INVALID, not slow: the step
-    time is then set by PMAXIT rather than by convergence. Drop it rather than plot it."""
-    return d["pressure_iters_per_step"] >= d["pmaxit"] - 0.5
+    """A run in which ANY step hit the pressure iteration cap is INVALID, not slow: that step's
+    time is set by PMAXIT rather than by convergence. Judge on the MAX, not the mean — a run where
+    only some steps cap has a mean below PMAXIT and looks converged (measured: np=1536 packed
+    averaged 122 with individual steps at 200). Older JSONs carry only the mean; fall back to it."""
+    mx = d.get("pressure_iters_max")
+    if mx is None:
+        return d["pressure_iters_per_step"] >= d["pmaxit"] - 0.5
+    return mx >= d["pmaxit"]
 
 
 def pick(rows, case, bcmode, gn, gpu=False):
