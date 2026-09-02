@@ -58,6 +58,22 @@ speedup over FoxBerry; `eff` = strong-scaling efficiency against the 24-rank run
 | 768 | 10.6 | **0.768** (13.8×) | 14.0 | 142 % | 12 | **3.24** (3.7×) | 39.8 | 124 % |
 | 1536 | 5.08 | **0.656** (7.7×) | 14.0 | 83 % | 5.44 | **1.33** (4.1×) | 39.8 | 151 % |
 
+**Third pass — the momentum fix** (`VRES=1e-5`, residual-based stop; `VMG=3` = velocity multigrid,
+else RB-GS), same telescoped pressure MG, same beds, pressure iterations and `<u>`/`max|div|`
+unchanged to seven digits:
+
+| ranks | FoxBerry single | **single, VMG** | FoxBerry packed | **packed, VMG** | **packed, RB-GS + residual stop** |
+|---|---|---|---|---|---|
+| 384 | 21.1 | **0.930** (22.7×) | 24.2 | **3.32** (7.3×) | **2.91** (8.3×) |
+| 768 | 10.6 | **0.430** (24.6×) | 12 | **1.48** (8.1×) | — |
+| 1536 | 5.08 | **0.391** (13.0×) | 5.44 | **0.834** (6.5×) | **0.844** (6.4×) |
+
+The velocity MG runs one V-cycle per component per step on the single-phase case (residual 5e-16 —
+plug flow is trivial for it) and two on the bed; RB-GS with the residual stop needs 8.8 sweeps per
+component instead of the cap of 200. The two momentum solvers tie at 384 and the V-cycle wins by its
+fewer halo exchanges at 1536. At `VRES=1e-3` the momentum residual (8e-4) leaks into the pressure
+solve (14 → 30 iterations single-phase), so 1e-5 is the setting to use.
+
 Every run converged on every step (max 18 iterations single, 45 packed, cap 200); the 100-step
 packed runs at 192 / 384 / 768 / 1536 agree on `<u>` and `max|div|` to seven digits, which is the
 evidence that their halo topologies were clean (the hang section explains why that matters). **The pressure iteration count is now flat across the ladder**, so the
@@ -90,13 +106,21 @@ Kept for the record and for the gray series on the packed graph. Single-phase: 3
 the analysis is in [`suite/docs/DECOMPOSITION_AND_MULTIGRID.md`](../../../suite/docs/DECOMPOSITION_AND_MULTIGRID.md)
 §2.8 and the design in `suite/docs/MG_TELESCOPING_PLAN.md`.
 
-### Where the packed-bed time goes now
+### Where the packed-bed time went — and the momentum fix
 
-With the pressure iterations flat, the packed-bed step is dominated by the **momentum solve**: the
-implicit diffusion's Red–Black Gauss–Seidel hits its sweep cap every step (`momentum_sweeps_per_step`
-= 600 = 3 × `VSWEEPS` 200) because ν·Δt/Δx² ≈ 4×10⁴ here, versus 204 sweeps single-phase. That is
-issue 5 of the register and the reason the packed speedup over FoxBerry (3×) is a third of the
-single-phase one (9–14×). FoxBerry's momentum solve is Chebyshev-preconditioned.
+Until the third pass, the packed-bed step was dominated by the **momentum solve**: the implicit
+diffusion's Red–Black Gauss–Seidel hit its sweep cap every step (`momentum_sweeps_per_step` = 600 =
+3 × `VSWEEPS` 200) because ν·Δt/Δx² ≈ 4×10⁴ here, versus 204 sweeps single-phase. The a-priori
+study (`study/velocity_solver_residual.py`, 96³) showed the cap was buying nothing: the stop rule
+"update ≤ rtol × the *first* sweep's update" is relative to a quantity that is already noise on a
+warm-started near-steady step (the update-stopped run and one 25× longer agree to 1e-14). With the
+residual-based stop (`set_velocity_residual_tolerance`, `VRES`): 468 → 24 sweeps/step at 96³ for
+the same accuracy, and at scale the table above. The velocity multigrid (`VMG`), now running under
+MPI with the mixed solid + domain-BC operator, converges to the same fixed point as RB-GS (2e-11)
+in 1–2 cycles per component, and its depth is irrelevant on a pore-confined bed (2, 3, 5 levels
+identical) — it needs no telescoping. Details and the two traps it cost (`bcStencilPath()` /
+`implicitAdv()` must agree with the solver in use; level-0 ghosts are reflections, `fold=0`) are in
+`suite/docs/SCALING_ISSUES.md` §5 and `flow/CLAUDE.md`.
 
 ## Deliberate deviations from FoxBerry
 

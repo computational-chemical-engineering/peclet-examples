@@ -12,7 +12,11 @@ Second campaign, complete ladder. Since the first (2026-09-01) the pressure mult
 is gone — the packed bed runs with **FoxBerry's own boundary conditions** (inlet/outlet, four
 walls, wall-confined bed), and the intermittent multi-node hang that blocked the top rungs was
 root-caused to a consensus-protocol race in the halo topology builder and fixed. Pressure iteration
-counts are flat from 24 to 1536 cores on both cases.
+counts are flat from 24 to 1536 cores on both cases. **Third pass, same day:** the momentum solve —
+which had become the dominant cost — was found to be stopping on the wrong criterion and burning
+its sweep cap; with a residual-based stop and a velocity multigrid that now runs under MPI the
+packed-bed step is another 2.2× faster (0.834 s at 1536 cores, 6.5× FoxBerry) and the single-phase
+one 1.7–2.2× (0.391 s, 13×). Those points are the diamonds on the graphs.
 :::
 
 Reproduces the two 3-D strong-scaling cases of FoxBerry's `scaling/Scaling.cpp` with `peclet.flow`,
@@ -57,6 +61,9 @@ Unit box, inlet u=1, outlet, four no-slip walls, ρ=μ=1, 100 steps.
 | 768 | 10.6 | **0.768** | 13.8× | 14.0 | 142 % |
 | 1536 | 5.08 | **0.656** | 7.7× | 14.0 | 83 % |
 
+With the momentum fix (velocity MG, residual stop 1e-5 — the diamonds): **0.930 / 0.430 / 0.391 s** at
+384 / 768 / 1536 cores, **22.7× / 24.6× / 13.0×** FoxBerry, pressure iterations 13.8 unchanged.
+
 **peclet is 8–14× faster than FoxBerry across the whole ladder.** The pressure iteration count is
 flat at 14 from 24 to 1536 cores. The super-linear efficiency through 768 is the shrinking per-rank
 block fitting cache (the 24–96 rungs share one node's memory bandwidth, which *flatters* the
@@ -87,6 +94,11 @@ FoxBerry's `Scaling.cpp`; no sphere cuts the inlet or outlet plane.
 | 384 | 24.2 | **7.28** | 3.3× | 39.8 | 110 % |
 | 768 | 12 | **3.24** | 3.7× | 39.8 | 124 % |
 | 1536 | 5.44 | **1.33** | 4.1× | 39.8 | 151 % |
+
+With the momentum fix (residual stop 1e-5 — the diamonds / triangles): velocity MG **3.32 / 1.48 /
+0.834 s** at 384 / 768 / 1536 cores, RB-GS with the residual stop 2.91 / – / 0.844 s — **8.3× / 8.1× /
+6.5×** FoxBerry, pressure iterations 39.8 unchanged, `<u>` and `max|div|` identical to the capped
+runs to seven digits, and 99.5 % strong-scaling efficiency from 384 to 1536 on the MG series.
 
 **3.0–4.1× faster than FoxBerry with flat iteration counts (43 → 40) and ≥ 99 % efficiency across
 the whole ladder, super-linear at the top** (124 % at 768, 151 % at 1536 — unlike the single-phase
@@ -138,14 +150,38 @@ count would get, without launching anything.
 
 ![](scaling_diagnosis.png)
 
-## Where the time goes now
+## The momentum solve: stopping on the wrong criterion
 
-With the pressure iteration count flat, the packed-bed step is dominated by the **momentum solve**:
-the implicit diffusion's Red–Black Gauss–Seidel hits its sweep cap on every step (600 sweeps per
-step, 3 components × 200) because ν·Δt/Δx² ≈ 4×10⁴ on this case, versus 204 sweeps on the
-single-phase case. That is the next lever — a velocity multigrid under MPI, or a Krylov wrapper —
-and it is why the packed bed's speedup over FoxBerry (3×) is a third of the single-phase one (9–14×)
-although the pressure solves are comparable.
+With the pressure iterations flat, the packed-bed step was 63 % momentum solve at 384 cores: the
+implicit-diffusion Red–Black Gauss–Seidel hit its cap of 200 sweeps per component on every step
+(ν·Δt/Δx² ≈ 4×10⁴ here). The a-priori study at 96³ showed what that cap was buying: nothing. The
+stop rule was "update ≤ 10⁻³ × the *first* sweep's update", and on a warm-started, near-steady step
+the first update is already at noise level — the update-stopped solve and one run 25× longer agree
+to 1e-14, both being the same stalled iteration. The rule demanded a thousandfold reduction of
+noise, and the cap was its only exit.
+
+The fix is a **residual-based stop**: end a component's solve once max|b − A u| ≤ rtol ·
+max(max|b|, max|A u|) over the solved unknowns (the forcing enters through the inflow ghost, not
+through *b*, hence the scale; the held inflow face is imposed, not solved, hence excluded). At 96³
+the RB-GS drops from 468 to 24 sweeps per step at rtol 10⁻³ and 51 at 10⁻⁵, with errors matching
+the tolerance. On the same occasion the **velocity multigrid was wired under MPI** — on the
+solver's own decomposition, with a new operator for the case of an immersed solid *with* domain
+BCs (level 0 the sharp cut-cell stencil with the implicit-upwind advection the domain-BC path
+always used, coarse levels a staircase Helmholtz with the domain-face folds) — and it converges to
+the same fixed point as RB-GS to 2e-11.
+
+At scale the two are close: at 384 cores RB-GS with the residual stop is slightly cheaper (2.91 vs
+3.32 s), at 1536 the V-cycle's fewer halo exchanges win (0.834 vs 0.844 s); both cut the step by
+2.2× against the capped run and leave the pressure iteration count and the solution (seven digits)
+unchanged. A tolerance of 10⁻³ is too loose — it leaves the momentum residual at 8e-4 and the
+pressure solve pays for it (14 → 30 iterations on the single-phase case); 10⁻⁵ costs one extra
+V-cycle and restores it. **The velocity hierarchy needs no depth on a pore-confined bed** (2, 3 and 5
+levels give identical cycle counts: the coarse grid only serves the clean fluid interior), so it
+needs no telescoping where the pressure hierarchy did.
+
+What remains at the top of the single-phase ladder is latency: 37 k cells per rank at 1536 cores,
+768 → 1536 buys 1.1× (the pressure solve's 14 V-cycles with their per-level exchanges), which is
+why FoxBerry's curve, still on ideal halving there, closes from 25× to 13×.
 
 ## The rung that would not run
 

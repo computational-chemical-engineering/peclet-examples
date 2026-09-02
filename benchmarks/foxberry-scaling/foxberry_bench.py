@@ -99,7 +99,7 @@ VMGCYCLES = int(os.environ.get("VMGCYCLES", 4))  # V-cycles per component per st
 SAVEU = os.environ.get("SAVEU", "")            # np=1 only: save the final u-component field (.npy)
 VRES = float(os.environ.get("VRES", 0))        # >0: residual-based momentum stop max|r| <= VRES*max|b|
 BOTTOM = os.environ.get("BOTTOM", "auto")
-TELESCOPE = int(os.environ.get("TELESCOPE", 0))
+TELESCOPE = int(os.environ.get("TELESCOPE", -1))   # -1 = the solver default (ON since 2026-09-02); 0/1 force
 ADV = int(os.environ.get("ADV", 1))
 BCMODE = os.environ.get("BCMODE", "foxberry")
 if BCMODE not in ("foxberry", "periodic", "walls"):
@@ -267,10 +267,15 @@ elif PRESSURE == "cheby":
 elif PRESSURE != "vcycle":
     raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|vcycle|fcg|cheby)")
 s.set_pressure_bottom(BOTTOM)
-if TELESCOPE:
+if TELESCOPE >= 0:
     if not hasattr(s, "set_pressure_telescope"):
-        raise SystemExit("TELESCOPE=1 but this flow build has no set_pressure_telescope")
-    s.set_pressure_telescope(True)
+        raise SystemExit("TELESCOPE set but this flow build has no set_pressure_telescope")
+    s.set_pressure_telescope(bool(TELESCOPE))
+# record what the solver will actually do (not the env), and predict the ladder with it
+TELESCOPE = int(s.pressure_telescope()) if hasattr(s, "pressure_telescope") else max(TELESCOPE, 0)
+HIER = [{"global": list(g), "ranks": r, "block0": list(b), "ratio": list(q), "telescope": bool(t)}
+        for g, r, b, q, t in flow.predict_hierarchy(GNX, GNY, GNZ, NP, MGLEVELS, bool(TELESCOPE))] \
+    if hasattr(flow, "predict_hierarchy") else None
 
 # Domain BCs (before geometry): west inlet, east outlet, four no-slip walls -- FoxBerry's map.
 if BCMODE == "foxberry":

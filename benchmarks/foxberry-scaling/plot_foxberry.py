@@ -75,13 +75,24 @@ def capped(d):
     return mx >= d["pmaxit"]
 
 
-def pick(rows, case, bcmode, gn, gpu=False, telescope=0):
+def momentum_kind(d):
+    """How the momentum solve was stopped/solved: 'legacy' (RB-GS, update criterion -- the
+    original ladder), 'rbgs-res' (RB-GS, residual stop), 'vmg' (velocity multigrid, residual
+    stop). The residual runs also carry the tolerance, so a series can pin it."""
+    if float(d.get("vres", 0)) <= 0:
+        return "legacy"
+    return "vmg" if int(d.get("vmg", 0)) > 0 else "rbgs-res"
+
+
+def pick(rows, case, bcmode, gn, gpu=False, telescope=0, momentum="legacy", vres=None):
     """Sorted [(np, seconds_per_step)] for one series, from the JSON fields."""
     sel, drop = [], []
     for d in rows:
         if (d.get("case") != case or d.get("bcmode", "foxberry") != bcmode
                 or d["global"][0] != gn or (d.get("backend") == "Cuda") != gpu
-                or int(d.get("telescope", 0)) != telescope):
+                or int(d.get("telescope", 0)) != telescope
+                or momentum_kind(d) != momentum
+                or (vres is not None and float(d.get("vres", 0)) != vres)):
             continue
         (drop if capped(d) else sel).append((d["np"], d["ms_per_step"] / 1e3))
     for n, t in sorted(set(drop)):
@@ -95,17 +106,21 @@ def ideal(x, y0):
 
 cpu_rows, gpu_rows = load(args.results), load(args.gpu)
 
-# (case, bcmode, grid, telescope, label, colour, marker) -- the peclet series drawn on each figure.
+# (case, bcmode, grid, telescope, momentum, vres, label, colour, marker) -- the peclet series
+# drawn on each figure. momentum/vres select the momentum-solve variant (see momentum_kind).
 SERIES = {
     "single": [
-        ("single", "foxberry", 384, 1, "peclet.flow 384³, telescoped MG", "tab:red", "s"),
-        ("single", "foxberry", 384, 0, "peclet.flow 384³, in-place MG", "tab:pink", "s"),
-        ("single", "foxberry", 400, 0, "peclet.flow 400³, in-place MG", "tab:orange", "^"),
+        ("single", "foxberry", 384, 1, "vmg", 1e-5, "peclet.flow 384³, telescoped MG + velocity MG (residual stop)", "tab:red", "D"),
+        ("single", "foxberry", 384, 1, "legacy", None, "peclet.flow 384³, telescoped MG, capped RB-GS momentum", "tab:red", "s"),
+        ("single", "foxberry", 384, 0, "legacy", None, "peclet.flow 384³, in-place MG", "tab:pink", "s"),
+        ("single", "foxberry", 400, 0, "legacy", None, "peclet.flow 400³, in-place MG", "tab:orange", "^"),
     ],
     "packed": [
-        ("packed", "foxberry", 384, 1, "peclet.flow 384³, FoxBerry BCs, telescoped MG", "tab:red", "s"),
-        ("packed", "foxberry", 384, 0, "peclet.flow 384³, FoxBerry BCs, in-place MG", "tab:pink", "s"),
-        ("packed", "periodic", 384, 0, "peclet.flow 384³, periodic BCs, in-place MG", "tab:gray", "o"),
+        ("packed", "foxberry", 384, 1, "vmg", 1e-5, "peclet.flow 384³, FoxBerry BCs, telescoped MG + velocity MG (residual stop)", "tab:red", "D"),
+        ("packed", "foxberry", 384, 1, "rbgs-res", 1e-5, "peclet.flow 384³, FoxBerry BCs, telescoped MG, RB-GS residual stop", "tab:brown", "v"),
+        ("packed", "foxberry", 384, 1, "legacy", None, "peclet.flow 384³, FoxBerry BCs, telescoped MG, capped RB-GS momentum", "tab:red", "s"),
+        ("packed", "foxberry", 384, 0, "legacy", None, "peclet.flow 384³, FoxBerry BCs, in-place MG", "tab:pink", "s"),
+        ("packed", "periodic", 384, 0, "legacy", None, "peclet.flow 384³, periodic BCs, in-place MG", "tab:gray", "o"),
     ],
 }
 
@@ -118,20 +133,21 @@ for case in ("single", "packed"):
     print(f"\n{TITLE[case]}")
     header = f"  {'procs':>6}  {'FoxBerry':>10}"
     drawn = []
-    for c, bc, gn, tel, lab, col, mk in SERIES[case]:
-        pts = pick(cpu_rows, c, bc, gn, telescope=tel)
+    for c, bc, gn, tel, mom, vres, lab, col, mk in SERIES[case]:
+        pts = pick(cpu_rows, c, bc, gn, telescope=tel, momentum=mom, vres=vres)
         if not pts:
             continue
         n = [p[0] for p in pts]
         t = [p[1] for p in pts]
+        main = tel and mom == "legacy"
         ax.loglog(n, t, ls="--" if tel else ":", lw=2.0 if tel else 1.4, marker=mk, color=col,
-                  label=lab, mfc=col if tel else "none")
-        if tel:
+                  label=lab, mfc=col if tel else "none", ms=8 if mom != "legacy" else 6)
+        if main:
             ax.loglog(n, ideal(n, t[0]), ls="-", lw=0.8, color=col, alpha=0.4)
         drawn.append((lab, dict(pts)))
-        header += f"  {lab.replace('peclet.flow ', ''):>30}"
-    for c, bc, gn, tel, lab, col, mk in SERIES[case]:
-        for ng, tg in pick(gpu_rows, c, bc, gn, gpu=True, telescope=tel):
+        header += f"  {lab.replace('peclet.flow ', '')[:34]:>34}"
+    for c, bc, gn, tel, mom, vres, lab, col, mk in SERIES[case]:
+        for ng, tg in pick(gpu_rows, c, bc, gn, gpu=True, telescope=tel, momentum=mom, vres=vres):
             ax.axhline(tg, ls=":", lw=1.2, color="tab:purple")
             ax.annotate(f"{ng}x H100 ({gn}³)", (FB_PROCS[0], tg), fontsize=8,
                         color="tab:purple", va="bottom")
@@ -142,11 +158,11 @@ for case in ("single", "packed"):
     ax.xaxis.minorticks_off()
     ax.xaxis.set_major_locator(ticker.FixedLocator(FB_PROCS))
     ax.xaxis.set_major_formatter(ticker.FixedFormatter([str(p) for p in FB_PROCS]))
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=7, loc="lower left")
     if case == "packed" and any("periodic BCs" in d[0] for d in drawn):
-        ax.text(0.02, 0.02,
+        ax.text(0.98, 0.98,
                 "gray: periodic BCs + triply-periodic bed (same size, not FoxBerry's BCs)",
-                transform=ax.transAxes, fontsize=7, va="bottom", color="dimgray")
+                transform=ax.transAxes, fontsize=7, va="top", ha="right", color="dimgray")
     out = f"scaling_{case}.png"
     fig.savefig(out, dpi=160, bbox_inches="tight")
     print(f"[plot] {out}")
@@ -160,7 +176,7 @@ for case in ("single", "packed"):
         best = None
         for lab, m in drawn:
             v = m.get(p)
-            row += f"  {(f'{v:.3g}' if v else '-'):>30}"
+            row += f"  {(f'{v:.3g}' if v else '-'):>34}"
             if v and (best is None or v < best):
                 best = v
         print(row + f"  {(f'{tf / best:.1f}x' if best else '-'):>14}")
@@ -175,7 +191,8 @@ for case, bc, gn, tel, lab, col, mk in [
         ("packed", "periodic", 384, 0, "packed bed (periodic), in-place", "tab:gray", "o")]:
     rows = [d for d in cpu_rows
             if d.get("case") == case and d.get("bcmode", "foxberry") == bc
-            and d["global"][0] == gn and int(d.get("telescope", 0)) == tel and not capped(d)]
+            and d["global"][0] == gn and int(d.get("telescope", 0)) == tel
+            and momentum_kind(d) == "legacy" and not capped(d)]
     if not rows:
         continue
     pts = sorted({(d["np"], d["pressure_iters_per_step"], d["ms_per_step"]) for d in rows})
