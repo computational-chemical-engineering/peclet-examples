@@ -1144,3 +1144,35 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
 - **Expected:** a sentence in the `capillary_dt` / `vof_step_limits` docstrings saying the value
   is state-dependent and is only meaningful *after* the property closures have run once — or have
   `enable_vof`/`set_property_model` refresh the properties so the first call is already right.
+
+## flow: a two-phase post array with 3-cell throats dies with `preconditioner produced non-finite z`
+- **Status:** open, mechanism NOT isolated (worked around on the page by widening the throats)
+- **Package / area:** flow (cut-cell VoF + contact angle in an under-resolved throat; the FCG
+  pressure driver's preconditioner is where it surfaces)
+- **Found in:** examples/pore-scale-imbibition (the micromodel; WO-V7 case 3)
+- **Observed:** a jittered staggered array of 56 posts of radius 5.7 at porosity 0.586 in
+  $128\times128\times4$ — narrowest throat **3.08 cells** — invaded at $\theta=45°$,
+  $\mathrm{Ca}=10^{-3}$, ratio 100, momentum consistency on. It ran to 0.121 pore volumes injected
+  with $\max|u|$ climbing from 0.40 to 2.32 (93x the 0.025 inlet velocity) and then emitted, four
+  times in a row,
+
+  ```
+  peclet::flow CutcellMG::solveFCG: preconditioner produced non-finite z; returning zero correction
+  ```
+
+  The same scene with **30 posts of radius 6.5, narrowest throat 6.4 cells, porosity 0.712** and
+  every other setting identical runs on.
+- **Two candidate mechanisms, not separated:** (a) the $\theta$-fill writes a three-cell band into
+  the solid on each side of a throat, so at 3.1 cells the two posts' bands meet in its middle —
+  the same overlap the wetting rung recorded as making its four-cell-plate capillary rise
+  inconclusive; (b) a Haines jump through a throat whose meniscus radius is ~1.5 cells is simply
+  unresolved (local velocities in a real pore-filling event run up towards $\sigma/\mu_\ell$,
+  which is 1000x the inlet velocity here). Separating them needs a $\theta$-sweep at fixed throat
+  width.
+- **Expected:** whatever the mechanism, the *failure mode* is wrong: the message is printed to
+  stdout, the correction is silently replaced by zero, and the run continues. A non-finite
+  preconditioner output should mark the step invalid — `last_pressure_iterations()` should report
+  the cap, or the driver should raise — so that a caller's rule-3b check catches it. As shipped, a
+  run can pass "no capped solve" while its pressure solve has been returning zero corrections.
+- **Repro:** `flow/tests/study/pore_scale/micromodel_2d.py` with `NCOL, NROW = 7, 8`,
+  `X0, DX = 16.0, 16.0`, `R_POST = 5.7`, `MIN_GAP = 3.0`.

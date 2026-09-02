@@ -593,17 +593,23 @@ angles.
 ::: {.callout-warning}
 ## Post count, porosity and grid: pick two
 The obvious array — around 60 posts at a porosity of 0.6 — was tried first and
-does not work, for a reason that is worth stating rather than hiding. A square
-array at porosity 0.6 has throats of $0.286\times$ the lattice spacing, which at
-56 posts on this grid is **3.1 cells**; the contact-angle fill writes a
-**three-cell band into the solid on each side of a throat**, so the two posts'
-bands meet in the middle of it. That configuration ran to 0.12 pore volumes
-injected and then produced `CutcellMG::solveFCG: preconditioner produced
-non-finite z`, with $\max|u|$ at 93 times the inlet velocity. (It is the same
-overlapping-band mechanism that made the wetting rung's four-cell-plate capillary
-rise inconclusive.) The array below keeps the disorder and the geometry class but
-trades post *count* for throat *width*: 30 posts, minimum throat 6 cells,
-porosity $\approx0.71$.
+does not survive, and the measurement is worth stating rather than hiding. A
+square array at porosity 0.6 has throats of $0.286\times$ the lattice spacing,
+which at 56 posts on this grid is **3.1 cells**. That configuration ran to 0.12
+pore volumes injected and then emitted `CutcellMG::solveFCG: preconditioner
+produced non-finite z`, with $\max|u|$ at 93 times the inlet velocity. The array
+below keeps the disorder and the geometry class but trades post *count* for throat
+*width*: 30 posts, narrowest throat 6.4 cells, porosity $\approx0.71$.
+
+Two candidate mechanisms, and this page does **not** separate them: (a) the
+contact-angle fill writes a three-cell band into the solid on each side of a
+throat, so at 3.1 cells the two posts' bands meet in the middle of it — the same
+overlap that made the wetting rung's four-cell-plate capillary rise inconclusive;
+(b) a Haines jump through a throat whose meniscus radius is $\approx1.5$ cells is
+simply unresolved. Local velocities in a real pore-filling event run up towards the
+capillary velocity $\sigma/\mu_\ell = 25$, a thousand times the inlet velocity
+here, so a $\max|u|$ far above the superficial one is expected physics and only its
+*resolution* is in question.
 :::
 
 ```{python}
