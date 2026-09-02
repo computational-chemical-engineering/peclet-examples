@@ -94,6 +94,10 @@ PMAXIT = int(os.environ.get("PMAXIT", 200))
 PRTOL = float(os.environ.get("PRTOL", 1e-8))
 VSWEEPS = int(os.environ.get("VSWEEPS", 200))
 VRTOL = float(os.environ.get("VRTOL", 1e-3))
+VMG = int(os.environ.get("VMG", 0))            # >0: velocity multigrid with this many levels
+VMGCYCLES = int(os.environ.get("VMGCYCLES", 4))  # V-cycles per component per step
+SAVEU = os.environ.get("SAVEU", "")            # np=1 only: save the final u-component field (.npy)
+VRES = float(os.environ.get("VRES", 0))        # >0: residual-based momentum stop max|r| <= VRES*max|b|
 BOTTOM = os.environ.get("BOTTOM", "auto")
 TELESCOPE = int(os.environ.get("TELESCOPE", 0))
 ADV = int(os.environ.get("ADV", 1))
@@ -249,6 +253,10 @@ s.set_mu(MU)
 s.set_dt(DT)
 s.set_advection(bool(ADV))
 s.set_velocity_solver_params(VSWEEPS, VRTOL)
+if VMG > 0:
+    s.set_velocity_multigrid(True, VMG, VMGCYCLES)  # before geometry: the hierarchy is built at set_solid
+if VRES > 0:
+    s.set_velocity_residual_tolerance(VRES)
 s.set_pressure_multigrid(True, MGLEVELS)
 if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
@@ -308,6 +316,7 @@ acc = {p: [] for p in phases}
 acc["pressure_allreduce_count"] = []
 iters = []
 msweeps = []
+mresid = []
 world.Barrier()
 t0 = time.perf_counter()
 _hb = max(1, NSTEPS // 10)
@@ -321,6 +330,7 @@ for istep in range(NSTEPS):
     acc["pressure_allreduce_count"].append(t["pressure_allreduce_count"])
     iters.append(s.last_pressure_iterations())
     msweeps.append(t.get("momentum_sweeps", -1))
+    mresid.append(float(s.last_momentum_residual()))
 t1 = time.perf_counter()
 wall = world.allreduce(t1 - t0, op=MPI.MAX)
 stats = {}
@@ -341,7 +351,8 @@ maxdiv = s.max_open_divergence()
 p0(f"[perf] {ms_step:.1f} ms/step ({wall:.1f}s for {NSTEPS} steps)  {mcells:.1f} Mcell/s "
    f"({mcells / NP:.2f}/rank)  pressure iters/step {it_mean:.1f} (max {it_max}"
    + (f", {it_capped}/{NSTEPS} steps CAPPED -- INVALID)" if it_capped else ")")
-   + f"  momentum sweeps/step {float(np.mean(msweeps)):.1f} (cap {VSWEEPS})")
+   + f"  momentum sweeps/step {float(np.mean(msweeps)):.1f} (cap {VSWEEPS})"
+   + (f"  momentum resid {float(np.mean(mresid)):.1e} (max {float(np.max(mresid)):.1e})" if VRES > 0 else ""))
 p0("[phases, rank-max ms/step] "
    + "  ".join(f"{p}={1e3 * stats[p]['max']:.1f}" for p in phases)
    + f"  allreduce_count={stats['pressure_allreduce_count']['max']:.0f}")
@@ -362,7 +373,8 @@ if RANK == 0:
         "uin": UIN, "mu": MU, "dt": DT, "adv": ADV, "bcmode": BCMODE,
         "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL,
         "mglevels": MGLEVELS, "decomp_levels": DECOMP_LEVELS,
-        "vsweeps": VSWEEPS, "vrtol": VRTOL, "bottom": BOTTOM, "telescope": TELESCOPE,
+        "vsweeps": VSWEEPS, "vrtol": VRTOL, "vmg": VMG, "vmgcycles": VMGCYCLES,
+        "bottom": BOTTOM, "telescope": TELESCOPE,
         "hierarchy": HIER,
         "nsteps": NSTEPS, "warmup": WARMUP,
         "ms_per_step": ms_step, "seconds_total": wall,
@@ -370,6 +382,8 @@ if RANK == 0:
         "pressure_iters_per_step": it_mean, "pressure_iters_max": it_max,
         "pressure_steps_capped": it_capped, "phase_seconds_per_step": stats,
         "momentum_sweeps_per_step": float(np.mean(msweeps)), "momentum_sweeps_max": int(max(msweeps)),
+        "momentum_residual_mean": float(np.mean(mresid)), "momentum_residual_max": float(np.max(mresid)),
+        "vres": VRES,
         "u_mean_final": umean, "max_div_final": maxdiv,
         "blocks": [{"rank": rr, "host": hh, "gpu": bb, "origin": list(oo), "size": list(ss)}
                    for rr, hh, bb, oo, ss in _blocks],
@@ -378,6 +392,8 @@ if RANK == 0:
     with open(OUT, "w") as fh:
         json.dump(out, fh, indent=1)
     print(f"[out] {OUT}", flush=True)
+if SAVEU and world.size == 1:
+    np.save(SAVEU, np.asarray(s.get_u()))
 
 world.Barrier()
 MPI.Finalize()
