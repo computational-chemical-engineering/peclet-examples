@@ -340,6 +340,20 @@ momentum-consistent transport that buys a factor five.
 ::::
 :::::
 
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/droplet-wetting.jpg)](examples/droplet-wetting/index.qmd)
+
+::: {.card-body}
+#### [Droplet wetting](examples/droplet-wetting/index.qmd)
+Set a contact angle on an immersed solid and get it back within a degree — plus the wall
+placement that silently freezes the contact line.
+[flow · VoF · wetting]{.tags}
+
+:::
+::::
+:::::
+
 ::::::
 
 ## Resolved particles & moving geometry

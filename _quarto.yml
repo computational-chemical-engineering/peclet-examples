@@ -81,6 +81,8 @@ website:
             text: "Capillary oscillations (wave + drop, viscous theory)"
           - href: examples/rising-bubble/index.qmd
             text: "Rising bubble (vs Hysing et al. 2009)"
+          - href: examples/droplet-wetting/index.qmd
+            text: "Droplet wetting (static contact angle on SDF solids)"
       - text: "Granular (DEM)"
         menu:
           - href: examples/sdf-particle-packing/index.qmd

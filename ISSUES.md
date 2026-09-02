@@ -803,3 +803,83 @@ is now measured false and needs rewriting before the new numbers are published.*
   (`tests/study/vof_capillary_references.py`, `wave_mode` / `drop_mode`, the drop needs `mpmath`);
   the fix is to have the two gates import them and gate on those numbers. The page carries a
   copy of both functions, per the gallery rule that teaching code stays visible.
+
+## flow: a flat SDF wall at a half-integer coordinate closes the wall cell's tangential faces and silently pins the contact line
+- **Status:** open (a property of the cut-cell openness builder, not of the wetting rung; the
+  gallery page works around it by placing walls at a quarter-integer and says why)
+- **Package / area:** flow (cut-cell IBM — `buildOpenness`; surfaced by the VoF contact angle)
+- **Found in:** examples/droplet-wetting §6 (confirmed independently of the solver's own WO-S
+  finding 5, which is where it was first measured)
+- **Observed:** `buildOpenness` classifies a MAC face as fluid on `sdf > 0`, so a face whose
+  sub-face SDF is exactly 0 is closed. A flat wall at $z = k + \tfrac12$ puts the *tangential*
+  faces of the wall-adjacent cell exactly on the zero level, and that cell then reads a fluid
+  fraction `eps = 0.500` and a tangential openness `ox = oy = 0.000` **at the same time** — a
+  fluid cell with no tangential flux at all. Measured on this page (θ = 60° from a hemisphere,
+  $D/\Delta = 24$, 300 steps, everything else identical): wall at $z = 4.25$ → `eps = ox = 0.75`,
+  the contact line travels 90° → 73.9° and is still moving, `max|u| = 2.9e-2`; wall at
+  $z = 3.50$ → `eps = 0.50`, `ox = 0.000`, the contact line stalls at 81.4° and `max|u| = 1.05`,
+  a factor **36** larger. The velocity lives entirely on the closed-face DOFs, so the projection
+  never sees it and the divergence, the volume drift and the pressure iteration count all look
+  perfectly healthy.
+- **Expected:** a wall placed anywhere inside a cell should give a cut cell whose tangential
+  faces are open in proportion to the fluid it contains. `eps = 0.5` with `ox = 0` is
+  geometrically inconsistent: half the cell is fluid, and none of its side is.
+- **Repro:** `drop_on_wall(60.0, steps=300, zw=3.5, theta_init=90.0)` on the page, or
+  `PYTHONPATH=<build> python tests/study/vof_wetting.py g1w` in the solver repo (which sweeps
+  four placements).
+- **Notes:** half-integer is the *natural* choice — it is what makes the wall cells "genuinely
+  cut", and it is what both work orders of this rung originally asked for — so this is a trap a
+  user will walk into. Candidate fixes, none implemented: treat a sub-face at exactly the zero
+  level as open (`sdf >= 0`) rather than solid, which is the consistent tie-break for a face
+  whose two sides are fluid and solid; or floor the tangential openness of any cell with
+  `eps > 0` at some fraction of `eps`. Note also that the "wall-band spurious current" of
+  ~0.79 recorded by the earlier V5a cap gate is *this*, not a surface-tension defect: the same
+  measurement on a quarter-integer wall reads 1.7e-3.
+
+## flow: `set_contact_angle` is silently ignored on a domain-BC wall
+- **Status:** open
+- **Package / area:** flow (VoF wetting — the solid-band fill runs on the SDF classification only)
+- **Found in:** examples/droplet-wetting (while choosing how to model the wall)
+- **Observed:** `set_domain_bc(face, 1)` gives a no-slip domain wall, but the θ-consistent band
+  fill only ever runs on cells classified solid by the SDF geometry. A solver with a domain-BC
+  wall and a `set_contact_angle(theta)` call therefore keeps the zero-gradient (90°) `clampFill`
+  colour extrapolation on that face — no error, no warning, no diagnostic: the θ field is simply
+  never consulted there. `contact_angle_diagnostics()['contact_cells']` reads 0, which is the
+  only available tell and is easy to miss.
+- **Expected:** either the domain wall gets the same fill with `n_w` the inward face normal
+  (which is what the work order for the rung specified), or `set_contact_angle` raises / warns
+  when the solver has wetting-relevant domain walls and no SDF solid.
+- **Repro:** any drop resting on a type-1 domain wall with `set_contact_angle(60)`; the
+  equilibrium comes back at ~90°.
+- **Notes:** the workaround the page uses — and the one every gate in the solver repo uses — is
+  to model a wetting wall as an **SDF slab**, which is a two-line change and costs nothing. It
+  is worth documenting loudly because "a wall is a wall" is the natural expectation.
+
+## flow: the static contact angle carries a converged −3.6° bias above 90°
+- **Status:** open (published on the page as a measured limit, with the resolution rule that
+  bounds it; not tuned away)
+- **Package / area:** flow (VoF wetting — the θ-consistent solid-band fill / contact-line
+  resolution)
+- **Found in:** examples/droplet-wetting §1 and §6 (first measured in the solver's WO-S sweep)
+- **Observed:** starting the drop *at* the prescribed spherical cap (so the measurement is the
+  fixed-point statement, not an unfinished relaxation), $D/\Delta = 24$, Oh = 0.1, 500 steps, the
+  equilibrium apparent angle comes back **30.69 / 59.98 / 88.84 / 116.86** for θ = 30/60/90/120,
+  i.e. errors of **+0.69 / −0.02 / −1.16 / −3.14** degrees. The errors are monotone in θ, not
+  symmetric about 90°. At density ratio 100 the same scene gives 29.92 / 58.36 / 88.44 / 116.42,
+  reproducing the residual to a few tenths of a degree.
+- **Expected:** ≤ 3° at every angle, which is the tolerance the rung's own gate uses and which
+  the ≤ 90° rows meet comfortably.
+- **Repro:** the `sweep` cell of the page, or `PYTHONPATH=<build> python
+  tests/study/vof_wetting.py g1` in the solver repo.
+- **Notes — what it is NOT** (each ruled out by measurement): an unfinished transient (the same
+  θ = 120 scene run to 1500 steps settles at 116.40° with `max|u|` down to 1.8e-4); the density
+  contrast (the ratio-100 column above); and the cut-cell whole-cell PLIC reconstruction — with
+  the wall on a cell *face*, where the anchor cell is uncut and that approximation is exactly
+  absent, the same run reads **worse** (115.3° at 750 steps). What it *tracks* is the contact
+  radius: a = 20.2 / 15.3 / 12.1 / 9.1 cells at the four angles, and the two rows that miss are
+  the two with fewer than ten radial cells across the contact line. The measurement that would
+  settle it is a $D/\Delta$ refinement at fixed θ = 120/150 holding a ≥ 10, which no session has
+  had the machine time for. The unimplemented refinement in the same area is the solid-clipped
+  flux polygon (Chen et al., Phys. Fluids 37, 023392, 2025): the PLIC plane is reconstructed on
+  the whole unit cell and its slab volume multiplied by the open face area, rather than clipped
+  against the solid too.
