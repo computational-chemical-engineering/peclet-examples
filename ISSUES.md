@@ -921,3 +921,95 @@ is now measured false and needs rewriting before the new numbers are published.*
   flux polygon (Chen et al., Phys. Fluids 37, 023392, 2025): the PLIC plane is reconstructed on
   the whole unit cell and its slab volume multiplied by the open face area, rather than clipped
   against the solid too.
+
+## core/flow: a CSG leaf wider than the periodic box refills its own cavity — the ten Cate tank ran 30 % narrow → RESOLVED (detector in flow; page rebuilt)
+*(found 2026-09-02 chasing the "creeping-valued confined drag" of `examples/ten-cate-sphere`)*
+
+**Symptom.** The tank's cavity was 38 cells wide instead of 53 at d/h = 8 (d/W = 0.21 instead of
+the experiment's 0.15). Every tank measurement of both campaigns — the 0.78/0.80 plateaus, the
+effective K ≈ 1.67, the +24 % towed drag — was made in that narrower tank.
+
+**Cause.** The scene query evaluates the UNION of an instance's periodic images (min over the 27
+neighbours). The tank slab was `b.add_leaf("box", [NX*0.7, NY*0.7, NX*0.7])`: wider than the box,
+so its images overlap and a neighbouring image's slab refills the cavity wherever it reaches
+(x ∈ [14, 51] survives at N = 64). The cavity leaf is then irrelevant — 38 columns for any cavity
+size. The non-periodic CSG evaluation is correct; sphere-only pages were never affected.
+
+**Evidence.** `.sdf-campaign-probes/periodic_image_gate.py`: 0.7 L slab → 38 cols, 43 680 flagged
+cells; L/2 + 1 slab → 53 cols, 0 flagged. `duct_re_gate.py` (fixed sphere, walls translating
+with the plug — the exact static twin of the settling experiment): with the corrected duct the
+confinement factor is K(Re 1.5) = 1.09 and K(creeping) = 1.11 relative to the periodic box, i.e.
+duct Cd/Abraham 1.30 → 1.08: the solver screens confinement as the physics requires. Under the
+broken slab the same gate read K = 2.35.
+
+**Fix.** flow `set_solid_from_scene` now samples the primary image alone whenever an instance's
+bounding sphere spans more than the box, counts the cells whose sign the images changed, warns on
+stderr and exposes `periodic_image_overlap_cells()`. Rule for container walls: slab half-extent =
+half the box + wall thickness. Page slab changed accordingly and re-measured (see the page).
+
+**Also shipped en route.** `set_velocity(c, array)` (initial-condition hook) and the finite-Re
+Galilean gate `galilean_re_gate.py`: towed vs fixed sphere agree to 0.03 % at Re 1.5 and 2.1 % at
+Re 30, step by step — the moving-geometry path is Galilean-consistent at finite Re.
+
+## flow: `vof_geometry()` throws on an all-fluid VoF solver, so one driver cannot serve both scenes
+- **Status:** open (low severity — a one-line guard works, but it is not discoverable)
+- **Package / area:** flow (VoF cut-cell diagnostics / API symmetry)
+- **Found in:** examples/bubble-through-packing (the packed run and its no-packing control share
+  one driver function)
+- **Observed:** the natural way to write a gas-volume diagnostic for a cut-cell VoF run is
+  `gas = vof_geometry(0) * (1 - get_vof())` — the cell **fluid fraction** times the gas fraction
+  of that fluid volume. On a solver built with `set_pressure_geometry(all_fluid)` (the all-fluid
+  cut-cell pressure operator) plus `enable_vof()`, `vof_geometry(0)` raises
+  `RuntimeError: vof_geometry: no cut-cell geometry (needs set_solid + enable_vof)`. So the
+  identical diagnostic code cannot be run against the packed scene and its control; the control
+  branch has to synthesise `eps = ones(...)` itself.
+- **Expected:** either `vof_geometry(0)` returns the all-ones cell fraction on an all-fluid
+  solver (it is well defined and it is what the transport uses), or the guard is advertised in
+  the docstring of `vof_geometry` next to the predicate that answers it.
+- **Repro:**
+  ```python
+  s = flow.Solver(32, 32, 32)
+  s.set_rho(1.0); s.set_mu(0.1)
+  s.set_pressure_geometry(np.full((32, 32, 32), 10.0, order="F"))
+  s.enable_vof()
+  s.vof_geometry(0)          # RuntimeError
+  s.vof_has_geometry()       # False  <- the predicate that has to guard it
+  ```
+- **Notes:** the workaround used on the page is
+  `eps = np.asarray(s.vof_geometry(0)) if s.vof_has_geometry() else np.ones(shape)`. This is the
+  same family as the `max_open_divergence()`-returns-0-without-geometry entry above: the
+  cut-cell diagnostics are silently or loudly absent on an all-fluid solver, and each one has a
+  different failure mode (one returns a wrong number, the other raises).
+
+## flow: a ten-step-stale VoF `dt` re-pick is not safe in a packing — `step()` raises mid-run
+- **Status:** open (worked around on the page by re-picking every step; the solver behaviour is
+  arguably correct, the *usage pattern* the other VoF pages establish is what is unsafe)
+- **Package / area:** flow (VoF transport — the Weymouth–Yue boundedness cap and `vof_step_limits`)
+- **Found in:** examples/bubble-through-packing (first attempt at the packed run)
+- **Observed:** the [rising bubble](examples/rising-bubble/index.qmd) driver re-picks
+  `dt = 0.4 min(cfl_dt, capillary_dt)` from `vof_step_limits()` **every ten steps**, and that is
+  safe for a free bubble whose velocity field changes slowly. In a packing it is not. Deep in the
+  bed the run died with
+
+  ```
+  RuntimeError: peclet::flow::vof::WyAdvector: CFL = max|uf| dt/h = 0.377061 exceeds the
+  Weymouth-Yue boundedness cap 0.25 (dt = 1.27425, h = 1) - reduce dt
+  ```
+
+  `dt = 1.27425` is exactly `0.4 * capillary_dt`, i.e. at the last re-pick the capillary limit was
+  binding and the CFL limit was comfortably larger; within the next ten steps the maximum face
+  velocity grew by more than 50 % — a jet through a pore throat as the gas breaks into it — and
+  `step()` refused. The throw happens *inside* the advection, so the step is partly applied and the
+  run cannot simply be retried with a smaller `dt`.
+- **Expected:** ideally `step()` would clamp to the cap it enforces (or offer an opt-in
+  `set_vof_dt_autoclamp`) rather than raising after the predictor has run, so a caller cannot lose
+  a two-hour run to a transient. Failing that, the limitation deserves a sentence next to
+  `vof_step_limits()`: *the limits are instantaneous, and in a geometry that can accelerate the
+  interface they go stale within a few steps.*
+- **Repro:** the page's `column(packed=True, T=4300)` with the `dt` re-pick guarded by
+  `if i % 10 == 0:` — it survives ~2 600 steps (t ≈ 2 700) and dies afterwards. With the re-pick
+  every step it runs to completion.
+- **Notes:** the cost of re-picking every step is one extra device reduction per step, which is
+  not measurable against a variable-density projection. The page's driver also wraps `step()` in
+  a `try/except RuntimeError` that records the message and stops that run cleanly, so a single
+  divergent configuration cannot break the whole notebook.

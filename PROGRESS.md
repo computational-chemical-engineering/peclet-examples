@@ -136,7 +136,24 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
       affected pages rewritten + re-rendered (the moving-sphere δ/h "convergence" story was largely
       this error decaying). Three live threads recorded in the plan doc.
 
-- [ ] **E3b `drafting-kissing-tumbling`** — **DEFERRED with cause**: DKT is finite-Re coupled
+### 2026-09-02 — ten Cate CLOSED: the deficit was a periodic-box geometry trap
+- [x] **Root cause of the E3a deficit:** the tank slab (`NX*0.7`) was wider than the periodic
+      box; the scene evaluates the UNION of an instance's periodic images, so the slab's images
+      refilled the cavity — **38-cell tank instead of 53** (d/W 0.21 vs 0.15 ⇒ Faxén K ≈ 1.67,
+      exactly the measured effective K). Found via the finite-Re Galilean gate (towed vs fixed
+      sphere agree to **0.03%** at Re 1.5 ⇒ not a moving-body defect) and a static duct twin whose
+      plug flow lost half its momentum in 100 steps (walls at rest ⇒ cavity half-sized ⇒ mask
+      profile ⇒ slab images). Corrected tank at d/h = 8: **E1 0.922 vs 0.947 (−2.6%), E4 0.972 vs
+      0.955 (+1.8%)**, physical falls. Duct twin K(Re 1.5) = 1.09 vs creeping 1.11 (rel. periodic;
+      duct Cd/Abraham 1.30 → 1.08): the solver screens confinement. flow now detects the trap
+      (`periodic_image_overlap_cells()` + warning), has `set_velocity` and a moving-instance
+      cut-cell detector for the lattice-plane trap; gates `periodic_image_gate.py`,
+      `lattice_plane_gate.py`, `galilean_re_gate.py`, `duct_re_gate.py` in `.sdf-campaign-probes`.
+- [x] **New pages:** `galilean-drag` (finite-Re Galilean pair) and `confined-drag-screening`
+      (K(Re) creeping → 1.5 → 30 with the trap demonstrated). ten-cate re-rendered with the
+      corrected tank and rewritten.
+- [ ] **E3b `drafting-kissing-tumbling`** — **UNBLOCKED** (coupled resolved motion is quantitative
+      at finite Re); next page.: DKT is finite-Re coupled
       two-body motion, the exact regime E3a just measured as quantitatively broken (creeping-valued
       confinement + momentum leak). Building it before the §7-item-8 solver fix would ship a
       known-bad benchmark. It becomes the natural second regression page after the fix.
