@@ -1,0 +1,939 @@
+---
+title: "A bubble through a packed bed"
+subtitle: "Buoyancy against capillarity in a liquid-saturated packing: the bubble squeezes through the throats, and the gas volume is conserved to the projection's own divergence residual while the colour inside the grains stays exactly zero."
+author: "Peclet"
+date: "2026-09-02"
+categories: [flow, dem, vof, two-phase, porous-media, wetting, IBM, multi-method, gpu]
+jupyter: python3
+---
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/bubble-through-packing/index.ipynb){target="_blank"}
+&nbsp;Wants a GPU build: two $64\times64\times160$ two-phase runs of a few thousand steps
+each, plus three shorter ones.
+
+## What you'll learn
+
+This is the page where the pieces meet. A **`dem`** packing becomes a signed distance
+field; the **cut-cell immersed boundary** turns that field into openness-weighted
+pressure and transport operators; the **geometric VoF** transports a gas/liquid
+interface *through* those cut cells; a **static contact angle** tells the interface
+what to do where it meets a grain; and **momentum-consistent transport** carries
+$\rho\mathbf{u}$ with the same fluxes at a density ratio of 100. Nothing here is a
+benchmark with a published number — it is the composition itself, and the honest
+question is whether the conservation statements survive it.
+
+They do — and the bubble does something worth watching on the way. It rises freely into
+the bed, **stops dead where the packing first narrows**, flattens there while the
+buoyant head builds, and forces its way through. That is @eq-entry below, playing out. Through all of it the gas volume is conserved to **machine
+precision**, the colour inside the grains is **exactly zero** to the last bit, and the
+pressure projection never comes close to its iteration cap. The numbers are in §3, and
+§5 repeats the whole packed run at density ratio **1000** and reports what happens.
+
+The page also runs the same bubble in the **same column with no packing**, which is the
+only yardstick available here — every number about the bed is a number *relative to the
+free rise*.
+
+## The problem
+
+A gas bubble of diameter $D$ is released at the bottom of a closed, liquid-saturated
+column and rises through a random packing of spheres whose diameter is comparable to
+its own. Three groups fix the physics.
+
+The **Eötvös** and **Morton** numbers say what shape a *free* bubble takes
+[@clift1978]:
+
+$$
+\mathrm{Eo} = \frac{\Delta\rho\, g\, D^{2}}{\sigma},
+\qquad
+\mathrm{Mo} = \frac{g\,\mu_\ell^{4}\,\Delta\rho}{\rho_\ell^{2}\sigma^{3}} ,
+\qquad
+\mathrm{Re} = \frac{\rho_\ell U_g D}{\mu_\ell},\quad U_g=\sqrt{gD} .
+$$ {#eq-groups}
+
+At $\mathrm{Eo}=10$ and $\mathrm{Mo}=10^{-3}$ a free bubble is firmly **ellipsoidal** —
+deformable, not a spherical cap, not a wobbling one. That is the regime chosen here,
+because a bubble that cannot deform cannot pass a throat narrower than itself.
+
+The third group is the one the packing adds. To push its nose into a pore throat of
+radius $r_t$ against a **wetting** liquid ($\theta$ measured through the liquid), the
+gas must overcome the Young–Laplace entry pressure, and the head it has available is
+the hydrostatic head over its own vertical extent $L$:
+
+$$
+\underbrace{\frac{2\sigma\cos\theta}{r_t}}_{\text{capillary entry}}
+\;<\;
+\underbrace{\Delta\rho\,g\,L}_{\text{buoyant head}}
+\qquad\Longleftrightarrow\qquad
+L \;>\; \frac{2\cos\theta}{\mathrm{Eo}}\,\frac{D^{2}}{r_t} .
+$$ {#eq-entry}
+
+@eq-entry is the whole story of the page in one line: it says the bubble must
+**elongate** to a length set by $D^2/r_t$ before it can enter, and it is why the run
+below shows a bubble that stretches, necks, and leaves fragments behind. It is also
+the criterion that decides the scene — see the callout after the geometry.
+
+The governing equations are the usual one-fluid form with a single variable density and
+viscosity and a singular interfacial force, restricted to the fluid part of each cell by
+the openness weights $\varepsilon$ (cell fluid fraction) and $o_f$ (face openness):
+
+$$
+\partial_t(\rho\mathbf{u}) + \nabla\!\cdot\!(\rho\mathbf{u}\mathbf{u})
+  = -\nabla p + \nabla\!\cdot\!\big[\mu(\nabla\mathbf{u}+\nabla\mathbf{u}^{\mathsf T})\big]
+  + \rho\mathbf{g} + \sigma\kappa\,\mathbf{n}\,\delta_S ,
+\qquad
+\partial_t (\varepsilon C) + \nabla\!\cdot\!(o\,C\,\mathbf{u}) = 0 ,
+$$ {#eq-ns}
+
+with $C$ the **liquid** fraction of a cell's *fluid* volume — so the bubble is $C=0$,
+and the gas volume of the discrete field is $\sum_i \varepsilon_i (1-C_i)$.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+# Makes this notebook run out-of-the-box on Colab/Binder. A real user just needs the
+# published package; this installs it on first run. Authors can instead point at local
+# source builds of the suite with PECLET_LOCAL_BUILD (os.pathsep-separated).
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    for p in _local.split(os.pathsep):
+        sys.path.insert(0, p)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+```
+
+```{python}
+import math, time
+import numpy as np
+import matplotlib.pyplot as plt
+from peclet import dem, flow
+
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
+                     "grid.alpha": 0.3, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+BLUE, RED, GREY, GREEN, ORANGE = "#1f77b4", "#d62728", "0.80", "#2ca02c", "#ff7f0e"
+```
+
+## The scene
+
+Everything is expressed in **cells**: peclet's grid spacing is 1 and its time unit is
+the second, and this problem has no external length to match, so the dimensionless
+groups of @eq-groups are imposed directly on solver-unit properties. The column is
+$64\times64\times160$ cells, **periodic in $x$ and $y$** and closed by no-slip walls at
+top and bottom.
+
+```{python}
+#| label: scene
+NX, NZ   = 64, 160          # column: 64 x 64 cross-section, 160 cells tall
+N_GRAIN  = 26               # grains in the bed
+R_JAM    = 0.171875 * NX    # 11.0 cells — the radius the grains JAM at in dem
+F_SDF    = 0.85             # SDF grain radius / contact radius (see the callout below)
+R_GRAIN  = F_SDF * R_JAM    # 9.35 cells — the radius the fluid solver sees
+Z_BED    = 0.5625 * NX      # 36.0 — bottom of the bed
+R_BUB    = 0.15625 * NX     # 10.0 cells — bubble radius (D = 20, D/W = 0.31)
+Z_BUB    = 0.28125 * NX     # 18.0 — bubble centre at release
+print(f"column {NX}x{NX}x{NZ}   bubble D = {2*R_BUB:.0f} cells (D/W = {2*R_BUB/NX:.2f})   "
+      f"grain D = {2*R_GRAIN:.1f} cells")
+```
+
+### Step 1 — the packing, from `dem`
+
+The grains are dropped onto a floor plane in a laterally periodic column and settled
+with friction: a **random loose** deposit, not a Lubachevsky–Stillinger close packing
+(the [random packed bed](../random-packed-bed/index.qmd) page does that one). A column
+only 3.3 grain diameters wide cannot hold a bulk packing anyway, and the loose deposit
+is the honest thing to build here.
+
+```{python}
+#| label: settle
+def settle_bed(n=N_GRAIN, W=float(NX), Rj=R_JAM, seed=11, steps=4000, dt=5e-3):
+    """Drop `n` grains onto a floor in an x/y-periodic column; return the settled centres."""
+    s = dem.Simulation(8 * n)                     # headroom for the periodic ghost band
+    s.initialize(shape_type=1, radius=1.0)
+    s.set_global_scale(Rj)
+    s.set_domain((0.0, 0.0, -20.0), (W, W, 400.0))
+    s.enable_periodicity(True, True, False)       # z is closed by the floor plane
+    s.set_gravity(0.0, 0.0, -9.81)
+    s.add_plane(0.0, 0.0, 0.0, 0.0, 0.0, 1.0)     # the floor
+    s.set_material_params(0.05, 0.0, 0.6)         # restitution / tangential / friction
+    s.set_solver_iterations(8, 8)
+    rng = np.random.default_rng(seed)
+    P = np.zeros((n, 3))
+    P[:, :2] = rng.uniform(0.0, W, (n, 2))
+    P[:, 2] = Rj * 1.2 + 2.35 * Rj * (np.arange(n) // 4) + rng.uniform(-1.5, 1.5, n)
+    s.set_positions(np.ascontiguousarray(P.astype(np.float32)))
+    s.set_inv_mass(np.full(n, 1.0, np.float32))
+    s.set_dt(dt)
+    for _ in range(steps):
+        s.step(dt)
+    return np.asarray(s.get_positions())[:n, :3].astype(float), float(s.max_overlap())
+
+t0 = time.time()
+CENTRES, OVERLAP = settle_bed()
+BED_LO, BED_HI = CENTRES[:, 2].min() - R_JAM, CENTRES[:, 2].max() + R_JAM
+print(f"{N_GRAIN} grains settled in {time.time()-t0:.0f} s   max overlap {OVERLAP:.4f} cells "
+      f"(contact radius {R_JAM:.2f})")
+print(f"jammed bed height {BED_HI-BED_LO:.1f} cells, solid fraction at contact "
+      f"{N_GRAIN*4/3*math.pi*R_JAM**3/(NX*NX*(BED_HI-BED_LO)):.3f}")
+```
+
+### Step 2 — the packing as a signed distance field
+
+The fluid solver only ever sees $\varphi$, the signed distance ($\varphi>0$ is fluid),
+sampled periodically in $x$ and $y$ and translated so the bed sits above the release
+pool.
+
+```{python}
+#| label: sdf
+def bed_sdf(centres, nx=NX, nz=NZ, Rg=R_GRAIN, z0=Z_BED):
+    """Signed distance to the union of the grains; periodic in x and y."""
+    W = float(nx)
+    P = centres.copy(); P[:, 2] += z0
+    g, gz = np.arange(nx) + 0.5, np.arange(nz) + 0.5
+    X, Y, Z = np.meshgrid(g, g, gz, indexing="ij")
+    phi = np.full((nx, nx, nz), 1e30)
+    for k in range(len(P)):
+        dx = X - P[k, 0]; dx -= W * np.round(dx / W)
+        dy = Y - P[k, 1]; dy -= W * np.round(dy / W)
+        dz = Z - P[k, 2]
+        phi = np.minimum(phi, np.sqrt(dx * dx + dy * dy + dz * dz) - Rg)
+    return np.asfortranarray(phi)
+
+SDF = bed_sdf(CENTRES)
+BED_Z0 = Z_BED + R_JAM - R_GRAIN                     # lowest grain surface
+BED_Z1 = Z_BED + (BED_HI - BED_LO) - R_JAM + R_GRAIN  # highest grain surface
+LO, HI = int(Z_BED + R_GRAIN), int(Z_BED + (BED_HI - BED_LO) - R_GRAIN)   # the bed CORE
+EPS_BED = float((SDF[:, :, LO:HI] > 0).mean())
+print(f"bed occupies z = {BED_Z0:.1f} .. {BED_Z1:.1f} cells "
+      f"({(BED_Z1-BED_Z0)/(2*R_GRAIN):.1f} grain diameters deep)")
+print(f"porosity over the bed core (z = {LO} .. {HI}):  eps = {EPS_BED:.3f}")
+```
+
+The **pore-throat radius** is the quantity @eq-entry needs, and it is not the largest
+pore: it is the *bottleneck of the widest connected path* from the bottom of the bed to
+the top — the max–min path of $\varphi$, which a Dijkstra-like sweep computes exactly.
+
+```{python}
+#| label: throat
+import heapq
+
+def percolation_throat(phi, klo, khi):
+    """max over bottom->top paths of the minimum SDF along the path (26-connected,
+    periodic in x and y). The radius of the largest sphere that can be pushed through."""
+    sub = phi[:, :, klo:khi]
+    nx, ny, nk = sub.shape
+    val = np.full(sub.shape, -np.inf)
+    h = [(-sub[i, j, 0], i, j, 0) for i in range(nx) for j in range(ny) if sub[i, j, 0] > 0]
+    for e in h:
+        val[e[1], e[2], 0] = -e[0]
+    heapq.heapify(h)
+    while h:
+        nv, i, j, k = heapq.heappop(h)
+        v = -nv
+        if v < val[i, j, k] - 1e-12:
+            continue
+        if k == nk - 1:
+            return v
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for dk in (-1, 0, 1):
+                    if di == dj == dk == 0:
+                        continue
+                    a, b, c = (i + di) % nx, (j + dj) % ny, k + dk
+                    if 0 <= c < nk and min(v, sub[a, b, c]) > val[a, b, c]:
+                        val[a, b, c] = min(v, sub[a, b, c])
+                        heapq.heappush(h, (-val[a, b, c], a, b, c))
+    return -np.inf
+
+EO, THETA = 10.0, 60.0                               # the run's Eotvos number and angle
+R_THROAT = percolation_throat(SDF, int(BED_Z0), int(BED_Z1) + 1)
+L_ENTRY = 2 * math.cos(math.radians(THETA)) / EO * (2 * R_BUB) ** 2 / R_THROAT
+print(f"percolation throat radius r_t = {R_THROAT:.2f} cells "
+      f"(throat diameter {2*R_THROAT:.1f} = {2*R_THROAT/(2*R_BUB):.2f} x the bubble diameter)")
+print(f"capillary entry length from eq-entry at Eo = {EO:.0f}, theta = {THETA:.0f} deg: "
+      f"L > {L_ENTRY:.1f} cells, against a bubble diameter of {2*R_BUB:.0f}")
+```
+
+::: {.callout-important}
+## Two scene choices that are physics, not cosmetics
+
+**The grains are sampled at `{python} f"{100*F_SDF:.0f}"` % of the radius they jam at.**
+A DEM contact is a *tangency*, and a tangency is a throat of exactly zero area: no
+fixed grid can represent it, and no bubble could ever pass it. Shrinking the grains
+about their jammed centres by 15 % opens every grain–grain contact into a throat of
+finite width while leaving the microstructure — the centres, the coordination, the
+disorder — exactly as `dem` produced it. It is the standard way to build a bed of
+prescribed porosity from a jammed configuration, and it is stated here because it moves
+the porosity from `{python} f"{1-N_GRAIN*4/3*math.pi*R_JAM**3/(NX*NX*(BED_HI-BED_LO)):.2f}"`
+at contact to `{python} f"{EPS_BED:.2f}"` as sampled.
+
+**The throat is `{python} f"{2*R_THROAT/(2*R_BUB):.2f}"` bubble diameters wide, and
+@eq-entry then wants the bubble to stretch past
+`{python} f"{L_ENTRY:.0f}"` cells to enter — a good fraction of its own diameter.** That is a
+deliberate design point: much tighter and the entry pressure is never reached and the
+bubble is capillary-*trapped*; much wider and the packing does nothing. It is also a
+**resolution** point. The same scene at half this grid puts only
+`{python} f"{2*R_THROAT/2:.1f}"` cells across the bottleneck, which is fewer than a PLIC
+plane and a height-function curvature stencil can carry — so the resolution here is set
+by the throat, not by the bubble.
+:::
+
+### Step 3 — the bubble
+
+The colour field is handed to the solver as **volume fractions**, subsampled $4^3$, not
+as a sampled indicator — the same discipline as every other VoF page here.
+
+```{python}
+#| label: colour
+def bubble_colour(nx=NX, nz=NZ, R=R_BUB, cz=Z_BUB, sub=4):
+    """C = liquid fraction; the gas bubble is the C = 0 sphere at (nx/2, nx/2, cz)."""
+    q = (np.arange(sub) + 0.5) / sub
+    px = np.arange(nx)[:, None, None, None, None, None] + q[None, None, None, :, None, None]
+    py = np.arange(nx)[None, :, None, None, None, None] + q[None, None, None, None, :, None]
+    pz = np.arange(nz)[None, None, :, None, None, None] + q[None, None, None, None, None, :]
+    c = nx / 2.0
+    gas = ((px - c) ** 2 + (py - c) ** 2 + (pz - cz) ** 2) < R * R
+    return np.asfortranarray(1.0 - gas.mean(axis=(3, 4, 5)))
+```
+
+```{python}
+#| label: fig-scene
+#| fig-cap: "The scene. Left: the mid-plane of the signed distance field — grains grey, the released bubble blue, the no-slip floor and lid black, the sides periodic. Right: the open-area fraction of each horizontal plane (blue) and the radius of the largest inscribed circle in that plane (orange), with the percolation throat radius — the bottleneck of the widest connected path, which is what eq-entry uses — as the dashed line. Note that the per-plane inscribed circle is always optimistic: the widest spot in one plane need not connect to the widest spot in the next."
+C0 = bubble_colour()
+fig, (axg, axp) = plt.subplots(1, 2, figsize=(8.6, 4.6),
+                               gridspec_kw=dict(width_ratios=[1.05, 1]))
+x = np.arange(NX) + 0.5
+z = np.arange(NZ) + 0.5
+axg.contourf(x, z, (SDF[:, NX // 2, :] < 0).T, levels=[0.5, 1.5], colors=["0.72"])
+axg.contour(x, z, SDF[:, NX // 2, :].T, levels=[0.0], colors=["0.35"], linewidths=0.9)
+axg.contourf(x, z, (1 - C0[:, NX // 2, :]).T, levels=[0.5, 1.5], colors=["#cfe3f5"])
+axg.contour(x, z, (1 - C0[:, NX // 2, :]).T, levels=[0.5], colors=[BLUE], linewidths=1.8)
+for zz in (0, NZ):
+    axg.axhline(zz, color="0.1", lw=3)
+axg.set(xlim=(0, NX), ylim=(0, NZ), aspect="equal", xlabel="x  [cells]",
+        ylabel="z  [cells]", title="mid-plane of the SDF")
+axg.grid(False)
+open_frac = (SDF > 0).mean(axis=(0, 1))
+inscribed = SDF.max(axis=(0, 1))
+axp.plot(open_frac, z, color=BLUE, lw=1.6, label="open-area fraction of the plane")
+axp2 = axp.twiny()
+axp2.plot(inscribed, z, color=ORANGE, lw=1.4, label="largest inscribed circle radius")
+axp2.axvline(R_THROAT, ls="--", color=RED, lw=1.2)
+axp2.set_xlabel("radius  [cells]", color=ORANGE)
+axp2.set_xlim(0, 22)
+axp.set(ylim=(0, NZ), xlim=(0, 1.05), xlabel="open-area fraction", ylabel="z  [cells]")
+axp.set_title("what the bubble has to get through", pad=26)
+axp.plot([], [], color=ORANGE, lw=1.4, label="largest inscribed circle")
+axp.plot([], [], "--", color=RED, lw=1.2, label=f"percolation throat $r_t$ = {R_THROAT:.1f}")
+axp.legend(fontsize=7.5, loc="upper center")
+plt.tight_layout(); plt.show()
+```
+
+## The driver
+
+The whole setup is a dozen or so calls, and five of them do something a single-phase
+run never needs.
+
+- `set_solid(..., cutcell_pressure=True)` is **required**: the colour transport weights
+  every flux by the face openness and the staircase pressure operator has none, so the
+  solver raises rather than approximate it.
+- `set_contact_angle(60)` is the whole wetting model — a wetting liquid, so the gas is
+  pushed off the grains rather than sticking to them.
+- `enable_vof_momentum(rho_gas, rho_liquid)` advects $\rho^c\mathbf{u}$ with the *same*
+  geometric fluxes as $C$ [@rudman1998; @arrufat2021]. It composes with cut cells, and
+  it is on for every ratio-100 run here.
+- gravity is a **closure of the colour** — `set_property_model("force_z", …)` writes
+  $f_z=-\rho(C)g$ every step, so it acts on the true local density.
+- the time step is re-picked **every step** at 40 % of the smaller of the two explicit
+  limits `vof_step_limits()` reports (Brackbill capillary [@brackbill1992] and the
+  Weymouth–Yue interface CFL [@weymouth2010]). Every-step, not every-tenth-step as the
+  free-bubble pages do: a packing manufactures *local* velocity, and the first attempt at
+  this run died at exactly that — see the callout.
+
+```{python}
+#| label: driver
+PRESS_CAP = 600
+
+def column(packed=True, ratio=100.0, Eo=EO, Mo=1e-3, theta=THETA, g=2e-4,
+           T=4300.0, cls=flow.Solver, momentum=True, nx=NX, nz=NZ,
+           snap_at=(), movie_every=0, label=""):
+    """One bubble in one closed column. `packed=False` is the free-rise control."""
+    D = 2 * R_BUB
+    rho_l, rho_g = 1.0, 1.0 / ratio
+    drho = rho_l - rho_g
+    sigma = drho * g * D * D / Eo                      # from @eq-groups
+    mu_l = (Mo * rho_l ** 2 * sigma ** 3 / (g * drho)) ** 0.25
+    mu_g = mu_l / ratio
+    Ug = math.sqrt(g * D)
+
+    s = cls(nx, nx, nz)
+    s.set_rho(rho_l); s.set_mu(mu_l)
+    s.set_domain_bc(4, 1, 0, 0, 0)                     # closed: no-slip floor
+    s.set_domain_bc(5, 1, 0, 0, 0)                     # closed: no-slip lid
+    if packed:
+        s.set_solid(SDF, cutcell_pressure=True)        # cut-cell IBM + cut-cell pressure
+    else:
+        s.set_pressure_geometry(np.full((nx, nx, nz), 10.0, order="F"))
+    s.enable_vof()
+    s.set_vof(bubble_colour(nx, nz))
+    s.set_property_model("rho", "linear", "C", [rho_g, rho_l - rho_g])
+    s.set_property_model("mu", "linear", "C", [mu_g, mu_l - mu_g])
+    s.set_surface_tension(sigma)
+    if packed:
+        s.set_contact_angle(theta)                     # static, measured through the liquid
+    if momentum:
+        s.enable_vof_momentum(rho_g, rho_l)            # consistent rho*u transport
+    s.set_property_model("force_z", "linear", "C",     # buoyancy f_z = -rho(C) g
+                         [-rho_g * g, -(rho_l - rho_g) * g])
+    s.set_pressure_chebyshev(True, PRESS_CAP, 1e-12)   # AFTER the rho closure (see below)
+
+    eps = (np.asarray(s.vof_geometry(0)) if s.vof_has_geometry()
+           else np.ones((nx, nx, nz)))                # cell FLUID fraction
+    zs = np.arange(nz) + 0.5
+    gas0 = eps * (1.0 - np.asarray(s.get_vof()))
+    V0 = gas0.sum()
+    ts, zc, vc, vol = [0.0], [float((gas0.sum(axis=(0, 1)) * zs).sum() / V0)], [0.0], [1.0]
+    snaps, frames, todo = {0.0: gas0.copy()}, [], list(snap_at)
+    iters, div, ncap, ncfl, nan, capped = 0, 0.0, 0, 0, False, 0
+    t, i, dt = 0.0, 0, 0.4 * s.capillary_dt()
+    s.set_dt(dt)
+    lim0 = s.vof_step_limits()
+    t0 = time.time()
+    aborted = ""
+    while t < T:
+        L = s.vof_step_limits()                        # EVERY step -- see the callout below
+        dt = 0.4 * min(L["cfl_dt"], L["capillary_dt"]); s.set_dt(dt)
+        ncap += int(L["capillary_binds"]); ncfl += int(not L["capillary_binds"])
+        try:
+            s.step()
+        except RuntimeError as e:                      # never let one run break the page
+            aborted = str(e).split("\n")[0]
+            break
+        t += dt; i += 1
+        it = s.last_pressure_iterations()
+        iters = max(iters, it)
+        capped += int(it >= PRESS_CAP)
+        if capped > 20:                                # a capped solve invalidates the run;
+            break                                      # stop burning GPU time on it
+        if i % 4 == 0 or (todo and t >= todo[0]):
+            gas = eps * (1.0 - np.asarray(s.get_vof()))
+            v = gas.sum()
+            if not np.isfinite(v):
+                nan = True; break
+            ts.append(t); vol.append(v / V0)
+            zc.append(float((gas.sum(axis=(0, 1)) * zs).sum() / v))
+            vc.append(float((gas * np.asarray(s.get_w())).sum() / v))
+            if todo and t >= todo[0]:
+                snaps[todo.pop(0)] = gas.copy()
+        if movie_every and i % movie_every == 0:
+            frames.append((eps * (1.0 - np.asarray(s.get_vof()))).astype(np.float16))
+        if i % 25 == 0:
+            div = max(div, s.max_open_divergence_projected())   # non-mutating
+    d = s.vof_diagnostics()
+    return dict(label=label, packed=packed, ratio=ratio, Eo=Eo, Mo=Mo, g=g, sigma=sigma,
+                mu_l=mu_l, Ug=Ug, D=D, Re=rho_l * Ug * D / mu_l, T=T, steps=i, nan=nan,
+                t=np.array(ts), zc=np.array(zc), vc=np.array(vc), vol=np.array(vol),
+                snaps=snaps, frames=frames, iters=iters, cap=PRESS_CAP, div=div,
+                capped=capped, aborted=aborted,
+                ncap=ncap, ncfl=ncfl, lim0=lim0, V0=V0, eps=eps, wall=time.time() - t0,
+                solid_sum=d["solid_sum"], clipped=d["clipped_volume"],
+                C=np.asarray(s.get_vof()).copy())
+```
+
+::: {.callout-important}
+## Three rules this page follows, and why each one is not optional
+
+**A run whose pressure solve hit its cap is not a result.** Every run records
+`last_pressure_iterations()` against a cap of `{python} PRESS_CAP` and the
+**non-mutating** `max_open_divergence_projected()`. Under variable density the pressure
+driver is Chebyshev by default; it must be selected *after* `set_property_model("rho", …)`,
+because that call fires `set_density_mode`, which reselects the driver — a selection
+made earlier is silently discarded. If Chebyshev caps, `set_pressure_fcg(True, …)` is
+the validated alternative on wall-bounded boxes, again selected last.
+
+**`PECLET_FLOW_EXACT_RESIDUAL=1` is set for every run on this page.** It replaces the
+float band form of the residual by the double flux form; on the Hysing case-2 benchmark
+it removed **7.5 orders** of flux divergence and moved no other digit of the result. At
+density ratio 1000 that is the difference between a divergence number that means
+something and one that does not.
+
+**The time step is re-picked every step.** `step()` enforces the Weymouth--Yue
+boundedness cap (interface CFL 0.25) by *raising*, not by clamping, and in a packing the
+face velocity is not a smooth function of time: a bubble breaking into a throat produces
+a local jet. Re-picking `dt` every ten steps — which is what the free-bubble pages do,
+safely — killed the first attempt at this run with
+`CFL = 0.377 exceeds the Weymouth-Yue boundedness cap 0.25`, i.e. the interface velocity
+had grown by more than half within ten steps while `dt` still carried the capillary
+value. The fix is one line and it is in the driver above; the cost is one extra device
+reduction per step. This is logged in [`ISSUES.md`](../../ISSUES.md).
+
+**The column is closed.** Top and bottom are no-slip walls, so the non-zero-mean
+buoyancy is balanced by a hydrostatic pressure gradient. In a *periodic* box the same
+momentum-consistent cut-cell path is known to diverge after ~160 steps under an
+unbounded acceleration (an open question of the rung that introduced it); a closed
+column is not a workaround for that, it is the configuration in which the question does
+not arise, and it is also what a packed column physically is.
+:::
+
+## 1. The free rise — the control
+
+The same bubble, the same fluids, the same closed column, no packing. Everything the
+bed does is measured against this.
+
+```{python}
+#| label: run-control
+SNAPS = (600.0, 1200.0, 1800.0, 2400.0)      # snapshot times shared by both runs
+LATE  = (2900.0, 3300.0, 3700.0, 4200.0)     # the packed run keeps going
+ctl = column(packed=False, T=2500.0, snap_at=SNAPS, label="free rise (no packing)")
+print(f"control: {ctl['steps']} steps, t = {ctl['t'][-1]:.0f} of {ctl['T']:g}, "
+      f"{ctl['wall']:.0f} s{('   *** ABORTED: ' + ctl['aborted'] + ' ***') if ctl['aborted'] else ''}")
+print(f"  Eo {ctl['Eo']:.0f}  Mo {ctl['Mo']:.0e}  Re {ctl['Re']:.1f}  "
+      f"sigma {ctl['sigma']:.3e}  mu_l {ctl['mu_l']:.3e}  U_g {ctl['Ug']:.4f}")
+print(f"  gas volume V(T)/V(0) = {ctl['vol'][-1]:.10f}")
+print(f"  pressure {ctl['iters']}/{ctl['cap']} "
+      f"{'OK' if ctl['iters'] < ctl['cap'] else '*** CAPPED -> INVALID ***'}, "
+      f"max|div(open u)| {ctl['div']:.2e}")
+print(f"  centroid {ctl['zc'][0]:.1f} -> {ctl['zc'][-1]:.1f} cells "
+      f"({(ctl['zc'][-1]-ctl['zc'][0])/ctl['D']:.2f} bubble diameters)")
+```
+
+## 2. Through the bed
+
+```{python}
+#| label: run-packed
+bed = column(packed=True, snap_at=SNAPS + LATE, movie_every=25,
+             label="through the packing")
+print(f"packed: {bed['steps']} steps, t = {bed['t'][-1]:.0f} of {bed['T']:g}, "
+      f"{bed['wall']:.0f} s{('   *** ABORTED: ' + bed['aborted'] + ' ***') if bed['aborted'] else ''}")
+print(f"  gas volume V(T)/V(0) = {bed['vol'][-1]:.10f}   "
+      f"(drift {abs(bed['vol'][-1]-1):.1e})")
+print(f"  colour inside the grains: {bed['solid_sum']:.3e}   "
+      f"clipped volume {bed['clipped']:.2e}")
+print(f"  pressure {bed['iters']}/{bed['cap']} "
+      f"{'OK' if bed['iters'] < bed['cap'] else '*** CAPPED -> INVALID ***'}, "
+      f"max|div(open u)| {bed['div']:.2e}")
+print(f"  dt limits at t=0: WY CFL {bed['lim0']['cfl_dt']:.3e}, "
+      f"capillary {bed['lim0']['capillary_dt']:.3e}  -> "
+      f"{'CAPILLARY' if bed['lim0']['capillary_binds'] else 'CFL'} binds")
+print(f"  binding limit: capillary on {bed['ncap']} of {bed['ncap']+bed['ncfl']} re-picks, "
+      f"WY CFL on {bed['ncfl']}")
+print(f"  centroid {bed['zc'][0]:.1f} -> {bed['zc'][-1]:.1f} cells "
+      f"({(bed['zc'][-1]-bed['zc'][0])/bed['D']:.2f} bubble diameters)")
+```
+
+```{python}
+#| label: fig-frames
+#| fig-cap: "The gas silhouette (the C = ½ contour of the gas indicator projected along y) at five shared times, free rise (top) against the packing (bottom). Grains are drawn as the mid-plane section, so a grain outline and the gas can legitimately overlap in projection. The free bubble takes its ellipsoidal shape early and keeps it all the way up; the packed one loses its shape as soon as it enters the bed, and the panels where its centroid barely moves are the ones where it is paying the left-hand side of eq-entry against a constriction. The centroid and blob count at each of these times are tabulated under the next figure."
+def draw(ax, gas, title, show_solid, ylim=(0, 148)):
+    """Grains: the mid-plane section. Gas: the SILHOUETTE, i.e. the maximum of the gas
+    indicator along y — so the interface is drawn wherever it is, not only where it
+    happens to cross the mid-plane. A bubble that squeezes through an off-centre throat
+    would otherwise vanish from the figure."""
+    ax.set_facecolor("#eaf0f6")
+    if show_solid:
+        ax.contourf(x, z, (SDF[:, NX // 2, :] < 0).T, levels=[0.5, 1.5], colors=["0.72"])
+    g2 = gas.max(axis=1)
+    ax.contourf(x, z, g2.T, levels=[0.5, 1.5], colors=["#fdf3ef"])
+    ax.contour(x, z, g2.T, levels=[0.5], colors=[RED], linewidths=1.5)
+    ax.set(xlim=(0, NX), ylim=ylim, aspect="equal", xticks=[0, 32, 64], title=title)
+    ax.grid(False)
+
+def fragments(gas, thr=0.5):
+    """Number of connected gas blobs (6-connected) holding at least 1 % of the volume."""
+    from scipy import ndimage
+    lab, n = ndimage.label(gas > thr)
+    if n == 0:
+        return 0
+    sz = np.bincount(lab.ravel())[1:]
+    return int((sz > 0.01 * sz.sum()).sum())
+
+times = [t for t in (0.0,) + SNAPS if t in ctl["snaps"] and t in bed["snaps"]]
+fig, axes = plt.subplots(2, len(times), figsize=(9.8, 7.6), sharey=True)
+for j, tt in enumerate(times):
+    draw(axes[0, j], ctl["snaps"][tt], f"t = {tt:.0f}", False)
+    draw(axes[1, j], bed["snaps"][tt], "", True)
+    axes[1, j].set_xlabel("x  [cells]")
+axes[0, 0].set_ylabel("free rise\nz  [cells]")
+axes[1, 0].set_ylabel("through the packing\nz  [cells]")
+plt.tight_layout(); plt.show()
+```
+
+```{python}
+#| label: fig-frames-bed
+#| fig-cap: "The packed run only, at four later times, zoomed on the bed — same projected-silhouette convention as the previous figure. The number of connected gas blobs holding at least 1 % of the volume is printed under each panel, so 'it broke up' is a measurement rather than an impression."
+late = [t for t in LATE if t in bed["snaps"]]
+fig, axes = plt.subplots(1, len(late), figsize=(9.6, 5.2), sharey=True, squeeze=False)
+axes = axes[0]
+for ax, tt in zip(axes, late):
+    g_ = bed["snaps"][tt]
+    draw(ax, g_, f"t = {tt:.0f}\n{fragments(g_)} blob(s)", True,
+         ylim=(0.6 * BED_Z0, min(NZ, BED_Z1 + 30)))
+    ax.set_xlabel("x  [cells]")
+axes[0].set_ylabel("z  [cells]")
+plt.tight_layout(); plt.show()
+
+print(f"{'t':>8} {'z_c':>8} {'blobs':>7}")
+for tt in sorted(bed["snaps"]):
+    print(f"{tt:8.0f} {float(np.interp(tt, bed['t'], bed['zc'])):8.2f} "
+          f"{fragments(bed['snaps'][tt]):7d}")
+```
+
+## 3. The numbers
+
+```{python}
+#| label: fig-history
+#| fig-cap: "Bubble centroid (left) and colour-weighted rise velocity (centre) against time, free rise versus the packing; and the gas-volume drift (right — note the vertical scale, parts in 1e15). The grey band on the left panel is the bed; the shaded interval on the centre panel is the longest arrest, measured as the longest stretch in which the rise velocity stays below a quarter of the free terminal value. The free bubble reaches one terminal velocity and holds it; the packed one is that same bubble, interrupted."
+def terminal(r, frac=0.5):
+    """mean colour-weighted rise velocity over the last (1 - frac) of the run"""
+    return float(r["vc"][r["t"] > frac * r["t"][-1]].mean())
+
+def arrest(r, ref):
+    """longest stretch with V_c below a quarter of `ref`; returns (t_start, t_end)."""
+    m = r["vc"] < 0.25 * ref
+    best, cur = (0, 0), None
+    for k, f in enumerate(m):
+        cur = k if (cur is None and f) else cur
+        if cur is not None and (not f or k == len(m) - 1):
+            if k - cur > best[1] - best[0]:
+                best = (cur, k)
+            cur = None
+    return float(r["t"][best[0]]), float(r["t"][best[1]])
+
+V_FREE = terminal(ctl)
+T_STALL, T_BREAK = arrest(bed, V_FREE)
+Z_STALL = float(np.interp(T_STALL, bed["t"], bed["zc"]))
+Z_BREAK = float(np.interp(T_BREAK, bed["t"], bed["zc"]))
+print(f"free terminal rise velocity V_c = {V_FREE:.5f} cells/s = {V_FREE/ctl['Ug']:.3f} U_g")
+print(f"the packed bubble's LONGEST arrest runs from t = {T_STALL:.0f} to t = {T_BREAK:.0f} "
+      f"({T_BREAK-T_STALL:.0f} time units = "
+      f"{(T_BREAK-T_STALL)/(2*R_BUB/V_FREE):.1f} free-rise diameters' worth of time)")
+WHERE = ("against the underside of the bed"
+         if Z_STALL < BED_Z0 + R_BUB else
+         f"{(Z_STALL - BED_Z0) / (2 * R_GRAIN):.1f} grain diameters inside the bed")
+print(f"   it happens at z_c = {Z_STALL:.1f} -> {Z_BREAK:.1f} ({WHERE}); "
+      f"the bed spans z = {BED_Z0:.0f} .. {BED_Z1:.0f}")
+
+fig, (a0, a1, a2) = plt.subplots(1, 3, figsize=(10.4, 3.6))
+a0.axhspan(Z_BED + R_JAM - R_GRAIN, Z_BED + (BED_HI - BED_LO) - R_JAM + R_GRAIN,
+           color="0.85", lw=0, zorder=0)
+for r, col, lab in ((ctl, BLUE, "free rise"), (bed, RED, "through the packing")):
+    a0.plot(r["t"], r["zc"], color=col, lw=1.7, label=lab)
+    a1.plot(r["t"], r["vc"] / r["Ug"], color=col, lw=1.4, label=lab)
+    a2.plot(r["t"], (r["vol"] - 1) * 1e15, color=col, lw=1.4, label=lab)
+a1.axvspan(T_STALL, T_BREAK, color="0.85", lw=0, zorder=0)
+a1.text(0.5 * (T_STALL + T_BREAK), 0.93 * a1.get_ylim()[1], "arrest", ha="center",
+        fontsize=8, color="0.35")
+a0.set(xlabel="t", ylabel="centroid $z_c$  [cells]", title="Centroid")
+a1.set(xlabel="t", ylabel=r"$V_c / U_g$", title="Rise velocity")
+a2.set(xlabel="t", ylabel=r"$(V/V_0 - 1)\times 10^{15}$", title="Gas volume drift")
+a0.legend(fontsize=8, loc="upper left")
+a1.legend(fontsize=8, loc="lower right")
+plt.tight_layout(); plt.show()
+```
+
+```{python}
+#| label: tbl-summary
+T_COMMON = float(min(ctl["t"][-1], bed["t"][-1]))     # compare over the SAME window
+
+def mean_rise(r, tmax=None):
+    m = r["t"] <= (tmax if tmax else r["t"][-1])
+    return float((r["zc"][m][-1] - r["zc"][0]) / (r["t"][m][-1] - r["t"][0]))
+
+V_MOVING = float(bed["vc"][bed["t"] > T_BREAK].mean())   # packed, AFTER breakthrough
+
+print(f"{'':>26} {'steps':>7} {'z_c(T)':>9} {'rise/D':>8} {'V/V0 - 1':>11} "
+      f"{'solid C':>10} {'iters':>9} {'max|div|':>10} {'wall s':>8}")
+for r in (ctl, bed):
+    print(f"{r['label']:>26} {r['steps']:7d} {r['zc'][-1]:9.2f} "
+          f"{(r['zc'][-1]-r['zc'][0])/r['D']:8.2f} {r['vol'][-1]-1:11.2e} "
+          f"{r['solid_sum']:10.1e} {r['iters']:6d}/{r['cap']} {r['div']:10.1e} "
+          f"{r['wall']:8.0f}")
+
+SLOWDOWN = mean_rise(ctl, T_COMMON) / mean_rise(bed, T_COMMON)
+print(f"\nover the common window t <= {T_COMMON:.0f}:")
+print(f"   mean advance   free {mean_rise(ctl, T_COMMON):.5f}   packed "
+      f"{mean_rise(bed, T_COMMON):.5f}  cells/s   ->  factor {SLOWDOWN:.1f} slower")
+print(f"   but AFTER breakthrough (t > {T_BREAK:.0f}) the packed bubble moves at "
+      f"{V_MOVING:.5f} = {V_MOVING/V_FREE:.2f} x the free terminal velocity")
+```
+
+Three statements worth separating.
+
+**Conservation survives the composition.** The gas volume drifts by
+`{python} f"{abs(bed['vol'][-1]-1):.1e}"` relative over
+`{python} f"{bed['steps']}"` steps in the packed run, against a projected flux
+divergence of `{python} f"{bed['div']:.1e}"` — the Weymouth–Yue transport is exactly
+conservative and inherits the *projection's* residual, nothing more, exactly as it does
+in a bare box. The colour inside the grains is
+`{python} f"{bed['solid_sum']:.1e}"`: the transport never leaks gas or liquid into the
+solid, and the band the curvature stencils read is a separate working field.
+
+**The projection is comfortable.** `{python} f"{bed['iters']}"` iterations against a cap
+of `{python} f"{PRESS_CAP}"` at the worst step, on a variable-density operator with a
+hundredfold density contrast *and* cut cells. That is the number to watch when adapting
+this: it is what would break first.
+
+**The bed costs a factor `{python} f"{SLOWDOWN:.1f}"` in rise speed, and it is a
+threshold that charges it, not a drag.** The centre panel is not a slow bubble; it is a
+bubble at the free terminal velocity, interrupted. Its longest arrest runs from
+$t \approx$ `{python} f"{T_STALL:.0f}"` to $t \approx$ `{python} f"{T_BREAK:.0f}"` — an
+idle stretch worth `{python} f"{(T_BREAK-T_STALL)/(2*R_BUB/V_FREE):.0f}"` free-rise
+bubble diameters — and it happens at $z_c \approx$ `{python} f"{Z_STALL:.0f}"` cells,
+`{python} WHERE`. That is @eq-entry: the gas has to
+flatten until the head over its own vertical extent exceeds
+$2\sigma\cos\theta/r_t$, and only then does the throat open. What gets past then
+travels at `{python} f"{V_MOVING/V_FREE:.2f}"` of the free terminal velocity, so the bed
+charges in two separate currencies: a **threshold** that stops the bubble dead for a
+while, and a **drag** that slows whatever passes. Which constriction does the charging,
+and how the two shares divide, is a property of this particular random bed; that both
+are charged is not.
+
+## 4. The movie
+
+The `C = \tfrac12` isosurface of the gas, with the grains cut away at the mid-plane so
+the interface stays visible.
+
+```{python}
+#| label: movie
+#| code-summary: "PyVista offscreen renderer -> bubble_through_packing.mp4"
+import pyvista as pv
+import imageio.v2 as imageio
+pv.global_theme.allow_empty_mesh = True
+
+def render(gas, size=(528, 944)):
+    grid = pv.ImageData(dimensions=(NX + 1, NX + 1, NZ + 1))
+    grid.cell_data["gas"] = np.asarray(gas, dtype=np.float64).flatten(order="F")
+    grid.cell_data["solid"] = np.asfortranarray(SDF).flatten(order="F")
+    pt = grid.cell_data_to_point_data()
+    pl = pv.Plotter(off_screen=True, window_size=size)
+    pl.background_color = "white"
+    solid = pt.clip(normal="y", origin=(NX / 2, 0.58 * NX, NZ / 2)).contour(
+        [0.0], scalars="solid")                     # cut the grains open at the mid-plane
+    if solid.n_points:
+        pl.add_mesh(solid, color="#aab6c4", smooth_shading=True, specular=0.3)
+    iso = pt.contour([0.5], scalars="gas")          # the C = 1/2 gas isosurface
+    if iso.n_points:
+        pl.add_mesh(iso, color="#e8873a", smooth_shading=True, specular=0.6)
+    pl.add_mesh(grid.outline(), color="#7a7a7a", line_width=1.0)
+    pl.camera_position = "xz"
+    pl.camera.azimuth, pl.camera.elevation = 32.0, 14.0
+    pl.reset_camera(); pl.camera.zoom(1.45)
+    img = pl.screenshot(return_img=True)
+    pl.close()
+    return img
+
+MP4 = "bubble_through_packing.mp4"
+writer = imageio.get_writer(MP4, fps=12, quality=8)
+for gas in bed["frames"]:
+    writer.append_data(render(gas))
+writer.close()
+print(f"{len(bed['frames'])} frames -> {MP4}")
+```
+
+::: {.callout-note}
+## The movie lives on YouTube, not in this repo
+Per [STYLE_GUIDE §7](../../STYLE_GUIDE.md) videos are never committed. The cell above
+writes `bubble_through_packing.mp4` next to this page when the notebook is executed;
+the published version embeds it from YouTube. **The iframe below is a placeholder until
+the upload is done** — the local file path is recorded in `PROGRESS.md`.
+:::
+
+```{=html}
+<!-- TODO(WO-U E7): replace with the YouTube iframe once the mp4 is uploaded.
+     Local file produced by the `movie` cell: examples/bubble-through-packing/bubble_through_packing.mp4 -->
+<div style="max-width:520px;margin:0 auto;padding:2.2rem 1rem;border:1px dashed #9aa4b1;border-radius:6px;text-align:center;color:#5a636e;font-size:0.92em;">
+  <strong>Movie placeholder</strong><br>
+  The rendered animation is uploaded to YouTube and embedded here.<br>
+  Still frames from the same render follow below.
+</div>
+```
+
+```{python}
+#| label: fig-stills
+#| fig-cap: "Stills from the same render, evenly spaced through the run: the gas isosurface (orange) inside the packing, with the grains cut open at the mid-plane so the interface stays visible."
+picks = np.linspace(0, len(bed["frames"]) - 1, 4).astype(int)
+fig, axes = plt.subplots(1, len(picks), figsize=(10.0, 5.4))
+for ax, k in zip(axes, picks):
+    ax.imshow(render(bed["frames"][k], size=(400, 720)))
+    ax.axis("off")
+    ax.set_title(f"frame {k+1}/{len(bed['frames'])}", fontsize=8)
+plt.tight_layout(); plt.show()
+```
+
+## 5. Density ratio 1000
+
+Ratio 100 is the validated regime for the momentum-consistent cut-cell path. Ratio 1000
+— air in water — is the one everybody wants, so it is run, at the same $\mathrm{Eo}$ and
+$\mathrm{Mo}$ and for a shorter time, and reported whatever it does.
+
+```{python}
+#| label: run-1000
+bed1k = column(packed=True, ratio=1000.0, T=2200.0, label="packing, ratio 1000")
+print(f"ratio 1000: {bed1k['steps']} steps, t = {bed1k['t'][-1]:.0f} of {bed1k['T']:g}, "
+      f"{bed1k['wall']:.0f} s"
+      f"{'   *** NON-FINITE, ABORTED ***' if bed1k['nan'] else ''}"
+      f"{'   *** PRESSURE CAPPED, ABORTED ***' if bed1k['capped'] > 20 else ''}"
+      f"{('   *** ' + bed1k['aborted'] + ' ***') if bed1k['aborted'] else ''}")
+print(f"  gas volume V(T)/V(0) = {bed1k['vol'][-1]:.10f}")
+print(f"  colour inside the grains {bed1k['solid_sum']:.2e}, "
+      f"clipped volume {bed1k['clipped']:.2e}")
+print(f"  pressure {bed1k['iters']}/{bed1k['cap']} "
+      f"{'OK' if bed1k['iters'] < bed1k['cap'] else '*** CAPPED -> INVALID ***'}, "
+      f"max|div(open u)| {bed1k['div']:.2e}")
+print(f"  centroid {bed1k['zc'][0]:.1f} -> {bed1k['zc'][-1]:.1f} cells")
+
+m = bed["t"] <= bed1k["t"][-1]
+print(f"\n{'over the same window':>26} {'z_c':>9} {'V/V0 - 1':>11} {'iters':>9} {'max|div|':>10}")
+for r, mm in ((bed, m), (bed1k, np.ones_like(bed1k["t"], bool))):
+    print(f"{r['label']:>26} {r['zc'][mm][-1]:9.2f} {r['vol'][mm][-1]-1:11.2e} "
+          f"{r['iters']:6d}/{r['cap']} {r['div']:10.1e}")
+
+OK1K = not (bed1k["nan"] or bed1k["aborted"] or bed1k["iters"] >= PRESS_CAP)
+R1K_VERDICT = ("Nothing in that table moves when the density contrast goes up by a "
+               "factor of ten." if OK1K else
+               "The ratio-1000 run did NOT survive its window, and the table above says "
+               "how far it got before it stopped.")
+```
+
+`{python} R1K_VERDICT` The
+gas volume drifts by
+`{python} f"{abs(bed1k['vol'][-1]-1):.1e}"` relative, the colour inside the grains is
+`{python} f"{bed1k['solid_sum']:.1e}"`, the worst pressure solve is
+`{python} f"{bed1k['iters']}"` iterations out of `{python} PRESS_CAP`, and over the
+window they share the two centroids differ by
+`{python} f"{100*abs(bed1k['zc'][-1]/np.interp(bed1k['t'][-1], bed['t'], bed['zc'])-1):.1f}"` %.
+Ratio 1000 is exactly where an *inconsistent* VoF momentum transport is known to come
+apart [@rudman1998; @arrufat2021], so the reason this can be attempted at all is that
+`enable_vof_momentum` composes with the cut cells: the same geometric fluxes carry $C$
+and $\rho^c\mathbf{u}$, and the uniform-velocity identity that underwrites it is bitwise
+in a cut cell too. The thing to watch at this contrast is **not** the volume — the
+transport's conservation is structural — but the **pressure iteration count**, because
+the variable-coefficient Poisson operator's condition number grows with the density
+ratio. That is the number the table puts next to it, and it is the one that would break
+first on a longer run or a tighter bed.
+
+## Collocated cross-check
+
+peclet also ships a cell-centred grid (`flow.SolverColocated`), and since rung V8 it
+runs two-phase flow: variable density inside the **approximate (ABC) projection**, with
+buoyancy and surface tension applied as **face accelerations** and the colour advected
+by the projected face field.
+
+**The packed case cannot be run there, and that is a scope statement, not a defect.**
+Rung V8 is **all-fluid**: the cut-cell colour transport — openness-weighted fluxes, the
+solid-band fill, the contact-angle plane — exists on the staggered grid only, and the
+composition is refused rather than silently approximated.
+
+```{python}
+#| label: colocated-scope
+n = 32
+q = np.arange(n) + 0.5
+one_grain = np.asfortranarray(np.sqrt((q[:, None, None] - n / 2) ** 2
+                                      + (q[None, :, None] - n / 2) ** 2
+                                      + (q[None, None, :] - n / 2) ** 2) - 8.0)
+sc = flow.SolverColocated(n, n, n)
+sc.set_rho(1.0); sc.set_mu(0.1)
+sc.set_solid(one_grain, cutcell_pressure=True)     # ONE grain is enough to trip the guard
+try:
+    sc.enable_vof()
+    print("enable_vof() succeeded — the packed case would run on the collocated grid")
+except RuntimeError as e:
+    print(f"enable_vof() after set_solid raised RuntimeError:\n  {e}")
+try:
+    flow.SolverColocated(8, 8, 8).enable_vof_momentum(1.0, 100.0)
+except RuntimeError as e:
+    print(f"\nenable_vof_momentum on the collocated grid: RuntimeError\n  {str(e)[:150]}")
+```
+
+What *can* be cross-checked is the **control** — the free rise in the same closed
+column, which is all-fluid. `enable_vof_momentum` is staggered-only, so the honest pair
+is the two grids with momentum consistency **off** on both.
+
+```{python}
+#| label: colocated-run
+T_CO = 1500.0
+ctl_nc = column(packed=False, momentum=False, T=T_CO, label="control, staggered, no mom.")
+ctl_co = column(packed=False, momentum=False, T=T_CO, cls=flow.SolverColocated,
+                label="control, collocated, no mom.")
+print(f"{'free rise, ratio 100, momentum consistency OFF':>46} {'z_c(T)':>9} {'dz_c/dt':>10} "
+      f"{'/U_g':>7} {'V/V0-1':>10} {'iters':>9}")
+for r in (ctl_nc, ctl_co):
+    print(f"{r['label']:>46} {r['zc'][-1]:9.2f} {mean_rise(r):10.5f} "
+          f"{mean_rise(r)/r['Ug']:7.3f} {r['vol'][-1]-1:10.1e} {r['iters']:6d}/{r['cap']}")
+DCO = 100 * (mean_rise(ctl_co) / mean_rise(ctl_nc) - 1)
+print(f"\ncollocated vs staggered rise speed: {DCO:+.2f} %")
+```
+
+The two grids agree on the free rise to
+`{python} f"{abs(DCO):.1f}"` %. That is the useful statement here: the collocated path
+reproduces the *fluid* half of this page, and everything the packing adds — the cut-cell
+transport, the wetting fill, the momentum consistency — is staggered-only today. The
+[rising bubble](../rising-bubble/index.qmd) page states the other half of the rating:
+collocated two-phase flow is honest to density ratio $\lesssim 100$ for cases with
+motion.
+
+## What this page does *not* establish
+
+- **There is no reference solution.** No published benchmark exists for this geometry,
+  and none is claimed. The control is the yardstick, and it is a weak one: it fixes the
+  fluid pair and the column, not the answer.
+- **The contact angle is static.** $\theta$ does not depend on the contact-line
+  velocity — no dynamic angle, no hysteresis — and a bubble squeezing through a throat
+  is exactly the situation where an advancing and a receding line differ. At
+  $\theta = 60°$ the liquid wets, so the gas mostly keeps a film between itself and the
+  grains and the contact line is short; that is why this scene was chosen, and it is
+  also why the number to distrust would be one that depended on $\theta$.
+  See [droplet wetting](../droplet-wetting/index.qmd) for the accuracy the static model
+  has (≈ 1° up to 90°, and a contact radius of ten cells or more).
+- **One realisation, one resolution.** A packing is a random object; this is one seed.
+  The throat the bubble happens to meet first is a property of that seed.
+- **The bottleneck is `{python} f"{2*R_THROAT:.0f}"` cells across.** That is enough for
+  the geometric transport, but an interface that fills such a throat gives the
+  height-function curvature cascade only a few columns to fit, so the curvature there is
+  its least accurate branch. A resolution study at fixed $\mathrm{Eo}$ and fixed
+  geometry is the missing measurement, and it is the one that would say how much of the
+  arrest time above is physics.
+- **The packing is not bit-reproducible.** `dem`'s contact solve accumulates forces with
+  float atomics on the GPU, so the settled centres differ slightly between runs and a
+  re-execution of this page gets a *statistically equivalent* bed, not the same one —
+  with a different bottleneck and a different arrest. Everything quoted here is inline
+  from the frozen execution; the qualitative statements are the ones that carry over.
+
+## Adapt this yourself
+
+- **Trap the bubble.** Raise `F_SDF` towards 1 (grains nearer to contact) or lower
+  `Eo`, and @eq-entry stops being satisfiable: the bubble parks under a throat and
+  stays. That is capillary trapping, and it is the whole subject of residual gas
+  saturation in porous media.
+- **Non-wetting gas.** `set_contact_angle(120)` makes the gas cling to the grains
+  instead of avoiding them, which changes both the entry pressure and the path.
+  `set_contact_angle_field(theta_array)` gives mixed wettability — a per-cell angle, so
+  a patchily wetted bed is one array away.
+- **A train of bubbles.** Add a second sphere to `bubble_colour`, or replace the closed
+  floor by a two-phase inflow (`set_vof_inflow`) and inject continuously.
+- **A real bed.** Swap `settle_bed` for the Lubachevsky–Stillinger packing of the
+  [random packed bed](../random-packed-bed/index.qmd) page, or for the
+  [Pall rings](../pall-ring-packing/index.qmd) — the fluid side does not change, only
+  the SDF.
+- **Go multi-rank.** The identical script runs under `mpirun -np N python …`; the
+  cut-cell VoF transport and the solid-band fill are built on the inner region and
+  exchanged, so the filled colour is decomposition-independent.
+
+## Reproduce this
+
+The compiled solver runs this, so its outputs are **frozen** into the site. To
+regenerate:
+
+```bash
+pip install peclet            # CPU wheels; for CUDA: pip install peclet-flow-cu13
+PECLET_FLOW_EXACT_RESIDUAL=1 quarto render examples/bubble-through-packing/index.qmd --execute
+# ...or against local source builds of the suite (GPU):
+PECLET_LOCAL_BUILD=/path/to/suite/flow/build_cuda:/path/to/suite/dem/build_cuda \
+PECLET_FLOW_EXACT_RESIDUAL=1 OMP_NUM_THREADS=8 OMP_PROC_BIND=false \
+  quarto render examples/bubble-through-packing/index.qmd --execute
+```
+
+The solver-side gates for the pieces this page composes are, in the `flow` repo, the
+`vof_cutcell`, `vof_wetting` and `vof_collocated` ctests with their MPI twins at
+np = 1/2/4, and the study scripts `tests/study/vof_wetting.py` and
+`tests/study/vof_surface_tension.py`.
