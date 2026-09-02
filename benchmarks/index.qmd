@@ -57,16 +57,16 @@ trade is.
 ::: {.g-col-12 .g-col-md-6}
 ### [peclet.flow vs FoxBerry: strong scaling →](foxberry-scaling/index.qmd)
 Head-to-head on **FoxBerry's own** 64M-cell benchmark cases — single-phase flow and a
-5000-sphere packed bed — 24 → 1536 cores on Snellius, plotted onto FoxBerry's own
-graphs. peclet is **8–9× faster** single-phase and **4–6×** on the bed, but scales
-*worse*: efficiency falls to 67 % at 1536 cores where FoxBerry's AMG holds near-ideal
-halving. The page shows why, and the answer is encouraging — time per pressure
-iteration scales **super-linearly**; the entire deficit is the iteration count rising
-because the geometric multigrid stops coarsening when a per-rank block turns odd.
-**Provisional:** the packed case uses periodic BCs, and the coarse-grid defect should
-be fixed before the ladder is re-run.
+5000-sphere packed bed with FoxBerry's inlet/outlet/wall BCs — 24 → 1536 cores on Snellius,
+plotted onto FoxBerry's own graphs. peclet is **8–14× faster** single-phase and **3–4×** on
+the bed, with **flat pressure-iteration counts across the whole ladder** and ≥ 99 % strong-scaling
+efficiency on the bed (super-linear at the top). The page tells the story of the two fixes the
+first campaign forced: coarse-level *telescoping* of the geometric multigrid on the ORB tree
+(the old hierarchy stopped coarsening when a per-rank block turned odd, and that alone cost a
+third of the efficiency), and a consensus-protocol race in the halo topology builder that hung
+the top rungs intermittently.
 
-*flow · parallel scaling · code comparison · multigrid · provisional*
+*flow · parallel scaling · code comparison · multigrid*
 :::
 
 ::: {.g-col-12 .g-col-md-6}

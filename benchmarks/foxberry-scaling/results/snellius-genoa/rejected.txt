@@ -1,0 +1,6 @@
+# Result files that must not be plotted, with the reason. Basename per line.
+fb_packed_g384_np768_teldbg2.json  # settings drift: MGLEVELS=7 WARMUP=2 (ladder is 8 / 5); the tel4 rerun replaces it
+fb_packed_g384_np768_tel3.json     # settings drift: MGLEVELS=7 WARMUP=2; replaced by tel4
+fb_packed_g384_np1536_tel3.json    # settings drift: MGLEVELS=7 WARMUP=2; replaced by tel4
+fb_single_g384_np1536_tel3.json    # settings drift: MGLEVELS=7 WARMUP=2; replaced by tel4
+fb_packed_g384_np768_teldbg.json   # valid (7-digit match) but from the -O2 -g diagnosis build; superseded by the Release tel4 run

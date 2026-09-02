@@ -5824,7 +5824,5 @@
    ]
   }
  ],
- "gpu_aware_env": "",
- "pressure_iters_max": 200,
- "pressure_iters_max_source": "sampled from log heartbeats (lower bound)"
+ "gpu_aware_env": ""
 }

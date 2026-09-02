@@ -41,8 +41,22 @@ args = ap.parse_args()
 
 
 def load(resdir):
+    """All fb_*.json in resdir, minus the basenames listed in resdir/rejected.txt (one per line,
+    '# reason' allowed) -- runs known to be invalid for a reason the JSON itself cannot show, e.g.
+    a run on the pre-fix NBX engine whose halo topology was silently corrupted."""
+    rej = {}
+    rf = os.path.join(resdir, "rejected.txt")
+    if os.path.exists(rf):
+        for line in open(rf):
+            line = line.strip()
+            if line and not line.startswith("#"):
+                name, _, why = line.partition("#")
+                rej[name.strip()] = why.strip()
     out = []
     for f in sorted(glob.glob(os.path.join(resdir, "fb_*.json"))):
+        if os.path.basename(f) in rej:
+            print(f"  (rejected {os.path.basename(f)}: {rej[os.path.basename(f)]})")
+            continue
         try:
             out.append(json.load(open(f)))
         except Exception as e:

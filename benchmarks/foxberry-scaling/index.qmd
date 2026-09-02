@@ -6,13 +6,13 @@ format:
     toc: true
 ---
 
-::: {.callout-important title="Provisional"}
-**These numbers are provisional and the study is paused.** The packed-bed curve uses **periodic
-boundary conditions**, not FoxBerry's inlet/outlet — a same-size stand-in, not a reproduction of
-their case. More importantly, the campaign surfaced a **coarse-grid problem in the pressure
-multigrid** that caps how far peclet can strong-scale, and the honest reading is that it should be
-fixed before the ladder is re-run and published. The scaling *shape* here is a measurement of that
-defect as much as of the solver.
+::: {.callout-note title="Status (2026-09-02)"}
+Second campaign, complete ladder. Since the first (2026-09-01) the pressure multigrid gained
+**coarse-level telescoping on the ORB tree** — the coarse-grid limit that capped the first ladder
+is gone — the packed bed runs with **FoxBerry's own boundary conditions** (inlet/outlet, four
+walls, wall-confined bed), and the intermittent multi-node hang that blocked the top rungs was
+root-caused to a consensus-protocol race in the halo topology builder and fixed. Pressure iteration
+counts are flat from 24 to 1536 cores on both cases.
 :::
 
 Reproduces the two 3-D strong-scaling cases of FoxBerry's `scaling/Scaling.cpp` with `peclet.flow`,
@@ -24,17 +24,22 @@ Snellius `genoa` nodes (192 cores each).
 
 | | FoxBerry | peclet.flow |
 |---|---|---|
-| Pressure solve | AMG (Trilinos/MueLu), tol 1e-14 | geometric multigrid + MG-PCG, rtol 1e-8 |
+| Pressure solve | AMG (Trilinos/MueLu), tol 1e-14 | geometric multigrid (8 levels, telescoped) + MG-PCG, rtol 1e-8 |
 | Grid | 401³ = 64.5M | 384³ = 56.6M |
 | Momentum | implicit, Chebyshev-preconditioned | implicit, Red–Black Gauss–Seidel |
+| Operator precision | double | double on the packed bed (`-DPECLET_FLOW_MREAL_DOUBLE`), float single-phase |
 
 The grid differs because peclet's geometric multigrid coarsens an axis only while it stays even, so
 an odd dimension never coarsens at all — 401³ would cripple the pressure solve for reasons unrelated
 to parallelism. Among even neighbours the *factorization* decides everything: 384 = 2⁷·3 gives seven
-halvings and divides the whole rank ladder cleanly, where 400 = 2⁴·25 gives four. Measured at np=24,
-384³ achieves imbalance 1.000 with all 7 levels against 400³'s 1.42 and 5. A 400³ series is kept as
-a cell-count-matched control, and the gap between the two curves *is* the price of grid
+halvings and divides the whole rank ladder cleanly, where 400 = 2⁴·25 gives four. A 400³ series is
+kept as a cell-count-matched control; the gap between the two curves *is* the price of grid
 factorization.
+
+The packed bed needs the double-precision operator build: float operator storage breaks the
+row-sum identity `A·1 = 0` at ~1e-7 per row, which three decades of cut-cell aperture contrast
+amplify until MG-PCG floors and rebounds. The float build caps at 384³ on this bed while the fp64
+build converges in ~40 iterations — and is 2× *faster* in wall clock. Single-phase is unaffected.
 
 ## Case 1 — single-phase flow
 
@@ -42,55 +47,125 @@ Unit box, inlet u=1, outlet, four no-slip walls, ρ=μ=1, 100 steps.
 
 ![](scaling_single.png)
 
-**peclet is 8.0–9.4× faster than FoxBerry up to 384 cores, 6.0× at 1536.** The gap narrows at the
-top because FoxBerry scales better: its published curve sits essentially on ideal halving across the
-whole ladder, while peclet's efficiency falls to 67 % at 1536.
+| cores | FoxBerry [s] | peclet [s] | speedup | pressure iters | efficiency vs 24 |
+|---:|---:|---:|---:|---:|---:|
+| 24 | 327 | **34.8** | 9.4× | 14.7 | 100 % |
+| 48 | 166 | **18.3** | 9.1× | 14.8 | 95 % |
+| 96 | 84.3 | **8.56** | 9.9× | 14.4 | 102 % |
+| 192 | 42.2 | **4.29** | 9.8× | 14.0 | 101 % |
+| 384 | 21.1 | **2.01** | 10.5× | 14.0 | 108 % |
+| 768 | 10.6 | **0.768** | 13.8× | 14.0 | 142 % |
+| 1536 | 5.08 | **0.656** | 7.7× | 14.0 | 83 % |
+
+**peclet is 8–14× faster than FoxBerry across the whole ladder.** The pressure iteration count is
+flat at 14 from 24 to 1536 cores. The super-linear efficiency through 768 is the shrinking per-rank
+block fitting cache (the 24–96 rungs share one node's memory bandwidth, which *flatters* the
+baseline and so understates these efficiencies further); at 1536 the single-phase step is down to
+37 k cells per rank and the 200-odd momentum sweeps per step, each with a halo exchange, become
+latency-bound — 768 → 1536 buys only 1.17×, and FoxBerry's curve, still on ideal halving there,
+closes to 7.7×.
+
+The dashed pink series is the same solver with telescoping off: identical to 96 cores, then the
+iteration count climbs (16.6 → 24.9 at 384, 38.7 at 1536) as the hierarchy is cut short. At 384
+cores telescoping is worth 24.9 → 14.0 iterations and 2.48 → 2.01 s/step.
 
 ## Case 2 — packed bed, 5000 spheres
 
-Same box, 5000 static spheres at solid holdup 0.45 (φ = 0.45), cut-cell IBM, D/Δ ≈ 21 cells.
-**Periodic BCs and a triply-periodic bed** — same cell count, same particle count, same holdup and
-sphere radius to 0.7 %, but *not* FoxBerry's boundary conditions.
+Same box and boundary conditions as case 1 — inlet, outlet, four no-slip walls — with 5000 static
+spheres at solid holdup 0.45, cut-cell IBM, D/Δ ≈ 21 cells. The bed is grown by `peclet.dem` inside
+six SDF walls inset from the box faces, so sphere centres lie in [0.01, 0.99] exactly as in
+FoxBerry's `Scaling.cpp`; no sphere cuts the inlet or outlet plane.
 
 ![](scaling_packed.png)
 
-**3.7–5.7× faster than FoxBerry over 24 → 384 cores.** Beyond that the pressure solve stops
-converging within its iteration cap and those points are rejected as invalid rather than plotted —
-384 cores is the measured ceiling of the IBM path on this problem, and the reason is the same
-coarse-grid defect the callout mentions.
+| cores | FoxBerry [s] | peclet [s] | speedup | pressure iters | efficiency vs 24 |
+|---:|---:|---:|---:|---:|---:|
+| 24 | 385 | **129** | 3.0× | 43.1 | 100 % |
+| 48 | 184 | **64.9** | 2.8× | 42.9 | 99 % |
+| 96 | 98.3 | **31.6** | 3.1× | 41.7 | 102 % |
+| 192 | 48 | **15.6** | 3.1× | 39.8 | 103 % |
+| 384 | 24.2 | **7.28** | 3.3× | 39.8 | 110 % |
+| 768 | 12 | **3.24** | 3.7× | 39.8 | 124 % |
+| 1536 | 5.44 | **1.33** | 4.1× | 39.8 | 151 % |
 
-## Why the scaling falls off — and why it is fixable
+**3.0–4.1× faster than FoxBerry with flat iteration counts (43 → 40) and ≥ 99 % efficiency across
+the whole ladder, super-linear at the top** (124 % at 768, 151 % at 1536 — unlike the single-phase
+case, this step is dominated by the momentum sweeps, which are compute-bound and keep gaining from
+cache as the block shrinks). Every run converged to rtol 1e-8 on every step (max 45 iterations
+against a cap of 200); runs with any capped step are rejected, not plotted. The 100-step rungs at
+192 / 384 / 768 / 1536 agree on `<u>` and `max|div|` to seven digits, which is the acceptance
+test for a clean halo topology (below).
 
-The deficit is **not communication**. It decomposes exactly:
+The A/B against the in-place hierarchy at 384 cores: 49.9 iterations (max 69) and 10.8 s/step
+without telescoping, 39.8 (max 45) and 7.28 s with — a third off the step. At 24 cores the two are
+identical (129.5 vs 128.7 s): the hierarchy already reaches full depth there and telescoping
+correctly costs nothing.
 
-$$\text{speedup} \;=\; \frac{\text{per-iteration speedup}}{\text{iteration-count growth}}
-\;=\; \frac{100.0\times}{2.33\times} \;=\; 42.9\times \quad (\text{single-phase, } 24 \to 1536)$$
+The gray series is the first campaign's stand-in (periodic box, triply-periodic bed, in-place
+multigrid); it is kept because it shows the cliff the old hierarchy fell off at 1536 cores.
+
+## What changed: telescoping on the ORB tree
+
+A multigrid level here used to coarsen an axis only if **every rank's block** was even on it, because
+coarse levels had to be the fine decomposition coarsened *in place* (which keeps restriction and
+prolongation purely local). When no axis qualified the hierarchy simply stopped: at 1536 ranks with
+24×48×32 blocks it stopped at 24×48×24 globally, several levels short of the 3³ the grid allows, and
+the preconditioner weakened accordingly — the first campaign measured the whole strong-scaling loss
+to be that iteration growth, with time *per iteration* scaling super-linearly.
+
+The fix is the standard one (PETSc `PCTELESCOPE`, MueLu `RepartitionFactory`, hypre's redundant
+coarse solve, DUNE's accumulation), done geometrically on the decomposition peclet already has.
+The ORB partition is a bisection tree; **truncating that tree merges sibling blocks** into a valid
+coarser partition on fewer ranks. When a level's blocks can no longer coarsen (an odd extent on a
+coarsenable axis) or drop below 4 cells on a side, the level's residual is gathered at its own
+resolution onto the root rank of each merged group, restricted there, and the V-cycle recurses on a
+sub-communicator of the roots; the correction is prolonged and scattered back. The other ranks wait
+at that level — on a 24³ grid there is no work for them to lose. The measured ladders:
+
+| ranks | levels (global grid @ ranks holding it) |
+|---:|---|
+| 24 | 384³@24 → … → 12³@24 → **6³@1** → 3³@1 |
+| 384 | 384³@384 → … → 24³@384 → **12³@8** → 6³@8 → **3³@1** |
+| 768 | 384³@768 → … → 24³@768 → **12³@8** → 6³@8 → **3³@1** |
+| 1536 | 384³@1536 → … → 24³@1536 → **12³@64** → 6³@64 → **3³@1** |
+
+Every ladder now bottoms at 3³ on one rank, the same as a single-rank solve, which is why the
+iteration counts are rank-independent. The transfer needs no halo exchange (restriction and
+prolongation are inner-only), the gather is a few kB per rank, and the only new communication is a
+`Gatherv`/`Scatterv` per telescoped level per V-cycle. It is opt-in for now (`PECLET_FLOW_TELESCOPE=1`,
+`Solver.set_pressure_telescope(True)`); `flow.predict_hierarchy` prints the ladder any grid/rank
+count would get, without launching anything.
 
 ![](scaling_diagnosis.png)
 
-The right panel is the good news: time *per pressure iteration* improves 100× over a 64× rank
-increase — **156 % efficiency, super-linear**, because the shrinking block fits cache better. The
-left panel is the problem: the solve needs 2.33× more iterations at 1536 cores than at 24.
+## Where the time goes now
 
-That happens because a multigrid level here coarsens an axis only if **every rank's block** is even
-on it — coarse levels are required to be the fine decomposition coarsened *in place*, which keeps
-the transfer operators purely local. When no axis qualifies the hierarchy simply stops. At 1536
-ranks each block is 24×48×32, which stops at 3×6×4, so the hierarchy is several levels shorter than
-the global grid would allow, and the preconditioner weakens accordingly.
+With the pressure iteration count flat, the packed-bed step is dominated by the **momentum solve**:
+the implicit diffusion's Red–Black Gauss–Seidel hits its sweep cap on every step (600 sweeps per
+step, 3 components × 200) because ν·Δt/Δx² ≈ 4×10⁴ on this case, versus 204 sweeps on the
+single-phase case. That is the next lever — a velocity multigrid under MPI, or a Krylov wrapper —
+and it is why the packed bed's speedup over FoxBerry (3×) is a third of the single-phase one (9–14×)
+although the pressure solves are comparable.
 
-**This is an implementation limit, not a property of multigrid**, and it is exactly what FoxBerry's
-AMG does not suffer from: MueLu *repartitions its coarse levels onto fewer ranks* rather than
-stopping. The standard fix is the same idea — let a coarse level live on its own coarser partition
-and pay one redistribution inside the transfer, shedding ranks as the grid shrinks until the
-coarsest level is solved on one. PETSc calls it `PCTELESCOPE`, MueLu `RepartitionFactory`, hypre a
-redundant coarse solve, DUNE *accumulation*. peclet already has the *endpoint* of this (its
-agglomerated bottom solve); what is missing is the intermediate steps.
+## The rung that would not run
 
-On the packed bed the two effects compound: the starved hierarchy weakens the preconditioner enough
-to push the high-contrast cut-cell operator back over its convergence threshold, which is why that
-case falls off a cliff at 1536 rather than degrading gracefully. So the fix is worth more than its
-33 % headline suggests — on the IBM path it plausibly buys the ability to run at all above ~400
-cores.
+Runs at 768 and 1536 ranks hung **intermittently** in the first warm-up step, with every rank blocked
+in `MPI_Waitall` inside a ghost-layer exchange, on both the telescoped and the in-place hierarchy.
+A stack census of a hung 1536-rank job (parallel `gdb` over all 192 ranks of a node) placed 178
+ranks in the telescope `Scatterv` and the 8 group roots in the halo exchange of the 64-rank
+sub-hierarchy — the *first* exchange on a freshly built topology. A halo timeout diagnostic that
+prints every unmatched request (partner, byte count, level) then named it: on that level every rank
+had all 26 receive partners but only 0–26 of its 26 send partners.
+
+The cause was in the consensus protocol (NBX) that builds each level's topology: consecutive rounds
+on one communicator shared a tag, so a rank that had already seen round *k*'s barrier complete
+could post round *k+1*'s messages while a neighbour still draining round *k* took them as round-*k*
+messages. The receive side of a topology is computed locally, the send side is learned from the
+round — so the victim never learned it had to send. Larger communicators, larger barrier skew,
+more likely: hence ≥ 4 nodes, and intermittent. The engine now rotates the tag per round through
+a per-communicator counter, the topology builder cross-checks promised against requested cells and
+throws on a mismatch, and a regression test drives hundreds of back-to-back rounds (it fails on a
+laptop with the rotation removed). The rungs above were all re-measured on the fixed engine.
 
 ## Reading the numbers fairly
 
@@ -102,11 +177,12 @@ cores.
   capped step's time is set by the cap rather than by convergence.
 - The bed is `peclet.dem`-grown at FoxBerry's N, holdup and radius; their PRNG is not reproducible
   outside FoxBerry, so the beds are statistically equivalent rather than identical.
+- FoxBerry's momentum solve is Chebyshev-preconditioned; peclet's is a plain RB-GS that caps on the
+  packed bed (previous section). The packed-bed comparison therefore flatters FoxBerry.
 
 ## Reproducing
 
 Everything — driver, bed generator, Snellius job scripts, result JSONs and the runbook — is in
 [`benchmarks/foxberry-scaling/`](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/foxberry-scaling).
-The campaign's full findings, prioritized, are in the suite's `docs/SCALING_ISSUES.md`; the
-coarse-grid item is written up with the standard remedies in `docs/DECOMPOSITION_AND_MULTIGRID.md`
-§2.8 and open problem 1.
+The telescoping design and its measurements are in the suite's `docs/MG_TELESCOPING_PLAN.md`; the
+prioritized register of everything the two campaigns surfaced is `docs/SCALING_ISSUES.md`.

@@ -40,74 +40,63 @@ reproducer for the narrower defect it did expose (see the open issue below).*
 > bed (see below). The narrower open-face defect that the legacy bed exposed is still open, but it
 > does not affect these runs.
 
-## Results (Snellius genoa, 2026-09-01)
+## Results (Snellius genoa, 2026-09-02 — second campaign, telescoped multigrid)
 
 384³ = 56.6M cells, pure MPI (one rank per core), 192 cores/node. `single` uses the default float
-build; `packed-periodic` uses the fp64 operator build (see below — the float build is invalid there).
+build; `packed` (FoxBerry's BCs: inlet, outlet, four walls, wall-confined bed) uses the fp64
+operator build (see below — the float build is invalid there). Both with coarse-level telescoping
+(`TELESCOPE=1`), 100 steps (20 / 25 / 50 on the one-node rungs). Seconds per step; bracket =
+speedup over FoxBerry; `eff` = strong-scaling efficiency against the 24-rank rung.
 
-| ranks | FoxBerry single | **peclet single** | iters | FoxBerry packed | **peclet packed-per.** | iters |
-|---|---|---|---|---|---|---|
-| 24 | 327 | **36.5** (9.0×) | 16.6 | 385 | **67.9** (5.7×) | 52.4 |
-| 48 | 166 | **19.1** (8.7×) | 16.6 | 184 | **33.8** (5.4×) | 52.2 |
-| 96 | 84.3 | **8.95** (9.4×) | 16.5 | 98.3 | **17.7** (5.5×) | 61.6 |
-| 192 | 42.2 | **5.30** (8.0×) | 22.7 | 48 | **10.3** (4.7×) | 65.5 |
-| 384 | 21.1 | **2.48** (8.5×) | 24.9 | 24.2 | **6.19** (3.9×) | 81.7 |
-| 768 | 10.6 |  — (hung, see below) | — | 12 | — | — |
-| 1536 | 5.08 | **0.852** (6.0×) | 38.7 | 5.44 | *invalid — caps* | 122† |
+| ranks | FoxBerry single | **peclet single** | iters | eff | FoxBerry packed | **peclet packed** | iters | eff |
+|---|---|---|---|---|---|---|---|---|
+| 24 | 327 | **34.8** (9.4×) | 14.7 | 100 % | 385 | **129** (3.0×) | 43.1 | 100 % |
+| 48 | 166 | **18.3** (9.1×) | 14.8 | 95 % | 184 | **64.9** (2.8×) | 42.9 | 99 % |
+| 96 | 84.3 | **8.56** (9.9×) | 14.4 | 102 % | 98.3 | **31.6** (3.1×) | 41.7 | 102 % |
+| 192 | 42.2 | **4.29** (9.8×) | 14.0 | 101 % | 48 | **15.6** (3.1×) | 39.8 | 103 % |
+| 384 | 21.1 | **2.01** (10.5×) | 14.0 | 108 % | 24.2 | **7.28** (3.3×) | 39.8 | 110 % |
+| 768 | 10.6 | **0.768** (13.8×) | 14.0 | 142 % | 12 | **3.24** (3.7×) | 39.8 | 124 % |
+| 1536 | 5.08 | **0.656** (7.7×) | 14.0 | 83 % | 5.44 | **1.33** (4.1×) | 39.8 | 151 % |
 
-Seconds per step; the bracket is peclet's speedup over FoxBerry. Every run converged
-(`max|div(open·u)|` 2e-10…2e-09 single-phase, 2e-13…9e-13 packed/fp64); capped runs are excluded by
-`plot_foxberry.py` on principle, since a capped step time is set by `PMAXIT` rather than by
-convergence.
+Every run converged on every step (max 18 iterations single, 45 packed, cap 200); the 100-step
+packed runs at 192 / 384 / 768 / 1536 agree on `<u>` and `max|div|` to seven digits, which is the
+evidence that their halo topologies were clean (the hang section explains why that matters). **The pressure iteration count is now flat across the ladder**, so the
+first campaign's whole strong-scaling deficit (16.6 → 38.7 iterations, 67 % at 1536) is gone; the
+super-linear efficiencies are the shrinking per-rank block fitting cache, on top of a baseline that
+one node's memory bandwidth flatters.
 
-**peclet is 8.0–9.4× faster than FoxBerry on the single-phase case and 3.9–5.7× on the packed bed**,
-narrowing at the top of the ladder because FoxBerry scales better than peclet does.
+The A/B against the in-place hierarchy (`TELESCOPE` off), same build and bed: at 384 ranks the
+packed bed needs 49.9 iterations (max 69) and 10.8 s/step in place vs 39.8 (45) and 7.28 s
+telescoped; single-phase 24.9 / 2.48 s vs 14.0 / 2.01 s. At 24 ranks the two are identical
+(129.5 vs 128.7 s) because the hierarchy already reaches full depth there. Measured ladders:
+24 → 1 rank at 12³; 384 and 768 → 8 → 1; 1536 → 64 → 1 (predicted), all bottoming at 3³.
 
-† **The packed bed does not survive np=1536 even in fp64**, and that is a finding rather than a
-gap. Both runs land on **122.2 mean iterations with individual steps at the 200 cap**, and they agree to
-every digit in `<u>` and `max|div|` — this is deterministic, not a flaky draw. The step time
-*regresses* to 16.9 / 17.3 s against 6.19 s at np=384 — peclet goes from 3.9× faster than FoxBerry to slower. Meanwhile np=384
-reproduces to 5 % across two runs (6.19 / 6.52 s, 81.7 iterations both times), so this is the rank
-count and not the draw. The mechanism links the two top issues: the starved hierarchy (issue 3) weakens the
-preconditioner enough to push the high-contrast bed back over the convergence threshold (issue 2).
-**384 ranks is therefore the measured strong-scaling ceiling of the IBM path on this problem** — a
-much lower one than the single-phase case's, and the reason fixing issue 3 is worth more than its
-33 % headline suggests.
+**The 1536 rung** hung on every attempt (and 768 intermittently) until the cause was found on
+2026-09-02: a tag race between consecutive NBX consensus rounds in `core`'s topology builder,
+transport-independent, more likely the larger the communicator (the hang section below). The 768
+and 1536 rows are from the fixed engine (`tel4`); the earlier 768 point from the `-O2 -g`
+diagnosis build (3.34 s, same numbers to seven digits) is superseded. At 1536 the two cases part
+ways: the packed step is momentum-sweep-bound (600 sweeps/step, compute) and keeps gaining from
+cache (151 %), the single-phase step (204 sweeps) is down to 37 k cells/rank and latency-bound
+(768 → 1536 buys 1.17×).
 
-### Is the scaling linear?
+### First campaign (2026-09-01, in-place multigrid, periodic stand-in bed) — superseded
 
-Close to linear to 384 ranks, then not. Single-phase efficiency against the np=24 baseline:
-100 % → 96 % → **102 %** → 86 % → 92 % → **67 %** at 1536. The packed bed behaves the same way
-(100 → 100 → 96 → 83 → 69 %).
+Kept for the record and for the gray series on the packed graph. Single-phase: 36.5 / 19.1 /
+8.95 / 5.30 / 2.48 / — / 0.852 s at 24 … 1536 with iterations 16.6 → 38.7; packed-periodic
+(fp64): 67.9 / 33.8 / 17.7 / 10.3 / 6.19 s to 384 with iterations 52 → 82, then **invalid at
+1536** (122 mean iterations with steps at the cap, 17 s/step). The decomposition of that loss —
+`42.9× speedup = 100.0× per-iteration / 2.33× iteration growth` — is what motivated telescoping;
+the analysis is in [`suite/docs/DECOMPOSITION_AND_MULTIGRID.md`](../../../suite/docs/DECOMPOSITION_AND_MULTIGRID.md)
+§2.8 and the design in `suite/docs/MG_TELESCOPING_PLAN.md`.
 
-The loss decomposes exactly, and it is **not communication**:
+### Where the packed-bed time goes now
 
-```
-speedup = (per-iteration speedup) / (iteration-count growth)
-42.9x   =        100.0x           /         2.33x            (single-phase, 24 -> 1536)
-```
-
-Time *per pressure iteration* improves 100× over a 64× rank increase — **156 % efficiency,
-super-linear**, because the shrinking block fits cache better. The entire wall-clock deficit is the
-pressure solve needing 2.33× more iterations (16.6 → 38.7). That is the multigrid depth being capped
-by the *per-rank block*: at np=1536 each block is 24×48×32, which stops coarsening at 3×6×4, so the
-hierarchy is several levels shorter than the global grid would allow. The projection's share of the
-step tracks it exactly, 39 % → 67 %.
-
-**This is an implementation limit, not a property of multigrid, and it is now the top open item**
-— coarse levels are required to be the fine decomposition coarsened *in place*, so the hierarchy
-stops rather than redistributing onto fewer ranks. FoxBerry's MueLu repartitions its coarse levels
-and consequently holds near-ideal halving across the whole ladder. Written up with the standard
-remedies (PETSc `PCTELESCOPE`, MueLu `RepartitionFactory`, hypre's redundant coarse solve) in
-[`suite/docs/DECOMPOSITION_AND_MULTIGRID.md`](../../../suite/docs/DECOMPOSITION_AND_MULTIGRID.md)
-§2.8 and open problem 1.
-
-Two caveats on reading the table. The 24/48/96 rungs sit on one `--exclusive` node, so they have up
-to 8× the memory bandwidth per rank of the 192-rank run; that *flatters the baseline* and therefore
-understates the efficiencies above. And 400³ shows the same mechanism amplified — iterations climb
-96 → 191 between np=48 and np=384, efficiency falls to 63 % — so a 12 % difference in cell count
-buys a 7.7× difference in iteration count at np=384. That is the price of grid factorization,
-measured.
+With the pressure iterations flat, the packed-bed step is dominated by the **momentum solve**: the
+implicit diffusion's Red–Black Gauss–Seidel hits its sweep cap every step (`momentum_sweeps_per_step`
+= 600 = 3 × `VSWEEPS` 200) because ν·Δt/Δx² ≈ 4×10⁴ here, versus 204 sweeps single-phase. That is
+issue 5 of the register and the reason the packed speedup over FoxBerry (3×) is a third of the
+single-phase one (9–14×). FoxBerry's momentum solve is Chebyshev-preconditioned.
 
 ## Deliberate deviations from FoxBerry
 
@@ -201,6 +190,22 @@ sbatch --nodes=1 foxberry_gpu.sh 4 "" "single packed-periodic"          # H100 c
 sbatch --nodes=1 --mem=0 --export=ALL,GN=400 foxberry_genoa.sh 192      # the 400^3 series
 ```
 
+The **second campaign** (the results table above) is the same ladder with telescoping on, the
+`packed` config (FoxBerry BCs, wall-confined bed) on the fp64 build, and the halo timeout armed as
+a safety net — a hang then aborts with a named culprit instead of burning the allocation:
+
+```bash
+D=$SUITE/fb/flow/build_omp_mpi_d
+sbatch --nodes=1 --time=03:00:00 --mem=0 --export=ALL,TELESCOPE=1,NSTEPS=20,BUILD=$D foxberry_genoa.sh 24 tel packed
+sbatch --nodes=2 --time=01:00:00 --mem=0 --export=ALL,TELESCOPE=1,BUILD=$D foxberry_genoa.sh 384 tel packed
+sbatch --nodes=8 --time=01:00:00 --mem=0 --export=ALL,TELESCOPE=1,BUILD=$D,PECLET_CORE_HALO_TIMEOUT=300 foxberry_genoa.sh 1536 tel packed
+sbatch --nodes=8 --time=01:00:00 --mem=0 --export=ALL,TELESCOPE=1 foxberry_genoa.sh 1536 tel single   # float build is fine single-phase
+sbatch --nodes=2 --time=01:00:00 --mem=0 --export=ALL,BUILD=$D foxberry_genoa.sh 384 off packed       # the in-place A/B
+```
+
+`TELESCOPE=1` maps to `Solver.set_pressure_telescope(True)` and is recorded in the JSON
+(`telescope`, plus the predicted `hierarchy` ladder); `plot_foxberry.py` keys the series on it.
+
 Do not add `packed` to the config list until the open issue below is resolved.
 
 **Shorten the measured window at the low rungs.** The default is 100 steps, but 24 ranks costs
@@ -267,11 +272,13 @@ before *slow*:
 
 1. **Float operator storage silently invalidates dense-bed runs** (the default build; fp64 is both
    correct and ~2× faster here).
-2. **MG depth capped by the per-rank block** — the whole strong-scaling deficit.
+2. **MG depth capped by the per-rank block** — the whole strong-scaling deficit. **Fixed** by
+   coarse-level telescoping (2026-09-02), measured above.
 3. **Solid intersecting an open domain face stalls the solve** — narrow, and *not* what it first
    looked like: the original "cut-cell IBM + open BCs is a blocker" finding was an artifact of a bed
    whose spheres were clipped at the inlet/outlet. With the correct bed, Case 3 runs.
-4. **Intermittent multi-node hang in warmup** (cost two rungs of this ladder).
+4. **Intermittent multi-node hang in warmup** — **root-caused and fixed 2026-09-02**: an NBX
+   inter-round tag race in `core`.
 5. Velocity multigrid is single-rank only — impact here unverified, worth a `VSWEEPS` sweep.
 6. `check_decomposition.py` too slow to pre-flight the high rungs.
 
@@ -314,32 +321,41 @@ all 20.0); and turning advection off changes nothing (still capped, same answer)
 **The single-phase configs are low-contrast and converge fine in float** (16–39 iterations), so the
 single ladder does not need the fp64 build and its numbers stand as published.
 
-## Open issue — intermittent hang in warmup at multi-node scale
+## Resolved — the intermittent hang in warmup at multi-node scale
 
-Reproducible in aggregate, intermittent per job; recorded rather than diagnosed, and the reason two
-cells of the results table are empty.
+**Cause.** `core`'s `NbxEngine` ran consecutive consensus rounds on one communicator with the
+same tag. `GridHaloTopology::buildTopology` runs one round per multigrid level, back to back; a
+rank that has observed round *k*'s `Ibarrier` complete posts round *k+1*'s `Issend`s while a
+neighbour still draining round *k* probes `MPI_ANY_SOURCE` on that tag and takes the new message
+as an old one. The recv side of a topology is computed locally, the send side is learned from the
+round — so the victim never learns it must send, and the first exchange on that level waits
+forever. Larger communicators, larger barrier-completion skew, more likely: hence ≥ 4 nodes and
+intermittent. Fixed in core `10294e6` (per-communicator round counter rotates the tag; the
+builder now cross-checks promised vs requested cells and throws on a mismatch).
 
-Some multi-node runs hang in the **first warmup step** and never emit another line, at full CPU on
-every rank — which distinguishes nothing by itself, since OpenMPI busy-polls a blocked collective.
-Observed:
+**How it was found**, for the next one like it:
 
-| run | nodes | outcome |
-|---|---|---|
-| single 384³ np=768 | 4 | hung, **twice**, in two independent allocations (>18 min each) |
-| single 400³ np=1536 | 8 | hung (>75 min); its decomposition is also pathological, **imbalance 4.000** |
-| packed-periodic 384³ np=1536 | 8 | hung (>44 min) — **but an earlier attempt cleared warmup in 28 s** |
+1. `snellius/stack_census.sh <jobid> <node-index…>` — parallel `gdb -p` over all 192 ranks of a
+   node in ~2 minutes, tallying the innermost solver frame and the MPI call. On the hung 1536-rank
+   telescoped job: 178 ranks in the telescope `Scatterv`, the 8 group roots in
+   `GridHalo::exchangeEnd` — so the hang was the *first* exchange on the 64-rank sub-hierarchy's
+   freshly built topology, which already pointed at the builder rather than the transport.
+2. `PECLET_CORE_HALO_TIMEOUT=180` (with `--export=ALL,…`) on a `RelWithDebInfo` build
+   (`build_fb_dbg.sh`): every `exchangeEnd` becomes a deadline wait that prints the pending
+   requests — direction, partner in the exchange's communicator *and* in `MPI_COMM_WORLD`, byte
+   count, the level label — and aborts. The report: level 5 on 64 ranks, 26 recv partners on
+   every rank, send partners 26 / 24 / 16 / 12 / 10 / 8 / 6 / 0, every pending request a RECV.
+3. The acceptance test that would catch the silent face of it (a leaked message matched by a
+   later tag-0 receive gives wrong ghost values without a hang): every 100-step rung must agree
+   with the other rank counts on `<u>` and `max|div|` to seven digits (1.002348e-03 / 3.514e-06
+   at 8 levels + 5 warm-up steps). A 768-rank run that read 1.002349e-03 / 3.403e-06 looked like
+   that and was not — it had run with 7 levels and 2 warm-up steps, and a clean 1536-rank run with
+   the same settings reproduced it exactly. Settings drift between submissions is the more likely
+   explanation of a seventh-digit difference; check `mglevels` / `warmup` in the JSON first.
 
-That last row is the informative one: the same configuration both hung and ran, so this is not a
-deterministic function of rank count, and np=768 is not special — it is an intermittent failure that
-happens to have hit np=768 twice. Healthy neighbours on the same build and grid (np=384 at 2.48
-s/step, np=1536 single at 0.852 s/step) rule out a scaling wall.
-
-When someone picks this up, the cheap discriminators are: rerun with
-`PECLET_FLOW_AGGLOM_EXTENT=1000000` to take the agglomerated coarse solve (a global `Allgatherv`
-inside every V-cycle) out of the picture, which separates a coarse-solve collective from a halo
-one; and `PECLET_CORE_GPU_AWARE_MPI=0` / the host-staged halo path to isolate the exchange engine.
-A stack dump from one hung rank (`gdb -p` on the compute node) would settle it in one shot and is
-worth more than any amount of black-box bisection.
+Earlier hypotheses recorded here (UCX transport, `ob1`, rank density, the agglomerated bottom's
+`Allgatherv`) were all wrong and are retracted; the discriminators that were run (`ob1`, 16 × 96)
+were consistent with the real cause, which is transport-independent.
 
 ## Open issue — solid intersecting an OPEN domain face stalls the pressure solve
 
