@@ -167,7 +167,7 @@ p0(f"[cfg] case={CASE}  global {GNX}^3 = {GNX**3 / 1e6:.1f}M cells  ranks={NP}  
    f"backend={flow.execution_space}  uin={UIN:g}  dt={DT:g}  mu={MU:g}  adv={ADV}  "
    f"levels={MGLEVELS} decomp={DECOMP_LEVELS}  pressure={PRESSURE}(maxit={PMAXIT},"
    f"rtol={PRTOL:g})  momentum(sweeps<={VSWEEPS},rtol={VRTOL:g})  bottom={BOTTOM}  "
-   f"telescope={TELESCOPE}  "
+   f"telescope={'default' if TELESCOPE < 0 else TELESCOPE}  "
    f"steps={WARMUP}+{NSTEPS}")
 
 _bus = "-"
