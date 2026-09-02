@@ -20,6 +20,84 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 ---
 
+## `max_open_divergence()` returns exactly 0 without geometry — so `advect_vof`'s divergence guard is silently inert on a bare box
+- **Status:** open
+- **Package / area:** flow (VoF transport / cut-cell diagnostics)
+- **Found in:** examples/vof-advection-benchmarks
+- **Observed:** `advect_vof(dt)` documents that it "THROWS if the current velocity is not
+  discretely divergence-free to 1e-10 (`max_open_divergence()`)". `maxOpenDivergence()` early-outs
+  with `return 0.0` when `cutcellPressure_` is false (`flow_ibm.hpp:1912`), which is the state of
+  any solver that has not been given a `set_solid` / `set_pressure_geometry`. On such a solver a
+  deliberately non-solenoidal field (the LeVeque field sampled at CELL CENTRES,
+  `max|div| = 0.612` measured in NumPy) is accepted without complaint: 50 kinematic steps then
+  lose **4.93 % of the liquid volume**, quietly, with the interface still looking plausible.
+- **Expected:** the guard fires whenever the field is not divergence-free, geometry or no geometry
+  — or, failing that, `advect_vof` refuses to run at all without a pressure geometry, so the
+  contract in the docstring is never silently void.
+- **Repro:** `s = flow.Solver(32,32,32); s.enable_vof(); s.set_vof(C0); s.set_state(uc,vc,wc)`
+  with a cell-centre-sampled field, then `s.advect_vof(dt)` — no throw. Add
+  `s.set_pressure_geometry(np.full((32,32,32), 10.0, order="F"))` before `enable_vof` and the same
+  call raises with `max|div(open*u)| = 0.61191 > 1e-10`.
+- **Notes:** same root cause as the bidisperse-bed entry below (a bare box has no cut-cell
+  operator, so every openness-weighted diagnostic early-outs). The page works around it by always
+  calling `set_pressure_geometry` with an all-positive SDF, which costs nothing and makes the
+  diagnostic live; that workaround is written into the page as an explicit instruction.
+
+## The interface-local Courant band has no wisp guard, so a long run's reported CFL creeps to the global maximum
+- **Status:** open
+- **Package / area:** flow (`vof/advect_wy.hpp`, `maxCourantInterface`)
+- **Found in:** examples/vof-advection-benchmarks §4 (Zalesak, 1000 steps)
+- **Observed:** the Courant band is "mixed cells and their face neighbours", with neighbours
+  compared by exact inequality (`c(i-sx) != ci`). Weymouth–Yue leaves round-off colour residue
+  behind the interface (min C = −3.8e-17 after 1000 steps), and a cell holding 1e-17 differs from
+  a neighbour holding 0, so the band creeps outward along the interface's wake. On the Zalesak
+  case `vof_last_courant()` reads **0.2545** after the first step (the true interface value) and
+  **0.3110** by the end — the *global* maximum of the field, which is what the interface-local
+  measure exists to avoid. The run therefore needs `set_vof_cfl_limit(0.5)` even though the
+  interface itself never exceeds 0.255, and the ctest does the same thing for the same reason.
+- **Expected:** the band predicate uses a wisp threshold, the way the interfacial predicate
+  already does (`set_vof_interface_eps`, default 1e-8, added for the curvature cascade at V3).
+- **Repro:** the `zalesak-run` cell of the page; print `s.vof_last_courant()` each step.
+- **Notes:** conservative in the safe direction (it over-estimates), so it is a usability defect
+  rather than a correctness one — but it silently converts a legitimate benchmark setup into a
+  throw, and `vof_max_courant()` (which uses the same predicate on the CURRENT field) will size a
+  dt that `advect()` then rejects a few hundred steps later.
+
+## `vof_advect_scenes.hpp::fillRotation` samples v half a cell off the face centre
+- **Status:** open (cosmetic — the gate it serves is unaffected)
+- **Package / area:** flow (tests/kokkos/vof_advect_scenes.hpp)
+- **Found in:** examples/vof-advection-benchmarks §1, while transcribing the scene to NumPy
+- **Observed:** the advector's `vf(j)` is the HIGH y-face of cell j and sits at
+  `x = (i + 1/2) h`, but `fillRotation` writes `v(i) = omega * ((gx + 1.0) * h - cx)` while the
+  companion `u` correctly uses the y cell centre `(gy + 0.5) * h`. The prescribed field is
+  therefore a rigid rotation about `(cx - h/2, cy)`, not about `(cx, cy)`.
+- **Expected:** `omega * ((gx + 0.5) * h - cx)`.
+- **Repro:** read `vofscene::fillRotation`; or run the Zalesak case both ways — the page measures
+  L1/V **2.784e-2** with the centred sampling against the ctest's recorded **2.807e-2**.
+- **Notes:** harmless for the gate it serves, and provably so: a *full* revolution is the identity
+  map about any centre, so the exact solution at the final time is the initial condition either
+  way and the two shape errors agree to 1 %. It would matter for a partial revolution, or for any
+  test that compares intermediate positions.
+
+## WO-E finding 2 is a recipe, not a theorem: the LeVeque field sampled pointwise ON THE FACES is already discretely solenoidal
+- **Status:** open (documentation nuance)
+- **Package / area:** flow (VoF, `doc/vof_workorders.md` WO-E finding 2)
+- **Found in:** examples/vof-advection-benchmarks §3
+- **Observed:** WO-E finding 2 states that pointwise sampling of the LeVeque field "would pin the
+  conservation floor at O(h^2)", which is why the test scenes build it as the discrete curl of an
+  edge vector potential. Measured: the same field sampled **pointwise at the staggered face
+  centres** has `max|div| = 3.20e-14` at 32³, i.e. round-off, not O(h²). It is an exact identity —
+  `sin^2(pi x_{i+1}) - sin^2(pi x_i) = sin(2 pi x_{i+1/2}) sin(pi h)` applied to each of the three
+  terms makes the divergence cancel as `2 - 1 - 1`. Sampling at CELL CENTRES (the natural reading
+  of the paper) does give the O(1) failure the finding describes: `max|div| = 0.612`.
+- **Expected:** nothing to change in the code — the vector-potential construction is still the
+  right general recipe, and it is what makes the scene builders correct for *any* field. The
+  finding's wording overstates the specific claim about this field on this mesh.
+- **Repro:** the `divergence-guard` cell of the page.
+- **Notes:** recorded so a future reader does not conclude the vector potential is load-bearing
+  for the recorded 5.7e-14 drift at 128³. It is not: the drift would be the same with the
+  face-pointwise sample. It IS load-bearing as a method.
+
 ## Bidisperse bed did not fluidize — porous continuity silently disabled on a bare box
 - **Status:** resolved (flow `0e19de4`, coupling `78353b3`)
 - **Package / area:** flow (porous projection) + coupling (CfdDem driver)

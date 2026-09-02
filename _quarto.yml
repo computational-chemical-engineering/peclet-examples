@@ -73,6 +73,8 @@ website:
             text: "Pore-network extraction (DNS → throat conductances)"
       - text: "Two-phase flow (VoF)"
         menu:
+          - href: examples/vof-advection-benchmarks/index.qmd
+            text: "Advection benchmarks (Zalesak + LeVeque)"
           - href: examples/parasitic-currents/index.qmd
             text: "Parasitic currents (balanced-force CSF)"
           - href: examples/capillary-oscillations/index.qmd

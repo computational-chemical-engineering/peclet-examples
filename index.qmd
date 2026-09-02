@@ -286,6 +286,20 @@ normal modes, and a published benchmark.
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
+[![](assets/gallery/vof-advection-benchmarks.jpg)](examples/vof-advection-benchmarks/index.qmd)
+
+::: {.card-body}
+#### [VoF advection benchmarks](examples/vof-advection-benchmarks/index.qmd)
+Zalesak's slotted disc and LeVeque's reversing deformation: shape error at order 2.16, and a
+volume drift that turns out to be the pressure solve's divergence residual.
+[flow · VoF · verification]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
 [![](assets/gallery/parasitic-currents.jpg)](examples/parasitic-currents/index.qmd)
 
 ::: {.card-body}
