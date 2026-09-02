@@ -272,3 +272,29 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
   an approximation for case 2), and no VoF interface-area binding (so benchmark circularity
   cannot be reported).
 - Solver build used for the frozen outputs: `suite/flow-vof/build_cuda` (CUDA, flow main).
+- [x] `capillary-oscillations` (E3): surface tension as a *restoring force*, against exact
+      viscous normal modes (both reference functions copied into the page; the drop's needs
+      mpmath). Part A, standing capillary wave (quasi-2D, walls ±z, a0 = λ/100, 2.5 periods):
+      ω = 0.06018 / 0.02131 / 0.05929 at 32 & 64 cells/λ with ν = 0.005 and 32 with ν = 0.02,
+      i.e. **−0.02 / −0.19 / +0.54 %** against the exact two-fluid root
+      `s² + ω₀²(1 − k/√(k²+s/ν)) = 0` (with the tanh kH wall factor) — while the SAME runs read
+      −2.19 / −2.04 / −3.63 % against the inviscid ω₀² = σk³/2ρ, which is exactly the
+      "−2…−4 % deviation" WO-P recorded and could not explain. The decay: exact rate is
+      1.7–3.9× the free-surface 2νk² (an O(√ν) interfacial boundary-layer rate), and the fitted
+      decay lands within 24 % of it. Estimator: a damped-sinusoid least-squares fit
+      (A e^{−γt} cos(ωt+φ) + B, first quarter period skipped) with the zero-crossing and
+      two-extremum estimators printed beside it.
+      Part B, mode-2 drop (48³, R = 8, φ = 1.9 %, ε = 0.05, μ = 0.0025 / 0.02): ω = 0.09142 /
+      0.09072 = **−5.58 / −6.30 %** vs Lamb; the exact viscous mode (Miller & Scriven) accounts
+      for −1.78 / −5.03 %, leaving −3.87 / −1.34 %. The μ = 0.02 residual is an over-subtraction
+      (the run's damping is 17 % below the exact rate because √(ν/ω₀) is 0.45 cells), so the
+      honest number is the low-viscosity rung's **≈ 4 % inviscid, resolution-independent
+      deficit** — published as an OPEN measured deviation with the list of what it is not
+      (not the reference, measurement, confinement, resolution, amplitude, dt, or the curvature
+      estimator — freezing κ exact makes it *worse*). Nothing was tuned.
+      Health: pressure 10–12/500 on every run, max|div| ≤ 7.1e-13, drop volume drift −1.4e-14,
+      curvature branch 6 (no estimate) empty, PLIC fallback 37 %.
+      Two new ISSUES entries: the ~4 % mode-2 deficit, and the shipped `wave`/`lamb` study gates
+      comparing against the inviscid/free-surface references (the exact ones now exist in
+      `tests/study/vof_capillary_references.py` but the gates do not use them); plus a note on
+      the existing free-slip-BC entry.

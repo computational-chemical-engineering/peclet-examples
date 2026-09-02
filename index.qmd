@@ -276,8 +276,9 @@ Tessellate the void space of a packing into a graded polyhedral mesh with the `v
 
 :::::: {.section-lead}
 Sharp interfaces on a fixed grid: geometric volume-of-fluid transport, a balanced-force
-continuum surface force, and momentum-consistent advection at large density ratios. Both pages
-are gated — one against an exact algebraic identity, one against a published benchmark.
+continuum surface force, and momentum-consistent advection at large density ratios. Each page is
+gated against something outside the solver — an exact algebraic identity, the exact viscous
+normal modes, and a published benchmark.
 
 ::::::
 
@@ -292,6 +293,20 @@ are gated — one against an exact algebraic identity, one against a published b
 The droplet that should not move: machine-zero spurious currents with an exact curvature, and a
 factor 3e15 riding on one operator pairing.
 [flow · VoF · surface tension]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/capillary-oscillations.jpg)](examples/capillary-oscillations/index.qmd)
+
+::: {.card-body}
+#### [Capillary oscillations](examples/capillary-oscillations/index.qmd)
+A ringing wave and a ringing drop against the exact viscous normal modes: the wave closes to
+0.6%, the drop keeps a 4% deficit nobody has yet explained.
+[flow · VoF · verification]{.tags}
 
 :::
 ::::

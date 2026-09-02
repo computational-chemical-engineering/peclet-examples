@@ -640,6 +640,13 @@ is now measured false and needs rewriting before the new numbers are published.*
 - **Notes:** a free-slip type would also remove the same substitution from the capillary-wave and
   droplet-oscillation cases in `flow/tests/study/vof_surface_tension.py`. Low risk: it is a
   boundary stencil, not a solver change.
+  **Also hit by examples/capillary-oscillations (2026-09-02):** the standing capillary wave's
+  $\pm z$ boundaries are no-slip walls where the exact dispersion relation assumes only
+  impermeability (the walls enter it as the added-mass factor $\tanh kH$ alone). Here it is
+  quantitatively harmless — the wall Stokes layer is $\sqrt{\nu/\omega_0} \approx 0.3$ cells
+  against a wall $H = 16$ cells from the interface, and the measured frequencies land within
+  0.54 % of the exact root — but it is the same missing boundary type, and the drop case avoids
+  it only by being fully periodic.
 
 ## flow: the VoF interface length/area is not exposed, so benchmark "circularity" cannot be reported
 - **Status:** open (quantity omitted from the page)
@@ -657,3 +664,64 @@ is now measured false and needs rewriting before the new numbers are published.*
   circularity is omitted and why.
 - **Notes:** the per-cell PLIC polygon area is already formed inside `plic.hpp`; the missing piece
   is a reduction plus a binding.
+
+## flow: the mode-2 drop oscillation frequency is ~4 % low — inviscid, resolution-independent, unattributed
+- **Status:** open (published on the page as a measured deviation, not tuned away)
+- **Package / area:** flow (geometric VoF — curvature cascade and/or Weymouth–Yue transport of a
+  *curved* interface; the balanced-force CSF itself is exonerated)
+- **Found in:** examples/capillary-oscillations, part B
+- **Observed:** a prolate-perturbed drop ($R = 8$ cells, $48^3$ periodic box, drop/box volume
+  ratio 1.9 %, $\varepsilon = 0.05$, matched fluids, $\sigma = \rho = 1$) rings in mode 2 at
+  $\omega = 0.09142$ ($\mu = 0.0025$) and $0.09072$ ($\mu = 0.02$) against Lamb's inviscid
+  $\omega_0 = 0.09682$ — **−5.58 % / −6.30 %**. The *exact* viscous mode (Miller & Scriven 1968,
+  computed on the page) accounts for only −1.78 % / −5.03 %, leaving **−3.87 % / −1.34 %**. The
+  low-viscosity rung is the meaningful one: at $\mu = 0.02$ the run does not contain the whole
+  viscous shift being subtracted from it (its fitted damping is 17 % below the exact rate, because
+  the interfacial boundary layer $\sqrt{\nu/\omega_0}$ is 0.45 cells — 0.16 cells at
+  $\mu = 0.0025$). So **≈ 4 % of inviscid frequency deficit is unexplained**.
+- **Expected:** the same benchmark's planar sibling on the same machinery closes cleanly — the
+  standing capillary wave matches the exact viscous two-fluid root to −0.02 / −0.19 / +0.54 % at
+  32/64/32 cells per wavelength (page part A). A curved interface should not be 4 % off when a
+  flat one is 0.2 % off.
+- **Repro:** `oscillating_drop(48, 8.0, 0.0025)` on the page, or
+  `PYTHONPATH=<build> python tests/study/vof_surface_tension.py lamb` in the solver repo; the
+  exact references are `tests/study/vof_capillary_references.py`.
+- **Notes — what it is NOT** (each ruled out by measurement, VoF campaign 2026-09-02):
+  the reference (the exact viscous root is subtracted above); the measurement (the
+  damped-sinusoid fit and the zero-crossing estimator agree to 0.01 %, and the polar half-height
+  and equatorial half-width give −5.7 / −5.0 % against the moment's −5.6 %); confinement (an
+  eightfold reduction of the drop/box ratio moves it 0.6 %); resolution (the residual is
+  −3.9 / −3.4 / −3.9 % at $R = 8/12/16$ in $48^3/72^3/96^3$ — it does not converge away);
+  the amplitude ($\varepsilon = 0.10 \to 0.01$ extrapolates to ≈ −6.1 % at $\varepsilon = 0$);
+  the time step (a fourfold reduction moves it 0.03 %); and — the surprise — the curvature
+  estimator, since freezing $\kappa$ to the exact curvature of the moment-fitted spheroid makes
+  the deficit **larger** (−9.0 %), the height-function cascade's +3 % $P_2$ over-estimate having
+  been partly compensating. The untested link is the **transport**: whether WY advection of a
+  curved interface by the mode's own velocity field moves the $P_2$ moment at the exact rate — a
+  kinematic test with a prescribed potential-flow field, runnable once `advect_vof(dt)` (rung V5a)
+  exists. Basilisk's `oscillation.c` reports a few percent at comparable resolution, so the
+  magnitude is not exotic; that ours does not shrink with resolution is.
+
+## flow: the shipped `wave` and `lamb` study gates compare against the wrong reference
+- **Status:** open (the gallery page uses the correct references; the in-repo gate still does not)
+- **Package / area:** flow (`tests/study/vof_surface_tension.py`, gates `wave` and `lamb`)
+- **Found in:** examples/capillary-oscillations — building the page is what surfaced it
+- **Observed:** the `wave` gate compares the measured frequency with the **inviscid** dispersion
+  relation $\omega_0^2 = \sigma k^3/(\rho_1+\rho_2)$ and the decay rate with $2\nu k^2$. Neither is
+  the reference for this problem. Against them the solver reads −2.20 / −2.06 / −3.65 % in
+  frequency and +182 / +380 / +78 % in decay, and the campaign spent a session hunting a
+  discretization bug that was not there: against the exact two-fluid viscous root
+  $s^2 + \omega_0^2(1 - k/\sqrt{k^2+s/\nu}) = 0$ the same runs are within **0.54 %** in frequency
+  and 24 % in decay. $2\nu k^2$ is the *free-surface* rate; the two-fluid rate is the
+  $O(\sqrt\nu)$ interfacial boundary-layer rate, 1.7–3.9× larger at these parameters. The `lamb`
+  gate has the same shape of problem (inviscid Lamb only, no viscous mode), though there a real
+  residual survives the correction — see the entry above.
+- **Expected:** a gate quotes the reference the configuration actually has. The frequency deficit
+  *growing with $\nu$* was visible in the recorded table all along and is the giveaway: no
+  consistent spatial discretization error does that.
+- **Repro:** `python tests/study/vof_capillary_references.py` prints both exact tables beside the
+  recorded measurements.
+- **Notes:** the exact references are already implemented and committed in the solver repo
+  (`tests/study/vof_capillary_references.py`, `wave_mode` / `drop_mode`, the drop needs `mpmath`);
+  the fix is to have the two gates import them and gate on those numbers. The page carries a
+  copy of both functions, per the gallery rule that teaching code stays visible.

@@ -75,6 +75,8 @@ website:
         menu:
           - href: examples/parasitic-currents/index.qmd
             text: "Parasitic currents (balanced-force CSF)"
+          - href: examples/capillary-oscillations/index.qmd
+            text: "Capillary oscillations (wave + drop, viscous theory)"
           - href: examples/rising-bubble/index.qmd
             text: "Rising bubble (vs Hysing et al. 2009)"
       - text: "Granular (DEM)"
