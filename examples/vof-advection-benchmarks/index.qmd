@@ -773,11 +773,100 @@ thing to budget for than a truncation error.
 ## Collocated cross-check
 
 peclet also ships a cell-centred/collocated grid (`flow.SolverColocated`), and
-several pages in this gallery run their verification on both meshes. The two-phase
-path is **staggered-only today**: the variable-density collocated projection is
-rung V8 of the VoF campaign and is not yet available — `SolverColocated` raises if
-you enable VoF on it. This section will be filled in with the collocated column of
-the tables above when that rung lands.
+since rung V8 it carries the geometric VoF too. Its pressure coupling is an
+**approximate (ABC) projection**: the cell velocities are averaged onto a MAC face
+field, *that* field is projected exactly, and the correction is averaged back. The
+consequence for this page is the good kind of boring — the field the colour rides
+on, `get_uf/get_vf/get_wf`, is the one the projection makes discretely
+divergence-free, which is exactly the hypothesis @eq-telescope needs, and it sits
+on the same faces: $u_f(i)$ is the low $x$-face of cell $i$, the same place the
+staggered $u(i)$ lives. So the two grids do not run *equivalent* transport, they
+run the **same kernel over the same array**.
+
+The check below makes that literal. The LeVeque case is run at $32^3$ on the
+collocated grid — the analytic velocity (@eq-leveque) is uploaded at *cell
+centres* each step at the midpoint phase, and a `step()` with $\mu=0$ and no
+forcing turns it into the projected face field, which then advects the colour.
+The identical `uf/vf/wf` is handed to a staggered `Solver` through `set_state`,
+advected with `advect_vof(dt)`, and the two colour fields are differenced.
+
+```{python}
+#| label: colocated-run
+def leveque_cell(n):
+    """@eq-leveque sampled at CELL CENTRES (the collocated unknown), in cell units."""
+    c = (np.arange(n) + 0.5) / n
+    X, Y, Z = c[:, None, None], c[None, :, None], c[None, None, :]
+    u = 2 * np.sin(PI * X) ** 2 * np.sin(2 * PI * Y) * np.sin(2 * PI * Z)
+    v = -np.sin(2 * PI * X) * np.sin(PI * Y) ** 2 * np.sin(2 * PI * Z)
+    w = -np.sin(2 * PI * X) * np.sin(2 * PI * Y) * np.sin(PI * Z) ** 2
+    return tuple(np.asfortranarray(np.broadcast_to(a, (n, n, n)).copy() * n)
+                 for a in (u, v, w))
+
+def leveque_colocated(n=32):
+    steps = int(round(T_LV * 2 * n / CFL_LV))
+    dt = T_LV / steps
+    uc, vc, wc = leveque_cell(n)
+    C0 = sphere_fractions((n, n, n), .15 * n, (.35 * n, .35 * n, .35 * n))
+    sdf = np.full((n, n, n), 10.0, order="F")
+    co = flow.SolverColocated(n, n, n)                 # the ABC grid: the run
+    st = flow.Solver(n, n, n)                          # the mirror: same faces, same kernel
+    for s in (co, st):
+        s.set_rho(1.0); s.set_mu(0.0); s.set_dt(dt)
+        s.set_pressure_geometry(sdf)
+        s.enable_vof(); s.set_vof(C0)
+    co.set_pressure_chebyshev(True, 500, 1e-14)
+    d0, iters, div, dC = co.vof_diagnostics(), 0, 0.0, 0.0
+    for i in range(steps):
+        ph = np.cos(PI * (i + 0.5) * dt / T_LV)                  # the same midpoint phase
+        co.set_state(*(np.asfortranarray(a * ph) for a in (uc, vc, wc)))
+        co.step()                                                # projects -> uf/vf/wf, advects C
+        iters = max(iters, co.last_pressure_iterations())
+        div = max(div, co.max_open_divergence())
+        st.set_state(co.get_uf(), co.get_vf(), co.get_wf())      # the SAME face field
+        st.advect_vof(dt)
+        if (i + 1) % 100 == 0 or i + 1 == steps:
+            dC = max(dC, float(np.abs(co.get_vof() - st.get_vof()).max()))
+    d1, C1 = co.vof_diagnostics(), co.get_vof()
+    l1 = np.abs(C1 - C0).sum()
+    return dict(n=n, steps=steps, l1vol=l1 / n**3, rel=l1 / C0.sum(), div=div, iters=iters,
+                drift=(d1["sum"] - d0["sum"]) / d0["sum"], dC=dC, cap=500)
+
+t0 = time.time()
+col = leveque_colocated(32)
+stg = lv[32]
+print(f"LeVeque, T = 3 with reversal, 32^3, {col['steps']} steps   ({time.time()-t0:.0f} s)\n")
+print(f"{'grid':>12} {'face field':>34} {'L1(vol)':>11} {'L1/V':>10} {'drift':>10} "
+      f"{'max|div|':>10} {'pressure':>10}")
+print(f"{'staggered':>12} {'discrete curl of @eq-potential':>34} {stg['l1vol']:11.4e} "
+      f"{stg['rel']:10.4e} {stg['drift']:10.2e} {stg['div']:10.2e} {'n/a':>10}")
+print(f"{'collocated':>12} {'ABC projection of the cell sample':>34} {col['l1vol']:11.4e} "
+      f"{col['rel']:10.4e} {col['drift']:10.2e} {col['div']:10.2e} "
+      f"{str(col['iters'])+'/'+str(col['cap']):>10}")
+print(f"\nmax|C_colocated - C_staggered| over the run (same face field): {col['dC']:.3e}")
+```
+
+The two colour fields differ by **`{python} f"{col['dC']:.1e}"`** — not "to
+round-off", *bitwise*, because after `set_state` the staggered solver's
+`advect_vof` reads the identical doubles the collocated `step()` just advected
+with. The shape errors are not identical, and should not be: the collocated run's
+face field is the projection of a cell-centred sample rather than the discrete
+curl, which differs from it by 0.24 % at $32^3$, and the resulting `L1/V` differs
+by `{python} f"{abs(100*(col['rel']/stg['rel']-1)):.2f}"` %. The conservation
+floor is unmoved — `{python} f"{col['drift']:.1e}"` against the staggered
+`{python} f"{stg['drift']:.1e}"` — because @eq-telescope only ever asked for a
+discretely divergence-free face field, and an approximate projection delivers one
+*on the faces* exactly.
+
+::: {.callout-warning}
+## On the collocated grid, `advect_vof` needs a `step()` first
+`set_state` writes the **cell** velocity; the face field the colour rides on is
+built by the projection inside `step()`. Calling `set_state` and then
+`advect_vof` on a fresh `SolverColocated` therefore advects with a face field that
+is still all zeros — and the divergence guard does not catch it, because zero *is*
+divergence-free. Seed the face field with a `step()` (as above) before advecting
+kinematically. On the staggered grid `set_state` writes the faces directly, so the
+pattern in §1 and §2 is fine there.
+:::
 
 ## Adapt this yourself
 

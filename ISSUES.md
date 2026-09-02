@@ -743,6 +743,32 @@ is now measured false and needs rewriting before the new numbers are published.*
 - **Notes:** the per-cell PLIC polygon area is already formed inside `plic.hpp`; the missing piece
   is a reduction plus a binding.
 
+## flow: on the collocated grid `set_state` + `advect_vof` silently advects with a ZERO face field
+- **Status:** open
+- **Package / area:** flow (VoF transport on `SolverColocated`, rung V8)
+- **Found in:** examples/vof-advection-benchmarks (the collocated cross-check)
+- **Observed:** on `SolverColocated` the colour is advected by the projected MAC face field
+  `uf_/vf_/wf_`, which only exists after a projection. `set_state` writes the **cell** velocity and
+  leaves that face field untouched, so on a fresh solver it is all zeros. `advect_vof(dt)` then
+  runs happily: its guard tests `max_open_divergence()`, which reports the *face* field's residual,
+  and a zero field is perfectly divergence-free. Measured on the LeVeque case at $32^3$:
+  `set_state(u,v,w)` with `max|u| = 63.3`, then `max_open_divergence() = 0.0`, `max|uf| = 0.0`, and
+  after `advect_vof(0.01)` the colour is unchanged to the last bit (`max|C - C0| = 0.0`). No throw,
+  no warning, and a benchmark loop written the staggered way produces a perfectly "conservative"
+  run in which nothing ever moves.
+- **Expected:** either `advect_vof` refuses to run on a collocated solver whose face field has
+  never been built (a "call step()/project() first" throw, the way it already throws on a
+  non-solenoidal field), or `set_state` seeds the face field via `centerToFace` so the kinematic
+  entry point means the same thing on both grids.
+- **Repro:**
+  `s = flow.SolverColocated(32,32,32); s.set_pressure_geometry(np.full((32,)*3, 10.0, order="F"));
+  s.enable_vof(); s.set_vof(C0); s.set_state(u,v,w); print(s.max_open_divergence(),
+  np.abs(s.get_uf()).max()); s.advect_vof(0.01)`.
+- **Notes:** the page works around it by driving the collocated run through `step()` (which
+  projects, and therefore builds the face field, before advecting) and mirroring `get_uf/vf/wf`
+  into a staggered `Solver` for the bitwise comparison. There is no exposed `project()` binding, so
+  `step()` is the only way to seed the face field from Python today — worth exposing one.
+
 ## flow: the mode-2 drop oscillation frequency is ~4 % low — inviscid, resolution-independent, unattributed
 - **Status:** open (published on the page as a measured deviation, not tuned away)
 - **Package / area:** flow (geometric VoF — curvature cascade and/or Weymouth–Yue transport of a
@@ -779,6 +805,18 @@ is now measured false and needs rewriting before the new numbers are published.*
   kinematic test with a prescribed potential-flow field, runnable once `advect_vof(dt)` (rung V5a)
   exists. Basilisk's `oscillation.c` reports a few percent at comparable resolution, so the
   magnitude is not exotic; that ours does not shrink with resolution is.
+- **Update (2026-09-02, WO-U E8, the collocated cross-check):** the **pressure coupling** is now
+  also ruled out as the cause, and the mesh is added to the list of things that move it *without*
+  explaining it. The same case on `flow.SolverColocated` (rung V8: variable density in the ABC
+  approximate projection, surface tension as a face acceleration applied OUTSIDE the momentum
+  solve rather than as a staggered face force inside it) reads $\omega = 0.08953$ — **−7.53 %**
+  against Lamb, residual **−5.75 %** after the exact viscous shift, against the staggered
+  −5.58 / −3.87 %. So the deficit survives a completely different force discretization (it is not
+  a staggered-CSF artefact) but grows by ~1.9 points. The collocated grid also runs low on the
+  *wave* — $\omega = 0.05975$, −0.73 % against the exact viscous root where the staggered grid
+  reads −0.02 % — so the extra 2 points look like the cell-to-face average's own smoothing on both
+  cases rather than a new mechanism. Its damping is 34 % below the staggered one (9.68e-4 vs
+  1.47e-3). Both runs: pressure 10/500, `max|div|` 7.1e-13, volume drift −1.4e-14.
 
 ## flow: the shipped `wave` and `lamb` study gates compare against the wrong reference
 - **Status:** open (the gallery page uses the correct references; the in-repo gate still does not)

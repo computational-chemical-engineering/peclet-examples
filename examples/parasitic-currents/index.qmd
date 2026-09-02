@@ -184,17 +184,26 @@ MU, SIGMA = 0.1, 1.0
 def maxvel(s):
     return max(np.abs(s.get_u()).max(), np.abs(s.get_v()).max(), np.abs(s.get_w()).max())
 
-def droplet(n, R, steps=60, csf_mode=0, exact_kappa=False, interface_eps=None):
-    """A stationary droplet of radius R cells in an n^3 periodic box. Returns a record."""
-    s = flow.Solver(n, n, n)
+def maxfacevel(s):                    # == maxvel on the staggered grid; the FACE field on the
+    return max(np.abs(s.get_uf()).max(), np.abs(s.get_vf()).max(),   # collocated one (see the
+               np.abs(s.get_wf()).max())                             # cross-check at the end)
+
+def droplet(n, R, steps=60, csf_mode=0, exact_kappa=False, interface_eps=None,
+            cls=flow.Solver, ratio=1.0, mu=MU):
+    """A stationary droplet of radius R cells in an n^3 periodic box. Returns a record.
+
+    `cls` is the solver class (the collocated cross-check at the end passes
+    flow.SolverColocated); `ratio` is rho_drop/rho_ambient with the ambient held at 1."""
+    s = cls(n, n, n)
     s.set_rho(1.0)
-    s.set_mu(MU)
+    s.set_mu(mu)
     s.set_pressure_geometry(np.full((n, n, n), 10.0, order="F"))   # all-fluid cut-cell operator
     s.set_pressure_chebyshev(True, 500, 1e-14)
     s.enable_vof()
     s.set_vof(sphere_fractions((n, n, n), R,
                                (n / 2 + OFFSET[0], n / 2 + OFFSET[1], n / 2 + OFFSET[2])))
-    s.set_property_model("rho", "linear", "C", [1.0, 0.0])         # uniform rho: isolate the force
+    s.set_property_model("rho", "linear", "C", [1.0, ratio - 1.0])  # ratio 1: uniform rho, which
+                                                                    # isolates the force operator
     s.set_surface_tension(SIGMA)
     s.set_csf_mode(csf_mode)
     if exact_kappa:
@@ -210,9 +219,9 @@ def droplet(n, R, steps=60, csf_mode=0, exact_kappa=False, interface_eps=None):
         hist.append(maxvel(s))
         iters = max(iters, s.last_pressure_iterations())           # rule 3b: a capped solve
         div = max(div, s.max_open_divergence())                    # invalidates the run
-    return dict(n=n, R=R, umax=hist[-1], hist=np.array(hist), iters=iters, div=div,
-                kappa=s.vof_curvature(), branch=s.vof_curvature_branch(),
-                csf=s.csf_diagnostics(), cap=500)
+    return dict(n=n, R=R, umax=hist[-1], ufmax=maxfacevel(s), hist=np.array(hist),
+                iters=iters, div=div, kappa=s.vof_curvature(),
+                branch=s.vof_curvature_branch(), csf=s.csf_diagnostics(), cap=500)
 ```
 
 ::: {.callout-important}
@@ -474,11 +483,109 @@ the cheapest available form.
 ## Collocated cross-check
 
 peclet also ships a cell-centred/collocated grid (`flow.SolverColocated`), and
-several pages in this gallery run their verification on both meshes. The
-two-phase path is **staggered-only today**: the variable-density collocated
-projection is rung V8 of the VoF campaign and is not yet available —
-`SolverColocated` raises if you enable VoF on it. This section will be filled in
-with the collocated column of the table above when that rung lands.
+since rung V8 it runs two-phase flow too. Its projection is **approximate** (ABC):
+the cell velocities are averaged onto a MAC face field, that field is projected
+exactly, and the correction is averaged back. That moves where the balanced-force
+identity lives, and it changes which number you are allowed to quote.
+
+On this grid every interfacial force is applied as a **face acceleration**
+$a_f = \Delta t\,(\sigma\kappa_f\,\Delta_f C/h - \Delta_f P)/\rho_f$, added after the
+cell-to-face average, and the cell takes the *average of its two faces'* total
+increment — Basilisk's `centered.h` construction [@popinet2009]. A cell-centred
+$\sigma\kappa\nabla C/\rho_c$ would be $O(1)$ wrong at an interface cell even when
+every face is exactly balanced, which is @eq-balanced's lesson one level up. The
+switch is one argument: `droplet(..., cls=flow.SolverColocated)` — the driver above
+takes the solver class, and nothing else changes.
+
+::: {.callout-note}
+## Read the FACE field on this grid
+A cell-field checkerboard is annihilated by the cell-to-face average
+$\tfrac12(U_i + U_{i-1})$, so the approximate projection is structurally blind to it
+and cannot remove it. The spurious-current number on the collocated grid is
+therefore the one on `get_uf/get_vf/get_wf`; the cell number is printed beside it
+and carries that invisible mode as well.
+:::
+
+```{python}
+#| label: colocated-exact
+CO = flow.SolverColocated
+co_exact = droplet(32, 8.0, steps=30, exact_kappa=True, cls=CO)
+print("exact curvature, uniform rho, 32^3, R = 8, 30 steps")
+for lab, r in (("staggered", exact[0]), ("collocated", co_exact)):
+    print(f"  {lab:>10}   cell max|u| {r['umax']:.4e}   face max|uf| {r['ufmax']:.4e}"
+          f"   pressure {r['iters']}/{r['cap']}   max|div| {r['div']:.1e}")
+```
+
+The exactness identity survives the move: with an exact $\kappa$ the collocated
+face field sits at `{python} f"{co_exact['ufmax']:.2e}"` and its cell field at
+`{python} f"{co_exact['umax']:.2e}"`, against the staggered
+`{python} f"{exact[0]['umax']:.2e}"` — all three below double-precision round-off
+on a field whose pressure is $O(0.25)$. Nothing is being hidden by an averaging
+operator: the face balance is exact, and the cell sees the average of an exact zero.
+
+```{python}
+#| label: colocated-ca
+co_sweep = {2 * R: droplet(n, R, cls=CO) for n, R in rungs[:2]}
+print(f"{'D/dx':>6} {'staggered Ca':>14} {'collocated Ca (cell)':>22} "
+      f"{'collocated Ca (face)':>22} {'collocated/staggered':>21}")
+for (n, R), a in zip(rungs[:2], sweep[:2]):
+    b = co_sweep[2 * R]
+    s_, c_, f_ = MU * a["umax"] / SIGMA, MU * b["umax"] / SIGMA, MU * b["ufmax"] / SIGMA
+    print(f"{2*R:6.0f} {s_:14.3e} {c_:22.3e} {f_:22.3e} {c_/s_:20.2f}x")
+CA8 = MU * co_sweep[8.0]["umax"] / SIGMA / Ca[0]
+CA16 = MU * co_sweep[16.0]["umax"] / SIGMA / Ca[1]
+```
+
+With the estimator back in the loop the collocated grid is not worse — it is
+slightly *better*, `{python} f"{CA16:.2f}"`× the staggered $\mathrm{Ca}$ at
+$D/\Delta = 16$ and `{python} f"{CA8:.2f}"`× at 8. That is the ceiling of §2
+showing itself again: on both grids these numbers are the **curvature** error, and
+both grids call the same cascade.
+
+### Where the collocated rung stops
+
+What does not carry over is the density ratio. Repeat the exact-$\kappa$ droplet
+with the gas held at $\rho = 1$ and the drop at $\rho = $ ratio, so that
+$\rho_{\min}$ is fixed and only the capillary time step grows:
+
+```{python}
+#| label: colocated-ratio
+def face_num(**kw):
+    try:
+        return f"{droplet(32, 8.0, steps=30, exact_kappa=True, **kw)['ufmax']:.4e}"
+    except RuntimeError:
+        return "UNSTABLE"
+
+rows = []                                  # collected first, printed once: the solver writes a
+for ratio, mu in ((1.0, MU), (10.0, MU),   # scheme notice to stderr on every collocated build
+                  (100.0, MU), (1000.0, MU), (1000.0, 0.01)):
+    dt = 0.5 * np.sqrt((1.0 + ratio) / (4 * np.pi))         # the Brackbill limit at rho_gas = 1
+    rows.append(f"{ratio:7.0f} {mu:6g} {face_num(ratio=ratio, mu=mu):>16} "
+                f"{face_num(ratio=ratio, mu=mu, cls=CO):>17} {mu*dt:23.2f}")
+print(f"{'ratio':>7} {'mu':>6} {'staggered face':>16} {'collocated face':>17} "
+      f"{'mu dt / (rho_gas h^2)':>23}")
+print("\n".join(rows))
+```
+
+Ratio 1000 at $\mu = 0.1$ **fails** on the collocated grid: instead of sitting at
+rest the run trips the Weymouth–Yue Courant cap after about fifteen steps. The
+mechanism is worth stating, because it is not the density ratio itself. On the
+staggered grid the force enters the *right-hand side* of the momentum solve, so
+$A^{-1}$ with $A = \rho_f/\Delta t - \mu\nabla^2$ damps its high-wavenumber
+content — the damping that makes the staggered balance slightly inexact at variable
+$\rho$ (the $\mu\,\Delta t^2$ residue in "Adapt this yourself") is also what
+stabilises it. Applying the force at the *face*, outside $A$, buys the exact
+balance — the collocated column is four to six orders better at ratios 10 and
+100 — and pays for it by advancing the face and the cell with different operators.
+The mismatch is governed by $\mu\,\Delta t/(\rho_{\min}h^2)$, printed in the last
+column: at ratio 1000 the capillary step has grown by $\sqrt{1001}$ while
+$\rho_{\min}$ has not, and the run is past the edge. Drop $\mu$ to $0.01$ at the
+same ratio and it is back at $10^{-10}$.
+
+**Practical rating: use the collocated grid for two-phase work at density ratio
+$\lesssim 100$**, or higher with $\mu\,\Delta t/(\rho_{\min}h^2)\lesssim 0.05$. The
+staggered grid is the reference for everything else, and it is what the rest of
+this page measures.
 
 ## Adapt this yourself
 

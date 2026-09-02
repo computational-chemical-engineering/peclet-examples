@@ -774,11 +774,46 @@ every run on this page does.
 
 ## Collocated cross-check
 
-peclet also ships a cell-centred/collocated grid (`flow.SolverColocated`). The
-two-phase path is **staggered-only today**: the variable-density collocated
-projection is rung V8 of the VoF campaign and is in progress —
-`SolverColocated` raises if you enable VoF on it. This section will carry the
-collocated column of the tables above once that rung lands.
+peclet also ships a cell-centred/collocated grid (`flow.SolverColocated`), and
+since rung V8 (2026-09-02) it runs two-phase flow: variable density in the
+approximate (ABC) projection, surface tension as a face acceleration, and the
+colour advected by the projected face field. The
+[parasitic currents](../parasitic-currents/index.qmd) and
+[capillary oscillations](../capillary-oscillations/index.qmd) pages carry that
+column.
+
+**This page is not one of them, and the reason is the solid.** Rung V8 is
+*all-fluid*: the cut-cell colour transport of rung V5a — openness-weighted
+geometric fluxes, the solid-band fill, and with it the contact-angle plane this
+whole page is about — exists on the staggered grid only. The composition is
+refused rather than silently approximated:
+
+```{python}
+#| label: colocated-scope
+s = flow.SolverColocated(32, 32, 24)
+s.set_rho(1.0)
+s.set_mu(0.1)
+s.set_solid(slab_sdf(32, 32, 24, 4.25), cutcell_pressure=True)   # accepted: single-phase is fine
+try:
+    s.enable_vof()
+    print("enable_vof() succeeded — this page's setup would run")
+except RuntimeError as e:
+    print(f"enable_vof() raised RuntimeError:\n  {e}")
+```
+
+The reverse call order is guarded in the same place rather than in `set_solid`:
+`enable_vof()` first and `set_solid()` second is accepted, and the throw then
+arrives from `set_vof`, `set_surface_tension` and `step()` with the same message.
+`set_contact_angle` itself never raises — it only records the angle — so the
+guard you will actually meet is the one above.
+
+There is nothing to report here yet, and nothing to approximate: every number on
+this page is a **staggered** number, and the contact-angle model has no collocated
+column until the cut-cell face acceleration lands. The
+[rising bubble](../rising-bubble/index.qmd) page states the other half of the
+current rating — collocated two-phase flow is honest to density ratio $\lesssim
+100$ for cases with motion, because momentum-consistent transport is staggered-only
+as well.
 
 ## Adapt this yourself
 

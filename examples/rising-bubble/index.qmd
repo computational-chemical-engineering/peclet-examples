@@ -210,13 +210,15 @@ the run — and does.
 
 ```{python}
 #| label: driver
-def hysing(case, nx=64, T=3.0, momentum=True, snap_at=(0.0, 1.5, 3.0)):
+def hysing(case, nx=64, T=3.0, momentum=True, snap_at=(0.0, 1.5, 3.0), cls=flow.Solver):
+    """`cls` is the solver class; the collocated cross-check at the end passes
+    flow.SolverColocated (with momentum=False -- see there)."""
     p = HYSING[case]
     nz, ny = 2 * nx, 4                       # a 1 x 2 box, quasi-2D slab in y
     sc = Scale(nx / 1.0)
     R = sc.len_to_cells(0.25)
 
-    s = flow.Solver(nx, ny, nz)
+    s = cls(nx, ny, nz)
     s.set_rho(p["rho1"]); s.set_mu(sc.mu(p["mu1"]))
     s.set_domain_bc(4, 1, 0, 0, 0)                       # no-slip bottom (z-)
     s.set_domain_bc(5, 1, 0, 0, 0)                       # no-slip top    (z+)
@@ -467,12 +469,54 @@ of magnitude earlier, on a benchmark where the reference is not in doubt.
 
 ## Collocated cross-check
 
-Several pages in this gallery run their verification on both of peclet's meshes,
-the staggered MAC grid (`flow.Solver`) and the cell-centred
-`flow.SolverColocated`. The two-phase path is **staggered-only today**: the
-variable-density collocated projection is rung V8 of the VoF campaign and is not
-yet available — enabling VoF on `SolverColocated` raises. This section will carry
-the collocated column of the table in §3 once that rung lands.
+Since rung V8 the cell-centred grid (`flow.SolverColocated`) runs two-phase flow
+as well: variable density inside the **approximate (ABC) projection** — average the
+cell velocities onto a MAC face field, project *that* exactly, average the
+correction back — with buoyancy and surface tension applied as **face
+accelerations** and the cell taking the mean of its two faces, and with the colour
+advected by the projected face field. `hysing()` takes the solver class, so case 1
+runs there with no other change.
+
+One thing does *not* carry over, and it is the subject of §5:
+**`enable_vof_momentum` is staggered-only.** The consistent $\rho\mathbf{u}$
+transport needs Favre-averaged face states that the collocated construction does
+not have at this rung, and the call raises rather than quietly doing nothing. So
+the honest comparison is the *momentum-consistency-off* pair — the collocated run
+against `r1_nc` from §5, not against `r1`.
+
+```{python}
+#| label: colocated-run
+try:
+    flow.SolverColocated(8, 8, 8).enable_vof_momentum(1.0, 10.0)
+except RuntimeError as e:
+    print(f"enable_vof_momentum on the collocated grid: RuntimeError\n  {str(e)[:160]}\n")
+
+r1_co = hysing(1, momentum=False, cls=flow.SolverColocated, snap_at=(0.0,))
+print(f"collocated: {r1_co['steps']} steps to t = 3, {r1_co['wall']:.0f} s, "
+      f"pressure {r1_co['iters']}/{r1_co['cap']} "
+      f"{'OK' if r1_co['iters'] < r1_co['cap'] else '*** CAPPED -> INVALID ***'}, "
+      f"max|div(open u)| {r1_co['div']:.2e}, V(3)/V(0) = {r1_co['vol'][-1]:.10f}\n")
+print(f"{'case 1, ratio 10, no momentum consistency':>42} {'max V_c':>9} {'t(peak)':>8} "
+      f"{'y_c(3)':>9}")
+for lab, r in (("staggered", r1_nc), ("collocated", r1_co)):
+    print(f"{lab:>42} {r['vmax']:9.4f} {r['tvmax']:8.3f} {r['yc3']:9.4f}")
+print(f"{'collocated vs staggered':>42} "
+      f"{100*(r1_co['vmax']/r1_nc['vmax']-1):+8.2f}% {'':>8} "
+      f"{100*(r1_co['yc3']/r1_nc['yc3']-1):+8.2f}%")
+print(f"{'reference (Hysing 2009), for scale':>42} {p['ref_vmax']:9.4f} "
+      f"{p['ref_tvmax']:8.3f} {p['ref_yc']:9.4f}")
+```
+
+The two grids agree to
+`{python} f"{abs(100*(r1_co['vmax']/r1_nc['vmax']-1)):.1f}"` % on the peak rise
+velocity and
+`{python} f"{abs(100*(r1_co['yc3']/r1_nc['yc3']-1)):.1f}"` % on the centroid at
+$t=3$, and both sit the same distance *above* the published curve — which is the
+point of the comparison. The gap to Hysing is not an artefact of the staggered
+mesh; it is the missing momentum consistency, worth a factor five here (§5), and
+it is missing on both grids in this table. Turning it back on is a staggered-only
+option today, so the collocated path's honest rating for a case **with motion** is
+density ratio $\lesssim 100$ — comfortable for case 1, not for case 2.
 
 ## Adapt this yourself
 

@@ -266,8 +266,8 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
       Momentum-consistency A/B on case 1: OFF gives 0.2827 (+17.0%) and 1.2086 (+11.8%),
       i.e. consistency is worth a factor ~5 in the centroid error AT RATIO 10.
       Bubble volume V(3)/V(0) = 1.0000000000.
-- Both pages end with a "Collocated cross-check" stub: the two-phase collocated path is
-  rung V8 of the VoF campaign and is not yet available.
+- Both pages ended with a "Collocated cross-check" stub; all five VoF pages' stubs were
+  filled in on 2026-09-02 once rung V8 landed (see the E8 entry at the end of this section).
 - Two new ISSUES entries: no free-slip domain BC (periodic stands in; exact for Hysing case 1,
   an approximation for case 2), and no VoF interface-area binding (so benchmark circularity
   cannot be reported).
@@ -298,3 +298,44 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
       comparing against the inviscid/free-surface references (the exact ones now exist in
       `tests/study/vof_capillary_references.py` but the gates do not use them); plus a note on
       the existing free-slip-BC entry.
+
+- [x] **E8 — the "Collocated cross-check" sections** (WO-U E8, 2026-09-02, branch
+      `vof-examples-3`), filled in on all five VoF pages against flow `main` `59ab596`
+      (rung V8, WO-T: variable density in the ABC approximate projection, forces as FACE
+      accelerations with the cell taking the mean of its two faces, colour advected by the
+      projected face field). Each driver gained a `cls=` solver-class argument rather than a
+      duplicated cell; every staggered number on every page re-executed **unchanged**.
+      - `vof-advection-benchmarks`: LeVeque T = 3 at 32³ on the collocated grid (the analytic
+        field uploaded at CELL CENTRES each step, `step()` builds the face field, which then
+        advects C) mirrored into a staggered `Solver` through `set_state` — colour **bitwise
+        identical**, max|ΔC| = 0.000e+00. L1(vol) 7.7412e-03 / L1/V 5.4757e-01 / drift
+        −5.6e-15 collocated vs 7.7465e-03 / 5.4794e-01 / +5.9e-15 staggered (0.07 % apart:
+        the ABC face field differs from the discrete curl by 0.24 %). 13/500 pressure.
+      - `parasitic-currents`: exact-κ machine zero reproduced on both grids (staggered cell/face
+        1.8781e-17, collocated cell 2.7974e-17 / face 3.0208e-17); computed κ Ca(cell)
+        2.018e-04 / 4.834e-05 at D/Δ = 8/16 against the staggered 2.543e-04 / 5.898e-05, i.e.
+        0.79× / 0.82× — the collocated grid is slightly BETTER. Ratio ceiling (gas ρ = 1,
+        drop ρ = ratio, exact κ, face field): 3.02e-17 / 1.00e-11 / 1.77e-06 / **UNSTABLE** at
+        ratio 1/10/100/1000 against the staggered 1.88e-17 / 2.04e-05 / 1.84e-05 / 1.05e-05;
+        ratio 1000 at μ = 0.01 is back at 6.84e-11. The ceiling is μΔt/(ρ_min h²) ≈ 0.45,
+        not the ratio — published with the mechanism (the face force sits OUTSIDE `A`).
+      - `capillary-oscillations`: wave 32 cells/λ, ν = 0.005 — ω 0.05975 collocated vs 0.06018
+        staggered (−0.73 % vs −0.02 % against the exact viscous root), 0.70 % apart, damping
+        1 % apart. Drop 48³/R = 8/μ = 0.0025 — ω 0.08953 = **−7.53 %** vs Lamb (residual
+        −5.75 % after the exact viscous shift) against the staggered −5.58 / −3.87 %. So the
+        ~4 % deficit is **not** a staggered-CSF artefact, but it is **not grid-independent
+        either**: the collocated grid adds ~2 points, consistent with its 0.7 % low wave.
+        Recorded as an update to the existing ISSUES entry.
+      - `rising-bubble`: case 1 at nx = 64 with momentum consistency OFF on both grids
+        (`enable_vof_momentum` is staggered-only and throws) — collocated max V_c 0.2811 at
+        t = 1.040, y_c(3) = 1.2132 against the staggered 0.2827 / 1.050 / 1.2086, i.e.
+        −0.59 % / +0.38 %. 2032 steps, 23/600 pressure, max|div| 9.12e-06, V(3)/V(0) = 1.0.
+      - `droplet-wetting`: **no collocated column, and the page says so.** Rung V8 is all-fluid;
+        `enable_vof()` after `set_solid(..., cutcell_pressure=True)` raises, and the page prints
+        the message verbatim. The reverse call order is guarded at `set_vof` /
+        `set_surface_tension` / `step()` instead.
+      - One new ISSUES entry: on the collocated grid `set_state` + `advect_vof` silently advects
+        with a ZERO face field (the divergence guard passes because 0 is divergence-free, and
+        there is no `project()` binding to seed it from Python).
+      - Solver build used for the frozen outputs: `suite/flow-ex/build_cuda` (CUDA, flow
+        `59ab596`).
