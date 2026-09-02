@@ -1018,3 +1018,30 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   not measurable against a variable-density projection. The page's driver also wraps `step()` in
   a `try/except RuntimeError` that records the message and stops that run cleanly, so a single
   divergent configuration cannot break the whole notebook.
+
+## flow: the all-fluid control conserves gas volume *worse* than the cut-cell packed run
+- **Status:** open (observation, not a failure — both drifts are negligible; recorded because the
+  sign of the difference is the opposite of the expectation)
+- **Package / area:** flow (VoF transport / cut-cell vs all-fluid pressure geometry)
+- **Found in:** examples/bubble-through-packing §3 (the control and the packed run differ only in
+  `set_pressure_geometry(all_fluid)` vs `set_solid(packing, cutcell_pressure=True)`)
+- **Observed:** over 2 016 steps the free-rise control's gas volume drifts by **7.2e-12** relative,
+  while the packed run — same fluids, same closures, same driver, 3 797 steps, and an immersed
+  solid cutting the transport — drifts by **3.4e-15**, three orders *better*. It is a clean linear
+  ramp in the control (visible in the page's `fig-history` right panel), not noise. Neither drift
+  matches its own projected divergence: the control reports `max|div(open u)| = 6.3e-15` and the
+  packed run **2.8e-14**, i.e. the run with the *smaller* divergence has the *larger* volume drift.
+- **Expected:** the Weymouth–Yue budget is conditional on the velocity being discretely
+  divergence-free, so the drift should scale with the projection residual and the geometry should
+  make it harder, not easier.
+- **Repro:** the page's `column(packed=False)` and `column(packed=True)`; the numbers are the
+  `V/V0 - 1` column of its summary table.
+- **Notes — candidate explanations, none checked:** (a) the two runs use different conserved
+  functionals in the *diagnostic*: the packed run weights by the solver's cell fluid fraction
+  `vof_geometry(0)`, the control by ones (because `vof_geometry` raises on an all-fluid solver —
+  see the entry above), so the control's sum is over a slightly different set of cells than the
+  solver's own `eps_eff = max(eps, 1/64)` functional; (b) the control's bubble spends the run
+  crossing a domain with no cut cells at all, where the `eps_eff` floor never engages; (c) simple
+  step-count and path-length differences. Worth ten minutes with `vof_diagnostics()['volume']`
+  (the solver's own conserved quantity) instead of a hand-rolled sum on both runs — that would
+  separate a *diagnostic* artefact from a *transport* one, and (a) predicts it is the former.

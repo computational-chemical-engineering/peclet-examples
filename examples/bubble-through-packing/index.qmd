@@ -22,12 +22,15 @@ $\rho\mathbf{u}$ with the same fluxes at a density ratio of 100. Nothing here is
 benchmark with a published number — it is the composition itself, and the honest
 question is whether the conservation statements survive it.
 
-They do — and the bubble does something worth watching on the way. It rises freely into
-the bed, **stops dead where the packing first narrows**, flattens there while the
-buoyant head builds, and forces its way through. That is @eq-entry below, playing out. Through all of it the gas volume is conserved to **machine
-precision**, the colour inside the grains is **exactly zero** to the last bit, and the
-pressure projection never comes close to its iteration cap. The numbers are in §3, and
-§5 repeats the whole packed run at density ratio **1000** and reports what happens.
+They do — and the geometry does something to the bubble worth watching. It rises freely,
+meets the underside of the bed, is **held there** until the buoyant head builds enough to
+force a throat, and then works its way up through the pore space at a fraction of its
+free speed. That is @eq-entry below, playing out. How large each of those two costs — the
+wait and the drag — turns out to be depends *sharply* on the bed, and §3 measures both and
+shows how far they move between two beds built by the identical protocol. Through all of
+it the gas volume is conserved to **machine precision**, the colour inside the grains is
+**exactly zero** to the last bit, and the pressure projection never comes close to its
+iteration cap. §5 repeats the whole packed run at density ratio **1000**.
 
 The page also runs the same bubble in the **same column with no packing**, which is the
 only yardstick available here — every number about the bed is a number *relative to the
@@ -523,7 +526,7 @@ print(f"  centroid {bed['zc'][0]:.1f} -> {bed['zc'][-1]:.1f} cells "
 
 ```{python}
 #| label: fig-frames
-#| fig-cap: "The gas silhouette (the C = ½ contour of the gas indicator projected along y) at five shared times, free rise (top) against the packing (bottom). Grains are drawn as the mid-plane section, so a grain outline and the gas can legitimately overlap in projection. The free bubble takes its ellipsoidal shape early and keeps it all the way up; the packed one loses its shape as soon as it enters the bed, and the panels where its centroid barely moves are the ones where it is paying the left-hand side of eq-entry against a constriction. The centroid and blob count at each of these times are tabulated under the next figure."
+#| fig-cap: "The gas silhouette (the C = ½ contour of the gas indicator projected along y) at five shared times, free rise (top) against the packing (bottom). Grains are drawn as the mid-plane section, so a grain outline and the gas can legitimately overlap in projection. The free bubble takes its ellipsoidal shape early and keeps it all the way up; the packed one loses its shape the moment it enters the bed and thereafter wears whatever shape the pore it is in gives it. The centroid and blob count at each of these times are tabulated under the next figure."
 def draw(ax, gas, title, show_solid, ylim=(0, 148)):
     """Grains: the mid-plane section. Gas: the SILHOUETTE, i.e. the maximum of the gas
     indicator along y — so the interface is drawn wherever it is, not only where it
@@ -560,7 +563,7 @@ plt.tight_layout(); plt.show()
 
 ```{python}
 #| label: fig-frames-bed
-#| fig-cap: "The packed run only, at four later times, zoomed on the bed — same projected-silhouette convention as the previous figure. The number of connected gas blobs holding at least 1 % of the volume is printed under each panel, so 'it broke up' is a measurement rather than an impression."
+#| fig-cap: "The packed run only, at four later times, on the same window and the same projected-silhouette convention. The window is fixed on the bed, so a panel is empty when the bubble has already risen out of it — the centroid column of the table below says where it is. The number of connected gas blobs holding at least 1 % of the volume is printed under each panel, so 'it broke up' is a measurement rather than an impression."
 late = [t for t in LATE if t in bed["snaps"]]
 fig, axes = plt.subplots(1, len(late), figsize=(9.6, 5.2), sharey=True, squeeze=False)
 axes = axes[0]
@@ -666,27 +669,44 @@ divergence of `{python} f"{bed['div']:.1e}"` — the Weymouth–Yue transport is
 conservative and inherits the *projection's* residual, nothing more, exactly as it does
 in a bare box. The colour inside the grains is
 `{python} f"{bed['solid_sum']:.1e}"`: the transport never leaks gas or liquid into the
-solid, and the band the curvature stencils read is a separate working field.
+solid, and the band the curvature stencils read is a separate working field. Note which
+run is the tidier of the two: the **control**, with no solid at all, drifts by
+`{python} f"{abs(ctl['vol'][-1]-1):.1e}"`, three orders *worse* than the run with cut
+cells in it — visible as the sloping blue line in the right-hand panel above. Both are
+negligible, and neither is explained by its own divergence number; the observation is
+recorded in [`ISSUES.md`](../../ISSUES.md) rather than rationalised here.
 
 **The projection is comfortable.** `{python} f"{bed['iters']}"` iterations against a cap
 of `{python} f"{PRESS_CAP}"` at the worst step, on a variable-density operator with a
 hundredfold density contrast *and* cut cells. That is the number to watch when adapting
 this: it is what would break first.
 
-**The bed costs a factor `{python} f"{SLOWDOWN:.1f}"` in rise speed, and it is a
-threshold that charges it, not a drag.** The centre panel is not a slow bubble; it is a
-bubble at the free terminal velocity, interrupted. Its longest arrest runs from
-$t \approx$ `{python} f"{T_STALL:.0f}"` to $t \approx$ `{python} f"{T_BREAK:.0f}"` — an
-idle stretch worth `{python} f"{(T_BREAK-T_STALL)/(2*R_BUB/V_FREE):.0f}"` free-rise
-bubble diameters — and it happens at $z_c \approx$ `{python} f"{Z_STALL:.0f}"` cells,
-`{python} WHERE`. That is @eq-entry: the gas has to
-flatten until the head over its own vertical extent exceeds
-$2\sigma\cos\theta/r_t$, and only then does the throat open. What gets past then
-travels at `{python} f"{V_MOVING/V_FREE:.2f}"` of the free terminal velocity, so the bed
-charges in two separate currencies: a **threshold** that stops the bubble dead for a
-while, and a **drag** that slows whatever passes. Which constriction does the charging,
-and how the two shares divide, is a property of this particular random bed; that both
-are charged is not.
+**The bed costs a factor `{python} f"{SLOWDOWN:.1f}"` in rise speed, and it charges in
+two separate currencies.** The first is a **capillary threshold**: the gas cannot enter a
+throat until the head over its own vertical extent exceeds $2\sigma\cos\theta/r_t$, so it
+flattens against the constriction and waits. The longest such arrest in this run holds the
+bubble from $t \approx$ `{python} f"{T_STALL:.0f}"` to
+$t \approx$ `{python} f"{T_BREAK:.0f}"` —
+`{python} f"{(T_BREAK-T_STALL)/(2*R_BUB/V_FREE):.1f}"` free-rise bubble diameters' worth
+of time — at $z_c \approx$ `{python} f"{Z_STALL:.0f}"` cells,
+`{python} WHERE`. The second currency is ordinary **drag**: what gets past travels on at
+`{python} f"{V_MOVING/V_FREE:.2f}"` of the free terminal velocity.
+
+**How the two shares divide is a property of the particular bed, and violently so.**
+`dem`'s contact solve accumulates with float atomics on the GPU, so it is not
+bit-reproducible: every execution of this page settles a *statistically equivalent*
+packing rather than the same one, which turns the page into its own small ensemble study.
+The execution immediately before the one you are reading built a **denser** bed from the
+identical protocol — porosity 0.61 against `{python} f"{EPS_BED:.2f}"` here, percolation
+throat 5.34 cells against `{python} f"{R_THROAT:.2f}"` — and there the longest arrest
+lasted **1300** time units, three free-rise diameters, for a net factor **2.7** slower
+rather than `{python} f"{SLOWDOWN:.1f}"`. A six per cent difference in the bottleneck
+radius moved the waiting time by more than an order of magnitude. @eq-entry says it
+should: the threshold scales as $D^{2}/r_t$ against a head the bubble can only raise by
+deforming, and near the point where the two balance the waiting time is a very stiff
+function of the geometry. **That sensitivity, not any single number on this page, is the
+transferable result** — and it is why a bubble column is so unforgiving of how its bed
+was packed.
 
 ## 4. The movie
 

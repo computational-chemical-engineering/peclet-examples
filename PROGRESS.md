@@ -358,3 +358,51 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
         there is no `project()` binding to seed it from Python).
       - Solver build used for the frozen outputs: `suite/flow-ex/build_cuda` (CUDA, flow
         `59ab596`).
+
+- [x] **E7 — `bubble-through-packing`, the VoF gallery's show-off page** (WO-U E7, 2026-09-03,
+      branch `vof-examples-4`), executed against a fresh CUDA build of flow `main`
+      (`suite/flow-ex/build_cuda`, `origin/main` = `bf3d253`, one docs-only commit past the
+      `57a1d0f` the work order named) plus the existing `dem/build_l4_cuda`, with
+      `PECLET_FLOW_EXACT_RESIDUAL=1` on every run.
+      - **The scene.** 64x64x160 closed column (periodic sides, no-slip floor and lid); 26 grains
+        settled by `dem` onto a floor plane in a laterally periodic column (loose deposit,
+        friction 0.6) and sampled as an SDF at **85 %** of the contact radius — a DEM contact is a
+        tangency, i.e. a throat of exactly zero area, and no fixed grid can carry one. Bubble
+        D = 20 cells (D/W = 0.31), grain D = 18.7 cells, Eo = 10, Mo = 1e-3 (ellipsoidal,
+        deformable), theta = 60 deg wetting liquid, ratio 100 with `enable_vof_momentum`.
+        The pore-throat radius is measured, not asserted: the **max-min path** of the SDF from the
+        bottom of the bed to the top (a Dijkstra sweep), 5.67 cells = 0.57 bubble diameters here.
+      - **Result (frozen execution).** packed 3797 steps to t = 4300: gas volume drift
+        **-3.4e-15**, colour in the grains **exactly 0**, clipped volume 0, pressure **23/600**,
+        `max_open_divergence_projected()` 2.8e-14. Control (same column, no packing) 2016 steps to
+        t = 2500, centroid 18 -> 124.8. Free terminal V_c = 0.0457 = 0.723 U_g; the bed costs a
+        factor **1.7** over the shared window, with a 71-time-unit arrest at the bed face and
+        0.76 x the free terminal velocity once through.
+      - **Ratio 1000 RUNS CLEAN** in the packing: 1894 steps to t = 2198, drift -3.0e-15, solid
+        colour 0, pressure **25/600**, div 4.3e-14, centroid within 1 % of the ratio-100 run over
+        the same window. That is the headline the page did not expect to be able to print.
+      - **Collocated cross-check.** The packed case is refused (`enable_vof` after `set_solid`
+        raises: rung V8 is all-fluid) and the page prints the message verbatim; the **control** is
+        run on both grids with momentum consistency off on both, and they agree to **+0.53 %** on
+        the rise speed.
+      - **The bed is a lottery, and the page now says so.** `dem`'s contact solve is not
+        bit-reproducible (float atomics), so three executions of this page settled three different
+        statistically-equivalent beds. Two of them are measured in §3: at porosity 0.61 /
+        r_t = 5.34 the longest arrest was 1300 time units (factor 2.7 slower); at 0.64 / 5.67 it
+        was 71 (factor 1.7). A 6 % change in the bottleneck radius moved the waiting time by more
+        than an order of magnitude, which is what eq-entry predicts. **That sensitivity is the
+        page's transferable result**, and the prose is written data-driven so it stays true of
+        whatever bed a re-execution produces.
+      - **Movie:** 151 frames, PyVista offscreen, written by the page's own `movie` cell to
+        `examples/bubble-through-packing/bubble_through_packing.mp4` (145 KB, **not committed** —
+        `*.mp4` is gitignored). The page carries a clearly-marked **placeholder** where the
+        YouTube iframe goes, with the local path in an HTML comment next to it. **TODO: upload the
+        mp4 and replace the placeholder div with the iframe.**
+      - **Three ISSUES entries** this page produced: `vof_geometry()` raising on an all-fluid VoF
+        solver; a ten-step-stale VoF `dt` re-pick being unsafe in a packing (`step()` raised on the
+        Weymouth-Yue boundedness cap at 0.377 after a throat jet grew `max|uf|` >50 % between
+        re-picks — the driver now re-picks every step and wraps `step()` so one run cannot break
+        the notebook); and the all-fluid control conserving gas volume three orders *worse* than
+        the cut-cell packed run.
+      - Gallery card `assets/gallery/bubble-through-packing.jpg` (three PyVista stills), navbar
+        entry under "Two-phase flow (VoF)", and the index card placed **first** in that section.
