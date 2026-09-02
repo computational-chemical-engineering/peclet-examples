@@ -30,7 +30,7 @@
  "vmg": 3,
  "vmgcycles": 40,
  "bottom": "auto",
- "telescope": 0,
+ "telescope": 1,
  "hierarchy": [
   {
    "global": [
@@ -121,23 +121,61 @@
     6
    ],
    "ratio": [
-    1,
     2,
-    1
+    2,
+    2
+   ],
+   "telescope": true
+  },
+  {
+   "global": [
+    12,
+    12,
+    12
+   ],
+   "ranks": 8,
+   "block0": [
+    6,
+    6,
+    6
+   ],
+   "ratio": [
+    2,
+    2,
+    2
    ],
    "telescope": false
   },
   {
    "global": [
-    24,
-    12,
-    24
+    6,
+    6,
+    6
    ],
-   "ranks": 384,
+   "ranks": 8,
    "block0": [
     3,
-    1,
-    6
+    3,
+    3
+   ],
+   "ratio": [
+    2,
+    2,
+    2
+   ],
+   "telescope": true
+  },
+  {
+   "global": [
+    3,
+    3,
+    3
+   ],
+   "ranks": 1,
+   "block0": [
+    3,
+    3,
+    3
    ],
    "ratio": [
     1,
@@ -5951,5 +5989,6 @@
    ]
   }
  ],
- "gpu_aware_env": ""
+ "gpu_aware_env": "",
+ "telescope_backfilled": "env flag recorded 0; solver default ON since 2026-09-02 (backfill_telescope.py)"
 }
