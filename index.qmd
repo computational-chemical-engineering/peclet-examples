@@ -272,6 +272,47 @@ Tessellate the void space of a packing into a graded polyhedral mesh with the `v
 
 ::::::
 
+## Two-phase flow (VoF)
+
+:::::: {.section-lead}
+Sharp interfaces on a fixed grid: geometric volume-of-fluid transport, a balanced-force
+continuum surface force, and momentum-consistent advection at large density ratios. Both pages
+are gated — one against an exact algebraic identity, one against a published benchmark.
+
+::::::
+
+:::::: {.grid}
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/parasitic-currents.jpg)](examples/parasitic-currents/index.qmd)
+
+::: {.card-body}
+#### [Parasitic currents](examples/parasitic-currents/index.qmd)
+The droplet that should not move: machine-zero spurious currents with an exact curvature, and a
+factor 3e15 riding on one operator pairing.
+[flow · VoF · surface tension]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/rising-bubble.jpg)](examples/rising-bubble/index.qmd)
+
+::: {.card-body}
+#### [Rising bubble (Hysing et al.)](examples/rising-bubble/index.qmd)
+Both benchmark cases at density ratios 10 and 1000 — centroid to 0.02%, and the
+momentum-consistent transport that buys a factor five.
+[flow · VoF · benchmark]{.tags}
+
+:::
+::::
+:::::
+
+::::::
+
 ## Resolved particles & moving geometry
 
 :::::: {.section-lead}

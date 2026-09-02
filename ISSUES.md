@@ -619,3 +619,41 @@ is now measured false and needs rewriting before the new numbers are published.*
   virtual-mass stabilizer (integrate with m + ma, add the lagged ma·a back, ma = 2ρfVp) removes
   it without touching converged dynamics; the post-peak stop must arm only past 0.6 u* or the
   start-up transient's dip triggers it (bit the d/h=16 rung: 160-step run, peak 0.41).
+
+## flow: no free-slip domain BC, so the Hysing benchmark's lateral condition can only be approximated
+- **Status:** open (worked around; exact for benchmark case 1, an approximation for case 2)
+- **Package / area:** flow (domain boundary conditions, `set_domain_bc`)
+- **Found in:** examples/rising-bubble
+- **Observed:** the Hysing et al. (IJNMF 60:1259, 2009) rising-bubble benchmark prescribes
+  **free-slip** side walls (and no-slip top/bottom). `flow`'s `set_domain_bc` offers
+  0 periodic / 1 wall (no-slip) / 2 inflow / 3 outflow — there is no free-slip (symmetry)
+  type, so the prescribed lateral condition cannot be imposed.
+- **Expected:** a symmetry/free-slip domain BC (zero normal velocity, zero normal gradient of
+  the tangential components), which is the standard companion of no-slip in any benchmark suite.
+- **Workaround used (and why it is exact for case 1):** the page runs with **periodic** sides.
+  Mirroring a laterally symmetric bubble about x = 0 and x = 1 places its images at spacing 1,
+  and the mirror of a symmetric bubble is its translate — so while the lateral symmetry holds,
+  periodic and free-slip are the same problem. Case 1 stays symmetric for the whole 3 s and the
+  measured centroid lands within 0.02 % of the reference. Case 2 grows skirts and filaments that
+  break the symmetry, so there the substitution *is* an approximation and part of that case's
+  ~2.6 % centroid deviation belongs to it.
+- **Notes:** a free-slip type would also remove the same substitution from the capillary-wave and
+  droplet-oscillation cases in `flow/tests/study/vof_surface_tension.py`. Low risk: it is a
+  boundary stencil, not a solver change.
+
+## flow: the VoF interface length/area is not exposed, so benchmark "circularity" cannot be reported
+- **Status:** open (quantity omitted from the page)
+- **Package / area:** flow (VoF / PLIC reconstruction bindings)
+- **Found in:** examples/rising-bubble
+- **Observed:** the Hysing benchmark tabulates three quantities — centroid, rise velocity and
+  **circularity** (the perimeter of an area-equivalent circle over the actual perimeter). The
+  first two follow from `get_vof()` and `get_w()`; the third needs the length/area of the
+  reconstructed PLIC interface, which the solver computes internally (the reconstruction is what
+  the geometric fluxes and the curvature cascade are built on) but does not expose to Python.
+- **Expected:** something like `vof_interface_area()` (a per-cell field, or the global sum) so a
+  page can report circularity/sphericity and, more generally, wetted or interfacial area — which
+  is also the quantity a trickle-flow or wetting example will want.
+- **Workaround used:** the page reports the two computable quantities and states plainly that
+  circularity is omitted and why.
+- **Notes:** the per-cell PLIC polygon area is already formed inside `plic.hpp`; the missing piece
+  is a reduction plus a binding.

@@ -71,6 +71,12 @@ website:
             text: "Pore-space Voronoi mesh (dem → voro)"
           - href: examples/pore-network-extraction/index.qmd
             text: "Pore-network extraction (DNS → throat conductances)"
+      - text: "Two-phase flow (VoF)"
+        menu:
+          - href: examples/parasitic-currents/index.qmd
+            text: "Parasitic currents (balanced-force CSF)"
+          - href: examples/rising-bubble/index.qmd
+            text: "Rising bubble (vs Hysing et al. 2009)"
       - text: "Granular (DEM)"
         menu:
           - href: examples/sdf-particle-packing/index.qmd

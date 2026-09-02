@@ -247,3 +247,28 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
   onset uses capped `pcg(12, 1e-6)` — see the two new flow entries in ISSUES.md
   (PCG relative stop never fires on near-quiescent fields; standalone V-cycle
   driver ~30x slow + n_pois not honoured).
+
+## Two-phase VoF examples (2026-09-02)
+
+- [x] `parasitic-currents` (E2 of the VoF gallery work order): the stationary droplet.
+      Balanced-force CSF vs the cell-centred/interpolated ablation with an EXACT curvature —
+      max|u| 1.88e-17 vs 5.76e-2, a factor 3.07e+15 on one operator pairing; with the
+      computed curvature Ca = 2.543e-4 / 5.898e-5 / 2.649e-5 / 1.388e-5 at D/dx = 8/16/24/32,
+      fitted order 2.09; the wisp-guard ablation (`set_vof_interface_eps(0)`) at 64^3 —
+      max|kappa| 0.126 -> 2.87e+11 and the currents stop decaying; the curvature branch census
+      (PLIC fallback 71% at D/dx = 8 down to 22% at 32, branch 6 empty everywhere).
+      All four sweep rungs converged their pressure solve (12-13/500).
+- [x] `rising-bubble` (E4): Hysing et al. (2009) cases 1 and 2 on 64x128x4, adaptive
+      dt = 0.4 min(WY CFL, capillary). Case 1 max V_c 0.2497 (ref 0.2417, +3.3%),
+      y_c(3) 1.0808 (ref 1.0810, -0.02%), 2032 steps, capillary binds 204/204.
+      Case 2 0.2574 (+2.9%) and 1.1082 (-2.6%), 1123 steps, WY CFL binds 108/113,
+      pressure 116/600 and max|div| 1.85e-3 (the ratio-1000 conditioning; not capped).
+      Momentum-consistency A/B on case 1: OFF gives 0.2827 (+17.0%) and 1.2086 (+11.8%),
+      i.e. consistency is worth a factor ~5 in the centroid error AT RATIO 10.
+      Bubble volume V(3)/V(0) = 1.0000000000.
+- Both pages end with a "Collocated cross-check" stub: the two-phase collocated path is
+  rung V8 of the VoF campaign and is not yet available.
+- Two new ISSUES entries: no free-slip domain BC (periodic stands in; exact for Hysing case 1,
+  an approximation for case 2), and no VoF interface-area binding (so benchmark circularity
+  cannot be reported).
+- Solver build used for the frozen outputs: `suite/flow-vof/build_cuda` (CUDA, flow main).
