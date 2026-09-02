@@ -1045,3 +1045,42 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   step-count and path-length differences. Worth ten minutes with `vof_diagnostics()['volume']`
   (the solver's own conserved quantity) instead of a hand-rolled sum on both runs — that would
   separate a *diagnostic* artefact from a *transport* one, and (a) predicts it is the former.
+## `step()` is not atomic across the Weymouth–Yue boundedness throw: the momentum half has already advanced
+- **Status:** open
+- **Package / area:** flow (VoF transport / time-step control)
+- **Found in:** examples/trickle-flow-packing (a liquid jet impinging on a packing)
+- **Observed:** `IbmSolver::step()` advances momentum and the projection first and the colour
+  advection second. When the colour advection rejects the step —
+  `WyAdvector: CFL = max|uf| dt/h = 0.257 exceeds the Weymouth-Yue boundedness cap 0.25` — the
+  throw leaves the **colour field untouched and correct** (verified: `sum C` and `min/max C`
+  unchanged, and a retry at a smaller `dt` runs), but the **velocity field has already been
+  advanced by the rejected `dt`**: with a body force `g_z = 1e-3` and the rejected `dt = 0.4`,
+  `max|w|` changes by exactly `4.0e-4 = g_z dt` across the throwing call. So the obvious driver
+  pattern — catch the exception, halve `dt`, call `step()` again — silently gives the momentum
+  equation one extra over-long step that the colour never sees, i.e. it desynchronises the two
+  fields rather than retrying the step.
+- **Expected:** either `step()` is atomic (nothing is committed if the colour advection will
+  reject the step — the CFL is computable from the projected face field *before* the colour
+  advection, so the check can be hoisted), or the exception documents that the solver state is
+  half-advanced and a retry is invalid.
+- **Repro:**
+  ```python
+  n = 16
+  s = flow.Solver(n, n, n); s.set_rho(1.0); s.set_mu(0.01); s.set_dt(0.1)
+  s.set_pressure_geometry(np.full((n, n, n), 1e30, order="F"))
+  s.set_body_force(0.0, 0.0, 1e-3); s.enable_vof()
+  C = np.zeros((n, n, n), order="F"); C[:, :, : n // 2] = 1.0; s.set_vof(C)
+  u = np.zeros((n, n, n), order="F"); u[:] = 1.0; s.set_field("u", u)
+  for _ in range(3): s.step()
+  w0 = s.get_w().copy()
+  s.set_dt(0.4)                       # CFL 0.4 > the 0.25 cap
+  try: s.step()
+  except RuntimeError: pass
+  print(np.abs(s.get_w() - w0).max())  # 4.0e-4 = g_z * dt : the momentum half ran
+  ```
+- **Notes:** the workaround this page uses is to make the throw unreachable — re-pick `dt` from
+  `vof_step_limits()["cfl_dt"]` **every** step rather than every 10 steps. Every-10 is what the
+  solver's own `tests/study` scripts do and it is enough for a film or a rising bubble; it is not
+  enough for a jet impinging on a packing, where `max|u_f|` can double inside ten steps (measured:
+  the limit fell from `cfl_dt = 1.64` to `0.30` over roughly 100 steps and then dropped below the
+  stale `dt` within ten).

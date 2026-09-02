@@ -368,6 +368,20 @@ placement that silently freezes the contact line.
 ::::
 :::::
 
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/trickle-flow-packing.jpg)](examples/trickle-flow-packing/index.qmd)
+
+::: {.card-body}
+#### [Trickle flow over a packing](examples/trickle-flow-packing/index.qmd)
+Liquid dripped onto 34 wetting spheres with an open outlet below: holdup, wetted area and
+pressure drop, with the colour budget closing at the projection floor.
+[flow · dem · VoF · porous media]{.tags}
+
+:::
+::::
+:::::
+
 ::::::
 
 ## Resolved particles & moving geometry

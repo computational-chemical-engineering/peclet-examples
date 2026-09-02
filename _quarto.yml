@@ -91,6 +91,8 @@ website:
             text: "Droplet wetting (static contact angle on SDF solids)"
           - href: examples/bubble-through-packing/index.qmd
             text: "Bubble through a packed bed (dem → VoF + wetting)"
+          - href: examples/trickle-flow-packing/index.qmd
+            text: "Trickle flow over a sphere packing (gas-liquid-solid)"
       - text: "Granular (DEM)"
         menu:
           - href: examples/sdf-particle-packing/index.qmd
