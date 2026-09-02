@@ -1092,3 +1092,55 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   enough for a jet impinging on a packing, where `max|u_f|` can double inside ten steps (measured:
   the limit fell from `cfl_dt = 1.64` to `0.30` over roughly 100 steps and then dropped below the
   stale `dt` within ten).
+## flow: an SDF wall on an INTEGER coordinate (exactly on a cell face) makes a driven two-phase run diverge geometrically
+- **Status:** open (worked around on the page by offsetting every wall a quarter cell; this is the
+  same rule the droplet-wetting page found for a *static* drop, but here the symptom is not a
+  wrong angle, it is a run that destroys itself)
+- **Package / area:** flow (cut-cell VoF + static contact angle on a flat SDF wall)
+- **Found in:** examples/pore-scale-imbibition (the pore doublet; WO-V7 case 1)
+- **Observed:** the doublet's three solid slabs are boxes. With their faces at integer $z$ —
+  i.e. exactly on a cell face, so `sdf` at every cell centre is $\pm\tfrac12$ and **no wall cell is
+  cut at all** — the corner where a channel mouth meets the slab front reads
+
+  ```
+  step  1  max|u| 1.125e+02      (physical scale: U * NZ/(w1+w2) = 0.42)
+  step 50  max|u| 1.106e+03  dt 1.9e-04
+  step300  max|u| 1.522e+08  dt 1.4e-09
+  ```
+
+  i.e. the velocity grows by about 5 % *per step* while the interface-local `dt` limiter chases it
+  down by the same factor, so the Weymouth–Yue cap never fires and the run never raises — it just
+  stops advancing in time (`t` frozen at 0.187 s after 1 381 steps) and reports
+  `max|div(open u)|` of $2\times10^{20}$ with the pressure solve reporting a healthy 30 iterations
+  out of 400 throughout. **Nothing in the run's own diagnostics says "invalid" except the clock.**
+- **The same scene with every wall shifted by 0.25 of a cell** (nothing else changed): step 1
+  `max|u| = 3.56`, *decaying* to 1.2 by step 12, `dt` at the capillary limit, and the run completes.
+  Shown not to be the contact angle (a neutral 90° fill diverges identically), not the density
+  ratio (ratio 1 diverges more slowly), not surface tension (the first-step velocity is already
+  $1.1\times10^2$ with $\sigma$ off) and not the corners (a plain slit with no septum diverges the
+  same way). Removing the solid entirely and keeping everything else — inflow, outflow, ratio 100,
+  momentum consistency, surface tension — is perfectly stable at `max|u| = 0.277`.
+- **Expected:** either the wall-cell openness/`eps` construction should be robust to the
+  wall-on-a-face degenerate case, or `set_solid` should *warn* when a flat SDF interface lands
+  within a small tolerance of a cell face while VoF is enabled. A silent geometric divergence
+  whose only tell is that simulated time stops advancing is the worst available failure mode.
+- **Repro:** `flow/tests/study/pore_scale/pore_doublet.py` with `WALL_SHIFT = 0.0`.
+- **Notes:** worth pairing with a driver-side guard: a run whose `dt` falls below some fraction of
+  its initial capillary limit is diverging, and could say so.
+
+## flow: `vof_step_limits()['capillary_dt']` is a function of the CURRENT density field, so the first dt of a gas-filled domain is 7x too large
+- **Status:** open (documented; the page re-picks `dt` every step, which makes it a non-issue)
+- **Package / area:** flow (VoF, the Brackbill capillary step limit)
+- **Found in:** examples/pore-scale-imbibition (all three cases start gas-filled)
+- **Observed:** `capillary_dt` evaluates $\sqrt{(\rho_1+\rho_2)h^3/4\pi\sigma}$ from the density
+  field as it stands. Immediately after `enable_vof` on a domain that is entirely gas, the field
+  has not been updated by the closures yet and the call returns the *base* `set_rho` value
+  (0.2835 s here); one `step()` later the field is all gas and it returns 0.0399 s — a factor of
+  7.1 smaller. A driver that sizes its first `dt` from the pre-step call therefore starts 7x over
+  the stability limit and the advector throws on step 1:
+  ```
+  RuntimeError: surface tension: dt = 0.141700 exceeds the capillary limit 0.019947
+  ```
+- **Expected:** a sentence in the `capillary_dt` / `vof_step_limits` docstrings saying the value
+  is state-dependent and is only meaningful *after* the property closures have run once — or have
+  `enable_vof`/`set_property_model` refresh the properties so the first call is already right.

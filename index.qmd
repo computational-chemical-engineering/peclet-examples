@@ -317,7 +317,8 @@ Split, merge and relax interstitial seeds toward a uniform or wall-graded cell v
 Sharp interfaces on a fixed grid: geometric volume-of-fluid transport, a balanced-force
 continuum surface force, and momentum-consistent advection at large density ratios. Four pages are
 gated against something outside the solver — an exact algebraic identity, the exact viscous
-normal modes, a published benchmark — and the fifth composes all of it with a `dem` packing.
+normal modes, a published benchmark — one composes all of it with a `dem` packing, and the last
+puts the whole stack to work on the question porous media actually ask: which pore fills first.
 
 ::::::
 
@@ -332,6 +333,20 @@ normal modes, a published benchmark — and the fifth composes all of it with a 
 A `dem` packing, cut-cell VoF, a contact angle and momentum-consistent transport in one run —
 the bubble squeezes through the throats, the gas volume holds to 1e-9.
 [dem → flow · VoF · wetting]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/pore-scale-imbibition.jpg)](examples/pore-scale-imbibition/index.qmd)
+
+::: {.card-body}
+#### [Pore-scale displacement](examples/pore-scale-imbibition/index.qmd)
+A pore doublet, a sphere packing and a micromodel at a fixed capillary number: the contact angle
+alone moves the narrow branch's saturation by a factor of seventy.
+[flow · VoF · wetting · porous]{.tags}
 
 :::
 ::::

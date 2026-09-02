@@ -100,6 +100,8 @@ website:
             text: "Bubble through a packed bed (dem → VoF + wetting)"
           - href: examples/trickle-flow-packing/index.qmd
             text: "Trickle flow over a sphere packing (gas-liquid-solid)"
+          - href: examples/pore-scale-imbibition/index.qmd
+            text: "Pore-scale displacement (doublet, packing, micromodel)"
       - text: "Granular (DEM)"
         menu:
           - href: examples/sdf-particle-packing/index.qmd
