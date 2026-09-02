@@ -616,7 +616,12 @@ profile with the measured shear equal to nominal to 5e-6 relative.
 
 **Workaround.** Keep analytic-wall faces off lattice planes (any fractional offset works).
 
-**Suggested for the suite.** Either extend the wall-velocity fold to the aligned-face
+**Update 2026-09-02 — root-caused and detected (suite §7 item 12).** A staggered point with sdf
+exactly zero is fluid to the mask (strict < 0) and not a ghost to the cut-cell fold (strict < 0):
+the wall has no row. `set_solid_from_scene` now warns and `moving_instance_degenerate_points()`
+counts them; gate `lattice_plane_gate.py`.
+
+**Suggested for the suite (original).** Either extend the wall-velocity fold to the aligned-face
 configuration (the staggered u-point half a cell inside the solid could carry the wall velocity as
 its masked value), or detect the case in `set_solid_from_scene` — a moving instance whose surface
 produces zero cut cells on some axis — and warn loudly. The failure is completely silent and looks

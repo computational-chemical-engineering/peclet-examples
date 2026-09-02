@@ -276,13 +276,27 @@ Tessellate the void space of a packing into a graded polyhedral mesh with the `v
 
 :::::: {.section-lead}
 Sharp interfaces on a fixed grid: geometric volume-of-fluid transport, a balanced-force
-continuum surface force, and momentum-consistent advection at large density ratios. Each page is
+continuum surface force, and momentum-consistent advection at large density ratios. Four pages are
 gated against something outside the solver — an exact algebraic identity, the exact viscous
-normal modes, and a published benchmark.
+normal modes, a published benchmark — and the fifth composes all of it with a `dem` packing.
 
 ::::::
 
 :::::: {.grid}
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/bubble-through-packing.jpg)](examples/bubble-through-packing/index.qmd)
+
+::: {.card-body}
+#### [Bubble through a packed bed](examples/bubble-through-packing/index.qmd)
+A `dem` packing, cut-cell VoF, a contact angle and momentum-consistent transport in one run —
+the bubble squeezes through the throats, the gas volume holds to 1e-9.
+[dem → flow · VoF · wetting]{.tags}
+
+:::
+::::
+:::::
 
 ::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
 :::: {.gallery-card}
@@ -443,9 +457,51 @@ anisotropy that turns a settling doublet broadside-on.
 
 ::: {.card-body}
 #### [Sedimenting sphere (ten Cate)](examples/ten-cate-sphere/index.qmd)
-The classic settling benchmark as an honest negative result — one that already bought a real
-solver fix, kept measuring after it landed, and still stands as the sharpest open problem.
-[flow · dem · coupling · negative result]{.tags}
+The classic settling benchmark, resolved: E1 within 3% and E4 within 2% of the PIV at the
+coarsest rung — after two solver fixes and one geometry trap that hid for two campaigns.
+[flow · dem · coupling · experiment]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/galilean-drag.jpg)](examples/galilean-drag/index.qmd)
+
+::: {.card-body}
+#### [Galilean invariance at finite Re](examples/galilean-drag/index.qmd)
+A sphere towed through fluid at rest against the same sphere held in a stream — one problem,
+two frames, and the moving-geometry machinery reproduces the fixed answer to 0.03% at Re 1.5.
+[flow · moving geometry · exact]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/confined-drag-screening.jpg)](examples/confined-drag-screening/index.qmd)
+
+::: {.card-body}
+#### [Confinement at finite Re](examples/confined-drag-screening/index.qmd)
+The 39% Faxén wall correction that inertia screens down to a tenth by Re 1.5, measured with the
+static twin of a settling experiment — and the periodic-box geometry trap that hid it.
+[flow · CSG · verification]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/drafting-kissing-tumbling.jpg)](examples/drafting-kissing-tumbling/index.qmd)
+
+::: {.card-body}
+#### [Drafting, kissing, tumbling](examples/drafting-kissing-tumbling/index.qmd)
+Two spheres released in line in a closed box draft, touch, and tumble apart side by side — the
+classic two-body resolved-coupling test, with nothing prescribed and contact handled by the DEM.
+[flow · dem · coupling · two bodies]{.tags}
 
 :::
 ::::

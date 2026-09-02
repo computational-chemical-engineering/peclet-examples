@@ -57,6 +57,12 @@ website:
             text: "Dumbbell drag (two fused spheres, bispherical exact)"
           - href: examples/ten-cate-sphere/index.qmd
             text: "Sedimenting sphere (ten Cate et al. 2002)"
+          - href: examples/galilean-drag/index.qmd
+            text: "Galilean invariance at finite Re (towed vs fixed sphere)"
+          - href: examples/confined-drag-screening/index.qmd
+            text: "Confinement at finite Re (screened wall correction)"
+          - href: examples/drafting-kissing-tumbling/index.qmd
+            text: "Drafting, kissing, tumbling (two settling spheres)"
       - text: "Packings & porous"
         menu:
           - href: examples/zick-homsy/index.qmd
@@ -83,6 +89,8 @@ website:
             text: "Rising bubble (vs Hysing et al. 2009)"
           - href: examples/droplet-wetting/index.qmd
             text: "Droplet wetting (static contact angle on SDF solids)"
+          - href: examples/bubble-through-packing/index.qmd
+            text: "Bubble through a packed bed (dem → VoF + wetting)"
       - text: "Granular (DEM)"
         menu:
           - href: examples/sdf-particle-packing/index.qmd

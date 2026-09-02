@@ -152,8 +152,10 @@ Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented
 - [x] **New pages:** `galilean-drag` (finite-Re Galilean pair) and `confined-drag-screening`
       (K(Re) creeping → 1.5 → 30 with the trap demonstrated). ten-cate re-rendered with the
       corrected tank and rewritten.
-- [ ] **E3b `drafting-kissing-tumbling`** — **UNBLOCKED** (coupled resolved motion is quantitative
-      at finite Re); next page.: DKT is finite-Re coupled
+- [x] **E3b `drafting-kissing-tumbling`** (`b0ed865`) — Glowinski 3-D setup, two moving instances
+      in a CSG tank, force + torque coupling, dem contact at the kiss. d/h = 12 (88×304×88, 26 min):
+      drafting from 0.153 s, contact 0.333 s, side by side 0.482 s; peaks 6.05 / 8.48 cm/s. Claim =
+      the sequence + internal timing (no digitised reference curves) — stated as such.: DKT is finite-Re coupled
       two-body motion, the exact regime E3a just measured as quantitatively broken (creeping-valued
       confinement + momentum leak). Building it before the §7-item-8 solver fix would ship a
       known-bad benchmark. It becomes the natural second regression page after the fix.

@@ -1,6 +1,6 @@
 ---
 title: "A sphere settling in a closed tank, vs ten Cate's PIV"
-subtitle: "The benchmark every resolved-particle code runs: a 15 mm nylon sphere falling through silicone oil in a closed tank, measured by PIV at four Reynolds numbers — here an honest negative result that has already earned its keep: it motivated a solver fix, got it, and still stands, which is exactly what makes it the suite's regression test for confined finite-Re coupled motion."
+subtitle: "The benchmark every resolved-particle code runs: a 15 mm nylon sphere falling through silicone oil in a closed tank, measured by PIV at four Reynolds numbers — reproduced within 3.5% at every case, after two solver fixes and one geometry trap that this page found in turn."
 author: "Peclet"
 date: "2026-08-31"
 categories: [flow, dem, coupling, moving-geometry, verification, GPU]
@@ -18,10 +18,11 @@ $\mathrm{Re} = 1.5$ to $31.9$. It has become *the* validation case for resolved 
 codes, because everything is finite and honest: the tank confines, the sphere accelerates from
 rest, and the wall it lands on is part of the problem.
 
-Here the whole configuration is analytic: the **tank is a scene instance** (a box-difference —
-the periodic domain just wraps its solid shell) and the sphere is a second instance whose position
-comes from `peclet.dem`, driven by the discrete-reaction force each step. Advection is on and
-carried by the reaction budget (rung R0).
+Here the whole configuration is analytic: the **tank is a scene instance** (a box-difference whose
+slab is half the box plus the wall thickness and *no wider* — a wider slab's periodic images refill
+the cavity, the trap this page fell into; see the end) and the sphere is a second instance whose
+position comes from `peclet.dem`, driven by the discrete-reaction force each step. Advection is on
+and carried by the reaction budget (rung R0).
 
 Two things to know before comparing numbers:
 
@@ -112,7 +113,7 @@ def run_case(case, DH, sweeps=60, gpu_dt=None):
     tau = RATIO * DH * Re / (18 * USTAR)
     dt = gpu_dt if gpu_dt else min(max(tau / 12, 1.0), 0.35 / USTAR / 4)
     b = geom.SceneBuilder()
-    slab = b.add_leaf("box", [NX * 0.7, NY * 0.7, NX * 0.7])
+    slab = b.add_leaf("box", [NX / 2 + 1.0, NY / 2 + 1.0, NX / 2 + 1.0])
     cavity = b.add_leaf("box", [(NX - 2 * WX) / 2, (NY - 2 * WY) / 2, (NX - 2 * WX) / 2])
     tank = b.add_difference(slab, cavity)
     sph = b.add_leaf("sphere", [DH / 2])
@@ -180,9 +181,9 @@ def run_case(case, DH, sweeps=60, gpu_dt=None):
 ## E1: the resolution ladder
 
 The coarsest case first, three times: $d/h = 8, 12, 16$. The number to watch is the peak
-settling velocity against the measured $u_{\max}/u_\infty = 0.947$ — and it does **not** get
-there. It converges, resolution-flat, onto ≈0.80: close to the *creeping-flow* confined value.
-Hold that thought; the diagnosis follows the plots.
+settling velocity against the measured $u_{\max}/u_\infty = 0.947$. It lands within 3.5 % at every
+rung — and, honestly, resolution-flat: the residual is not the grid (the story of how it was
+once 18 % and read as physics is below the plots).
 
 ```{python}
 #| label: ladder
@@ -221,7 +222,7 @@ for case in ("E1", "E2", "E3", "E4"):
 
 ```{python}
 #| label: fig-traj
-#| fig-cap: "Settling velocity against time, in the experiment's units. Crosses mark the measured peak velocities (Table II ratios times the Abraham u∞). E1 and E2 fall short of the crosses by 8–16% (the near-creeping confinement documented below); E3 and E4 blow through the unbounded terminal velocity — impossible physically, and the sharpest remaining exhibit of whatever is still missing."
+#| fig-cap: "Settling velocity against time, in the experiment's units. Crosses mark the measured peak velocities (Table II ratios times the Abraham u∞). All four cases reach their crosses within 3.5% and decelerate smoothly into the floor; E2–E4 sit a percent high, E1 three percent low."
 #| code-fold: true
 fig, ax = plt.subplots(figsize=(6.4, 3.6))
 cols = {"E1": "#4c72b0", "E2": "#55a868", "E3": "#dd8452", "E4": "#c44e52"}
@@ -250,70 +251,66 @@ ax.set_ylabel(r"$u / u_\infty$"); ax.legend(fontsize=8, frameon=False); ax.grid(
 plt.show()
 ```
 
-## Results — an honest negative, and what a fix did and did not move
+## Results
 
 | claim | measured | reference |
 |---|---|---|
 | Galileo-number match of the scaling (E1) | 34.9 vs 34.6 | dynamic similarity holds |
-| E1 peak $u/u_\infty$, $d/h = 8 \to 12 \to 16$ | `{python} "%.3f / %.3f / %.3f" % tuple(l[2] for l in lad)` | 0.947 measured — **not reached** |
-| E1 effective drag ratio $W/(3\pi\mu d\,u_{\rm peak})$ | ≈ 1.63 | ≈ the *creeping* confined value; experiment ⇒ 1.38 |
-| E2 at $d/h = 12$ | `{python} "%.3f" % rows[1][2]` | 0.953 (−8%) |
-| E3 / E4 at $d/h = 12$ | `{python} " / ".join("%.3f" % r[2] for r in rows[2:])` | **unphysical** — both exceed $u_\infty$ |
+| E1 peak $u/u_\infty$, $d/h = 8 \to 12 \to 16$ | `{python} "%.3f / %.3f / %.3f" % tuple(l[2] for l in lad)` | 0.947 measured (−2.6 → −3.5 %) |
+| E2 / E3 / E4 at $d/h = 12$ | `{python} " / ".join("%.3f" % r[2] for r in rows[1:])` | 0.953 / 0.959 / 0.955 (+1.4 / +1.2 / +0.9 %) |
+| bottom approach | resolved to a gap of $0.5\,d$, decelerating smoothly | lubrication below that is unresolved — stated, not modelled |
 
-**What is right.** The similarity scaling (Galileo numbers match to 1%), the qualitative shape
-(acceleration from rest, plateau, bottom-wall deceleration), and the same setup with the tank
-removed: in a large periodic box the sphere settles 8.4% above the screened expectation at
-$\mathrm{Re} = 1.5$ (itself only a leading-order estimate in $c^{1/3}$).
+**What is right.** The similarity scaling (Galileo numbers to 1 %), the qualitative shape
+(acceleration from rest, plateau, bottom-wall deceleration setting in earlier at lower Re), and the
+numbers: every peak within 3.5 % of the PIV, the three higher-Reynolds cases within 1.4 %.
 
-**What is wrong, precisely.** In the tank, the simulation delivers close to the **creeping-flow**
-confined drag at every resolution: the E1 plateau is flat at ≈0.80 for $d/h = 8, 12, 16$,
-unchanged by halving $\Delta t$, by tripling the velocity-solver sweeps, and by swapping the SOU
-advection scheme for Koren TVD. The finite-Re screening that the experiment shows (and that the
-callout above explains) never develops around the moving sphere. At the higher Reynolds numbers
-the failure changes sign and grows: E3 and E4 accelerate **past the unbounded terminal velocity**,
-which no drag law permits.
+**What is left.** E1 sits 2.6–3.5 % low and does not move with resolution. The measured peak carries
+about ±1 % itself (a Table II ratio times an $u_\infty$ recomputed from the Abraham correlation at
+an unstated fluid temperature), and E1 is the case in which the tank matters most — its
+confinement penalty at Re 1.5 is a tenth of the creeping one, but not zero, and the closed floor
+and lid add what a duct does not have. A few percent of systematic difference at the most
+confined, most viscous case is where a resolved code and a PIV experiment are allowed to disagree;
+the page claims the few-percent level and no tighter.
 
-::: {.callout-note}
-## Fix #2: the advective wall term — it landed, and did not rescue this page
-The first version of this page measured a **momentum leak** alongside the drag deficit: a Newton
-check on a towed E4 sphere found the per-body reaction forces of sphere and tank summing to
-$+0.32\,W$ instead of zero. The cause was exact and is now fixed
-(`peclet-flow` `fb1a1a7`): the momentum-advection kernels read the solver's **masked zeros**
-inside a solid body, and zero is the wall velocity only for a *stationary* wall. Feeding them the
-rigid-body wall velocity instead closed the leak to $-0.03\,W$ — below the same probe's
-advection-off residual, i.e. no longer advective — and, on the
-[moving sphere](../moving-sphere-drag/index.qmd) benchmark, cut a **10.3%** finite-Re drag error
-against Blackburn (2002) to **2.2%** at worst.
+::: {.callout-important}
+## How this page was wrong three times, and what each time bought
+This benchmark took three fixes to reach the table above, and each was a defect that no other
+page could see.
 
-It moved this page by about two points (E1 $0.78 \to 0.80$, E2 $0.82 \to 0.88$, E3/E4 peaks
-$2.16/1.87 \to 2.03/1.77$) and left every conclusion standing. **That is the useful result**: the
-confined deficit and the super-terminal falls are *not* the advective wall term. They are a
-separate, still-open defect, and this page is now a sharper instrument for finding it than it was
-before — the largest known contaminant has been removed from the measurement.
+1. **Per-body attribution** (flow `1d95260`). With two instances — sphere and tank — the
+   pressure flux across the owner partition's mid-surface handed a factor-2.2 of the sphere's
+   drag to the tank. Invisible in every single-body gate.
+2. **Wall velocity in the advection operator** (flow `fb1a1a7`). The momentum-advection kernels
+   read the solver's masked *zeros* inside a moving body, and zero is the wall velocity only for a
+   wall that does not move. Closing it cut the [moving sphere](../moving-sphere-drag/index.qmd)
+   page's Blackburn error from 10 % to 2 % and the towed-sphere momentum leak from +0.32 W to
+   −0.03 W — and left this page at 0.80, so it was not the cause here.
+3. **The tank itself.** Built as slab-minus-cavity with a slab wider than the periodic box, and
+   the scene evaluates the *union* of an instance's periodic images: the slab's images refilled the
+   cavity and the tank ran **30 % narrow** ($d/W = 0.21$ instead of 0.15). Faxén's creeping
+   correction at that width is 1.67 — exactly the effective drag ratio that had been measured and
+   read as confinement physics gone creeping, cross-checked against dt, sweeps, limiter,
+   advection scheme, operator precision and a solver branch, every one of which reproduced the
+   narrow tank faithfully. What broke it open was a
+   [finite-Re Galilean gate](../galilean-drag/index.qmd) (towed and fixed sphere agree to 0.03 %:
+   not a moving-body defect) followed by a
+   [static duct twin](../confined-drag-screening/index.qmd) whose plug flow lost half its momentum
+   in a hundred steps — the signature of walls at rest, which led to the mask, which led to the
+   slab. `set_solid_from_scene` now detects the trap exactly and warns.
+
+The lesson is not that the solver was fine all along — two of the three were solver defects. It
+is that a quantitative benchmark that fails *reproducibly under every sensitivity* is pointing at
+something structural, and "structural" includes the input.
 :::
-
-**What it points to now.** Three threads, in the order a next session should pull them: (1) at
-E4 the towed drag and the free fall **disagree** — a quasi-steady drag of $1.09\,W$ at
-$0.955\,u_\infty$ predicts a terminal velocity *below* $u_\infty$, yet the free fall peaks at
-$1.77\,u_\infty$; at E1 the two agreed to 2%, so whatever breaks the correspondence switches on
-with Reynolds number. (2) The unconfined control shifted by 5% under a fix that should barely
-touch a body far from any wall. (3) A resolution-*independent* −0.7…−2.2% floor now sits under the
-Blackburn ladder where the error used to appear to converge. The full probe ladder — tow,
-periodic control, Newton audit, scheme/$\Delta t$/sweep sensitivities, each runnable in minutes —
-is in the repo's [ISSUES.md](../../ISSUES.md), and the campaign plan with every measured number is
-`flow/doc/advective_cutwall_flux_plan.md`.
-
-The measured peaks carry an honest ±1% themselves (Table II ratios times an $u_\infty$
-recomputed from the Abraham correlation, with unstated fluid-temperature uncertainty) — far
-tighter than the −15…−19% deficit, which is therefore real.
 
 ## Adapt this yourself
 
-- **Use it as the regression test.** That is what this page is for: it costs one render, it needs
-  no edits, and it says in numbers whether a solver change moved confined finite-Re coupled motion.
-  It has already done this once, for the fix described above.
+- **Use it as the regression test.** One render, no edits, and the table says whether a solver
+  change moved confined finite-Re coupled motion. It has caught two defects and one trap so far.
 - **Push to touchdown.** Below gap ≈ 0.5 d the lubrication film is sub-cell; `peclet.dem`'s
   contact model is built for exactly that hand-off — give the sphere a restitution and let it land.
+- **Two spheres.** The [drafting–kissing–tumbling](../drafting-kissing-tumbling/index.qmd) page is
+  this page with a second instance and the contact model switched on.
 - **Do it in SI.** The similarity scaling is three lines; running in physical units changes
   nothing but the numbers' size.
 
