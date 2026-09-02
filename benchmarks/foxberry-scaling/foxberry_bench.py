@@ -97,7 +97,7 @@ VRTOL = float(os.environ.get("VRTOL", 1e-3))
 VMG = int(os.environ.get("VMG", 0))            # >0: velocity multigrid with this many levels
 VMGCYCLES = int(os.environ.get("VMGCYCLES", 4))  # V-cycles per component per step
 SAVEU = os.environ.get("SAVEU", "")            # np=1 only: save the final u-component field (.npy)
-VRES = float(os.environ.get("VRES", 0))        # >0: residual-based momentum stop max|r| <= VRES*max|b|
+VRES = float(os.environ.get("VRES", -1))       # residual-based momentum stop; -1 = solver default (1e-5 since 2026-09-02), 0 = update criterion
 BOTTOM = os.environ.get("BOTTOM", "auto")
 TELESCOPE = int(os.environ.get("TELESCOPE", -1))   # -1 = the solver default (ON since 2026-09-02); 0/1 force
 ADV = int(os.environ.get("ADV", 1))
@@ -255,8 +255,9 @@ s.set_advection(bool(ADV))
 s.set_velocity_solver_params(VSWEEPS, VRTOL)
 if VMG > 0:
     s.set_velocity_multigrid(True, VMG, VMGCYCLES)  # before geometry: the hierarchy is built at set_solid
-if VRES > 0:
+if VRES >= 0:
     s.set_velocity_residual_tolerance(VRES)
+VRES = float(s.velocity_residual_tolerance()) if hasattr(s, "velocity_residual_tolerance") else max(VRES, 0.0)
 s.set_pressure_multigrid(True, MGLEVELS)
 if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
