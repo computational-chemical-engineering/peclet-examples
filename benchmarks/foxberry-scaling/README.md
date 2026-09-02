@@ -68,7 +68,13 @@ unchanged to seven digits:
 | 768 | 10.6 | **0.430** (24.6×) | 12 | **1.48** (8.1×) | — |
 | 1536 | 5.08 | **0.391** (13.0×) | 5.44 | **0.834** (6.5×) | **0.844** (6.4×) |
 
-The velocity MG runs one V-cycle per component per step on the single-phase case (residual 5e-16 —
+A defaults-only run (no `VRES` / `VMG` / `TELESCOPE` flags) reproduces these: 0.786 s packed and
+0.256 s single-phase at 1536, 3.06 s packed at 384 (auto-rule → RB-GS there). Node placement moves
+a 1536-rank step by up to 1.5× between allocations (0.391 vs 0.256 s for the identical single-phase
+configuration), so top-rung A/Bs need a same-allocation control — the Chebyshev pressure driver,
+measured that way, is parity single-phase (0.251 vs 0.256 s) and 5× slower on the bed (238 vs 40
+iterations); its JSONs are in `rejected.txt` as experiments. The velocity MG runs one V-cycle per
+component per step on the single-phase case (residual 5e-16 —
 plug flow is trivial for it) and two on the bed; RB-GS with the residual stop needs 8.8 sweeps per
 component instead of the cap of 200. The two momentum solvers tie at 384 and the V-cycle wins by its
 fewer halo exchanges at 1536. At `VRES=1e-3` the momentum residual (8e-4) leaks into the pressure

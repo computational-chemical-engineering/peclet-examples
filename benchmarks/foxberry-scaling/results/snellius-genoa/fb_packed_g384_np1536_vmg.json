@@ -30,7 +30,7 @@
  "vmg": 3,
  "vmgcycles": 40,
  "bottom": "auto",
- "telescope": 1,
+ "telescope": 0,
  "hierarchy": [
   {
    "global": [
@@ -103,78 +103,21 @@
    ],
    "ratio": [
     2,
-    2,
+    1,
     2
    ],
-   "telescope": true
+   "telescope": false
   },
   {
    "global": [
     24,
-    24,
+    48,
     24
    ],
-   "ranks": 64,
+   "ranks": 1536,
    "block0": [
+    1,
     6,
-    6,
-    6
-   ],
-   "ratio": [
-    2,
-    2,
-    2
-   ],
-   "telescope": false
-  },
-  {
-   "global": [
-    12,
-    12,
-    12
-   ],
-   "ranks": 64,
-   "block0": [
-    3,
-    3,
-    3
-   ],
-   "ratio": [
-    2,
-    2,
-    2
-   ],
-   "telescope": true
-  },
-  {
-   "global": [
-    6,
-    6,
-    6
-   ],
-   "ranks": 1,
-   "block0": [
-    6,
-    6,
-    6
-   ],
-   "ratio": [
-    2,
-    2,
-    2
-   ],
-   "telescope": false
-  },
-  {
-   "global": [
-    3,
-    3,
-    3
-   ],
-   "ranks": 1,
-   "block0": [
-    3,
-    3,
     3
    ],
    "ratio": [
@@ -23269,6 +23212,5 @@
    ]
   }
  ],
- "gpu_aware_env": "",
- "telescope_backfilled": "env flag recorded 0; solver default ON (2026-09-02); verified by the 39.8-iteration count"
+ "gpu_aware_env": ""
 }

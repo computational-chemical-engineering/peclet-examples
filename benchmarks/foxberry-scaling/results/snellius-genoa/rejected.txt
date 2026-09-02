@@ -4,3 +4,8 @@ fb_packed_g384_np768_tel3.json     # settings drift: MGLEVELS=7 WARMUP=2; replac
 fb_packed_g384_np1536_tel3.json    # settings drift: MGLEVELS=7 WARMUP=2; replaced by tel4
 fb_single_g384_np1536_tel3.json    # settings drift: MGLEVELS=7 WARMUP=2; replaced by tel4
 fb_packed_g384_np768_teldbg.json   # valid (7-digit match) but from the -O2 -g diagnosis build; superseded by the Release tel4 run
+fb_packed_g384_np1536_chebp.json   # Chebyshev pressure-driver experiment (238 iters/step), not the ladder
+fb_single_g384_np1536_chebp.json   # Chebyshev pressure-driver experiment; same node set as the defaults run: 0.251 vs 0.256 s (parity)
+fb_packed_g384_np1536_defaults.json  # defaults-only verification (auto -> velocity MG): 0.786 s, duplicates the tuned 0.834 point (placement)
+fb_packed_g384_np384_defaults.json   # defaults-only verification (auto -> RB-GS): 3.06 s, duplicates the tuned 2.91 point
+fb_single_g384_np1536_defaults.json  # defaults-only verification: 0.256 s on a different node set than the tuned 0.391 -- placement spread
