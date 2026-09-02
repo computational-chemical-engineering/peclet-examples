@@ -68,8 +68,12 @@ unchanged to seven digits:
 | 768 | 10.6 | **0.430** (24.6×) | 12 | **1.48** (8.1×) | — |
 | 1536 | 5.08 | **0.391** (13.0×) | 5.44 | **0.834** (6.5×) | **0.844** (6.4×) |
 
-A defaults-only run (no `VRES` / `VMG` / `TELESCOPE` flags) reproduces these: 0.786 s packed and
-0.256 s single-phase at 1536, 3.06 s packed at 384 (auto-rule → RB-GS there). Node placement moves
+The **shipped defaults** couple the momentum tolerance to the pressure solver's rtol (1e-8 here;
+`set_velocity_residual_tolerance` overrides, 0 = legacy update criterion) and pick the velocity MG
+by the auto rule: a run with no `VRES` / `VMG` / `TELESCOPE` flags measures 3.31 s packed at 384
+(RB-GS, 16 sweeps/component), 0.898 s packed (3 V-cycles/component) and 0.368 s single-phase at
+1536 — 7.3× / 6.1× / 13.8× FoxBerry, same seven-digit `<u>` / `max|div|`. (At the earlier fixed
+1e-5 the same runs read 3.06 / 0.786 / 0.256 s, a mix of the looser tolerance and node placement.) Node placement moves
 a 1536-rank step by up to 1.5× between allocations (0.391 vs 0.256 s for the identical single-phase
 configuration), so top-rung A/Bs need a same-allocation control — the Chebyshev pressure driver,
 measured that way, is parity single-phase (0.251 vs 0.256 s) and 5× slower on the bed (238 vs 40

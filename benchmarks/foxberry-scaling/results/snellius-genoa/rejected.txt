@@ -9,3 +9,6 @@ fb_single_g384_np1536_chebp.json   # Chebyshev pressure-driver experiment; same 
 fb_packed_g384_np1536_defaults.json  # defaults-only verification (auto -> velocity MG): 0.786 s, duplicates the tuned 0.834 point (placement)
 fb_packed_g384_np384_defaults.json   # defaults-only verification (auto -> RB-GS): 3.06 s, duplicates the tuned 2.91 point
 fb_single_g384_np1536_defaults.json  # defaults-only verification: 0.256 s on a different node set than the tuned 0.391 -- placement spread
+fb_packed_g384_np1536_final.json   # as-shipped defaults (coupled tolerance 1e-8): 0.898 s; quoted in the text, plots keep the 1e-5 series
+fb_packed_g384_np384_final.json    # as-shipped defaults: 3.31 s (RB-GS auto)
+fb_single_g384_np1536_final.json   # as-shipped defaults: 0.368 s
