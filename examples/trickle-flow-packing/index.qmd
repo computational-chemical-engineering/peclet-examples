@@ -493,10 +493,13 @@ pl.camera.zoom(0.85)
 pl.show()
 ```
 
-<!-- MOVIE: an animation of the mid-plane colour field is written next to this page as
-     trickle-flow-packing.mp4 (git-ignored, see .gitignore). Upload it to YouTube and replace this
-     comment with the embed:
-     {{< video https://www.youtube.com/embed/XXXXXXXXXXX >}} -->
+```{=html}
+<!-- The 52 KB mp4 written by the `movie` cell is committed next to this page (like the
+     bubble-through-packing and rayleigh-benard movies); a YouTube copy can replace this tag. -->
+<video controls autoplay loop muted playsinline width="100%" style="max-width:760px;display:block;margin:0 auto;border-radius:6px;">
+  <source src="trickle-flow-packing.mp4" type="video/mp4">
+</video>
+```
 
 ```{python}
 #| label: movie
