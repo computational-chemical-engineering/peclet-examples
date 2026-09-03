@@ -363,7 +363,15 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 ---
 
 ## Pore-space Voronoi mesh: cell collapse + first-order curved-wall gradient
-- **Status:** diagnosed; both open (method not yet finished)
+- **Status:** cause (1) ADDRESSED 2026-09-04 by `peclet.voro.redistribute_pore_mesh` — the
+  topological loop (split / merge / relax / wall re-seed) reaches a uniform target within ~10 %
+  per cell (rms 0.04) from a 2x mismatched start with zero dead cells, and rms 0.08 for a
+  wall-graded target of slope 0.3 (the first wall shell stays ~1.5x above target; the original
+  `clip(φ)` target is unresolvable — neighbouring targets 8x apart). See
+  examples/pore-mesh-redistribution. `optimize_pore_mesh` still cannot polish from there
+  (collapses cells); its `sw=6` on a few hundred seeds segfaulted (fixed: the search window is
+  clamped to the grid). Cause (2) open for the optimiser; the FLOW solver on the same meshes
+  uses a wall-anchored quadratic wall gradient (examples/voronoi-sphere-drag).
 - **Package / area:** voro (SDF-walled `meshVolumeOptimize`, experimental / not in PyPI)
 - **Found in:** examples/pore-mesh-voronoi
 - **Observed:** relaxing interstitial Voronoi seeds toward a target volume collapses cells

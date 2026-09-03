@@ -76,6 +76,12 @@ website:
             text: "Pall-ring bed flow (analytic hand-off, vs Ergun)"
           - href: examples/pore-mesh-voronoi/index.qmd
             text: "Pore-space Voronoi mesh (dem → voro)"
+          - href: examples/pore-mesh-redistribution/index.qmd
+            text: "Redistributing pore-space seeds"
+          - href: examples/voronoi-taylor-green/index.qmd
+            text: "Navier–Stokes on a Voronoi mesh: Taylor–Green"
+          - href: examples/voronoi-sphere-drag/index.qmd
+            text: "Body-fitted walls: Poiseuille and sphere drag"
           - href: examples/pore-network-extraction/index.qmd
             text: "Pore-network extraction (DNS → throat conductances)"
       - text: "Two-phase flow (VoF)"

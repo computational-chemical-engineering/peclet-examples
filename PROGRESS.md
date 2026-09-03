@@ -1,5 +1,15 @@
 # Overnight build progress
 
+## VORONOI FLOW SOLVER EXAMPLES (2026-09-04)
+- [x] `examples/voronoi-taylor-green` — peclet.voro's covolume and collocated NS solvers on a
+      jittered Voronoi mesh: energy decay vs exact, convergence table (collocated 2nd order).
+- [x] `examples/voronoi-sphere-drag` — SDF-clipped walls: Poiseuille exact to 1e-13 with the
+      quadratic wall gradient (two-point: order 2), simple-cubic sphere-array drag −3.1 % / −0.9 %
+      vs Zick & Homsy at 12 / 18 cells per diameter with the semi-implicit Stokes march.
+- [x] `examples/pore-mesh-redistribution` — `redistribute_pore_mesh` from a mismatched start:
+      uniform target rms 0.05 / max 0.12, graded rms 0.08. Helper: `src/peclet_examples/voro_flow.py`.
+      Rendered against `voro/build_a0` (host OpenMP) with `PECLET_LOCAL_BUILD=<voro build>:<repo>/src`.
+
 ## SDF-SHOWCASE CAMPAIGN (2026-08-30, in progress) — `PLAN_SDF_SHOWCASE.md`
 
 Legend: [x] done+pushed · [~] in progress · [ ] todo · [!] blocked/documented

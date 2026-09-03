@@ -1,0 +1,137 @@
+---
+title: "Redistributing pore-space seeds: split, merge, relax"
+subtitle: "Start from a bad seeding of a sphere packing's interstitial space and let peclet.voro's topological loop move cells between pores — the step a position-only optimiser cannot take — toward a uniform or wall-graded target volume."
+author: "Peclet"
+date: "2026-09-04"
+categories: [voro, meshing, porous-media, sdf]
+jupyter: python3
+---
+
+## What you'll learn
+
+The [pore-mesh example](../pore-mesh-voronoi/index.qmd) showed that a Voronoi pore mesh is only
+as good as its seeding, and that relaxing seed *positions* cannot fix a mismatched start: a seed
+cannot cross a solid grain to reach an under-resolved pore, so the optimiser collapses throat cells
+instead. `peclet.voro.redistribute_pore_mesh` adds the topological moves — **split** a cell that is
+too big (along the wall for wall cells), **remove** a cell that is too small or dead, **relax**
+with a Lloyd blend for shape and a graded volume descent for size, and re-seed the wall layers by
+the graded-shell heuristic — and keeps the best state. You'll see a 2× mismatched uniform start
+reach a uniform target within about 10 % in every cell, and what a wall-graded target can and
+cannot achieve.
+
+```{python}
+#| label: bootstrap
+#| code-summary: "Environment bootstrap (installs peclet from PyPI on Colab/Binder)"
+import importlib.util, os, subprocess, sys
+_local = os.environ.get("PECLET_LOCAL_BUILD")
+if _local:
+    for p in _local.split(os.pathsep):
+        sys.path.insert(0, p)
+elif importlib.util.find_spec("peclet") is None:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+```
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from peclet import voro
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True, "grid.alpha": 0.3})
+```
+
+## A small packing and a bad start
+
+Six random non-overlapping spheres in the periodic unit box (solid fraction ≈ 0.11) — small enough
+for a CPU notebook; a `peclet.dem` packing plugs in the same way. The start is a uniform random
+cloud with about twice the seeds the uniform target asks for.
+
+```{python}
+rng = np.random.default_rng(11)
+L = 1.0
+centres, radii = [], []
+while len(centres) < 6:
+    c, r = rng.uniform(0, L, 3), rng.uniform(0.14, 0.2)
+    if all(np.linalg.norm((c - cc) - L * np.round((c - cc) / L)) > r + rr + 0.06 for cc, rr in zip(centres, radii)):
+        centres.append(c); radii.append(r)
+centres, radii = np.array(centres), np.array(radii)
+pos0 = rng.uniform(0, L, (2500, 3))
+pos0 = pos0[voro._union_sdf(pos0, centres, radii, L) > 0.03]
+print(f"solid fraction {(4 / 3 * np.pi * radii**3).sum():.3f}, {len(pos0)} start seeds")
+```
+
+## Uniform target
+
+The target is $V_\text{ref} = s^3$ with $s = 0.10$ everywhere (`s_lo = s_hi`). The routine reports
+the per-round history — seed count, worst and rms relative volume error, dead cells.
+
+```{python}
+res_u = voro.redistribute_pore_mesh(pos0, centres, radii, L, s_lo=0.10, s_hi=0.10)
+h = np.array(res_u["history"])
+print(f"start: N={int(h[0,0])}, max|V/V_ref-1|={h[0,1]:.2f}, rms={h[0,2]:.2f}")
+print(f"end:   N={len(res_u['positions'])}, max|V/V_ref-1|={res_u['max_rel']:.3f}, rms={res_u['rms_rel']:.3f}, "
+      f"dead cells {res_u['n_dead']}, {res_u['rounds']} rounds, +{res_u['n_added']} -{res_u['n_removed']} seeds")
+```
+
+```{python}
+#| fig-cap: "Uniform target: the worst and rms relative volume error per round (left) and the distribution of V/V_ref at the start and the end (right)."
+fig, ax = plt.subplots(1, 2, figsize=(9, 3.4))
+ax[0].semilogy(h[:, 1], "o-", ms=3, label="max |V/V_ref − 1|"); ax[0].semilogy(h[:, 2], "s-", ms=3, label="rms")
+ax[0].set(xlabel="round", ylabel="relative volume error"); ax[0].legend()
+t = voro.Tessellation(); t.set_box((L, L, L))
+ni, nr, root = voro.sphere_union_scene(centres, radii); t.set_geometry(ni, nr, root=root)
+t.build(pos0, strict=False)
+v0 = t.volumes(); v0 = v0[v0 > 0] / 0.10**3
+ax[1].hist(v0, bins=np.linspace(0, 3, 61), alpha=0.5, label="start")
+ax[1].hist(1 + res_u["rel"][res_u["volumes"] > 0], bins=np.linspace(0, 3, 61), alpha=0.7, label="redistributed")
+ax[1].set(xlabel="V / V_ref", ylabel="cells"); ax[1].legend()
+plt.show()
+```
+
+## Wall-graded target
+
+Now $s(\phi) = \mathrm{clip}(s_\text{lo} + 0.3\,(\phi - s_\text{lo}),\ s_\text{lo},\ s_\text{hi})$ with
+$\phi$ the distance to the nearest grain: cells of size 0.08 at the walls growing to 0.25 in the
+pores. The slope matters: a Voronoi cell's size cannot change faster than its neighbours', so the
+example's original $s = \mathrm{clip}(\phi)$ (slope 1, neighbouring targets eight times apart) is
+unresolvable by any mesh; slope 0.3 is.
+
+```{python}
+res_g = voro.redistribute_pore_mesh(pos0, centres, radii, L, s_lo=0.08, s_hi=0.25, slope=0.3)
+hg = np.array(res_g["history"])
+print(f"graded: N {int(hg[0,0])} -> {len(res_g['positions'])}, max|V/V_ref-1| {hg[0,1]:.2f} -> {res_g['max_rel']:.3f}, "
+      f"rms {hg[0,2]:.2f} -> {res_g['rms_rel']:.3f}, dead cells {res_g['n_dead']}")
+```
+
+```{python}
+#| fig-cap: "Graded target: V/V_ref against the wall distance of each seed after redistribution. The bulk sits on target; the first wall shell's cells stay about 1.5× above it — the radial extent of a cell hugging a curved wall."
+p = res_g["positions"]; rel = res_g["rel"]
+phi = voro._union_sdf(p, centres, radii, L)
+fig, ax = plt.subplots(figsize=(5.5, 3.4))
+ax.plot(phi, 1 + rel, ".", ms=2, alpha=0.5)
+ax.axhline(1, color="k", lw=1); ax.set(xlabel="distance to the nearest grain φ", ylabel="V / V_ref", ylim=(0, 2.5))
+plt.show()
+```
+
+## What to make of it
+
+- **Uniform target**: rms 0.04–0.05, worst cell about 10 % off, no dead cells — the loop meets
+  the plan's target from a start that the position-only optimiser cannot handle at all.
+- **Graded target**: rms ≈ 0.08; the outliers are the first wall shell (≈ 1.5× target). A cell
+  hugging a curved wall spans from the wall to halfway to the next shell, more than $s_\text{lo}$.
+- The loop is a heuristic with thread-order variation run to run; take the reported history, not a
+  single number, as its measure.
+
+## Adapt this yourself
+
+- **Your packing**: pass the centres and radii of a `peclet.dem` packing; the SDF union and the
+  scene are built for you.
+- **Tighter grading**: lower `slope` or raise `s_lo`; keep the target field resolvable.
+- **Feed the flow solver**: `voro.Tessellation` + `set_geometry(*voro.sphere_union_scene(...))`
+  + `build(res["positions"])` gives the mesh to `voro.FlowSolver` — see the sphere-drag example.
+
+## Reproduce this
+
+```bash
+pip install -e .          # + a recent peclet (peclet-voro with redistribute_pore_mesh)
+quarto render examples/pore-mesh-redistribution/index.qmd --execute
+PECLET_LOCAL_BUILD=/path/to/suite/voro/build_a0 quarto render examples/pore-mesh-redistribution/index.qmd --execute
+```
