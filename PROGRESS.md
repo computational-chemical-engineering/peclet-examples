@@ -423,12 +423,67 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
         so once Bo is physical the Capillary number is fixed by how thin a film the grid can carry
         (>= 3 cells) against the grain diameter -- two to three orders above a real trickle bed,
         and only resolution moves it (a factor 1000 in Ca costs ~3e4 in cells).
+- [x] `trickle-flow-packing` (E6 of the VoF gallery work order, WO-U): the gas-liquid-solid unit
+      cell -- liquid fed through a distributor disc onto a `dem`-settled packing of 34 spheres, gas
+      around it, an OUTFLOW at the bottom with `set_vof_backflow(4, 0)`, theta = 60 deg on the
+      grains, periodic sides (a unit cell of a bed interior, not a laboratory column, so there is no
+      flat SDF wall and no half-integer-wall trap; the curved grains cannot put a MAC face on the
+      zero level). One 48x48x96 run plus three on 24x24x48 (the resolution control, and the
+      co-current-gas and ratio-1000 comparisons against it), each to t = 420 s.
+      - **Packing** (`enable_periodicity(True, True, False)` + a flat `build_wall_sdf` floor +
+        gravity, i.e. a genuinely settled bed rather than a triply periodic LS jam): 34 spheres of
+        R = 7.7 cells, bed height 51.07 cells, solid fraction 0.553 (porosity 0.447), and the
+        velocity one step regenerates from rest 4.6e-02. The DEM contact solve is NOT
+        bit-reproducible (float atomics), so the bed differs between renders -- porosity came out
+        0.40-0.45 over the renders. The quench therefore ends with 200 steps of pure position
+        relaxation (velocities zeroed each step), without which a grain rolling on the pile leaves
+        a residual velocity of order 1.
+      - **Physics**: Bo = 1.2 (water/air on 3 mm packing is 1.23), mu_l/mu_g = 50 (water/air 55),
+        Ca = 0.0228, film Re 1.8, sigma = 658.8, g = 0.03367, u_max = 0.3 cells/s, d_p = 15.4 cells,
+        reduced gravity `-drho g C` so the gas is exactly force-free and the Dirichlet p = 0 outlet
+        supports rather than accelerates the gas column. FCG is selected AFTER the rho closure.
+      - **Gates (48x48x96, ratio 100, 9151 steps to t = 420 s, 11 min wall)**: colour budget
+        `sum eps C - in + out` closes to **3.38e-14 relative**; pressure **38/600**, no capped step;
+        `max_open_divergence_projected()` **2.05e-09**; C in [-4.2e-22, 1]; colour inside the grains
+        **exactly 0**; `clipped_volume` **exactly 0** (the cut-cell approximation's tripwire).
+        Half res 6.49e-14 / 48/600 / 8.09e-11; co-current gas 2.23e-14 / 46/600 / 9.96e-11;
+        ratio 1000 8.22e-14 / 63/600 / 4.78e-11. No run of any configuration ever capped.
+      - **Functionals (mean +- s.d. over the last quarter)**: liquid saturation beta = 0.298 +-
+        0.023, wetted cut-cell fraction 0.146 +- 0.014, Delta p across the bed 34.7 +- 22.6 (holdup
+        per bed volume 0.132; static head of that holdup 22.5, frictional remainder 12.1).
+      - **The run is a FILLING TRANSIENT, not a steady state, and the page says so.** At t = 420 s
+        the outlet ledger is still 6e-24 -- nothing has left -- and all three functionals are still
+        climbing. The feed (u_max pi r_d^2) is of the same order as the drainage a film of a few
+        cells can carry down the grain contour a horizontal cut offers, i.e. the cell is fed at
+        about its drainage capacity. Reaching a trickle steady state needs a smaller distributor or
+        a much longer run; the page reports the transient and makes every run-to-run comparison a
+        SAME-TIME comparison instead.
+      - **Comparisons** (all at the same t, all on the same bed): half resolution beta +1.7 %,
+        wetted +4.4 %, Delta p -8.4 %; co-current gas at 0.25 u_max beta +7.2 %, wetted +15.7 %,
+        Delta p **+169 %**; ratio 1000 beta +0.7 %, wetted +0.8 %, Delta p -2.7 %. The run-to-run
+        spread of these numbers across renders is as large as the effects (the bed is stochastic and
+        a rivulet network is chaotic), so the page quotes them through inline `{python}` and makes
+        no directional claim it cannot support by mechanism.
+      - **Two measurements worth keeping.** `wisps` = 212821 of 221184 cells: after 9151 steps
+        almost every cell carries a colour of order 1e-20, the round-off wake of the geometric
+        advection, harmless only because the shipped wisp guard treats that band as pure (this is
+        the degeneracy that used to take an emptying domain to NaN). And the contact-angle census
+        reports a mean locally measured apparent angle of **134.7 deg** against the prescribed 60 --
+        the signature of a front advancing over a dry grain under a STATIC angle.
+      - **The page's own inequality**: `Ca = (Bo/2) (delta/d_p)^2` with mu, g and sigma all
+        cancelling, so once Bo is physical the Capillary number is fixed by how thin a film the grid
+        can carry (>= 3 cells) against the grain diameter -- two to three orders above a real
+        trickle bed, and only resolution moves it (a factor 1000 in Ca costs ~3e4 in cells).
       - One new ISSUES entry: `step()` is NOT atomic across the Weymouth-Yue boundedness throw --
         the colour is untouched but the momentum half has already advanced by the rejected dt
-        (max|w| moves by exactly g_z*dt), so the obvious catch-and-halve-dt retry desynchronises
-        the two fields. The page re-picks dt from `vof_step_limits()` EVERY step instead.
+        (max|w| moves by exactly g_z*dt), so the obvious catch-and-halve-dt retry desynchronises the
+        two fields. The page re-picks dt from `vof_step_limits()` EVERY step instead; every ten
+        steps (what the solver's own study scripts do) is not enough when a pendant body bridges
+        onto a packing.
+      - Collocated cross-check: **refused, and the page prints the message verbatim** -- rung V8 is
+        all-fluid, so `enable_vof()` after `set_solid(..., cutcell_pressure=True)` raises.
       - A local mp4 of the mid-plane colour field is written next to the page
-        (`examples/trickle-flow-packing/trickle-flow-packing.mp4`, git-ignored via `*.mp4`); the
-        page carries a commented-out YouTube embed placeholder for it.
+        (`examples/trickle-flow-packing/trickle-flow-packing.mp4`, 94 frames, git-ignored via
+        `*.mp4`); the page carries a commented-out YouTube embed placeholder above it.
       - Solver build used for the frozen outputs: `suite/flow-ex2/build_cuda` (CUDA, flow
         `2b55edb` = origin/main with WO-R2), dem `build_l4_cuda`.
