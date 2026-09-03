@@ -13,13 +13,14 @@ project:
 
 website:
   title: "Peclet Examples"
+  favicon: assets/favicon.png
   description: "Worked, runnable examples for the peclet simulation suite."
   site-url: "https://computational-chemical-engineering.github.io/peclet-examples"
   repo-url: "https://github.com/computational-chemical-engineering/peclet-examples"
   repo-actions: [source, issue]
   page-navigation: true
   navbar:
-    logo: ""
+    logo: assets/peclet-logo-circle.svg
     left:
       - href: index.qmd
         text: Home
