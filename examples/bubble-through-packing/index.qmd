@@ -750,22 +750,13 @@ writer.close()
 print(f"{len(bed['frames'])} frames -> {MP4}")
 ```
 
-::: {.callout-note}
-## The movie lives on YouTube, not in this repo
-Per [STYLE_GUIDE §7](../../STYLE_GUIDE.md) videos are never committed. The cell above
-writes `bubble_through_packing.mp4` next to this page when the notebook is executed;
-the published version embeds it from YouTube. **The iframe below is a placeholder until
-the upload is done** — the local file path is recorded in `PROGRESS.md`.
-:::
-
 ```{=html}
-<!-- TODO(WO-U E7): replace with the YouTube iframe once the mp4 is uploaded.
-     Local file produced by the `movie` cell: examples/bubble-through-packing/bubble_through_packing.mp4 -->
-<div style="max-width:520px;margin:0 auto;padding:2.2rem 1rem;border:1px dashed #9aa4b1;border-radius:6px;text-align:center;color:#5a636e;font-size:0.92em;">
-  <strong>Movie placeholder</strong><br>
-  The rendered animation is uploaded to YouTube and embedded here.<br>
-  Still frames from the same render follow below.
-</div>
+<!-- The 145 KB mp4 produced by the `movie` cell is committed next to this page, like the
+     rayleigh-benard and tumbling-cubes movies; a YouTube copy lives on
+     https://www.youtube.com/@PecletCode and can replace this tag with an iframe. -->
+<video controls autoplay loop muted playsinline width="100%" style="max-width:760px;display:block;margin:0 auto;border-radius:6px;">
+  <source src="bubble_through_packing.mp4" type="video/mp4">
+</video>
 ```
 
 ```{python}
