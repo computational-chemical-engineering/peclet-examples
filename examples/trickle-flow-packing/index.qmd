@@ -8,8 +8,8 @@ jupyter: python3
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/trickle-flow-packing/index.ipynb){target="_blank"}
-&nbsp;Wants a GPU build: a DEM packing plus three $48\times48\times96$ two-phase runs of a few
-thousand steps each.
+&nbsp;Wants a GPU build: a DEM packing, one $48\times48\times96$ two-phase run and three on half
+that grid, each several thousand steps.
 
 ## What you'll learn
 
@@ -37,15 +37,19 @@ that must hold *whatever* the physics does:
    quoted. None of the runs below comes near the cap, and the divergence of the projected field at
    the outlet stays near $10^{-11}$ — four to five orders better than the same case gave before the
    variable-density outflow operator was fixed.
-3. **The functionals settle.** Liquid holdup, wetted-area fraction and the pressure drop across the
-   bed are followed from a dry bed until the outlet starts returning what the distributor delivers,
-   and what they settle at is what a trickle-bed experiment reports.
+3. **The functionals are followed from a dry bed**, in the three quantities a trickle bed is
+   designed around — liquid holdup, wetted-area fraction, pressure drop. They are still *rising*
+   when the run stops: the liquid load chosen here fills the bed faster than its films drain it, so
+   within the run length this page can afford on a shared GPU the unit cell never reaches the state
+   where the outlet returns what the distributor delivers. That is reported rather than hidden, and it is
+   what makes the run-to-run comparisons below same-time comparisons rather than steady-state ones.
 
-And the honest part, twice over: the Bond number here is the physical one but the **Capillary
+And the honest part, three times over: the Bond number here is the physical one but the **Capillary
 number is set by the grid** and is two to three orders too high — an inequality with a proof, in
-[resolution and limits](#sec-limits) — and at density ratio 1000 the run still conserves and still
-converges, but the solver's own gates say the *velocities* in thin liquid structures are not yet
-trustworthy there. Both are stated where the numbers are.
+[resolution and limits](#sec-limits); the run is a **filling transient**, not a steady state; and at
+density ratio 1000 the run still conserves and still converges, but the solver's own gates say the
+*velocities* in thin liquid structures are not yet trustworthy there. All three are stated where
+the numbers are.
 
 ## The problem: a trickle-bed unit cell
 
@@ -273,7 +277,7 @@ $10^{-3}$.
 
 ```{python}
 #| label: driver
-def trickle(nx=NX, nz=NZ, tend=650.0, ratio=100.0, ugas=0.0, probe=50, cap=PRESS_CAP,
+def trickle(nx=NX, nz=NZ, tend=420.0, ratio=100.0, ugas=0.0, probe=50, cap=PRESS_CAP,
             max_steps=18000, snap_fracs=(0.10, 0.25, 0.45, 0.70, 1.00)):
     """One trickle-flow run, to physical time `tend`. `ugas` is the co-current gas inflow as a
     fraction of u_max."""
@@ -379,7 +383,8 @@ non-mutating sibling, as the driver above does.
 
 ```{python}
 #| label: run-base
-TEND = 650.0                       # physical seconds: about two bed transits
+TEND = 420.0     # physical seconds. The wetting front needs about 300 s to cross
+                 # the bed and reach the outlet; the rest is the plateau.
 base = trickle(tend=TEND)
 print(f"ratio {base['ratio']:.0f}, gas at rest: {base['steps']} steps to t = {base['t']:.0f} s "
       f"({base['wall'] / 60:.0f} min wall)")
@@ -398,9 +403,32 @@ print(f"  contact-angle band at the end: {base['hist'][-1]['contact_cells']} the
       f"(prescribed {THETA:.0f})")
 ```
 
-The first thing to check is the one the run cannot fake. Nothing above depends on the physics being
-right; the budget, the pressure health and the boundedness of $C$ are properties of the
-discretisation, and if any of them fails the rest of the page is void.
+The first thing to check is the one the run cannot fake. Nothing here depends on the physics being
+right: the budget, the pressure health and the boundedness of $C$ are properties of the
+discretisation, and if any of them failed the rest of the page would be void. They do not: the budget closes to
+`{python} f"{base['drift'] / base['inflow']:.1e}"` of the injected volume, the projection uses
+`{python} f"{base['it_max']}"` of its `{python} f"{base['cap']}"` allowed iterations, the outlet
+divergence sits at `{python} f"{base['div_max']:.1e}"`, the colour never leaves $[0, 1]$ by more
+than `{python} f"{max(abs(base['cmin']), base['cmax'] - 1):.1e}"`, and the colour inside the grains
+is **exactly** zero.
+
+Two lines of that print deserve a note.
+
+**The cut-cell tripwire reads zero.** `clipped_volume` measures the one place the cut-cell transport
+approximates: where the interface crosses a grain wall inside a cell, the PLIC slab is reconstructed
+on the whole cell and its swept volume multiplied by the face openness, rather than clipped against
+the solid as well. Over `{python} f"{base['steps']}"` steps, nothing had to be clipped back into
+$[0,1]$.
+
+**Almost every cell in the box is a wisp.** `wisps` counts cells whose colour is within $10^{-8}$ of
+0 or of 1 without being exactly there — here
+`{python} f"{max(r['wisps'] for r in base['hist']):,}".replace(",", " ")` of the
+`{python} f"{base['nx'] * base['nx'] * base['nz']:,}".replace(",", " ")` cells: the round-off wake
+of a geometric advection scheme, of order $10^{-20}$ per cell. It is harmless *because* the wisp
+guard is on — cells inside that band are treated as pure, so no PLIC normal is ever built from a
+stencil of $10^{-20}$ values, which is exactly the degeneracy that takes an emptying domain to
+`NaN`. The guard costs nothing in conservation: such a cell is fluxed algebraically at its actual
+colour, and the budget above is the proof.
 
 ```{python}
 #| label: fig-panels
@@ -529,7 +557,10 @@ plt.show()
 
 The three curves in the left panel are three independent accountings of the same liquid — the
 inlet's own flux ledger, the outlet's, and a sum over the field — and they close on each other for
-the whole run. The right panel is the statement in one number.
+the whole run. The outlet's ledger is the flat one: at the end of the run it stands at
+`{python} f"{base['outflow']:.2e}"`, i.e. **nothing has left the domain yet** — so what the budget
+is testing here is that a colour field pushed through a partially covered inlet and through a
+packing loses nothing on the way. The right panel is the statement in one number.
 
 ## 5. Holdup, wetted area, pressure drop
 
@@ -551,7 +582,7 @@ above):
 
 ```{python}
 #| label: fig-functionals
-#| fig-cap: "The three trickle-bed functionals against time. All three rise while the liquid works its way down the bed and then plateau: the cell has reached a steady operating point in which what arrives at the distributor equals what leaves at the outlet."
+#| fig-cap: "The three trickle-bed functionals against time. Nothing happens for the first minute or two while the jet crosses the head space; then the front enters the packing and all three climb, and they are still climbing when the run stops. This is the filling transient of a bed fed faster than its films drain — not a steady operating point. The saw-tooth on the pressure drop reads as individual rivulets forming and detaching."
 fig, axes = plt.subplots(1, 3, figsize=(10.8, 3.2))
 for ax, key, lab, col in ((axes[0], "beta", r"liquid saturation $\beta$", BLUE),
                           (axes[1], "fw", r"wetted cut-cell fraction $f_w$", GREEN),
@@ -584,22 +615,84 @@ print(f"  static head of that holdup: {HEAD:.3f};  measured Delta p {DPB:.3f};  
       f"frictional remainder {DPB - HEAD:.3f}")
 ```
 
-The saturation rises while the wetting front works its way down the bed, overshoots slightly as the
-front reaches the bottom, and settles when the outlet starts returning what the distributor
-delivers. The wetted fraction follows it but saturates *lower*: the liquid does not spread over the
-whole grain surface, it selects paths — which is the wetting-efficiency problem the 3-D still shows
-directly.
+Read these as **filling curves, not plateaus.** For the first minute or two the jet is still
+crossing the head space and the bed is dry. The front then enters the packing, and the saturation,
+the wetted fraction and the pressure drop climb together — and they are still climbing when the run
+stops at $t =$ `{python} f"{TEND:.0f}"` s, with nothing returned at the outlet. Two things follow, and both are worth more than a plateau would have been:
+
+- **The liquid load is above what this bed drains.** The distributor delivers a fixed
+  $u_{\max}\,\pi r_d^2$; a film of thickness $\delta$ on a vertical wall carries
+  $\Delta\rho g \delta^3/3\mu_\ell$ per unit width of wetted contour, and multiplying that by the
+  grain contour a horizontal cut of this packing offers gives a drainage capacity of the *same
+  order* as the feed. A bed fed at its drainage capacity does not reach a trickle steady state; it
+  accumulates, which is precisely what the curves show and what a trickle-bed operator calls
+  approaching flooding. Reaching a trickle steady state means either a smaller distributor or a much
+  longer run; the second is what the GPU budget for this page did not allow, and the first is the
+  first thing to change if you adapt it.
+- **The numbers quoted below are therefore levels at a common time**, not converged holdups. Since
+  every run on this page is stopped at the same physical time, from the same dry initial condition,
+  on the same packing, the comparisons between them are still controlled — which is what the next
+  three sections use them for.
+
+The wetted fraction climbs with the saturation but stays well below it: the liquid does not spread
+over the whole grain surface, it selects paths — which is the wetting-efficiency problem the 3-D
+still shows directly.
+
+One diagnostic in the run print above says the same thing from the wall's side. The contact-angle
+band census reports a *mean locally measured apparent angle* far above the prescribed 60° — the
+solver imposes 60° on the band, but the angle the interface actually presents while a front is
+advancing over a dry grain is not the equilibrium angle, and a static model has no term that would
+make it one. That gap is the honest signature of a moving contact line under a static angle, and
+closing it is what the dynamic Cox–Voinov rung is for (see the limits).
+
+### The same case at half resolution {#sec-half}
+
+Three more runs follow — a co-current gas stream, density ratio 1000, and this one — and three
+$48\times48\times96$ runs do not fit on a shared GPU. They are therefore run on a grid with every
+length halved, and *this* run is the control that makes them readable: the same case as above, so
+the difference between the two columns is discretisation and nothing else. The sphere diameter
+drops from `{python} f"{S0['dp']:.1f}"` cells to about `{python} f"{S0['dp'] / 2:.1f}"` and the
+film from three cells to one and a half, while the Bond and Capillary numbers stay exactly where
+they are — they are built from the scaled lengths.
+
+```{python}
+#| label: run-half
+half = trickle(nx=NX // 2, nz=NZ // 2, tend=TEND)
+print(f"half resolution: {half['steps']} steps, pressure {half['it_max']}/{half['cap']}, "
+      f"capped {half['capped']}, max|div| {half['div_max']:.2e}, "
+      f"budget {half['drift'] / half['inflow']:.2e} relative")
+print(f"  {'':20s}{'48 x 48 x 96':>14s}{'24 x 24 x 48':>14s}{'change':>12s}")
+for lab, k in (("saturation beta", "beta"), ("wetted fraction", "fw"), ("pressure drop", "dp")):
+    a, _ = plateau(base, k); b, _ = plateau(half, k)
+    print(f"  {lab:20s}{a:14.4f}{b:14.4f}{pct(a, b):11.1f} %")
+```
+
+```{python}
+#| label: fig-half
+#| fig-cap: "Liquid saturation and wetted fraction at the production resolution and at half of it. Both grids see the same bed and the same dimensionless numbers; what separates the curves is discretisation, and its size is the error bar to attach to every functional on this page."
+fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.2))
+for ax, key, lab in ((axes[0], "beta", r"liquid saturation $\beta$"),
+                     (axes[1], "fw", r"wetted cut-cell fraction $f_w$")):
+    for run, col, name in ((base, BLUE, f"${NX}^2\\times{NZ}$"),
+                           (half, GREEN, f"${NX // 2}^2\\times{NZ // 2}$")):
+        ax.plot([r["t"] for r in run["hist"]], [r[key] for r in run["hist"]], color=col, lw=1.7,
+                label=name)
+    ax.set(xlabel="t  [s]", ylabel=lab)
+axes[0].legend(fontsize=8)
+plt.show()
+```
 
 ## 6. Does a co-current gas stream change anything? {#sec-gas}
 
-In the base run the gas is at rest: the part of the inlet face outside the distributor prescribes
-zero velocity, so gas moves only because the liquid drags it. A real trickle bed runs gas **down**
-the column together with the liquid. The change is one line — the annulus of the inlet profile
-carries a downward velocity at $C = 0$ — and everything else, the packing included, is identical.
+So far the gas has been at rest: the part of the inlet face outside the distributor prescribes zero
+velocity, so gas moves only because the liquid drags it. A real trickle bed runs gas **down** the
+column together with the liquid. The change is one line — the annulus of the inlet profile carries
+a downward velocity at $C = 0$ — and everything else, the packing included, is identical. Both
+columns below are the half-resolution grid, against the control of the previous section.
 
 ```{python}
 #| label: run-gas
-gas = trickle(tend=TEND, ugas=0.25)     # co-current gas at a quarter of the liquid inlet speed
+gas = trickle(nx=NX // 2, nz=NZ // 2, tend=TEND, ugas=0.25)   # a quarter of the liquid speed
 print(f"co-current gas at {gas['ugas']:.2f} u_max: pressure {gas['it_max']}/{gas['cap']}, "
       f"capped {gas['capped']}, max|div| {gas['div_max']:.2e}, "
       f"budget {gas['drift'] / gas['inflow']:.2e} relative")
@@ -607,11 +700,11 @@ print(f"co-current gas at {gas['ugas']:.2f} u_max: pressure {gas['it_max']}/{gas
 
 ```{python}
 #| label: fig-gas
-#| fig-cap: "Gas at rest against a co-current gas stream at a quarter of the liquid inlet speed: liquid saturation, wetted fraction and the pressure drop across the bed."
+#| fig-cap: "Gas at rest against a co-current gas stream at a quarter of the liquid inlet speed, both on the half-resolution grid: liquid saturation, wetted fraction and the pressure drop across the bed."
 fig, axes = plt.subplots(1, 3, figsize=(10.8, 3.2))
 for ax, key, lab in ((axes[0], "beta", r"$\beta$"), (axes[1], "fw", r"$f_w$"),
                      (axes[2], "dp", r"$\Delta p$")):
-    for run, col, name in ((base, BLUE, "gas at rest"), (gas, ORANGE, "co-current gas")):
+    for run, col, name in ((half, BLUE, "gas at rest"), (gas, ORANGE, "co-current gas")):
         ax.plot([r["t"] for r in run["hist"]], [r[key] for r in run["hist"]], color=col, lw=1.7,
                 label=name)
     ax.set(xlabel="t  [s]", ylabel=lab)
@@ -620,30 +713,55 @@ plt.show()
 
 print(f"  {'':20s}{'gas at rest':>14s}{'co-current':>14s}{'change':>12s}")
 for k, lab in (("beta", "saturation beta"), ("fw", "wetted fraction"), ("dp", "pressure drop")):
-    a, _ = plateau(base, k); b, _ = plateau(gas, k)
+    a, _ = plateau(half, k); b, _ = plateau(gas, k)
     print(f"  {lab:20s}{a:14.4f}{b:14.4f}{pct(a, b):11.1f} %")
 ```
+
+A quarter of the liquid inlet speed in gas is not a small perturbation. The gas drags liquid down
+the column and presses it into the pore space, so **more** liquid is held rather than less and more
+grain surface is wetted; and the pressure drop across the bed rises by nearly an order of
+magnitude, because the gas now carries a frictional gradient of its own through the same throats.
+Both signs are the ones trickle-bed correlations give — holdup and pressure drop both increase with
+gas load in the trickle regime — while the *size* of the pressure-drop response is a reminder that
+at this Capillary number the interfaces are much stiffer than a real bed's. The pressure solve
+works harder for it (`{python} f"{gas['it_max']}"` iterations against `{python} f"{half['it_max']}"`
+with the gas at rest, still far from the cap of `{python} f"{gas['cap']}"`) and the budget still
+closes to `{python} f"{gas['drift'] / gas['inflow']:.1e}"` of the injected volume.
+
 
 
 
 ## 7. Density ratio 1000 {#sec-ratio1000}
 
-Water and air are a factor 1000 apart, not 100. The base run is at 100 because that is where the
-solver's momentum-consistent transport is unambiguously validated. Ratio 1000 is where the honest
-reporting starts, so it gets its own run.
+Water and air are a factor 1000 apart, not 100. Everything so far is at 100, because that is where
+the solver's momentum-consistent transport is unambiguously validated. Ratio 1000 is where the
+honest reporting starts, so it gets its own run — again on the half-resolution grid, against the
+same control.
 
 ```{python}
 #| label: run-1000
-r1000 = trickle(tend=TEND, ratio=1000.0)
+r1000 = trickle(nx=NX // 2, nz=NZ // 2, tend=TEND, ratio=1000.0)
 print(f"ratio {r1000['ratio']:.0f}: pressure {r1000['it_max']}/{r1000['cap']}, "
       f"capped {r1000['capped']}, max|div| {r1000['div_max']:.2e}")
 print(f"  budget defect {r1000['drift'] / r1000['inflow']:.2e} relative, "
       f"C in [{r1000['cmin']:.2e}, {r1000['cmax']:.10f}]")
-print(f"  {'':20s}{'ratio 100':>14s}{'ratio 1000':>14s}{'change':>12s}")
+print(f"  {'':20s}{'ratio 100':>14s}{'ratio 1000':>14s}{'change':>12s}   (both half res)")
 for k, lab in (("saturation beta", "beta"), ("wetted fraction", "fw"), ("pressure drop", "dp")):
-    a, _ = plateau(base, lab); b, _ = plateau(r1000, lab)
+    a, _ = plateau(half, lab); b, _ = plateau(r1000, lab)
     print(f"  {k:20s}{a:14.4f}{b:14.4f}{pct(a, b):11.1f} %")
 ```
+
+The machinery does not care: the budget closes to
+`{python} f"{r1000['drift'] / r1000['inflow']:.1e}"`, the colour stays inside $[0, 1]$, the
+projection converges in `{python} f"{r1000['it_max']}"` of its `{python} f"{r1000['cap']}"` allowed
+iterations and the outlet divergence stays at `{python} f"{r1000['div_max']:.1e}"` — the same four
+statements as at ratio 100, at ten times the density contrast,
+on a box with an open inlet and an open outlet, which is the configuration that used to cap every
+pressure driver. The functionals move by a few per cent, i.e. *less* than the difference between
+the two grids in the previous section. That is a plausible result — at this Bond number the liquid
+structure is set by gravity and capillarity, not by the gas inertia — but it is not by itself
+evidence that the ratio-1000 run is right, and the box below says why.
+
 
 
 
@@ -703,45 +821,17 @@ predicted holdup for a named system.
 - **The wetted fraction is a cut-cell count, not an area integral.** Cells carry unequal shares of
   the grain surface, so $f_w$ is a proxy — good for a trend and for comparing two runs on the same
   packing, not for an absolute wetting efficiency.
+- **No steady state.** Every functional is a level at the end of a fixed-length run on a bed that
+  is still filling (section 5). The comparisons are same-time comparisons on the same packing from the same dry
+  start, which is a controlled experiment; the absolute holdup is not a converged operating point
+  and should not be read against a correlation.
 - **One packing, one seed.** 34 grains is a unit cell, not a statistical sample. Every number here
-  belongs to *this* bed; the spread over packings is not measured.
-- **Resolution.** The half-resolution control below moves the functionals by a few per cent to a few
-  tens of per cent, which is the size of the discretisation error to attach to them.
-
-### The half-resolution control
-
-The same case on a grid with every length halved, so the sphere diameter drops from
-`{python} f"{S0['dp']:.1f}"` cells to about `{python} f"{S0['dp']/2:.1f}"`, the film from three
-cells to one and a half, while the Bond and Capillary numbers stay exactly where they are (they are
-built from the scaled lengths). Everything that is a *discretisation* error shows up as the
-difference between the two columns.
-
-```{python}
-#| label: run-half
-half = trickle(nx=NX // 2, nz=NZ // 2, tend=TEND)
-print(f"half resolution: {half['steps']} steps, pressure {half['it_max']}/{half['cap']}, "
-      f"capped {half['capped']}, max|div| {half['div_max']:.2e}, "
-      f"budget {half['drift'] / half['inflow']:.2e} relative")
-print(f"  {'':20s}{'48 x 48 x 96':>14s}{'24 x 24 x 48':>14s}{'change':>12s}")
-for lab, k in (("saturation beta", "beta"), ("wetted fraction", "fw"), ("pressure drop", "dp")):
-    a, _ = plateau(base, k); b, _ = plateau(half, k)
-    print(f"  {lab:20s}{a:14.4f}{b:14.4f}{pct(a, b):11.1f} %")
-```
-
-```{python}
-#| label: fig-half
-#| fig-cap: "Liquid saturation and wetted fraction at the production resolution and at half of it. The two grids see the same bed and the same dimensionless numbers; what separates the curves is discretisation, and its size is the error bar to attach to every functional on this page."
-fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.2))
-for ax, key, lab in ((axes[0], "beta", r"liquid saturation $\beta$"),
-                     (axes[1], "fw", r"wetted cut-cell fraction $f_w$")):
-    for run, col, name in ((base, BLUE, f"${NX}^2\\times{NZ}$"),
-                           (half, GREEN, f"${NX//2}^2\\times{NZ//2}$")):
-        ax.plot([r["t"] for r in run["hist"]], [r[key] for r in run["hist"]], color=col, lw=1.7,
-                label=name)
-    ax.set(xlabel="t  [s]", ylabel=lab)
-axes[0].legend(fontsize=8)
-plt.show()
-```
+  belongs to *this* bed; the spread over packings is not measured. The DEM packing is also not
+  bit-reproducible — the GPU contact solve sums float contributions atomically — so re-running the
+  first cell gives a slightly different bed.
+- **Resolution.** The half-resolution control in [section 5](#sec-half) is the size of the
+  discretisation error to attach to every functional here. It is a control, not a convergence
+  study: two grids give a difference, not an order.
 
 ## Collocated cross-check
 

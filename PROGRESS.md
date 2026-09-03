@@ -406,3 +406,29 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
         the cut-cell packed run.
       - Gallery card `assets/gallery/bubble-through-packing.jpg` (three PyVista stills), navbar
         entry under "Two-phase flow (VoF)", and the index card placed **first** in that section.
+- [~] `trickle-flow-packing` (E6 of the VoF gallery work order, WO-U): the gas-liquid-solid unit
+      cell -- liquid dripped through a distributor disc onto a `dem`-settled random packing of 34
+      spheres, gas around it, an OUTFLOW at the bottom with `set_vof_backflow(4, 0)`, theta = 60
+      deg on the grains, periodic sides (a unit cell of a bed interior, not a laboratory column --
+      so no flat SDF wall and no half-integer-wall trap). 48x48x96, density ratio 100 with a
+      ratio-1000 twin, a co-current-gas twin and a 24x48 half-resolution control. NUMBERS PENDING
+      (production render in progress).
+      - The packing: `enable_periodicity(True, True, False)` + a flat `build_wall_sdf` floor and
+        gravity, i.e. a genuinely settled bed rather than a triply periodic LS jam -- bed height
+        52.7 cells, solid fraction 0.535, residual max|v| 1.9e-3 after the quench.
+      - Physics: Bo = 1.2 (water/air on 3 mm packing is 1.23), mu_l/mu_g = 50 (water/air 55),
+        Ca = 0.023, film Re 1.8, reduced gravity `-drho g C` so the gas is force-free and the
+        Dirichlet p = 0 outlet supports rather than accelerates the gas column.
+      - The page's own inequality: `Ca = (Bo/2) (delta/d_p)^2` with mu, g and sigma all cancelling,
+        so once Bo is physical the Capillary number is fixed by how thin a film the grid can carry
+        (>= 3 cells) against the grain diameter -- two to three orders above a real trickle bed,
+        and only resolution moves it (a factor 1000 in Ca costs ~3e4 in cells).
+      - One new ISSUES entry: `step()` is NOT atomic across the Weymouth-Yue boundedness throw --
+        the colour is untouched but the momentum half has already advanced by the rejected dt
+        (max|w| moves by exactly g_z*dt), so the obvious catch-and-halve-dt retry desynchronises
+        the two fields. The page re-picks dt from `vof_step_limits()` EVERY step instead.
+      - A local mp4 of the mid-plane colour field is written next to the page
+        (`examples/trickle-flow-packing/trickle-flow-packing.mp4`, git-ignored via `*.mp4`); the
+        page carries a commented-out YouTube embed placeholder for it.
+      - Solver build used for the frozen outputs: `suite/flow-ex2/build_cuda` (CUDA, flow
+        `2b55edb` = origin/main with WO-R2), dem `build_l4_cuda`.
