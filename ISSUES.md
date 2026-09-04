@@ -125,7 +125,7 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   and the flow regression suite unchanged.
 
 ## Poiseuille example reported a fake "convergence" — misleading validation metric
-- **Status:** diagnosed (root cause found); fix pending — see Notes
+- **Status:** RESOLVED — examples `a27ed09` (2026-07-03, page rewritten pointwise, log-log plot dropped) + flow `6f0a312` (2026-07-03, `verify_poiseuille_sdflow.py` → `verify_poiseuille_flow.py`, pointwise node metric); re-verified 2026-09-04 (see the update at the end of the entry)
 - **Package / area:** examples (poiseuille-ibm) + flow `scripts/verify_poiseuille_sdflow.py`
 - **Found in:** examples/poiseuille-ibm — user challenged "a 2nd-order method must
   reproduce a quadratic exactly, so N=16 should have ~0 error."
@@ -154,6 +154,19 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
      `U_max`-vs-continuum metric with a 2% tolerance — it PASSES for the wrong
      reason and would not catch a genuine first-order regression. Tighten it to
      assert the pointwise node error (~1e-6), which actually tests method order.
+
+**Update 2026-09-04 — both fixes confirmed done, entry closed.** (1) examples `a27ed09`
+rewrote `examples/poiseuille-ibm` around the pointwise node comparison (staggered and
+collocated), replaced the convergence plot by the exact-at-every-resolution table and kept the
+`u.max()`-vs-`U_max` trap as a callout. (2) flow `6f0a312` renamed the script to
+`scripts/verify_poiseuille_flow.py` and made it assert `max_node |u − u_analytic| < 1e-4` on
+both meshes. Re-run today on the flow `rel-issues` branch (OpenMP, 4 threads): node error
+**6.49e-8 / 1.10e-6 / 2.47e-5** at N = 16/32/64 (u_max 0.45 / 1.8 / 8.5 — the error scales with
+u_max, i.e. it is the cut-cell closure's float floor, ~2.5e-6 relative, not discretization
+error), identical on the staggered and collocated meshes, PASS. The same exactness fact is
+now also the reference of the new free-slip gate (`tests/kokkos/test_freeslip.cpp`, entry
+"flow: no free-slip domain BC" below): a half channel closed by a symmetry plane reproduces the
+full channel node for node to 3e-13.
 
 ## Immersed solid + inflow/outflow is broken in three concrete ways (flow)
 - **Status:** RESOLVED (flow `src/flow_ibm.hpp`) — the core blocker (c) is fixed; a
@@ -731,7 +744,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   start-up transient's dip triggers it (bit the d/h=16 rung: 160-step run, peak 0.41).
 
 ## flow: no free-slip domain BC, so the Hysing benchmark's lateral condition can only be approximated
-- **Status:** open (worked around; exact for benchmark case 1, an approximation for case 2)
+- **Status:** RESOLVED — flow `35d951c` (2026-09-04): `set_domain_bc(face, 4)` = free-slip / symmetry plane, both grids, MPI; gates in `tests/kokkos/test_freeslip.cpp` + `test_velocitymg_bc_mpi`. The pages still run with periodic sides (see the update at the end of the entry)
 - **Package / area:** flow (domain boundary conditions, `set_domain_bc`)
 - **Found in:** examples/rising-bubble
 - **Observed:** the Hysing et al. (IJNMF 60:1259, 2009) rising-bubble benchmark prescribes
@@ -757,6 +770,28 @@ is now measured false and needs rewriting before the new numbers are published.*
   against a wall $H = 16$ cells from the interface, and the measured frequencies land within
   0.54 % of the exact root — but it is the same missing boundary type, and the drop case avoids
   it only by being fully periodic.
+
+**Update 2026-09-04 — implemented (flow `35d951c`).** `set_domain_bc(face, 4)` is a free-slip /
+symmetry plane: zero normal velocity, zero normal derivative of the tangential components,
+pressure Neumann like a wall (`vx/vy/vz` ignored). Staggered: the normal component is the
+no-slip treatment with wall velocity 0, the tangential ghost the *even* reflection (or a
+dropped face with −β on the diagonal on the implicit fold path); collocated: odd reflection of
+the normal component, mirror of the tangential ones. It runs through every momentum path
+(const-coefficient fold, cut-cell/FOU stencil, mixed velocity MG) and is rank-owned under MPI.
+Measured gates: a half Poiseuille channel (cut-cell SDF wall + type-4 face) equals the full
+channel **pointwise to 3e-13 (staggered) / 7e-13 (collocated)** on either side of the axis;
+a body-force-driven flow along four slip faces stays uniform with v = w = 0; a Stokes sphere in
+a ±y slip box equals its mirror-periodic twin (sphere + image, twice the height) to 6.1e-13
+through the pressure solve; `test_velocitymg_bc_mpi` gains a ±z free-slip pass, np=1 bit-exact,
+np=2/4 at 1.6e-14. Two solver facts the implementation exposed and fixed: the SDF ghost band
+beyond a non-periodic face is the periodic wrap of the *opposite* side (a phantom solid on a
+symmetry plane; now mirrored for type 4, other types unchanged), and the velocity multigrid's
+coarse levels must not carry the exact Neumann fold at small ρ/Δt (nearly singular coarse
+operators; measured 1.2e-3 → 2.5e-7 residual after 32 V-cycles). **Not done here:** switching
+`examples/rising-bubble` (Hysing case 2), `examples/capillary-oscillations` and
+`flow/tests/study/vof_surface_tension.py` from periodic to type-4 sides — that is a re-render of
+the pages with a two-phase (VoF) solver, which the VoF session owns; the pages keep the periodic
+substitution and its stated caveat until then.
 
 ## flow: the VoF interface length/area is not exposed, so benchmark "circularity" cannot be reported
 - **Status:** RESOLVED (flow WO-P3c/P3d: `vof_interface_area()`, joined marching-tetrahedra sheet on the PLIC level set, exact to 1e-4 on spheres; the rising-bubble page can now report circularity — not yet done on the page)
