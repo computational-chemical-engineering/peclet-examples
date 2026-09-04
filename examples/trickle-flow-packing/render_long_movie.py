@@ -73,10 +73,16 @@ def main() -> int:
     print(f"  budget defect {run['drift'] / run['inflow']:.2e} relative;  "
           f"max|div(open u)| {run['div_max']:.2e}", flush=True)
 
+    # Saved BEFORE rendering, and with everything the renderer needs, so that a film can be
+    # remade from a finished run without paying for the run again.
     np.savez_compressed(HERE / "trickle_long.npz",
                         frames=np.array([r["frame"] for r in run["hist"]], dtype=np.float32),
                         t=np.array([r["t"] for r in run["hist"]], dtype=np.float64),
-                        outflow=run["outflow"], inflow=run["inflow"], steps=run["steps"])
+                        outflow=np.array([r["outflow"] for r in run["hist"]]),
+                        pos=run["P"]["pos"], R=run["P"]["R"],
+                        nx=run["nx"], nz=run["nz"], tend=tend,
+                        total_out=run["outflow"], total_in=run["inflow"], steps=run["steps"])
+    print(f"saved trickle_long.npz ({len(run['hist'])} frames)", flush=True)
     render(ns, run, out, broke)
     return 0
 
