@@ -65,24 +65,31 @@ def main() -> int:
     run = ns["trickle"](tend=tend, max_steps=max_steps)
     print(f"{run['steps']} steps to t = {run['t']:.0f} s in {(time.time() - t0) / 60:.0f} min",
           flush=True)
-    broke = breakthrough(run)
-    print(f"  liquid injected {run['inflow']:.6g}, left {run['outflow']:.6g}", flush=True)
-    print(f"  breakthrough: " + (f"t = {run['hist'][broke]['t']:.0f} s"
-                                 if broke is not None else "NONE — still filling at the end"),
-          flush=True)
-    print(f"  budget defect {run['drift'] / run['inflow']:.2e} relative;  "
-          f"max|div(open u)| {run['div_max']:.2e}", flush=True)
-
-    # Saved BEFORE rendering, and with everything the renderer needs, so that a film can be
-    # remade from a finished run without paying for the run again.
+    # Save FIRST.  A three-hour run was once lost to a ZeroDivisionError in a diagnostic
+    # print that ran before this line; nothing derived from the run may precede it.
     np.savez_compressed(HERE / "trickle_long.npz",
                         frames=np.array([r["frame"] for r in run["hist"]], dtype=np.float32),
                         t=np.array([r["t"] for r in run["hist"]], dtype=np.float64),
                         outflow=np.array([r["outflow"] for r in run["hist"]]),
+                        inflow=np.array([r["inflow"] for r in run["hist"]]),
                         pos=run["P"]["pos"], R=run["P"]["R"],
                         nx=run["nx"], nz=run["nz"], tend=tend,
                         total_out=run["outflow"], total_in=run["inflow"], steps=run["steps"])
     print(f"saved trickle_long.npz ({len(run['hist'])} frames)", flush=True)
+
+    broke = breakthrough(run)
+    cmax = max(float(np.max(r["frame"])) for r in run["hist"])
+    print(f"  liquid injected {run['inflow']:.6g}, left {run['outflow']:.6g};  "
+          f"max colour anywhere {cmax:.3f}", flush=True)
+    print("  breakthrough: " + (f"t = {run['hist'][broke]['t']:.0f} s"
+                                if broke is not None else "NONE — still filling at the end"),
+          flush=True)
+    if run["inflow"]:
+        print(f"  budget defect {run['drift'] / run['inflow']:.2e} relative", flush=True)
+    else:
+        print("  !! NO LIQUID WAS INJECTED — the inlet did nothing; the film would be empty",
+              flush=True)
+    print(f"  max|div(open u)| {run['div_max']:.2e}", flush=True)
     render(ns, run, out, broke)
     return 0
 
