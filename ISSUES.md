@@ -312,7 +312,7 @@ full channel node for node to 3e-13.
   periodic self-ghost path.
 
 ## Inflow/outflow (profile inlet / BFS) diverges to NaN — advection-driven marginal mode
-- **Status:** RESOLVED as a blow-up (not reproducible on flow main, 2026-09-04 sweep on OpenMP + CUDA); the conditionally-stable outlet-reversal regime is now instrumented (flow `16fd390`: `outflow_backflow()` census + a one-time warning + `tests/kokkos/test_outflow_backflow.cpp`). See the update at the end of the entry.
+- **Status:** RESOLVED as a blow-up (not reproducible on flow main, 2026-09-04 sweep on OpenMP + CUDA); the conditionally-stable outlet-reversal regime is now instrumented (flow `15cbc73`: `outflow_backflow()` census + a one-time warning + `tests/kokkos/test_outflow_backflow.cpp`). See the update at the end of the entry.
 - **Package / area:** flow — inflow/outflow domain BC + advection (was mis-attributed to the pressure MG)
 - **Found in:** scratch run while prototyping `poiseuille-ibm` (the developing
   inflow→outflow channel variant; we shipped the periodic body-force case instead)
@@ -359,7 +359,7 @@ full channel node for node to 3e-13.
      outlet is outgoing** → the channel (no reversal) stays byte-identical.
 
 **Update 2026-09-04 — re-measured on today's main; no divergence anywhere; mechanism
-instrumented.** Runs on the flow `rel-issues` branch, shipped as `16fd390` (OpenMP 4 threads; dt = 0.4 also on CUDA):
+instrumented.** Runs on the flow `rel-issues` branch, shipped as `15cbc73` (OpenMP 4 threads; dt = 0.4 also on CUDA):
 
 | configuration | steps | result |
 |---|---|---|
@@ -780,7 +780,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   start-up transient's dip triggers it (bit the d/h=16 rung: 160-step run, peak 0.41).
 
 ## flow: no free-slip domain BC, so the Hysing benchmark's lateral condition can only be approximated
-- **Status:** RESOLVED — flow `35d951c` (2026-09-04): `set_domain_bc(face, 4)` = free-slip / symmetry plane, both grids, MPI; gates in `tests/kokkos/test_freeslip.cpp` + `test_velocitymg_bc_mpi`. The pages still run with periodic sides (see the update at the end of the entry)
+- **Status:** RESOLVED — flow `75ee27a` (2026-09-04): `set_domain_bc(face, 4)` = free-slip / symmetry plane, both grids, MPI; gates in `tests/kokkos/test_freeslip.cpp` + `test_velocitymg_bc_mpi`. The pages still run with periodic sides (see the update at the end of the entry)
 - **Package / area:** flow (domain boundary conditions, `set_domain_bc`)
 - **Found in:** examples/rising-bubble
 - **Observed:** the Hysing et al. (IJNMF 60:1259, 2009) rising-bubble benchmark prescribes
@@ -807,7 +807,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   0.54 % of the exact root — but it is the same missing boundary type, and the drop case avoids
   it only by being fully periodic.
 
-**Update 2026-09-04 — implemented (flow `35d951c`).** `set_domain_bc(face, 4)` is a free-slip /
+**Update 2026-09-04 — implemented (flow `75ee27a`).** `set_domain_bc(face, 4)` is a free-slip /
 symmetry plane: zero normal velocity, zero normal derivative of the tangential components,
 pressure Neumann like a wall (`vx/vy/vz` ignored). Staggered: the normal component is the
 no-slip treatment with wall velocity 0, the tangential ghost the *even* reflection (or a
