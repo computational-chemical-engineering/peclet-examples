@@ -346,7 +346,26 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
      outlet is outgoing** → the channel (no reversal) stays byte-identical.
 
 ## Kokkos "deallocated after finalize" warning under Jupyter/Quarto
-- **Status:** open
+- **Status:** RESOLVED 2026-09-04 — core `c1df85a` (new `peclet/core/python/kokkos_teardown.hpp`,
+  Releasable zero-copy capsules in `ndarray_interop.hpp`), flow `3035320`, dem `90366c0`,
+  voro `2c2e819`, pnm `af0c692`, coupling `684513e`. **Root cause:** it was never a harmless
+  warning — `Kokkos::Impl::SharedAllocationRecord::decrement` calls `Kokkos::abort` (SIGABRT,
+  exit 134) on OpenMP exactly as on CUDA; the Jupyter kernel's fd capture swallows the message,
+  so only the text was seen. Python runs `atexit` hooks (where `Kokkos::finalize` must live, for
+  CUDA) BEFORE it tears down module globals, so a `Solver`/`Simulation` or a zero-copy
+  `*_view` array still referenced at exit — a script global, `python -c`, every notebook — freed
+  its Views after finalize. flow had no live registry at all; no module released the
+  `view_to_ndarray` capsules; coupling never finalized its Kokkos. **Fix (one pattern for all
+  six modules):** every bound View owner is a `Releasable` (registered on construction), every
+  zero-copy capsule is one too, and each module's single atexit hook (also `<module>.finalize()`)
+  releases them all and THEN finalizes. Measured with a teardown harness — 6 modules x {script,
+  `python -c`, `del`, `sys.exit()`, ipykernel} x {OpenMP, CUDA}: before, flow/dem/coupling
+  rc = -6 in every mode except explicit `del`; after, all 60 cells silent, exit 0. Nothing needs
+  `del` before exit; after an explicit `finalize()` a solver call raises `TypeError` and the
+  `*_view` arrays must not be read. Two pre-existing sharp edges seen on the way, NOT fixed here:
+  `peclet.core.amr.Flow.step()` without any `set_solid` segfaults, and a Python-callable
+  `set_solid` deadlocks under the OpenMP host backend (Kokkos worker threads call back into
+  Python without the GIL) — use `set_solid_spheres`.
 - **Package / area:** packaging / Python bindings (Kokkos teardown order)
 - **Found in:** rendering `poiseuille-ibm` (and any interactive `peclet` session)
 - **Observed:** at kernel/interpreter shutdown on the OpenMP backend:
