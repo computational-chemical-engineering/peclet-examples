@@ -125,7 +125,7 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   and the flow regression suite unchanged.
 
 ## Poiseuille example reported a fake "convergence" — misleading validation metric
-- **Status:** RESOLVED — examples `a27ed09` (2026-07-03, page rewritten pointwise, log-log plot dropped) + flow `6f0a312` (2026-07-03, `verify_poiseuille_sdflow.py` → `verify_poiseuille_flow.py`, pointwise node metric); re-verified 2026-09-04 (see the update at the end of the entry)
+- **Status:** RESOLVED — examples `a27ed09` (2026-07-03, page rewritten pointwise, log-log plot dropped) + flow `6f0a312` (2026-07-03, `verify_poiseuille_sdflow.py` → `verify_poiseuille_flow.py`, pointwise node metric); re-verified 2026-09-04 on OpenMP and CUDA (see the updates at the end of the entry)
 - **Package / area:** examples (poiseuille-ibm) + flow `scripts/verify_poiseuille_sdflow.py`
 - **Found in:** examples/poiseuille-ibm — user challenged "a 2nd-order method must
   reproduce a quadratic exactly, so N=16 should have ~0 error."
@@ -167,6 +167,11 @@ error), identical on the staggered and collocated meshes, PASS. The same exactne
 now also the reference of the new free-slip gate (`tests/kokkos/test_freeslip.cpp`, entry
 "flow: no free-slip domain BC" below): a half channel closed by a symmetry plane reproduces the
 full channel node for node to 3e-13.
+
+**Verification 2026-09-04 (landing session, flow main `b7669d3`).** `scripts/verify_poiseuille_flow.py`
+re-run on CUDA against the merged tree: node error 6.491e-8 / 1.100e-6 / 2.468e-5 at N = 16/32/64,
+staggered and collocated identical, PASS — the same digits as the OpenMP run above, so the metric is
+the pointwise one on both backends and the entry stays closed.
 
 ## Immersed solid + inflow/outflow is broken in three concrete ways (flow)
 - **Status:** RESOLVED (flow `src/flow_ibm.hpp`) — the core blocker (c) is fixed; a
@@ -312,7 +317,7 @@ full channel node for node to 3e-13.
   periodic self-ghost path.
 
 ## Inflow/outflow (profile inlet / BFS) diverges to NaN — advection-driven marginal mode
-- **Status:** RESOLVED as a blow-up (not reproducible on flow main, 2026-09-04 sweep on OpenMP + CUDA); the conditionally-stable outlet-reversal regime is now instrumented (flow `15cbc73`: `outflow_backflow()` census + a one-time warning + `tests/kokkos/test_outflow_backflow.cpp`). See the update at the end of the entry.
+- **Status:** RESOLVED as a blow-up (not reproducible on flow main, 2026-09-04 sweep on OpenMP + CUDA); the conditionally-stable outlet-reversal regime is now instrumented (flow `eda0029`: `outflow_backflow()` census + a one-time warning + `tests/kokkos/test_outflow_backflow.cpp`; merged to main 2026-09-04, verified — see the last update). See the update at the end of the entry.
 - **Package / area:** flow — inflow/outflow domain BC + advection (was mis-attributed to the pressure MG)
 - **Found in:** scratch run while prototyping `poiseuille-ibm` (the developing
   inflow→outflow channel variant; we shipped the periodic body-force case instead)
@@ -359,7 +364,7 @@ full channel node for node to 3e-13.
      outlet is outgoing** → the channel (no reversal) stays byte-identical.
 
 **Update 2026-09-04 — re-measured on today's main; no divergence anywhere; mechanism
-instrumented.** Runs on the flow `rel-issues` branch, shipped as `15cbc73` (OpenMP 4 threads; dt = 0.4 also on CUDA):
+instrumented.** Runs on the flow `rel-issues` branch, shipped as `eda0029` (OpenMP 4 threads; dt = 0.4 also on CUDA):
 
 | configuration | steps | result |
 |---|---|---|
@@ -393,6 +398,30 @@ naming the mechanism and the β ≥ ½ bound, and `tests/kokkos/test_outflow_bac
 plumbing (a half-reversed outlet reports fraction 0.5 and max_reverse ≈ U; a developing
 channel and a periodic box report zeros). The BFS script keeps dt = 0.2 for its recorded
 numbers, with its comment corrected to today's measurements.
+
+**Update 2026-09-04 (landing session) — census merged to flow main (`eda0029`), re-measured
+independently; it is a detector, not a fix.** The entry's own repro (`Solver(160,24,4)`, U = 1,
+Re = 100, dt = 0.5, uniform inlet / outflow / no-slip ±y, MG 8 levels, 80 pressure iterations,
+all-fluid geometry, OpenMP 4 threads, 3000 steps) is steady with the default β = 0.2 **and** with
+β = 0, bit-identical to each other (KE 8.936169e3, outlet `u_max/U_mean` 1.4910, div 3e-8): the
+outlet never reverses, the census stays 0/96, the warning never fires, and there is no blow-up to
+precede — the NaN belongs to the pre-`4e53522` explicit advection and is not reproducible.
+Where the outlet *does* reverse (BFS S = 16, L = 12 S, Re_S = 800, dt = 0.4, β = 0) the warning
+fires at **step 693**, at the first reversed face (max u·n = −9.9e-4, 3.1 % of the outlet
+area, energy influx 2.4e-9), long before anything grows; the run then stays finite over 6000
+steps but is **not steady**: reversal comes and goes in episodes (reversed fraction up to 0.34,
+`u_out,min` down to −0.77, energy influx up to 2.9 at step 2000), during which
+`max_open_divergence` rises from 1e-6 to 1e-2 (the 80-iteration pressure cap is hit) and KE
+drifts between 6.9e3 and 7.6e3; β = 0.2 gives the same picture (`u_out,min` −0.43 vs −0.61 at
+step 6000, KE 7.38e3 vs 7.40e3). So the stabilization does not decide boundedness here
+either, and the conditionally-stable regime is *reported*, not removed — a convective (or
+energy-stable, Dong-type) outflow remains the fix if a case ever needs one. Byte-identity where
+the census does not trigger: `verify_channel_sdflow.py`'s configuration and the
+`cylinder-vortex-street` page's (β = 0.5) run 300 steps bit-identical to flow main before the
+merge (u, v, p on OpenMP 4 threads; a same-build control also identical) — the census only runs
+inside `step()` when β ≤ 0. Full matrix on the merged tree: `tests/kokkos` 36/36 CUDA /
+36/36 OpenMP, `tests/kokkos_mpi` 103/103 at np = 1,2,4, regression suite within baseline
+(0.00 % on every metric), the five verify scripts PASS (`verify_bfs_sdflow.py` included).
 
 ## Kokkos "deallocated after finalize" warning under Jupyter/Quarto
 - **Status:** RESOLVED 2026-09-04 — core `c1df85a` (new `peclet/core/python/kokkos_teardown.hpp`,
@@ -780,7 +809,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   start-up transient's dip triggers it (bit the d/h=16 rung: 160-step run, peak 0.41).
 
 ## flow: no free-slip domain BC, so the Hysing benchmark's lateral condition can only be approximated
-- **Status:** RESOLVED — flow `75ee27a` (2026-09-04): `set_domain_bc(face, 4)` = free-slip / symmetry plane, both grids, MPI; gates in `tests/kokkos/test_freeslip.cpp` + `test_velocitymg_bc_mpi`. The pages still run with periodic sides (see the update at the end of the entry)
+- **Status:** RESOLVED — flow `e6c2c4e` (2026-09-04, merged to main the same day, verified — see the last update): `set_domain_bc(face, 4)` = free-slip / symmetry plane, both grids, MPI; gates in `tests/kokkos/test_freeslip.cpp` + `test_velocitymg_bc_mpi`. The pages still run with periodic sides (see the update at the end of the entry)
 - **Package / area:** flow (domain boundary conditions, `set_domain_bc`)
 - **Found in:** examples/rising-bubble
 - **Observed:** the Hysing et al. (IJNMF 60:1259, 2009) rising-bubble benchmark prescribes
@@ -807,7 +836,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   0.54 % of the exact root — but it is the same missing boundary type, and the drop case avoids
   it only by being fully periodic.
 
-**Update 2026-09-04 — implemented (flow `75ee27a`).** `set_domain_bc(face, 4)` is a free-slip /
+**Update 2026-09-04 — implemented (flow `e6c2c4e`).** `set_domain_bc(face, 4)` is a free-slip /
 symmetry plane: zero normal velocity, zero normal derivative of the tangential components,
 pressure Neumann like a wall (`vx/vy/vz` ignored). Staggered: the normal component is the
 no-slip treatment with wall velocity 0, the tangential ghost the *even* reflection (or a
@@ -828,6 +857,25 @@ operators; measured 1.2e-3 → 2.5e-7 residual after 32 V-cycles). **Not done he
 `flow/tests/study/vof_surface_tension.py` from periodic to type-4 sides — that is a re-render of
 the pages with a two-phase (VoF) solver, which the VoF session owns; the pages keep the periodic
 substitution and its stated caveat until then.
+
+**Verification 2026-09-04 (landing session) — merged to flow main as `e6c2c4e` (+ `eda0029` census,
+`e5e1bbf`/`b7669d3` notes).** The branch was re-verified from scratch before the merge, on fresh
+build trees. Physical gate (Python, `flow.Solver` and `SolverColocated`, the
+`verify_poiseuille_flow.py` geometry — cut-cell walls at half-integers, N = 16/32/64): the half
+channel closed by a type-4 face on the +y side and, separately, on the −y side equals the full
+channel **node for node to 2.5e-13 / 3.4e-12 / 2.6e-11** (u_max 0.44 / 1.79 / 8.44), with the
+same parabola node error as the full channel (6.49e-8 / 1.10e-6 / 2.47e-5, the float-closure
+floor) and v = w = 0 exactly; identical digits on both grids and on OpenMP and CUDA. A uniform
+tangential flow along four free-slip faces (periodic x, advection on, 50 steps) stays uniform to a
+**spread of 7e-12** (body-force-driven u = F t/ρ and a uniform initial u alike) with |v|, |w| ≤
+2e-13; the residual drift from the exact value (1.3e-6 relative, forced; 1.1e-6, uniform IC) is
+the momentum operator's float-storage floor — a fully periodic control box with no BC at all
+drifts by the same 3.3e-7 / 2.6e-6. `vof_issues_sweep.py freeslip` passes unchanged (discrete
+parabola 1.2e-10, symmetry-plane equality 9.7e-13). Matrix: `tests/kokkos` 36/36 CUDA /
+36/36 OpenMP (`freeslip`, `outflow_backflow` included), `tests/kokkos_mpi` 103/103 at
+np = 1,2,4 with the free-slip pass of `test_velocitymg_bc_mpi` bit-exact at np = 1 (0.0) and
+1.6e-14 / 1.4e-14 at np = 2 / 4, slip plane exactly impermeable; regression suite 0.00 % on
+every metric; the five verify scripts PASS.
 
 ## flow: the VoF interface length/area is not exposed, so benchmark "circularity" cannot be reported
 - **Status:** RESOLVED (flow WO-P3c/P3d: `vof_interface_area()`, joined marching-tetrahedra sheet on the PLIC level set, exact to 1e-4 on spheres; the rising-bubble page can now report circularity — not yet done on the page)
