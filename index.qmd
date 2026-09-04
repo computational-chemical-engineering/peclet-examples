@@ -344,8 +344,8 @@ the bubble squeezes through the throats, the gas volume holds to 1e-9.
 
 ::: {.card-body}
 #### [Pore-scale displacement](examples/pore-scale-imbibition/index.qmd)
-A pore doublet, a sphere packing and a micromodel at a fixed capillary number: the contact angle
-alone moves the narrow branch's saturation by a factor of seventy.
+A pore doublet, a sphere packing and a micromodel: the contact angle alone decides whether the
+narrow pore fills or is bypassed — and a slip control shows where the wetting dynamics stop.
 [flow · VoF · wetting · porous]{.tags}
 
 :::

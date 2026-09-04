@@ -1093,9 +1093,10 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   the limit fell from `cfl_dt = 1.64` to `0.30` over roughly 100 steps and then dropped below the
   stale `dt` within ten).
 ## flow: an SDF wall on an INTEGER coordinate (exactly on a cell face) makes a driven two-phase run diverge geometrically
-- **Status:** open (worked around on the page by offsetting every wall a quarter cell; this is the
-  same rule the droplet-wetting page found for a *static* drop, but here the symptom is not a
-  wrong angle, it is a run that destroys itself)
+- **Status:** **RESOLVED** (flow `fa1e346`, `src/mac_ibm.hpp`) — root-caused to a tie-break
+  disagreement at `sdf == 0` and fixed; the page's `doublet-wall-probe` cell re-runs the
+  integer-wall scene on the fixed build and it is stable. The *half*-integer case below is not
+  fixed and remains a scene rule.
 - **Package / area:** flow (cut-cell VoF + static contact angle on a flat SDF wall)
 - **Found in:** examples/pore-scale-imbibition (the pore doublet; WO-V7 case 1)
 - **Observed:** the doublet's three solid slabs are boxes. With their faces at integer $z$ —
@@ -1125,8 +1126,27 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   within a small tolerance of a cell face while VoF is enabled. A silent geometric divergence
   whose only tell is that simulated time stops advancing is the worst available failure mode.
 - **Repro:** `flow/tests/study/pore_scale/pore_doublet.py` with `WALL_SHIFT = 0.0`.
-- **Notes:** worth pairing with a driver-side guard: a run whose `dt` falls below some fraction of
-  its initial capillary limit is diverging, and could say so.
+- **Root cause and fix.** Not the cell fraction — the *velocity DOF*. The staggered SDF sample is
+  the mean of the two adjacent cell-centre values, so a wall on an integer coordinate puts the
+  normal component's DOF at `sdf == 0.0` exactly, in IEEE. Five consumers classify a DOF from that
+  sample and one of them disagreed: `ibmSolidMask` (which pins a DOF to the wall datum) used
+  `sd < 0` and so called it **fluid**, while `ibmIsCut` (which decides whether a wall closure is
+  built), `ibmCleanFluidMask` and the two face-openness predicates all use `<= 0` and called it
+  **non-fluid**. The DOF was therefore neither pinned nor closed nor given a Dirichlet datum, its
+  face was closed to the projection so the pressure solve never saw it, and it was still read by
+  its neighbours' advection and diffusion stencils: an unconstrained unknown sitting on the wall.
+  `ibmSolidMask` now uses `sd <= 0`. The change is inert wherever no DOF sample is exactly zero
+  (32 of 33 `tests/kokkos` binaries byte-identical), and the one test it moves — `test_vof_cutcell`,
+  whose G5 scene puts a wall on a cell-centre plane — improves on every metric it prints
+  (wall-band `max|u|` 7.9e-01 -> 5.1e-03, volume drift 5.9e-16 -> 0).
+- **What is NOT fixed.** A wall on a **half**-integer coordinate (a cell-centre plane) puts the two
+  *tangential* DOFs exactly on the wall, and they are now pinned to the wall datum — so no wall
+  model, including the Navier slip, can act there and a contact line on such a wall is
+  structurally pinned. **Quarter-integer placement remains the scene rule**, now for the wetting
+  reason rather than the stability one.
+- **Notes:** the driver-side guard is still worth having and is still missing: a run whose `dt`
+  falls orders below its initial capillary limit while `t` stops advancing is diverging, and
+  nothing in `flow` says so. This fix removes the cause this entry found, not the class.
 
 ## flow: `vof_step_limits()['capillary_dt']` is a function of the CURRENT density field, so the first dt of a gas-filled domain is 7x too large
 - **Status:** open (documented; the page re-picks `dt` every step, which makes it a non-issue)
@@ -1176,3 +1196,54 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   run can pass "no capped solve" while its pressure solve has been returning zero corrections.
 - **Repro:** `flow/tests/study/pore_scale/micromodel_2d.py` with `NCOL, NROW = 7, 8`,
   `X0, DX = 16.0, 16.0`, `R_POST = 5.7`, `MIN_GAP = 3.0`.
+
+## flow: contact-line mobility is set by the wetting band, and neither the angle model nor the wall slip length reaches it
+- **Status:** open (measured and bounded, not worked around — the affected results on the page are
+  labelled qualitative rather than tuned)
+- **Package / area:** flow (VoF wetting: the θ-fill band, `set_contact_angle`,
+  `set_contact_angle_dynamic`, `set_wall_slip_length`)
+- **Found in:** examples/pore-scale-imbibition §1 (the Navier-slip control), and independently in
+  all three of the page's cases
+- **Observed:** every case on the page whose published expectation depends on a *wetting* front
+  advancing under its own capillary suction either gets the **sign** wrong or shows no dependence
+  at all. Measured, on the fixed CUDA build at flow `a16d9a1`:
+  - **pore doublet** (88x4x80, θ = 45°, Ca = 1e-2/1e-3/1e-4): Chatzis–Dullien predicts narrow-first
+    at all three; measured narrow-first only at Ca = 1e-2 (68.4 s against 74.6 s) and wide-first at
+    1e-3 (921.4 s against 453.6 s) and 1e-4. The *drainage* column is fine — at θ = 135°,
+    Ca = 1e-3 the narrow branch ends at S = 0.004 against the wide branch's 0.912.
+  - **sphere packing** (48x48x96, Ca = 1e-3): breakthrough at 800.5 s / S = 0.826 for θ = 30° and
+    809.1 s / S = 0.835 for θ = 60° — **1 % apart in both**, against a factor-of-two change in
+    cos θ and a large predicted difference. The trapped gas agrees to three digits (0.012 / 0.011).
+  - **micromodel** (128x128x4, θ = 45/90/135° at a common 0.10 PV injected): front roughness
+    5.06 / 5.11 / 4.55 cells, deepest finger 18 / 17 / 15, box dimension 1.624 / 1.605 / 1.636 —
+    **not ordered in θ**, every angle reaching every transverse row as one connected cluster. The
+    published compact-to-fingered transition is absent; what little spread there is has the
+    *wetting* case as the rougher one, i.e. the inverted sign.
+
+  The obvious cause is the wall's momentum condition, and the page tests it directly:
+  `set_wall_slip_length(λ)` for λ = 0, 0.1 and 0.5 cells on the doublet at $\mathrm{Ca}=10^{-3}$,
+  $\theta=45°$ leaves the ordering unchanged (the wide branch wins in every row; the narrow
+  branch's breakthrough moves 1.5 %, 921.4 -> 907.2 s, the wide branch's 3 %). The companion
+  measurement on a quantitative benchmark is sharper: on capillary rise between two plates the explicit slip buys **+26 %** of
+  the Lucas–Washburn rate at λ = 0.3 and leaves it **175×** too slow, and **doubling the slot
+  width makes the rise 2.5× *slower*** where the law requires it to be 2× faster — i.e. the front
+  speed goes as $1/w$, the capillary drive $2\sigma\cos\theta/w$ divided by a resistance that does
+  not scale with the gap at all. At both gap widths the interface's own apparent angle sits at
+  ≈71° while the imposed angle is ≈37°.
+- **Expected:** with a static or a Cox–Voinov angle imposed and a Navier slip length λ set, the
+  contact-line speed should be controlled by (θ, λ) and the rise should obey Lucas–Washburn to
+  within the usual O(1) factor.
+- **Mechanism (named, not fully isolated):** the limiter is *local to the few-cell wetting band* —
+  the colour's motion through the near-wall cells and the curvature that band produces — and is
+  independent of the confinement. It is what caps the delivered Young force at
+  $\cos(71°)/\cos(37°) \approx 0.4$ of the intended one. Neither the imposed angle nor the wall
+  velocity closure controls it; both are exact on their own unit tests.
+- **Repro:** `flow/tests/study/pore_scale/pore_doublet.py --theta 45 --ca 1e-3 --slip 0,0.1,0.5`
+  for the ordering, and `flow/tests/study/vof_wetting_dynamic.py lw` for the rate and the
+  gap-width probe.
+- **Notes:** the practical consequence for a user, and the reason this is logged rather than
+  tuned: **drainage** ($\theta > 90°$) results in this scheme are quantitative, and **imbibition**
+  ($\theta < 90°$) results are qualitative — the *contrast* between a wetting and a non-wetting
+  fluid at a fixed capillary number is real and large (a factor of 200 in the doublet's narrow
+  branch), while the *dependence on how strongly wetting* the liquid is, which is what the packing
+  and the micromodel test, is not delivered at all.

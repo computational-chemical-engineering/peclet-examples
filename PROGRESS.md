@@ -497,3 +497,63 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
         `*.mp4`); the page carries a commented-out YouTube embed placeholder above it.
       - Solver build used for the frozen outputs: `suite/flow-ex2/build_cuda` (CUDA, flow
         `2b55edb` = origin/main with WO-R2), dem `build_l4_cuda`.
+- [x] `pore-scale-imbibition` (E9 of the VoF gallery, WO-V7 + WO-V6b; branch `vof-examples-6`,
+      frozen 2026-09-04): three pore-scale displacement problems driven by an inflow/outflow pair,
+      the drainage half validated and the imbibition half measured as a solver limit. Fourteen
+      two-phase runs, one production render of **114 min** on the RTX 5080 against a fresh CUDA
+      build of flow `a16d9a1` (`suite/flow-ex3/build_cuda` -- WO-V6b's `ibmSolidMask` tie-break is
+      IN, unlike the older `flow-ex/build_cuda` the earlier pages used).
+      - **The page now runs the whole WO-V7 ladder itself** instead of quoting it: doublet
+        88x4x80 at Ca = 1e-2/1e-3/1e-4 x theta = 45/135 (six runs), the two Navier-slip controls,
+        the integer-wall probe, the packing 48x48x96 at theta = 30/60, and the micromodel
+        128x128x4 at theta = 45/90/135. Only reduction: the Ca = 1e-4 rows are capped at
+        `STEP_CAP` = 12 000 of the 138 157 steps a full traverse wants and are printed as PARTIAL
+        fills -- stated on the page, with the `N ~ L sqrt(w/(Re Ca))` arithmetic that makes it
+        unavoidable. All stopping rules are in STEPS, not wall clock, so a re-render reproduces
+        the stop.
+      - **Wall placement: the trap is FIXED and the page says so.** WO-V7's integer-coordinate
+        divergence (max|u| 1.5e+08 by step 300, t frozen, pressure solve reporting 21/400
+        throughout) was root-caused by WO-V6b to `ibmSolidMask` using `sd < 0` where the four other
+        DOF-level consumers use `<= 0`, so a velocity DOF with `sdf == 0.0` exactly was neither
+        pinned nor closed nor given a datum. The page re-runs that scene on the fixed build:
+        **max|u| 1.32 -> 0.612 over 300 steps, dt never leaving the capillary limit 0.1418,
+        t = 42.5 s, max|div| 7.7e-09.** Quarter-integer placement is no longer required for
+        stability; it is kept because a HALF-integer wall pins the tangential DOFs, so no wall
+        model (slip included) can act there -- the WO-S contact-line rule, restated for pinning.
+        ISSUES entry updated open -> RESOLVED with the root cause.
+      - **Doublet (measured, this build).** Ca 1e-2: theta 45 narrow first (68.4 s vs 74.6 s, four
+        sampling intervals -- the criterion satisfied); theta 135 narrow by 1.6 s = **exactly one
+        sampling interval**, reported as a tie. Ca 1e-3: theta 45 **wide** first (453.6 vs 921.4)
+        -- the criterion violated; theta 135 wide only, narrow S = **0.0037** against wide 0.9117.
+        Ca 1e-4 (partial): wide leads at both angles. No capped solve anywhere, no `non-finite z`.
+        The wettability contrast at fixed Ca = 1e-3 is a factor **212** in the narrow branch's
+        saturation (0.7846 vs 0.0037) -- that is the page's validated drainage result.
+      - **The Navier-slip control is the page's own new measurement** (WO-V6b gate 5, re-run here):
+        lambda = 0 / 0.1 / 0.5 cells, wide first in every row, narrow breakthrough 921.4 / 921.4 /
+        907.2 s, `wall_slip_sandwich_cells()` (0,0,0). So the momentum wall condition is NOT the
+        contact-line bottleneck; the page states the gap-width evidence (rise speed ~ 1/w where
+        Lucas-Washburn needs ~ w, apparent 71 deg against imposed 37 deg) and concludes the
+        limiter is local to the wetting band.
+      - **Packing: the expected wettability effect is ABSENT, and this contradicts WO-V7's own
+        numbers.** Measured here: theta 30 breaks through at 800.5 s / S_bt 0.8255, theta 60 at
+        809.1 s / S_bt 0.8350 -- **1 % apart in both**, trapped gas 0.0117 vs 0.0113. WO-V7
+        (older build, CUDA) had 690.7 s / 0.7257 against 800.9 s / 0.8521, i.e. 16 % and 15 %.
+        The page reports what it measured and drops the "16 % earlier and 15 % drier" headline.
+      - **Micromodel: the trend is NOT monotone and NOT large**, contradicting WO-V7. At a common
+        0.10 PV: front std 5.06 / 5.11 / 4.55 cells, deepest finger 18 / 17 / 15, box dimension
+        1.624 / **1.605** / 1.636 (the neutral case is the outlier, so D is not ordered in theta at
+        all), and all three reach 128/128 transverse rows as ONE connected cluster. WO-V7 recorded
+        111/128 rows and 4 clusters at theta 45 and a 59 % roughness spread; on this build the
+        spread is **11 %**. The page's verdict is now "the published trend is not reproduced --
+        neither its size nor, in as far as it has one here, its sign", with the residual 11 % noted
+        as running backwards against Zhao. The theta 45 run is still the violent one on its own
+        diagnostics (max|div| 1.5e-06 and 11 % of steps on the WY cap, both the worst of three).
+      - **One new ISSUES entry**: contact-line mobility is set by the wetting band and neither
+        `set_contact_angle_dynamic` nor `set_wall_slip_length` reaches it -- with the three cases'
+        numbers, the slip sweep, and the practical rule (drainage quantitative, imbibition
+        qualitative).
+      - Citations moved onto the shared `references.bib`; the draft's Zhao reference **conflated
+        two papers** (the 2016 PNAS wettability-control experiment's title with the 2019 PNAS
+        model-comparison volume/pages) -- both are now separate entries, plus Chatzis-Dullien,
+        Lucas and Washburn. All nine keys resolve.
+      - Freeze verified: the full project render replays the page with **zero executions**.

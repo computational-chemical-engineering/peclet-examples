@@ -1,14 +1,17 @@
 ---
 title: "Pore-scale displacement: which pore fills first"
-subtitle: "A pore doublet, a sphere packing and a micromodel, all driven by an inflow/outflow pair at a fixed capillary number — and the one number that decides whether the wetting model is doing the physics or the grid is."
+subtitle: "A pore doublet, a sphere packing and a micromodel, driven by an inflow/outflow pair: the contact angle alone decides which pore fills — and a slip control shows exactly where the wetting dynamics stop being quantitative."
 author: "Peclet"
-date: "2026-09-02"
+date: "2026-09-04"
 categories: [flow, vof, two-phase, wetting, porous, IBM]
 jupyter: python3
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/pore-scale-imbibition/index.ipynb){target="_blank"}
-&nbsp;Wants a GPU build: this page runs six two-phase simulations of $10^4$ steps each.
+&nbsp;Wants a GPU build: this page runs fourteen two-phase simulations, several of
+them $10^4$ steps long. On an idle GPU the CUDA backend is 3–7× the 8-thread
+OpenMP host build at these grid sizes, so the host path is for reading the code,
+not for reproducing the numbers.
 
 ## What you'll learn
 
@@ -20,35 +23,44 @@ which pore fills first?** This page asks it three times, at increasing geometric
 difficulty:
 
 1. **A pore doublet.** Two straight slits of width $w$ and $2w$ leave a common
-   inlet and rejoin at a common outlet. Chatzis & Dullien's 1983 criterion says
-   the *wetting* fluid should take the narrow branch when capillarity dominates,
+   inlet and rejoin at a common outlet. Chatzis & Dullien's criterion
+   [@chatzis1983] says the *wetting* fluid should take the narrow branch when
+   capillarity dominates,
    the non-wetting fluid the wide one, and both the wide one when viscous forces
    dominate. Measured here at $\theta = 45°$ and $135°$ over three decades of
    capillary number.
 2. **Imbibition into a sphere packing.** 36 SDF grains, gas-filled, liquid fed
    through the bottom face. Saturation against time, breakthrough, and the gas
    left behind disconnected from the outlet.
-3. **A Zhao-2019-style micromodel.** A disordered array of posts, invaded at
-   $\theta = 45° / 90° / 135°$: does the *pattern* change from compact to
-   fingered with wettability, as the published experiment says it must? It changes,
-   monotonically and by a lot — in the opposite direction.
+3. **A Zhao-style micromodel.** A disordered array of posts [@zhao2016;
+   @zhao2019], invaded at $\theta = 45° / 90° / 135°$: does the *pattern*
+   change from compact to
+   fingered with wettability, as the published experiment says it must? Barely —
+   and what little change there is runs the wrong way.
 
 The headline is a contrast rather than a single number. At $\mathrm{Ca} = 10^{-3}$
-in the doublet, the narrow branch ends up at a liquid saturation of **0.79 at
-$\theta = 45°$ and exactly 0 at $\theta = 135°$** — the non-wetting liquid pushes
-a few cells into the small pore early on and is then *expelled* from it — with the
-geometry, the driving and the fluids untouched. The wetting model is
-unquestionably doing physics.
+in the doublet the narrow branch ends up **78 % liquid at $\theta = 45°$ and 0.4 %
+at $\theta = 135°$** — a factor of 200, with the geometry, the driving and the
+fluids untouched. The non-wetting liquid gets one cell into the small pore and is
+then held out of it while the wide branch takes the entire flux, which is the
+*drainage* half of the classical criterion reproduced without qualification.
+**Drainage works.**
 
-What the *dynamics* do is a different story, and it is the more useful result.
+What a *wetting front* does is a different story, and it is the more useful result.
 Three independent problems, three published expectations, and the same answer:
-wherever the published result depends on the contact line advancing **under its own
-capillary suction** rather than being pushed by the imposed flux, the sign comes out
-wrong. The doublet does not hand the narrow branch the lead as $\mathrm{Ca}$ falls;
-the packing breaks through *earlier and drier* at the more wetting angle; and the
-micromodel fingers **more** under imbibition than under drainage, at 59 % rougher a
-front. One mechanism accounts for all three, this page measures where its boundary
-lies, and it is not the criterion that is wrong.
+wherever the published result turns on a contact line advancing **under its own
+capillary suction** rather than being pushed by the imposed flux, the effect is
+either absent or has the wrong sign. The doublet stops handing the narrow branch the
+lead as $\mathrm{Ca}$ falls and hands it to the wide one instead; the packing's
+breakthrough saturation is the *same* at $\theta = 30°$ and $60°$ to about a per
+cent, where a large difference is expected; and the micromodel's invasion pattern
+barely responds to wettability at all — what response there is has the *wetting*
+case as the rougher one. One mechanism accounts for all three, and §1 runs the
+control that locates it: turning on an explicit Navier slip at the wall — the
+obvious suspect — does **not** change any of it. The bottleneck is inside the
+few-cell wetting band, where neither the imposed contact angle nor the wall's
+velocity condition reaches. **So read every imbibition number on this page as
+qualitative, and every drainage number as a result.**
 
 ## The problem
 
@@ -82,13 +94,14 @@ pore-doublet result and the thing to look for.
 ::: {.callout-note}
 ## The capillary number here is *apparent*, and that word is load-bearing
 $\mathrm{Ca} = \mu_\ell U_{\text{inlet}}/\sigma$ is built from the **prescribed
-inlet velocity**, not from a measured contact-line speed. peclet's contact angle
-at this rung is the *static* one, and the velocity-side Navier slip that would set
-the contact line's mobility is not implemented yet — so the line moves at whatever
-speed the wall's numerical slip allows, which was measured to be about
-$180\times$ too slow against Lucas–Washburn. Every dynamic-wetting statement on
-this page is therefore qualitative by construction. See "What this page cannot
-do" at the end.
+inlet velocity**, not from a measured contact-line speed. The contact angle used
+here is the *static* one, and the speed at which the contact line can actually
+advance is not controlled by it: measured against Lucas–Washburn, a capillary rise
+in this scheme runs about $175\times$ too slow, and §1 below shows that the
+explicit Navier wall slip — which the solver does now carry — recovers only
+$26\,\%$ of that. **Every imbibition statement on this page is therefore
+qualitative by construction**; the drainage statements are not. See §1's slip
+control and "What this page cannot do" at the end.
 :::
 
 ```{python}
@@ -145,6 +158,14 @@ the solver never used). A capped solve means the projection did not converge and
 the geometric transport's conservation guarantee, which is conditional on a
 discretely divergence-free face field, no longer holds. None of the runs on this
 page capped.
+
+There is a second, quieter failure mode that the iteration count does *not* catch:
+`CutcellMG::solveFCG: preconditioner produced non-finite z; returning zero
+correction` is printed to **stdout** and the solve then continues with the
+correction silently replaced by zero, so the iteration count stays healthy on a
+solve that has been returning nothing. It is what killed the first micromodel
+geometry (§3). Treat that line in the output as a cap; none of the runs below
+emitted it.
 :::
 
 ```{python}
@@ -172,17 +193,36 @@ a narrow channel of $w=16$ and a wide one of $2w=32$. The slabs stop well short
 of both open faces — a solid that *cuts* an inflow or outflow plane is a known
 rough edge of the cut-cell pressure operator, and this page keeps clear of it.
 
-::: {.callout-warning}
-## Put the wall at a quarter-integer coordinate. This is not cosmetic.
-The three slabs below are offset by `WALL_SHIFT = 0.25` of a cell. With the walls
-on integer coordinates — i.e. exactly on a cell face, so that *no wall cell is cut
-at all* — the channel-mouth corner reads $\max|u| = 1.1\times10^{2}$ on the very
-first step against a physical $0.42$, and the run then diverges geometrically
-(to $1.5\times10^{8}$ by step 300) while the time-step limiter chases it down to
-$10^{-9}$. A quarter-cell shift, everything else identical, gives $3.56$ on the
-first step, **decaying** to $1.2$. Same rule as the
-[droplet wetting](../droplet-wetting/index.qmd) page's flat wall, and the same
-mechanism: a wall on a cell face leaves the contact line no cut cell to move in.
+::: {.callout-note}
+## Where a flat wall sits inside its cell — the trap this page found, and the fix that landed
+The campaign that produced this page could not run at all until the three slabs
+were offset by `WALL_SHIFT = 0.25` of a cell. With the walls on **integer**
+coordinates — exactly on a cell face — the channel-mouth corner read
+$\max|u| = 1.1\times10^{2}$ on the very first step against a physical $0.42$, and
+the run then diverged geometrically (to $1.5\times10^{8}$ by step 300) while the
+time-step limiter chased $\Delta t$ down to $10^{-9}$ and the pressure solve
+reported a healthy 21 iterations of 400 throughout. Nothing said the run was dead
+except that simulated time stopped advancing.
+
+**That defect is fixed in the solver this page runs on**, and the fix is one
+character. A velocity degree of freedom whose SDF sample is *exactly* zero — which
+is what a wall on a cell face produces for the normal component, since the
+staggered sample is the mean of the two adjacent cell-centre values — was
+classified as *fluid* by the mask that pins DOFs to the wall datum and as
+*non-fluid* by the four other consumers that decide whether a wall closure is
+built, whether the face is open to the projection, and whether the DOF is cleaned.
+It was therefore an unconstrained unknown sitting on the wall, invisible to every
+diagnostic and still read by its neighbours' advection and diffusion stencils.
+`ibmSolidMask` now uses `sdf <= 0` like the rest. The cell below re-runs the
+integer-wall scene on the current build: it is stable.
+
+**Quarter-integer placement is no longer required to avoid that divergence**, and
+this page keeps it for a different reason. A wall on a *half*-integer coordinate —
+a cell-centre plane — puts the two **tangential** DOFs exactly on the wall, so
+they are now pinned to the wall datum and no wall model can act there: the slip
+velocity at such a wall is structurally zero and a contact line on it is pinned.
+That is the [droplet wetting](../droplet-wetting/index.qmd) page's rule, and it
+still stands. A quarter-integer coordinate avoids both degeneracies at once.
 :::
 
 ```{python}
@@ -205,10 +245,10 @@ def box2d(px, pz, xlo, xhi, zlo, zhi):
     return (np.sqrt(np.maximum(qx, 0.0) ** 2 + np.maximum(qz, 0.0) ** 2)
             + np.minimum(np.maximum(qx, qz), 0.0))
 
-def doublet_sdf():
+def doublet_sdf(q=WALL_SHIFT):
     x = (np.arange(NX) + 0.5)[:, None]
     z = (np.arange(NZ) + 0.5)[None, :]
-    q, BIG = WALL_SHIFT, 100.0
+    BIG = 100.0
     d = np.minimum.reduce([
         box2d(x, z, X1 + q, X2 + q, -BIG, ZW_LO + q),           # floor of the wide branch
         box2d(x, z, X1 + q, X2 + q, ZW_HI + q, ZN_LO + q),      # the septum
@@ -256,8 +296,21 @@ def fronts(C, eps):
 ```{python}
 #| label: doublet-run
 #| code-summary: "The doublet driver: build, drive with the solver's own dt limiter, record"
-def doublet(theta_deg, ca, budget=2400.0, every=40):
+DT0 = CAP_CFL * math.sqrt((RHO_L + RHO_G) / (4 * math.pi * SIGMA))   # the Brackbill ceiling
+STEP_CAP = 12000            # the wall-clock guard, in STEPS so a re-render reproduces the stop
+
+def doublet_steps(ca):
+    """1.7 x the front's travel time through the branches, at the capillary dt, capped."""
     U = ca * SIGMA / MU_L
+    ttrav = BRANCH * (W_NARROW + W_WIDE) / (NZ * U)
+    return min(int(1.7 * ttrav / DT0), STEP_CAP), int(1.7 * ttrav / DT0)
+
+def doublet(theta_deg, ca, slip=0.0, wall_shift=WALL_SHIFT, trace=False, max_steps=None):
+    U = ca * SIGMA / MU_L
+    steps, want = doublet_steps(ca)
+    if max_steps is not None:
+        steps = min(steps, max_steps)
+    every = max(steps // 120, 5)
     s = flow.Solver(NX, NY, NZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.1)
     s.set_domain_bc(0, 2, U, 0.0, 0.0)          # -x inflow at the fixed superficial velocity
@@ -267,7 +320,10 @@ def doublet(theta_deg, ca, budget=2400.0, every=40):
     s.set_velocity_solver_params(20)
     s.set_pressure_multigrid(True, levels=5)
     s.set_pressure_solver_params(80)
-    s.set_solid(SDF_D, cutcell_pressure=True)
+    s.set_solid(SDF_D if wall_shift == WALL_SHIFT else doublet_sdf(wall_shift),
+                cutcell_pressure=True)
+    if slip > 0.0:
+        s.set_wall_slip_length(slip)            # the Navier condition in the cut-cell closure
     s.enable_vof()
     c0 = np.zeros((NX, NY, NZ), order="F"); c0[:X1, :, :] = 1.0
     s.set_vof(c0)
@@ -284,29 +340,76 @@ def doublet(theta_deg, ca, budget=2400.0, every=40):
     s.set_vof_backflow(1, 0.0)                  # gas backflow at the outlet (inletOutlet)
 
     eps = np.asarray(s.vof_geometry(0))
-    h, hist, bt, ncfl, t, n = Health(), [], {"narrow": None, "wide": None}, 0, 0.0, 0
+    sand = tuple(s.wall_slip_sandwich_cells()) if slip > 0.0 else None
+    h, hist, tr = Health(), [], []
+    bt, ncfl, t, n, err = {"narrow": None, "wide": None}, 0, 0.0, 0, None
     t0 = time.time()
-    while time.time() - t0 < budget:
+    for i in range(steps):
         L = s.vof_step_limits()
         dtc = CAP_CFL * L["capillary_dt"]
         dt = min(dtc, 0.8 * L["cfl_dt"]) if L["cfl_dt"] > 0 else dtc
         ncfl += int(dt < 0.999 * dtc)
-        s.set_dt(dt); s.step(); t += dt; n += 1
+        s.set_dt(dt)
+        try:                                    # one divergent configuration must not kill the page
+            s.step()
+        except RuntimeError as exc:
+            err = str(exc); break
+        t += dt; n += 1
         h.sample(s)
+        if trace and (n in (1, 10, 50, 150, 300) or n == steps):
+            tr.append((n, t, dt, float(np.abs(np.asarray(s.get_u())).max())))
         if n % every == 0:
             f = fronts(np.asarray(s.get_vof()), eps)
             hist.append((t, f["narrow"][0], f["narrow"][2], f["wide"][0], f["wide"][2]))
             for k in ("narrow", "wide"):
-                if bt[k] is None and f[k][0] >= BRANCH:
+                if bt[k] is None and f[k][0] >= BRANCH - 1:
                     bt[k] = t
             if bt["narrow"] and bt["wide"]:
                 break
     C = np.asarray(s.get_vof())
     f = fronts(C, eps)
-    return dict(theta=theta_deg, ca=ca, U=U, t=t, n=n, ms=1000 * (time.time() - t0) / n,
+    return dict(theta=theta_deg, ca=ca, U=U, t=t, n=n, want=want, slip=slip, err=err,
+                sandwich=sand,
+                ms=1000 * (time.time() - t0) / max(n, 1), trace=tr,
                 hist=np.array(hist), bt=bt, f=f, eps=eps, C=C[:, NY // 2, :].copy(),
-                iters=h.iters, capped=h.capped, div=h.div, cfl_frac=ncfl / n,
+                iters=h.iters, capped=h.capped, div=h.div, cfl_frac=ncfl / max(n, 1),
                 Re=RHO_L * U * W_NARROW / MU_L)
+
+def report(r):
+    ct = math.cos(r["theta"] * math.pi / 180.0)
+    ubr = r["U"] * NZ / (W_NARROW + W_WIDE)
+    dpc = 2 * SIGMA * ct * (1.0 / W_NARROW - 1.0 / W_WIDE)
+    dpv = 12 * MU_L * ubr * BRANCH / W_WIDE ** 2
+    tag = "" if r["slip"] == 0 else f"  slip lambda = {r['slip']:g} cells"
+    print(f"theta {r['theta']:5.1f}  Ca {r['ca']:.0e}  Re {r['Re']:.3g}  "
+          f"|dPc|/dPmu {abs(dpc)/dpv:.1f}{tag}")
+    print(f"   ran {r['n']} of the {r['want']} steps a full traverse wants, to t = "
+          f"{r['t']:.4g} s; capillary dt binds on {100*(1-r['cfl_frac']):.0f} % of them")
+    print(f"   tip  narrow {r['f']['narrow'][0]:.0f}/{BRANCH}   wide {r['f']['wide'][0]:.0f}/{BRANCH}")
+    print(f"   S    narrow {r['f']['narrow'][2]:.4f}       wide {r['f']['wide'][2]:.4f}")
+    print(f"   breakthrough narrow {r['bt']['narrow']}, wide {r['bt']['wide']}")
+    print(f"   pressure {r['iters']}/{PRESS_CAP}"
+          f"{'' if not r['capped'] else ' *** CAPPED -> INVALID ***'}, "
+          f"max|div(open u)| {r['div']:.2e}"
+          + ("" if r["err"] is None else f"\n   STOPPED BY: {r['err']}"))
+```
+
+First, the wall-placement claim above, on the build this page runs on: the
+integer-coordinate scene, 300 steps, everything else identical to the production
+runs.
+
+```{python}
+#| label: doublet-wall-probe
+WALLPROBE = doublet(45.0, 1e-2, wall_shift=0.0, trace=True, max_steps=300)
+print(f"integer walls (WALL_SHIFT = 0), theta 45, Ca 1e-2, {WALLPROBE['n']} steps")
+print(f"{'step':>6} {'t':>10} {'dt':>10} {'max|u|':>12}")
+for n, t, dt, um in WALLPROBE["trace"]:
+    print(f"{n:6d} {t:10.4g} {dt:10.3e} {um:12.4e}")
+print(f"   pressure {WALLPROBE['iters']}/{PRESS_CAP}, "
+      f"max|div(open u)| {WALLPROBE['div']:.2e}")
+print("   before the fix, the same scene read max|u| 1.28e+02 / 1.39e+02 / 1.04e+03 / 1.07e+05 /"
+      "\n   1.03e+08 at steps 1 / 10 / 50 / 150 / 300 with t frozen at 0.187 s "
+      "(flow doc/vof_workorders_v6.md,\n   WO-V6b part A).")
 ```
 
 $\mathrm{Ca} = 10^{-3}$ is the discriminating point: the two contact angles are run
@@ -316,21 +419,8 @@ back to back, everything else identical.
 #| label: doublet-ca3
 DOUBLET = {}
 for th in (45.0, 135.0):
-    r = doublet(th, 1e-3)
-    DOUBLET[th] = r
-    ct = math.cos(th * math.pi / 180.0)
-    ubr = r["U"] * NZ / (W_NARROW + W_WIDE)
-    dpc = 2 * SIGMA * ct * (1.0 / W_NARROW - 1.0 / W_WIDE)
-    dpv = 12 * MU_L * ubr * BRANCH / W_WIDE ** 2
-    print(f"theta {th:5.1f}  Ca 1e-3  Re {r['Re']:.3g}  |dPc|/dPmu {abs(dpc)/dpv:.1f}")
-    print(f"   ran {r['n']} steps to t = {r['t']:.4g} s at {r['ms']:.0f} ms/step; "
-          f"capillary dt binds on {100*(1-r['cfl_frac']):.0f} % of them")
-    print(f"   tip  narrow {r['f']['narrow'][0]:.0f}/{BRANCH}   wide {r['f']['wide'][0]:.0f}/{BRANCH}")
-    print(f"   S    narrow {r['f']['narrow'][2]:.4f}       wide {r['f']['wide'][2]:.4f}")
-    print(f"   breakthrough narrow {r['bt']['narrow']}, wide {r['bt']['wide']}")
-    print(f"   pressure {r['iters']}/{PRESS_CAP}"
-          f"{'' if not r['capped'] else ' *** CAPPED -> INVALID ***'}, "
-          f"max|div(open u)| {r['div']:.2e}")
+    DOUBLET[(th, 1e-3)] = doublet(th, 1e-3)
+    report(DOUBLET[(th, 1e-3)])
 ```
 
 ```{python}
@@ -339,7 +429,9 @@ for th in (45.0, 135.0):
 fig, ax = plt.subplots(1, 3, figsize=(11, 3.1),
                        gridspec_kw={"width_ratios": [1.25, 1, 1]})
 for th, ls in ((45.0, "-"), (135.0, "--")):
-    H = DOUBLET[th]["hist"]
+    H = DOUBLET[(th, 1e-3)]["hist"]
+    if H.ndim != 2:
+        continue
     ax[0].plot(H[:, 0], H[:, 1], ls, color=BLUE,
                label=f"narrow, $\\theta={th:.0f}°$")
     ax[0].plot(H[:, 0], H[:, 3], ls, color=RED,
@@ -348,7 +440,7 @@ ax[0].axhline(BRANCH, color="0.4", lw=0.8)
 ax[0].set_xlabel("t  [s]"); ax[0].set_ylabel("front tip  [cells into the branch]")
 ax[0].legend(fontsize=7.5, loc="upper left"); ax[0].set_title("front tip vs time")
 for k, th in enumerate((45.0, 135.0)):
-    r = DOUBLET[th]
+    r = DOUBLET[(th, 1e-3)]
     solid = (r["eps"][:, NY // 2, :] <= 0.0)
     img = np.where(solid, np.nan, r["C"])
     a = ax[k + 1]
@@ -365,16 +457,54 @@ the contact angle changed.
 
 ### Against Chatzis & Dullien
 
-The same pair was run at $\mathrm{Ca} = 10^{-2}$ and $10^{-4}$ in the campaign
-that produced this page (`tests/study/pore_scale/pore_doublet.py` in the `flow`
-repository — see **Reproduce this**). Written out, with the branch ordering taken
-from the *tip*:
+The same pair is now run at $\mathrm{Ca} = 10^{-2}$ and $10^{-4}$. The
+$\mathrm{Ca} = 10^{-4}$ pair is the expensive one and it is **capped at
+`STEP_CAP` = 12 000 steps** — a full traverse there wants $1.4\times10^{5}$, which
+is the arithmetic in "What this page cannot do" — so those two rows are reported
+as **partial fills** and their ordering, not their breakthrough times, is the
+result. Everything else is run to completion.
 
-| $\mathrm{Ca}$ | $\mathrm{Re}$ | $\vert\Delta P_c\vert/\Delta P_\mu$ | $\theta = 45°$ | $\theta = 135°$ |
-|---|---|---|---|---|
-| $10^{-2}$ | 100 | 4.7 | **narrow first**, 69.7 s vs 85.9 s ✔ | tied, 101.6 s vs 103.0 s |
-| $10^{-3}$ | 10 | 47 | wide first, 696 s vs 973 s ✘ | **wide only**; narrow $S = 0.000$ ✔ |
-| $10^{-4}$ | 1 | 471 | wide leads 10 cells to 5 ✘ | wide leads 12 cells to 2 ✔ |
+```{python}
+#| label: doublet-ladder
+for ca in (1e-2, 1e-4):
+    for th in (45.0, 135.0):
+        DOUBLET[(th, ca)] = doublet(th, ca)
+        report(DOUBLET[(th, ca)])
+```
+
+```{python}
+#| label: doublet-table
+#| code-summary: "The ladder, written out"
+def _bt(r, k):
+    return "—" if r["bt"][k] is None else f"{r['bt'][k]:.1f} s"
+def _first(r):
+    """Ordering on the TIP where both branches broke through, else on how far each got:
+    tip first, then the cross-section-mean front, then the branch saturation."""
+    n, w = r["bt"]["narrow"], r["bt"]["wide"]
+    if n is not None and w is not None:
+        return "narrow" if n < w else "wide"
+    if n is not None: return "narrow"
+    if w is not None: return "wide"
+    for k in (0, 1, 2):
+        a, b = r["f"]["narrow"][k], r["f"]["wide"][k]
+        if a != b:
+            return ("narrow" if a > b else "wide") + " *"
+    return "tied"
+hdr = (f"{'Ca':>6} {'theta':>6} {'Re':>6} {'t_bt n':>9} {'t_bt w':>9} {'first':>7} "
+       f"{'tip n/w':>9} {'S_n':>7} {'S_w':>7} {'iters':>7} {'max|div|':>10}")
+print(hdr); print("-" * len(hdr))
+for ca in (1e-2, 1e-3, 1e-4):
+    for th in (45.0, 135.0):
+        r = DOUBLET[(th, ca)]
+        print(f"{ca:>6.0e} {th:>6.0f} {r['Re']:>6.3g} {_bt(r,'narrow'):>9} {_bt(r,'wide'):>9} "
+              f"{_first(r):>7} {r['f']['narrow'][0]:>4.0f}/{r['f']['wide'][0]:<4.0f} "
+              f"{r['f']['narrow'][2]:>7.4f} {r['f']['wide'][2]:>7.4f} "
+              f"{r['iters']:>3d}/{PRESS_CAP:<3d} {r['div']:>10.2e}")
+npart = sum(1 for k, r in DOUBLET.items() if r["bt"]["narrow"] is None or r["bt"]["wide"] is None)
+print(f"\n* = a PARTIAL fill: the branch ordering is read off the front position, not off a")
+print(f"  breakthrough time ({npart} of the 6 rows).  Capped pressure solves: "
+      f"{sum(r['capped'] for r in DOUBLET.values())}.")
+```
 
 Note where the crossover *should* be: $|\Delta P_c|/\Delta P_\mu$ is 4.7 even at the
 top of the sweep, so all three points are capillary-dominated and the classical
@@ -384,31 +514,105 @@ regime for this geometry starts near $\mathrm{Ca} \approx 5\times10^{-2}$.
 
 Two readings, and they point in opposite directions:
 
-- **The wettability contrast is right and large.** At every capillary number the
-  narrow branch is more invaded at $45°$ than at $135°$, and at
-  $\mathrm{Ca}=10^{-3}$ by a factor of seventy. That is @eq-pc acting exactly as
-  it should: the same geometry, the same driving, the angle alone deciding
-  whether the small pore is filled or bypassed. The $\theta = 135°$ column *is*
-  the drainage half of the Chatzis–Dullien criterion.
-- **The $\theta = 135°$ column is right at every $\mathrm{Ca}$; the $\theta = 45°$
-  column is right only at the *top* of the sweep, and the $\mathrm{Ca}$ dependence
-  runs backwards.** Write the doublet's flow split at a fixed total flux $Q$:
+- **The drainage column is right, and at $\mathrm{Ca} = 10^{-3}$ it is emphatic.**
+  The criterion asks for *wide first* at $\theta = 135°$, and that is what the table
+  gives at $\mathrm{Ca} = 10^{-3}$ — the wide branch breaks through at 709 s, the
+  narrow one never does, and they end at $S = 0.004$ against $0.912$: the
+  non-wetting liquid gets one cell into the small pore and is held out of it while
+  the wide branch takes the whole flux — and at $10^{-4}$, where the wide front is
+  four times the depth of the narrow one. At $\mathrm{Ca} = 10^{-2}$ the two
+  branches break through **1.6 s apart, which is exactly one sampling interval**:
+  that row is a tie, and it is reported as a tie. Set against the $\theta = 45°$ run
+  at the same $\mathrm{Ca} = 10^{-3}$, the angle alone moves the narrow branch's
+  saturation by a factor of **200** — @eq-pc deciding, on its own, whether the small
+  pore is filled or bypassed.
+- **The $\theta = 45°$ column is right only at the *top* of the sweep, and the
+  $\mathrm{Ca}$ dependence runs backwards** — and this is the page's own finding,
+not a quoted one. Write the doublet's flow split at a
+  fixed total flux $Q$:
   $$
   Q_n = \frac{\Delta\Delta P_c + R_w Q}{R_n + R_w},
   $$ {#eq-split}
   with $R$ the viscous resistance of each branch's liquid column. As $Q\to0$ the
   wetting doublet must reach $Q_n \to \Delta\Delta P_c/(R_n+R_w) > 0$ and hence
   $Q_w < 0$: the narrow branch imbibes *while drawing liquid back out of the wide
-  one*. That limit needs the contact line to advance under its own suction, and
-  this solver's contact line advances only as fast as the wall's numerical slip
-  permits — about $1/180$ of the Lucas–Washburn rate. Above that slip velocity
-  ($\mathrm{Ca}=10^{-2}$) the wetting condition acts and the narrow branch wins;
-  below it the capillary term is not delivered, @eq-split degenerates to the pure
-  viscous split $Q_n \approx R_w Q/(R_n+R_w)$, and the wide branch ($w^3$) wins.
-  **So the capillary number at which the measured ordering flips is not a physical
-  crossover at all — it is where the imposed velocity crosses the solver's
-  numerical slip velocity.** That is the sharpest available argument for rung V6b,
-  and it is what this page is for.
+  one*. That limit needs the contact line to advance under its own suction. The
+  measured ordering flips between $\mathrm{Ca} = 10^{-3}$ and $10^{-2}$, i.e. where
+  the imposed velocity crosses a *numerical* mobility of the contact line, not at
+  the physical Chatzis–Dullien crossover. **The imbibition half of this page is
+  therefore a finding about the solver, not about the doublet**, and the next cell
+  says which part of the solver.
+
+### Is it the wall? The Navier-slip control
+
+The obvious suspect is the momentum condition at the wall: a no-slip wall cannot
+let a contact line run along it, so the line moves only at whatever slip the
+discretisation leaks. The solver now carries an explicit Navier condition in the
+cut-cell wall closure — `set_wall_slip_length(λ)` makes the tangential wall datum
+$u_t = \lambda\,\partial u_t/\partial n$ — so the hypothesis is directly testable:
+turn the slip on and see whether the ordering flips back.
+
+```{python}
+#| label: doublet-slip
+SLIP = {0.0: DOUBLET[(45.0, 1e-3)]}          # lambda = 0 is the run above, reused as the control
+for lam in (0.1, 0.5):
+    SLIP[lam] = doublet(45.0, 1e-3, slip=lam)
+    report(SLIP[lam])
+```
+
+```{python}
+#| label: doublet-slip-table
+hdr = f"{'lambda':>7} {'t_bt narrow':>12} {'t_bt wide':>11} {'first':>7} {'S_n':>7} {'S_w':>7} {'iters':>8}"
+print(hdr); print("-" * len(hdr))
+for lam in (0.0, 0.1, 0.5):
+    r = SLIP[lam]
+    print(f"{lam:>7.1f} {_bt(r,'narrow'):>12} {_bt(r,'wide'):>11} {_first(r):>7} "
+          f"{r['f']['narrow'][2]:>7.4f} {r['f']['wide'][2]:>7.4f} {r['iters']:>4d}/{PRESS_CAP:<3d}")
+print("\nbreakthrough times are quantised by the sampling interval, so equal entries mean")
+print("'within one sample'.  Axes with a one-cell fluid gap keep the no-slip closure (a slip")
+print("length is a sub-cell wall model and a one-cell gap does not resolve one); that count is")
+print("not silent, and on this scene it is:")
+for lam in (0.1, 0.5):
+    print(f"   lambda = {lam}: wall_slip_sandwich_cells() = {SLIP[lam]['sandwich']}")
+```
+
+**It does not.** The runs differ in detail — the saturations and the
+pressure-iteration counts move — and they do not differ in the answer: the wide
+branch wins in every row.
+
+That is the single most important qualification on this page, and it is measured
+rather than asserted. The solver's own wetting benchmark takes the same question to
+a *quantitative* target — capillary rise between two plates — and gets the same
+answer with a mechanism attached: the explicit wall slip buys $+26\,\%$ of the
+Lucas–Washburn [@lucas1918; @washburn1921] rate at $\lambda = 0.3$ and leaves the
+rate $175\times$ too slow, and a **gap-width probe settles where the missing
+resistance is**. Doubling the
+slot width must, by Lucas–Washburn, double the rise speed; measured, it makes it
+$2.5\times$ *slower* — the front speed goes as $1/w$, which is the capillary drive
+$2\sigma\cos\theta/w$ divided by a resistance that does not scale with the gap at
+all. And at both gap widths the interface's own *apparent* angle sits at $71°$
+while the angle being imposed on it is $37°$ — it is not adopting the angle it is
+given, so only $\cos(71°)/\cos(37°) \approx 0.4$ of the intended Young force is
+ever delivered.
+
+::: {.callout-important}
+## The mobility bottleneck is in the wetting band. Every imbibition result on this page is qualitative.
+The resistance that decides how fast a contact line advances in this scheme is
+**local to the three-cell wetting band at the wall** — the colour's motion through
+the near-wall cells and the curvature that band produces — and it is controlled
+neither by the imposed contact angle nor by the wall's velocity condition. Both of
+those are implemented and both are exact on their own tests; neither is the
+limiter.
+
+So: **the drainage results on this page ($\theta > 90°$) are validated physics.**
+The **imbibition** results ($\theta < 90°$) are qualitative — the *contrast*
+between two angles is real and large, the *dynamics* of the wetting front are not
+quantitative, and wherever a published result depends on a wetting front advancing
+under its own capillary suction, this page either gets the sign wrong or does not
+reproduce the effect at all. Read all three cases as a measurement of where that
+boundary lies.
+:::
+
 
 ## 2. Imbibition into a sphere packing
 
@@ -469,6 +673,15 @@ print(f"inlet plenum z = 0 .. {int(BOT)}, outlet plenum z = {int(TOP)} .. {PNZ}:
       f"the solid is clear of both open faces")
 ```
 
+One number about this bed is worth having before the results. The **percolation
+throat radius** — the max–min path of the SDF from the bottom of the bed to the
+top, i.e. the widest bottleneck a front must squeeze through — was measured on
+this scene at about **2.2 cells** by a Dijkstra max--min sweep. That is at or
+below the $\approx2.5$-cell floor where the curvature scheme's height-function
+cascade is permanently in its PLIC-volumetric fallback, so the bottleneck's
+meniscus is *represented* but not *resolved*. It is one more reason to read this
+case as a wettability contrast rather than as a saturation measurement.
+
 ```{python}
 #| label: packing-run
 #| code-summary: "The packing driver, and the trapped-gas measurement"
@@ -496,7 +709,7 @@ def trapped_gas(C, eps, klo, khi):
     sel = gas[:, :, bed] & ~np.isin(lab[:, :, bed], openr)
     return float((eps[:, :, bed] * (1.0 - C[:, :, bed]) * sel).sum()) / pore
 
-def packing(theta_deg, ca=1e-3, budget=2700.0, after=0.25, every=100):
+def packing(theta_deg, ca=1e-3, step_cap=STEP_CAP, after=0.25, every=100):
     U = ca * SIGMA / MU_L
     s = flow.Solver(PNX, PNY, PNZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.05)
@@ -519,13 +732,19 @@ def packing(theta_deg, ca=1e-3, budget=2700.0, after=0.25, every=100):
 
     eps = np.asarray(s.vof_geometry(0))
     pore = float(eps[:, :, KLO:KHI].sum())
-    h, hist, bt, t, n, stop = Health(), [], None, 0.0, 0, None
-    t0 = time.time()
-    while time.time() - t0 < budget:
+    h, hist, bt, t, n, stop, err = Health(), [], None, 0.0, 0, None, None
+    ncfl, t0 = 0, time.time()
+    for _ in range(step_cap):
         L = s.vof_step_limits()
         dtc = CAP_CFL * L["capillary_dt"]
         dt = min(dtc, 0.8 * L["cfl_dt"]) if L["cfl_dt"] > 0 else dtc
-        s.set_dt(dt); s.step(); t += dt; n += 1
+        ncfl += int(dt < 0.999 * dtc)
+        s.set_dt(dt)
+        try:
+            s.step()
+        except RuntimeError as exc:
+            err = str(exc); break
+        t += dt; n += 1
         h.sample(s)
         if n % every == 0:
             C = np.asarray(s.get_vof())
@@ -537,8 +756,8 @@ def packing(theta_deg, ca=1e-3, budget=2700.0, after=0.25, every=100):
                 break
     C = np.asarray(s.get_vof())
     S = float((C[:, :, KLO:KHI] * eps[:, :, KLO:KHI]).sum() / pore)
-    return dict(theta=theta_deg, t=t, n=n, ms=1000 * (time.time() - t0) / n,
-                hist=np.array(hist), bt=bt, S=S,
+    return dict(theta=theta_deg, t=t, n=n, ms=1000 * (time.time() - t0) / max(n, 1),
+                hist=np.array(hist), bt=bt, S=S, err=err, cfl_frac=ncfl / max(n, 1),
                 trapped=trapped_gas(C, eps, KLO, KHI), C=C, eps=eps,
                 iters=h.iters, capped=h.capped, div=h.div)
 
@@ -546,10 +765,16 @@ PACK = {}
 for th in (30.0, 60.0):
     r = packing(th)
     PACK[th] = r
-    print(f"theta {th:5.1f}: breakthrough at t = {r['bt'][0]:.4g} s with bed saturation "
-          f"{r['bt'][1]:.4f}; final S = {r['S']:.4f}, trapped gas {r['trapped']:.4f}")
-    print(f"   {r['n']} steps at {r['ms']:.0f} ms/step, pressure {r['iters']}/{PRESS_CAP}"
-          f"{'' if not r['capped'] else ' CAPPED'}, max|div| {r['div']:.2e}")
+    if r["bt"] is None:
+        print(f"theta {th:5.1f}: NO breakthrough inside {r['n']} steps (t = {r['t']:.4g} s)")
+    else:
+        print(f"theta {th:5.1f}: breakthrough at t = {r['bt'][0]:.4g} s with bed saturation "
+              f"{r['bt'][1]:.4f}; final S = {r['S']:.4f}, trapped gas {r['trapped']:.4f}")
+    print(f"   {r['n']} steps, capillary dt binds on {100*(1-r['cfl_frac']):.0f} % of them; "
+          f"pressure {r['iters']}/{PRESS_CAP}"
+          f"{'' if not r['capped'] else ' *** CAPPED -> INVALID ***'}, max|div| {r['div']:.2e}"
+          + ("" if r["err"] is None else f"\n   STOPPED BY: {r['err']}"))
+BT = {th: (PACK[th]["bt"] or (float("nan"), float("nan"))) for th in PACK}
 ```
 
 ```{python}
@@ -559,8 +784,10 @@ fig, ax = plt.subplots(1, 3, figsize=(11, 3.1),
                        gridspec_kw={"width_ratios": [1.25, 1, 1]})
 for th, col in ((30.0, BLUE), (60.0, ORANGE)):
     r = PACK[th]
-    ax[0].plot(r["hist"][:, 0], r["hist"][:, 1], color=col, label=f"$\\theta={th:.0f}°$")
-    ax[0].plot([r["bt"][0]], [r["bt"][1]], "o", color=col, ms=5)
+    if r["hist"].ndim == 2:
+        ax[0].plot(r["hist"][:, 0], r["hist"][:, 1], color=col, label=f"$\\theta={th:.0f}°$")
+    if r["bt"] is not None:
+        ax[0].plot([r["bt"][0]], [r["bt"][1]], "o", color=col, ms=5)
 ax[0].set_xlabel("t  [s]"); ax[0].set_ylabel("bed liquid saturation $S$")
 ax[0].legend(fontsize=8); ax[0].set_title("saturation vs time (dots: breakthrough)")
 for k, th in enumerate((30.0, 60.0)):
@@ -575,23 +802,45 @@ for k, th in enumerate((30.0, 60.0)):
 plt.tight_layout()
 ```
 
-The bed is invaded almost completely at both angles (final $S$ of 0.91 and 0.98)
-and the trapped gas is around a per cent of the pore volume in both — at this
-capillary number and this small a bed the trapping is set by the geometry, not by
-the angle. The interesting difference is the *saturation at breakthrough*: the
-campaign measured **$t_{bt}=690.7$ s at $S_{bt}=0.726$ for $\theta=30°$** against
-**800.9 s at 0.852 for $\theta=60°$**, i.e. the more strongly wetting case breaks
-through **16 % earlier and 15 % drier** than the weakly wetting one. That is the opposite of the textbook expectation that
-strong imbibition gives a flatter, more compact front, and it is consistent with
-the doublet: with the contact line's own mobility suppressed, a lower $\theta$ buys
-a larger capillary suction *into the throats that the front has already reached*,
-i.e. it accelerates the leading fingers rather than filling in behind them.
+The bed is invaded nearly completely at both angles — final $S$ of
+`{python} f"{PACK[30.0]['S']:.2f}"` and `{python} f"{PACK[60.0]['S']:.2f}"` — and
+the trapped gas is of order a per cent of the pore volume in both
+(`{python} f"{PACK[30.0]['trapped']:.3f}"` against
+`{python} f"{PACK[60.0]['trapped']:.3f}"`): at this capillary number and this small
+a bed the trapping is set by the geometry, not by the angle.
+
+The quantity that carries the physics is the *saturation at breakthrough*: a flat,
+compact front only reaches the top of the bed once most of the pore space behind it
+is full, while a fingered one arrives early and dry. Strong imbibition is supposed
+to produce the first and weak imbibition the second, so halving the contact angle
+ought to move this number a long way.
+
+It does not move it at all. The strongly wetting bed breaks through at
+`{python} f"{BT[30.0][0]:.1f}"` s at a bed saturation of
+`{python} f"{BT[30.0][1]:.3f}"`, the weakly wetting one at
+`{python} f"{BT[60.0][0]:.1f}"` s at
+`{python} f"{BT[60.0][1]:.3f}"` — a difference of
+`{python} f"{100*abs(1 - BT[30.0][1]/BT[60.0][1]):.0f}"` % in the saturation and
+`{python} f"{100*abs(1 - BT[30.0][0]/BT[60.0][0]):.0f}"` % in the time, against a
+factor-of-two change in $\cos\theta$. The trapped gas agrees to the third digit as
+well.
+
+**The wettability effect the textbook predicts is not there.** Its sign, in as far
+as a one-per-cent difference has one, is the inverted one — the more wetting bed is
+marginally the earlier and the drier — which is the same direction as the doublet's
+$\theta = 45°$ column. The mechanism is the one §1's slip control isolated: with the
+contact line's mobility set by a resistance in the wetting band that neither the
+angle nor the wall condition controls, a lower $\theta$ cannot fill *behind* the
+front any faster. What it does buy is extra capillary suction into the throats the
+front has already reached, which accelerates the leading fingers rather than filling
+in behind them — and here that buys almost nothing.
 
 ## 3. A micromodel: wettability and the invasion pattern
 
-Zhao, MacMinn & Juanes (*PNAS* **116**:13799, 2019) took a disordered array of
-posts and showed that wettability alone moves the displacement pattern from
-compact (strong imbibition) to fingered (drainage). The array here is a jittered
+Zhao, MacMinn & Juanes [@zhao2016] took a disordered array of posts and showed
+that wettability alone moves the displacement pattern from compact (strong
+imbibition) to fingered (drainage); the same geometry later became the benchmark
+on which eleven pore-scale codes were compared side by side [@zhao2019]. The array here is a jittered
 staggered lattice of 30 posts in $128\times128\times4$ cells, invaded at three
 angles.
 
@@ -609,7 +858,8 @@ below keeps the disorder and the geometry class but trades post *count* for thro
 Two candidate mechanisms, and this page does **not** separate them: (a) the
 contact-angle fill writes a three-cell band into the solid on each side of a
 throat, so at 3.1 cells the two posts' bands meet in the middle of it — the same
-overlap that made the wetting rung's four-cell-plate capillary rise inconclusive;
+overlap that made the solver's own four-cell-plate capillary-rise test
+inconclusive;
 (b) a Haines jump through a throat whose meniscus radius is $\approx1.5$ cells is
 simply unresolved. Local velocities in a real pore-filling event run up towards the
 capillary velocity $\sigma/\mu_\ell = 25$, a thousand times the inlet velocity
@@ -654,11 +904,12 @@ print(f"{len(POSTS)} posts of radius {R_POST}; porosity {POR_M:.4f}; "
 
 ::: {.callout-warning}
 ## Corner films are not represented, and this is the case that needs them
-The VOF_PLAN's own warning about this benchmark is that **corner films decide
+The standing warning about this benchmark is that **corner films decide
 imbibition fidelity** — the strong-imbibition end of Zhao's experiment is carried
-by liquid running ahead in the corners between the posts and the confining plates.
-A quasi-2D slab four cells thick with $5.7$-cell posts has no such corner to
-resolve. Read the *trend* below, not the saturations.
+by liquid running ahead in the corners between the posts and the confining plates,
+and that is what defeated most of the codes in the 2019 comparison. A quasi-2D slab
+four cells thick has no such corner to resolve, and this scheme has no sub-grid film
+model. Read the *trend* below, not the saturations.
 :::
 
 ```{python}
@@ -671,6 +922,8 @@ def box_dimension(mask, sizes=(1, 2, 4, 8, 16, 32)):
         blk = mask[:mx, :my].reshape(mx // e, e, my // e, e).any(axis=(1, 3))
         if blk.sum():
             pts.append((e, int(blk.sum())))
+    if len(pts) < 2:                       # nothing invaded yet: no slope to fit
+        return float("nan"), pts
     x = np.log([1.0 / p[0] for p in pts]); y = np.log([float(p[1]) for p in pts])
     return float(np.polyfit(x, y, 1)[0]), pts
 
@@ -683,12 +936,14 @@ def front_stats(inv):
                       for j in range(inv.shape[1])])
     ok = reach >= 0
     lab, n = ndimage.label(inv)
+    nan = float("nan")
     return dict(rows=int(ok.sum()), nrows=int(inv.shape[1]),
-                mean=float(reach[ok].mean()), std=float(reach[ok].std()),
+                mean=float(reach[ok].mean()) if ok.any() else nan,
+                std=float(reach[ok].std()) if ok.any() else nan,
                 max=int(reach.max()), clusters=int(n))
 
 
-def micromodel(theta_deg, ca=1e-3, pv_stop=0.10, budget=2400.0, every=60):
+def micromodel(theta_deg, ca=1e-3, pv_stop=0.10, step_cap=STEP_CAP, every=60):
     U = ca * SIGMA / MU_L
     s = flow.Solver(MNX, MNY, MNZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.05)
@@ -709,13 +964,19 @@ def micromodel(theta_deg, ca=1e-3, pv_stop=0.10, budget=2400.0, every=60):
 
     eps = np.asarray(s.vof_geometry(0)); arr = slice(int(X_IN), int(X_BT))
     pore = float(eps[arr].sum())
-    h, hist, t, n, bt = Health(), [], 0.0, 0, None
-    t0 = time.time()
-    while time.time() - t0 < budget:
+    h, hist, t, n, bt, err = Health(), [], 0.0, 0, None, None
+    ncfl, t0 = 0, time.time()
+    for _ in range(step_cap):
         L = s.vof_step_limits()
         dtc = CAP_CFL * L["capillary_dt"]
         dt = min(dtc, 0.8 * L["cfl_dt"]) if L["cfl_dt"] > 0 else dtc
-        s.set_dt(dt); s.step(); t += dt; n += 1
+        ncfl += int(dt < 0.999 * dtc)
+        s.set_dt(dt)
+        try:
+            s.step()
+        except RuntimeError as exc:
+            err = str(exc); break
+        t += dt; n += 1
         h.sample(s)
         if n % every == 0:
             C = np.asarray(s.get_vof())
@@ -731,8 +992,9 @@ def micromodel(theta_deg, ca=1e-3, pv_stop=0.10, budget=2400.0, every=60):
     inv = (C[:, :, mid] > 0.5) & (eps[:, :, mid] > 0.0)
     D, pts = box_dimension(inv[arr])
     fs = front_stats(inv[arr])
-    return dict(theta=theta_deg, t=t, n=n, ms=1000 * (time.time() - t0) / n,
-                hist=np.array(hist), bt=bt, D=D, boxes=pts, front=fs,
+    return dict(theta=theta_deg, t=t, n=n, ms=1000 * (time.time() - t0) / max(n, 1),
+                hist=np.array(hist), bt=bt, D=D, boxes=pts, front=fs, err=err,
+                cfl_frac=ncfl / max(n, 1),
                 S=float((C[arr] * eps[arr]).sum() / pore),
                 pv=U * MNY * MNZ * t / pore, inv=inv, eps=eps[:, :, mid],
                 iters=h.iters, capped=h.capped, div=h.div)
@@ -747,13 +1009,15 @@ for th in (45.0, 90.0, 135.0):
           f"{r['S']:.4f}, box dimension D = {r['D']:.3f}")
     print(f"   front: reached {f['rows']}/{f['nrows']} rows, mean {f['mean']:.2f} cells, "
           f"std {f['std']:.2f}, deepest finger {f['max']}, {f['clusters']} cluster(s)")
-    print(f"   {r['n']} steps at {r['ms']:.0f} ms/step, pressure {r['iters']}/{PRESS_CAP}"
-          f"{'' if not r['capped'] else ' CAPPED'}, max|div| {r['div']:.2e}")
+    print(f"   {r['n']} steps, Weymouth-Yue cap binds on {100*r['cfl_frac']:.0f} % of them; "
+          f"pressure {r['iters']}/{PRESS_CAP}"
+          f"{'' if not r['capped'] else ' *** CAPPED -> INVALID ***'}, max|div| {r['div']:.2e}"
+          + ("" if r["err"] is None else f"\n   STOPPED BY: {r['err']}"))
 ```
 
 ```{python}
 #| label: fig-micromodel
-#| fig-cap: "The invaded region (blue) in the post array at three contact angles, all at the same injected liquid volume (0.10 pore volumes), posts grey. Wettability alone changes how the same injected volume is distributed — and it does so in the direction opposite to the published experiment."
+#| fig-cap: "The invaded region (blue) in the post array at three contact angles, all at the same injected liquid volume (0.10 pore volumes), posts grey. The published experiment turns a compact displacement into a fingered one over this range of contact angle; here the three patterns are barely distinguishable, and what difference there is has the wetting case as the rougher."
 fig, ax = plt.subplots(1, 3, figsize=(11, 3.6))
 for k, th in enumerate((45.0, 90.0, 135.0)):
     r = MICRO[th]
@@ -769,65 +1033,108 @@ plt.tight_layout()
 
 At a common injected volume the saturation is equal by construction, so it carries no
 information; the discriminators are the box dimension and the **roughness of the
-front**. The campaign measured, at 0.10 pore volumes injected:
+front**.
 
-| $\theta$ | $D_{\text{box}}$ | rows reached | front mean | front **std** | deepest finger | clusters |
-|---|---|---|---|---|---|---|
-| 45° | 1.582 | **111 / 128** | 10.22 | **7.58** | **22** | **4** |
-| 90° | 1.610 | 128 / 128 | 7.62 | 5.35 | 18 | 1 |
-| 135° | 1.644 | 128 / 128 | 7.34 | **4.78** | 15 | 1 |
+```{python}
+#| label: micromodel-table
+hdr = (f"{'theta':>6} {'PV':>7} {'S':>7} {'D_box':>7} {'rows':>9} {'mean':>7} "
+       f"{'std':>7} {'deepest':>8} {'clusters':>9} {'iters':>8} {'max|div|':>10}")
+print(hdr); print("-" * len(hdr))
+for th in (45.0, 90.0, 135.0):
+    r = MICRO[th]; f = r["front"]
+    print(f"{th:>6.0f} {r['pv']:>7.4f} {r['S']:>7.4f} {r['D']:>7.3f} "
+          f"{f['rows']:>4d}/{f['nrows']:<4d} {f['mean']:>7.2f} {f['std']:>7.2f} "
+          f"{f['max']:>8d} {f['clusters']:>9d} {r['iters']:>4d}/{PRESS_CAP:<3d} {r['div']:>10.2e}")
+```
 
-**The trend is monotone, it is large, and it is inverted against Zhao et al.** Their
-result is that strong imbibition displaces *compactly* — cooperative pore filling —
-and drainage *fingers*. Here the **wetting** case has the raggedest front (59 %
-rougher than drainage), the deepest finger, four disconnected invaded clusters
-against one, and 17 of 128 transverse rows never reached at all, while the
-**drainage** case advances as a nearly flat front. The figure shows it without any
-statistic being needed.
+**The published trend is not reproduced — neither its size nor, in as far as it has
+one here, its sign.** Zhao's result is that strong imbibition displaces *compactly*
+(cooperative pore filling) and drainage *fingers*, and that the two are
+unmistakably different to the eye. Measured here at a common injected volume, the
+entire spread over $90°$ of contact angle is this: the front's standard deviation
+goes `{python} f"{MICRO[45.0]['front']['std']:.2f}"` /
+`{python} f"{MICRO[90.0]['front']['std']:.2f}"` /
+`{python} f"{MICRO[135.0]['front']['std']:.2f}"` cells, the deepest finger
+`{python} f"{MICRO[45.0]['front']['max']:d}"` /
+`{python} f"{MICRO[90.0]['front']['max']:d}"` /
+`{python} f"{MICRO[135.0]['front']['max']:d}"`, and the box dimension
+`{python} f"{MICRO[45.0]['D']:.3f}"` /
+`{python} f"{MICRO[90.0]['D']:.3f}"` /
+`{python} f"{MICRO[135.0]['D']:.3f}"` — **not ordered in $\theta$ at all**. Every
+angle reaches every one of the 128 transverse rows, as a single connected cluster.
+The three panels above are, to the eye, the same displacement.
 
-This is the third case on this page to fail in the same direction, and it names the
-mechanism most directly: **cooperative pore filling requires the contact line to run
-ahead along the post walls**, which is exactly the motion an explicit Navier slip
-would enable and which the wall's numerical slip currently forbids. With the line
-effectively pinned, the extra capillary suction at low $\theta$ acts only on the
-menisci already at the front and accelerates whichever finger is furthest — it
-*destabilises* the front instead of stabilising it.
+Two things can still be said, and they are worth more than the non-result. The
+wetting extreme is the *rougher* of the two, by
+`{python} f"{100*(MICRO[45.0]['front']['std']/MICRO[135.0]['front']['std']-1):.0f}"` %
+and with the deeper finger, so what little dependence exists runs **backwards**
+against the experiment. And the ordering is broken by the *neutral* case, which sits
+at the rough end alongside the wetting one — which is what a pattern set by the
+imposed flux and the array's own disorder, rather than by wettability, looks like.
 
-Two health notes, recorded rather than smoothed: the $\theta = 45°$ run's
-`max_open_divergence_projected()` is $10^{-5}$, three orders worse than the other
-two, and it spent 29 % of its steps on the Weymouth–Yue cap against 0.4 % and 0.0 %
-— the wetting run is the violent one, consistently with the fingering. And the
-*trajectory* is chaotic: the same scene run with 12 OpenMP threads instead of 4
-reaches $\max|u| = 4.12$ where the 4-thread run reads $0.632$ at the same step,
-because reduction order differs at $10^{-16}$ and invasion percolation in a
+This is the third case on this page to come out the same way, and it is the one
+where the mechanism is easiest to name: **cooperative pore filling requires the
+contact line to run ahead along the post walls**, and §1's slip control shows that
+what forbids that motion is not the wall's velocity condition — turning on an
+explicit Navier slip does not restore it — but a resistance local to the wetting
+band. With the line effectively pinned the imposed angle can no longer choose which
+pore fills next; the flux and the geometry do, and they do it the same way at every
+$\theta$. What the angle still buys is extra suction at the menisci *already* at the
+front, which accelerates whichever finger is furthest — the wrong sign for a compact
+displacement, and the reason the wetting case is the rougher one.
+
+Two health notes, recorded rather than smoothed. First, the $\theta = 45°$ run is
+the violent one on its own diagnostics — its `max_open_divergence_projected()` and
+its share of steps on the Weymouth–Yue cap are both the worst of the three in the
+table above, consistently with the fingering. Second, the *trajectory* is
+**chaotic**: the same scene run with 12 OpenMP threads instead of 4 was measured
+reaching $\max|u| = 4.12$ where the 4-thread run read $0.632$ at the same step,
+because the reduction order differs at $10^{-16}$ and invasion percolation in a
 disordered array amplifies it. The pattern *statistics* are the reportable
-quantity here; a trajectory is not.
+quantity here; a trajectory is not — and a re-execution of this page on different
+hardware will not reproduce the fields cell for cell.
 
 ## What this page cannot do
 
-Four limits, each measured rather than guessed, each with a named rung that lifts
-it:
+Five limits, each measured rather than guessed:
 
-- **The contact angle is static.** The apparent angle of a *moving* contact line
-  is a Cox–Voinov function of the line's speed, and peclet implements that
-  (rung V6) — but the line's *mobility* is set by the velocity-side Navier slip,
-  which does not exist yet (rung V6b). Measured consequence: capillary rise runs
-  about $180\times$ slower than Lucas–Washburn. Everything on this page that
-  depends on the contact line moving *under its own suction* — the Chatzis–Dullien
-  inversion, the strong-imbibition end of the micromodel — is qualitative.
-- **No corner films.** Named in the plan as the thing that defeated most
-  2019-era codes on exactly this micromodel benchmark.
+- **The contact line's mobility is set by the wetting band, and nothing on the
+  API controls it.** The two pieces a reader would reach for both exist and both
+  are exact on their own tests — the apparent angle of a *moving* line is a
+  Cox–Voinov function of its speed (`set_contact_angle_dynamic`), and the wall's
+  tangential momentum condition is a true Navier condition
+  (`set_wall_slip_length`, exercised in §1). Neither is the limiter. Capillary
+  rise runs $175\times$ slower than Lucas–Washburn, the slip recovers $26\,\%$ of
+  that, and the missing resistance is *independent of the channel width* (the rise
+  speed goes as $1/w$ where the law says $w$) — i.e. it is local to the few-cell
+  band at the wall, not to the confinement. **Everything on this page that depends
+  on a wetting front advancing under its own suction is qualitative**, and the
+  three cases below either fail in that direction or show no wettability dependence
+  where a large one is expected.
+- **No corner films.** Named in the VoF plan as the thing that defeated most
+  2019-era codes on exactly this micromodel benchmark — and the strong-imbibition
+  end of Zhao's experiment is carried by them.
 - **Density ratio 100, not 1000.** The momentum-consistent transport's own
   uniform-velocity identity is floored at $10^{-7}$ by the solver's float
   momentum-operator storage, and a resting pool at ratio 1000 was measured to pick
   up $3\times10^{-2}$ of the driving velocity. Ratio 100 is the rated regime.
-- **The capillary time step, and only the capillary time step, sets the cost.**
-  In the runs above the Brackbill limit binds on the large majority of steps; the
-  Weymouth–Yue advective cap displaces it only in the fastest transients. That is
-  the arithmetic of pore-scale VoF and it is not tuning: $\Delta t_\sigma \sim
-  h^{3/2}$ against $\Delta t_{\text{CFL}} \sim h$, so refinement makes it worse.
-  It is why every run on this page carries an explicit wall-clock budget and
-  reports a partial fill rather than a silently truncated one.
+- **The capillary time step usually — not always — sets the cost.** In the
+  low-$\mathrm{Ca}$ runs above the Brackbill limit binds on nearly every step; at
+  $\mathrm{Ca}=10^{-2}$, and inside the packing where a throat manufactures a local
+  jet, the Weymouth–Yue advective cap takes over for most of the run. Both limits
+  are therefore re-picked from `vof_step_limits()` **every** step. The arithmetic
+  is not tuning: $\Delta t_\sigma \sim h^{3/2}$ against $\Delta t_{\text{CFL}} \sim
+  h$, so refinement makes it worse.
+- **Two runs are budgeted, not completed.** Eliminating the fluid properties in
+  favour of the two dimensionless groups, the number of steps to move a front a
+  distance $L$ through a channel of width $w$ is $N \sim L\sqrt{w/(\mathrm{Re}\,
+  \mathrm{Ca})}$ — *independent of $\sigma$, $\rho$ and $\mu$ separately*. There is
+  no choice of fluids that makes a pore-scale VoF run cheaper at a given geometry,
+  Reynolds and capillary number; the only levers are a shorter path, a larger
+  $\mathrm{Re}$, or a larger $\mathrm{Ca}$. That is why the $\mathrm{Ca}=10^{-4}$
+  doublet rows are capped at 12 000 of the $1.4\times10^{5}$ steps a full traverse
+  wants and are reported as partial fills, and why the micromodel is compared at a
+  common injected volume instead of at breakthrough.
 
 ## Adapt this yourself
 
@@ -843,6 +1150,11 @@ it:
   packing](../bubble-through-packing/index.qmd) page's problem in a driven column.
 - **Use a real bed.** `settle` here is a NumPy toy; swap it for `dem`'s packing as
   the bubble page does, and nothing on the fluid side changes.
+- **Turn the wall slip up.** `set_wall_slip_length(λ)` is one line and costs
+  nothing at `λ = 0`; §1 sweeps it over a factor of five on the doublet. It is worth
+  running on your own geometry before concluding that a wetting result is physics —
+  a result that moves a lot with λ is being set by the wall model, and one that does
+  not (like this page's) is being set by something else.
 - **Go multi-rank.** All of it runs under `mpirun -np N python …`: the colour halo,
   the wetting band fill and the cut-cell fluxes are all decomposition-independent
   by construction.
@@ -860,6 +1172,9 @@ export PYTHONPATH=$PWD/build_cuda
 python tests/study/pore_scale/pore_doublet.py       --theta 45,135 --ca 1e-4,1e-3,1e-2
 python tests/study/pore_scale/imbibition_packing.py --theta 30,60  --ca 1e-3
 python tests/study/pore_scale/micromodel_2d.py      --theta 45,90,135 --ca 1e-3
+# --quick shortens every run to a few hundred steps (shape, not physics);
+# --slip <lambda cells> is the Navier-slip control of section 1.
+python tests/study/pore_scale/pore_doublet.py --theta 45 --ca 1e-3 --slip 0.5
 ```
 
 To regenerate this page:
@@ -874,14 +1189,13 @@ PECLET_LOCAL_BUILD=/path/to/suite/flow/build_cuda OMP_NUM_THREADS=8 OMP_PROC_BIN
 
 ## References
 
-- Chatzis, I. & Dullien, F. A. L. (1983). Dynamic immiscible displacement
-  mechanisms in pore doublets: theory versus experiment. *J. Colloid Interface
-  Sci.* **91**, 199.
-- Zhao, B., MacMinn, C. W. & Juanes, R. (2019). Wettability control on multiphase
-  flow in patterned microfluidics. *PNAS* **116**, 13799.
-- Weymouth, G. D. & Yue, D. K.-P. (2010). Conservative volume-of-fluid method for
-  free-surface simulations on Cartesian grids. *J. Comput. Phys.* **229**, 2853.
-- Afkhami, S. & Bussmann, M. (2008). Height functions for applying contact angles
-  to 3D VOF simulations. *Int. J. Numer. Meth. Fluids* **57**, 453.
-- Rusche, H. (2002). *Computational fluid dynamics of dispersed two-phase flows at
-  high phase fractions.* PhD thesis, Imperial College London.
+Cited above, and rendered from the gallery's shared `references.bib`. The
+Weymouth–Yue geometric transport [@weymouth2010], the balanced-force surface
+tension [@brackbill1992], the height-function contact angle [@afkhami2008] and the
+variable-density outflow operator [@rusche2002] are the solver pieces this page
+composes; the physics it is measured against is the pore doublet [@chatzis1983],
+the micromodel [@zhao2016; @zhao2019] and capillary rise [@lucas1918;
+@washburn1921].
+
+::: {#refs}
+:::
