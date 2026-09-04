@@ -21,7 +21,7 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 ---
 
 ## `max_open_divergence()` returns exactly 0 without geometry — so `advect_vof`'s divergence guard is silently inert on a bare box
-- **Status:** open
+- **Status:** RESOLVED (flow WO-R2, `advect_vof` now throws without a cut-cell pressure operator and uses `max_open_divergence_projected()`; 2026-09-03)
 - **Package / area:** flow (VoF transport / cut-cell diagnostics)
 - **Found in:** examples/vof-advection-benchmarks
 - **Observed:** `advect_vof(dt)` documents that it "THROWS if the current velocity is not
@@ -44,7 +44,7 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   diagnostic live; that workaround is written into the page as an explicit instruction.
 
 ## The interface-local Courant band has no wisp guard, so a long run's reported CFL creeps to the global maximum
-- **Status:** open
+- **Status:** RESOLVED (flow WO-R2 item 4b: the band predicate uses `wispEps`, set to 1e-8 by `enable_vof`; Zalesak's reported CFL now tracks the a-priori bound; 2026-09-03)
 - **Package / area:** flow (`vof/advect_wy.hpp`, `maxCourantInterface`)
 - **Found in:** examples/vof-advection-benchmarks §4 (Zalesak, 1000 steps)
 - **Observed:** the Courant band is "mixed cells and their face neighbours", with neighbours
@@ -740,7 +740,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   it only by being fully periodic.
 
 ## flow: the VoF interface length/area is not exposed, so benchmark "circularity" cannot be reported
-- **Status:** open (quantity omitted from the page)
+- **Status:** RESOLVED (flow WO-P3c/P3d: `vof_interface_area()`, joined marching-tetrahedra sheet on the PLIC level set, exact to 1e-4 on spheres; the rising-bubble page can now report circularity — not yet done on the page)
 - **Package / area:** flow (VoF / PLIC reconstruction bindings)
 - **Found in:** examples/rising-bubble
 - **Observed:** the Hysing benchmark tabulates three quantities — centroid, rise velocity and
@@ -832,7 +832,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   1.47e-3). Both runs: pressure 10/500, `max|div|` 7.1e-13, volume drift −1.4e-14.
 
 ## flow: the shipped `wave` and `lamb` study gates compare against the wrong reference
-- **Status:** open (the gallery page uses the correct references; the in-repo gate still does not)
+- **Status:** RESOLVED (flow `f140dce`: `tests/study/vof_surface_tension.py` reports both gates against the exact viscous references of `vof_capillary_references.py`)
 - **Package / area:** flow (`tests/study/vof_surface_tension.py`, gates `wave` and `lamb`)
 - **Found in:** examples/capillary-oscillations — building the page is what surfaced it
 - **Observed:** the `wave` gate compares the measured frequency with the **inviscid** dispersion
@@ -856,7 +856,7 @@ is now measured false and needs rewriting before the new numbers are published.*
   copy of both functions, per the gallery rule that teaching code stays visible.
 
 ## flow: a flat SDF wall at a half-integer coordinate closes the wall cell's tangential faces and silently pins the contact line
-- **Status:** open (a property of the cut-cell openness builder, not of the wetting rung; the
+- **Status:** open, reclassified: since WO-V6b the DOF classification and the openness AGREE at sdf == 0 (both wall), so the behaviour is consistent by design — a wall exactly on a cell-centre plane closes those tangential faces and pins the contact line; place a flat wall off the lattice planes when the contact line must move (VOF_PLAN §13 item 6)
   gallery page works around it by placing walls at a quarter-integer and says why)
 - **Package / area:** flow (cut-cell IBM — `buildOpenness`; surfaced by the VoF contact angle)
 - **Found in:** examples/droplet-wetting §6 (confirmed independently of the solver's own WO-S
