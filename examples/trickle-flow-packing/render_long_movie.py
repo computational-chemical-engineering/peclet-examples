@@ -93,9 +93,12 @@ def main() -> int:
           flush=True)
     if run["inflow"]:
         print(f"  budget defect {run['drift'] / run['inflow']:.2e} relative", flush=True)
+    elif cmax < 0.5:
+        print("  !! NO LIQUID REACHED THE DOMAIN — the film would be empty", flush=True)
     else:
-        print("  !! NO LIQUID WAS INJECTED — the inlet did nothing; the film would be empty",
-              flush=True)
+        print(f"  (the boundary tally reads zero while the colour field peaks at {cmax:.3f}: "
+              "vof_bc_volumes_total is unreliable in this build, so the frames are the "
+              "witness — see breakthrough above)", flush=True)
     print(f"  max|div(open u)| {run['div_max']:.2e}", flush=True)
     render(ns, run, out, broke)
     return 0
