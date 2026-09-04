@@ -312,7 +312,7 @@ full channel node for node to 3e-13.
   periodic self-ghost path.
 
 ## Inflow/outflow (profile inlet / BFS) diverges to NaN — advection-driven marginal mode
-- **Status:** INVESTIGATING (NOT fixed) — partially improved; deeper open issue. See "Findings".
+- **Status:** RESOLVED as a blow-up (not reproducible on flow main, 2026-09-04 sweep on OpenMP + CUDA); the conditionally-stable outlet-reversal regime is now instrumented (flow `16fd390`: `outflow_backflow()` census + a one-time warning + `tests/kokkos/test_outflow_backflow.cpp`). See the update at the end of the entry.
 - **Package / area:** flow — inflow/outflow domain BC + advection (was mis-attributed to the pressure MG)
 - **Found in:** scratch run while prototyping `poiseuille-ibm` (the developing
   inflow→outflow channel variant; we shipped the periodic body-force case instead)
@@ -357,6 +357,42 @@ full channel node for node to 3e-13.
      term `+β·ρ·|min(u·n,0)|` added to the normal-momentum diagonal where the outlet reverses (β=0.2
      default, `set_backflow_stabilization`). Purely dissipative + implicit, and **inert where the
      outlet is outgoing** → the channel (no reversal) stays byte-identical.
+
+**Update 2026-09-04 — re-measured on today's main; no divergence anywhere; mechanism
+instrumented.** Runs on the flow `rel-issues` branch, shipped as `16fd390` (OpenMP 4 threads; dt = 0.4 also on CUDA):
+
+| configuration | steps | result |
+|---|---|---|
+| the entry's repro: uniform-inlet channel L=160 H=24 Re=100 dt=0.5, MG 8 lv, 80 p-iters | 3000 | steady, `u_max/U_mean` 1.491, KE 8.936e3 flat, div 1e-8 |
+| BFS S=16 (`verify_bfs_sdflow.py` scene) Re_S=100, dt 0.4 / 0.8 / 1.6 | 6000 / 6000 / 1500 | steady, x_r/S 5.31 all three, div 2e-16 |
+| BFS Re_S=200, dt 0.4, with / without backflow stabilization | 6000 | **bit-identical** (KE 5.8667798e3 both, x_r/S 8.12): no outlet reversal, so the term is inert |
+| BFS Re_S=800, dt 0.4 and 0.8 (β = 0.2) | 6000 | finite; the bubble reaches the outlet (x_r/S = 12 = L/S), outlet reversed over part of its height, KE bounded |
+| BFS Re_S=800, dt 0.4, **β = 0** | 6000 | finite; same picture |
+
+So (i) the original NaN was the explicit advection the domain-BC path ran before flow
+`4e53522` wired implicit FOU + deferred correction + backflow stabilization through it — the
+entry's own bisection (Stokes stable, advection-driven) already said so; (ii) the "marginal,
+roundoff-sensitive" mode the entry left open, and the `dt=0.4` warning in the BFS script,
+are not reproducible on main (dt 0.4 → 1.6 all steady); (iii) the one genuinely
+energy-injecting configuration is a **reversed outlet** — the literature's conditionally-stable
+do-nothing regime (Esmaily-Moghadam, Bazilevs & Marsden 2011): the zero-gradient ghost
+re-enters the boundary cell's own velocity, an advective source with no sink, energy
+production Σ ρ (u·n)₋ |u|²/2. Measured at Re_S = 800 when the recirculation tail crosses the
+outlet: a bounded transient excursion of max|u| to **1.28× the inlet peak on the outlet column
+(x = L−1)**, with β = 0 (1.909) and the default β = 0.2 (1.897) alike — at this Re the
+stabilization (β ρ |u·n| on the diagonal, ≈ 5 % of ρ/Δt) does not decide boundedness, and the
+run stays finite either way. Not found: any divergence. (S = 32 at Re_S = 200 was started and
+abandoned at 300 steps — too slow on the loaded host — so the entry's "finer meshes are worse"
+claim is untested today.)
+
+What ships instead of a fix (there is nothing to fix on the measured cases): flow
+`outflow_backflow()` returns the census over the outflow faces (max reversed normal velocity,
+reversed area fraction, energy influx; collective under MPI), `step()` warns **once** on stderr
+when reversal appears with the stabilization switched off (`set_backflow_stabilization(0)`),
+naming the mechanism and the β ≥ ½ bound, and `tests/kokkos/test_outflow_backflow.cpp` gates the
+plumbing (a half-reversed outlet reports fraction 0.5 and max_reverse ≈ U; a developing
+channel and a periodic box report zeros). The BFS script keeps dt = 0.2 for its recorded
+numbers, with its comment corrected to today's measurements.
 
 ## Kokkos "deallocated after finalize" warning under Jupyter/Quarto
 - **Status:** RESOLVED 2026-09-04 — core `c1df85a` (new `peclet/core/python/kokkos_teardown.hpp`,
