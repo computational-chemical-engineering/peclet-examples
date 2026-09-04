@@ -9,7 +9,14 @@ This script re-uses the page's cells verbatim — bootstrap, packing, sdf, physi
 so there is one definition of the case, and only overrides how far it is carried.  The
 page and its published numbers are left exactly as they are.
 
+    PECLET_LOCAL_BUILD=<suite>/flow/build_l3_cuda_final:<suite>/dem/build_l4_cuda:\
+                       <suite>/core/python/build_geom:<suite>/coupling/python \
+    OMP_NUM_THREADS=8 OMP_PROC_BIND=false \
     python render_long_movie.py [tend] [out.mp4]
+
+The flow build matters: this case calls `set_contact_angle`, which the SDF-showcase-era
+tree `build_l3_cuda` predates.  Against that build the run dies with an AttributeError
+that a Kokkos teardown backtrace then buries.
 """
 import os
 import re
