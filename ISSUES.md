@@ -847,7 +847,12 @@ substitution and its stated caveat until then.
   is a reduction plus a binding.
 
 ## flow: on the collocated grid `set_state` + `advect_vof` silently advects with a ZERO face field
-- **Status:** open
+- **Status:** **RESOLVED** (flow `ec18744`) — `set_state`/`set_velocity` now seed the MAC face
+  field through the same `centerToFace` map `project()` uses, so the kinematic entry point
+  means the same thing on both grids AND the divergence guard finally measures something
+  (the LeVeque field seeded that way reads max|div(open uf)| = 2.5e-14, and 10 kinematic steps
+  give a colour BITWISE equal to a staggered `Solver` handed the same face field). A face field
+  that was never built at all is refused with a message naming the fix.
 - **Package / area:** flow (VoF transport on `SolverColocated`, rung V8)
 - **Found in:** examples/vof-advection-benchmarks (the collocated cross-check)
 - **Observed:** on `SolverColocated` the colour is advected by the projected MAC face field
@@ -978,7 +983,13 @@ substitution and its stated caveat until then.
   measurement on a quarter-integer wall reads 1.7e-3.
 
 ## flow: `set_contact_angle` is silently ignored on a domain-BC wall
-- **Status:** open
+- **Status:** **RESOLVED** (flow `888733c`) — a domain wall (bc type 1 no-slip, or the new type 4
+  free-slip) now carries the θ-consistent band fill: the colour block gets a SYNTHESISED
+  cut-cell geometry for those faces (the out-of-domain ghost band is classified solid, and the
+  wall planes are folded into the same `wallSdf` by `min`), so WO-S's θ pass runs unchanged
+  with `n_w` coming out as the inward face normal. `set_contact_angle` also RAISES now when
+  there is no wetting wall at all, and when a wetting domain wall has no cut-cell pressure
+  operator. Byte-identical when no contact angle is set.
 - **Package / area:** flow (VoF wetting — the solid-band fill runs on the SDF classification only)
 - **Found in:** examples/droplet-wetting (while choosing how to model the wall)
 - **Observed:** `set_domain_bc(face, 1)` gives a no-slip domain wall, but the θ-consistent band
@@ -1055,7 +1066,9 @@ Galilean gate `galilean_re_gate.py`: towed vs fixed sphere agree to 0.03 % at Re
 Re 30, step by step — the moving-geometry path is Galilean-consistent at finite Re.
 
 ## flow: `vof_geometry()` throws on an all-fluid VoF solver, so one driver cannot serve both scenes
-- **Status:** open (low severity — a one-line guard works, but it is not discoverable)
+- **Status:** **RESOLVED** (flow `47d563c`) — returns the trivial geometry (eps = 1,
+  openness = 1, classification 0), which is exactly what the V1 transport kernels execute, so
+  `vof_geometry(0) * (1 - get_vof())` serves the packed scene and its control unchanged.
 - **Package / area:** flow (VoF cut-cell diagnostics / API symmetry)
 - **Found in:** examples/bubble-through-packing (the packed run and its no-packing control share
   one driver function)
@@ -1085,8 +1098,10 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   different failure mode (one returns a wrong number, the other raises).
 
 ## flow: a ten-step-stale VoF `dt` re-pick is not safe in a packing — `step()` raises mid-run
-- **Status:** open (worked around on the page by re-picking every step; the solver behaviour is
-  arguably correct, the *usage pattern* the other VoF pages establish is what is unsafe)
+- **Status:** **RESOLVED** (flow `6056e62`) — `step_adaptive(cfl_target=0.4, capillary_cfl=0.4,
+  dt_max=inf)` re-picks `dt` from BOTH limits at the CURRENT state every call and returns the
+  `dt` used; it reproduces the hand-written every-step loop bitwise (200 Hysing-1 steps,
+  max|d dt| = 0.0, u/v/w/C/P identical), and `step()` itself is now atomic across the throw.
 - **Package / area:** flow (VoF transport — the Weymouth–Yue boundedness cap and `vof_step_limits`)
 - **Found in:** examples/bubble-through-packing (first attempt at the packed run)
 - **Observed:** the [rising bubble](examples/rising-bubble/index.qmd) driver re-picks
@@ -1144,7 +1159,13 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   (the solver's own conserved quantity) instead of a hand-rolled sum on both runs — that would
   separate a *diagnostic* artefact from a *transport* one, and (a) predicts it is the former.
 ## `step()` is not atomic across the Weymouth–Yue boundedness throw: the momentum half has already advanced
-- **Status:** open
+- **Status:** **RESOLVED** (flow `7c5c066`, branch `vof-issues`) — the Weymouth–Yue boundedness
+  cap and the Brackbill capillary cap are now evaluated at the HEAD of `step()`, before the
+  first mutator, so a throw leaves `get_u/get_v/get_w/get_vof/get_p` bitwise as they were and a
+  retry at a smaller `dt` is exact (gate: the reproducer below, all five max|d| = 0.0). One
+  limit is stated rather than hidden: without `enable_vof_momentum` the advection sits at the
+  TAIL of the step, so the pre-check reads the field the call STARTS from and cannot see the
+  projection accelerating it inside the step — which is what the new `step_adaptive()` removes.
 - **Package / area:** flow (VoF transport / time-step control)
 - **Found in:** examples/trickle-flow-packing (a liquid jet impinging on a packing)
 - **Observed:** `IbmSolver::step()` advances momentum and the projection first and the colour
@@ -1239,7 +1260,10 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   nothing in `flow` says so. This fix removes the cause this entry found, not the class.
 
 ## flow: `vof_step_limits()['capillary_dt']` is a function of the CURRENT density field, so the first dt of a gas-filled domain is 7x too large
-- **Status:** open (documented; the page re-picks `dt` every step, which makes it a non-issue)
+- **Status:** **RESOLVED** (flow `6056e62`) — same fix: `step_adaptive()` evaluates
+  `capillary_dt` from the state as it stands at the call, so a driver never sizes a step from a
+  pre-closure value. The state-dependence itself is real and is now documented on the entry
+  point rather than left for the user to discover.
 - **Package / area:** flow (VoF, the Brackbill capillary step limit)
 - **Found in:** examples/pore-scale-imbibition (all three cases start gas-filled)
 - **Observed:** `capillary_dt` evaluates $\sqrt{(\rho_1+\rho_2)h^3/4\pi\sigma}$ from the density
@@ -1256,7 +1280,12 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   `enable_vof`/`set_property_model` refresh the properties so the first call is already right.
 
 ## flow: a two-phase post array with 3-cell throats dies with `preconditioner produced non-finite z`
-- **Status:** open, mechanism NOT isolated (worked around on the page by widening the throats)
+- **Status:** **RESOLVED as a VISIBILITY defect** (flow `89ea438`); the underlying 3-cell-throat
+  mechanism is still not isolated and the entry stays open for that. A solve that gives up on a
+  non-finite preconditioner output now sets `pressure_solve_failed()` and reports the iteration
+  CAP through `last_pressure_iterations()`, so the usual rule-3b check catches it;
+  `PECLET_FLOW_PRESSURE_STRICT=1` raises instead. `micromodel_2d.py --reproduce-wov7` rebuilds
+  the original 56-post array and its `Health` tracker counts the breakdowns.
 - **Package / area:** flow (cut-cell VoF + contact angle in an under-resolved throat; the FCG
   pressure driver's preconditioner is where it surfaces)
 - **Found in:** examples/pore-scale-imbibition (the micromodel; WO-V7 case 3)
