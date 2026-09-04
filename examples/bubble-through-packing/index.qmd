@@ -753,7 +753,8 @@ print(f"{len(bed['frames'])} frames -> {MP4}")
 ```{=html}
 <!-- The 145 KB mp4 produced by the `movie` cell is committed next to this page, like the
      rayleigh-benard and tumbling-cubes movies; a YouTube copy lives on
-     https://www.youtube.com/@PecletCode and can replace this tag with an iframe. -->
+     https://www.youtube.com/@PecletHPC and can replace this tag with an iframe
+     (`ytpub embed` in ~/Codes/youtube_publishing writes it). -->
 <video controls autoplay loop muted playsinline width="100%" style="max-width:760px;display:block;margin:0 auto;border-radius:6px;">
   <source src="bubble_through_packing.mp4" type="video/mp4">
 </video>

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Upload a gallery movie to the @PecletCode YouTube channel (YouTube Data API v3).
+"""Upload a gallery movie to the @PecletHPC YouTube channel (YouTube Data API v3).
+
+SUPERSEDED by `ytpub` in ~/Codes/youtube_publishing, which drives the same API from a
+manifest: it remembers video ids (so a re-run updates metadata instead of uploading a
+duplicate), normalises the clip for YouTube first, and rewrites the embed on the page.
+This single-shot script is kept as the minimal reference.
 
 One-time authorisation (interactive, run it yourself):
     python tools/youtube_upload.py --auth
@@ -13,7 +18,8 @@ Upload (non-interactive once the token exists):
   Prints the video id and the watch/embed URLs. Default privacy: unlisted (review before public).
 
 Credentials: ~/.config/peclet-youtube/client_secret.json (an OAuth "Desktop app" client of a
-Google Cloud project with YouTube Data API v3 enabled; the channel owner added as a test user).
+Google Cloud project with YouTube Data API v3 enabled).  Publish the consent screen rather
+than leaving it in Testing — Google expires a Testing app's refresh token after 7 days.
 An upload costs 1600 quota units of the default 10 000/day.
 """
 import argparse
