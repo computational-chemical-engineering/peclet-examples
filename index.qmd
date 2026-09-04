@@ -270,6 +270,45 @@ Tessellate the void space of a packing into a graded polyhedral mesh with the `v
 ::::
 :::::
 
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/voronoi-taylor-green.jpg)](examples/voronoi-taylor-green/index.qmd)
+
+::: {.card-body}
+#### [Navier–Stokes on a Voronoi mesh](examples/voronoi-taylor-green/index.qmd)
+Taylor–Green on an unstructured Voronoi mesh with `voro`'s covolume and collocated solvers: exact energy conservation vs second order.
+[voro · flow · verification]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/voronoi-sphere-drag.jpg)](examples/voronoi-sphere-drag/index.qmd)
+
+::: {.card-body}
+#### [Body-fitted walls: Poiseuille and sphere drag](examples/voronoi-sphere-drag/index.qmd)
+SDF-clipped Voronoi cells as walls: the exact parabola with a quadratic wall gradient, and Zick–Homsy sphere-array drag with the semi-implicit Stokes march.
+[voro · sdf · porous media]{.tags}
+
+:::
+::::
+:::::
+
+::::: {.g-col-12 .g-col-sm-6 .g-col-lg-4}
+:::: {.gallery-card}
+[![](assets/gallery/pore-mesh-redistribution.jpg)](examples/pore-mesh-redistribution/index.qmd)
+
+::: {.card-body}
+#### [Redistributing pore-space seeds](examples/pore-mesh-redistribution/index.qmd)
+Split, merge and relax interstitial seeds toward a uniform or wall-graded cell volume — the moves a position-only optimiser cannot make.
+[voro · meshing]{.tags}
+
+:::
+::::
+:::::
+
 ::::::
 
 ## Two-phase flow (VoF)
