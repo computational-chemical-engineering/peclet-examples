@@ -50,6 +50,11 @@ def cells_upto(qmd: Path, stop: str) -> list[tuple[str, str]]:
 def main() -> int:
     tend = float(sys.argv[1]) if len(sys.argv) > 1 else 1600.0
     out = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "trickle-flow-packing.mp4")
+    # optional grid override: the page's own half-resolution variant is 8x cheaper and
+    # reaches physical times the production grid cannot in a sitting
+    grid = {}
+    if len(sys.argv) > 4:
+        grid = {"nx": int(sys.argv[3]), "nz": int(sys.argv[4])}
 
     ns: dict = {"__name__": "__main__"}
     os.chdir(HERE)                       # the cells write and read beside the page
@@ -57,17 +62,18 @@ def main() -> int:
         print(f"--- cell {name}", flush=True)
         exec(compile(code, f"<{name}>", "exec"), ns)
 
-    # Steps scale with physical time; the published run needed 9151 for 420 s, and dt falls
-    # as liquid loads the bed, so give the cap generous headroom rather than a tight guess.
-    max_steps = int(30 * tend)
-    print(f"\n=== running to t = {tend:g} s (cap {max_steps} steps) ===", flush=True)
+    # Steps scale with physical time.  Measured: 60000 steps carried the production grid to
+    # t = 1203 s, i.e. ~50 steps per simulated second; 60 leaves headroom as dt falls.
+    max_steps = int(60 * tend)
+    print(f"\n=== running to t = {tend:g} s (cap {max_steps} steps)"
+          + (f" on {grid['nx']}x{grid['nx']}x{grid['nz']}" if grid else "") + " ===", flush=True)
     t0 = time.time()
-    run = ns["trickle"](tend=tend, max_steps=max_steps)
+    run = ns["trickle"](tend=tend, max_steps=max_steps, **grid)
     print(f"{run['steps']} steps to t = {run['t']:.0f} s in {(time.time() - t0) / 60:.0f} min",
           flush=True)
     # Save FIRST.  A three-hour run was once lost to a ZeroDivisionError in a diagnostic
     # print that ran before this line; nothing derived from the run may precede it.
-    np.savez_compressed(HERE / "trickle_long.npz",
+    np.savez_compressed(HERE / f"trickle_long_{run['nx']}x{run['nz']}.npz",
                         frames=np.array([r["frame"] for r in run["hist"]], dtype=np.float32),
                         t=np.array([r["t"] for r in run["hist"]], dtype=np.float64),
                         outflow=np.array([r["outflow"] for r in run["hist"]]),
@@ -75,7 +81,8 @@ def main() -> int:
                         pos=run["P"]["pos"], R=run["P"]["R"],
                         nx=run["nx"], nz=run["nz"], tend=tend,
                         total_out=run["outflow"], total_in=run["inflow"], steps=run["steps"])
-    print(f"saved trickle_long.npz ({len(run['hist'])} frames)", flush=True)
+    print(f"saved trickle_long_{run['nx']}x{run['nz']}.npz "
+          f"({len(run['hist'])} frames)", flush=True)
 
     broke = breakthrough(run)
     cmax = max(float(np.max(r["frame"])) for r in run["hist"])
@@ -94,15 +101,17 @@ def main() -> int:
     return 0
 
 
-def breakthrough(run) -> int | None:
-    """First history index at which liquid is actually leaving the domain.
+def breakthrough(run, zlow: int = 3) -> int | None:
+    """First history index at which liquid has reached the outlet.
 
-    `outflow` is cumulative, so the test is on its increase, not its value; the very first
-    samples carry round-off of order 1e-24.
+    Read off the colour field, not the boundary tally: `vof_bc_volumes_total()` and
+    `max_open_divergence_projected()` both return garbage in the build this runs against
+    (zero injected volume, a divergence of 1e77) while the colour field is perfectly
+    well behaved — bounded in [0, 1] and accumulating smoothly.  The frames are the
+    trustworthy witness, and they are what the film is made of anyway.
     """
-    ref = 1e-6 * run["inflow"]
     for i, r in enumerate(run["hist"]):
-        if r["outflow"] > ref:
+        if (r["frame"][:, :zlow] > 0.5).any():
             return i
     return None
 
