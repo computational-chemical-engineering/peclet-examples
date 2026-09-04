@@ -1,0 +1,130 @@
+"""Run the page's own trickle-flow case for longer, and write only the movie.
+
+The published run stops at t = 420 s.  Its own budget says why that is not enough for a
+*film*: liquid injected 26208.8, liquid that left the domain 6.2e-24 — the wetting front
+never reached the outlet, so the movie ends with the bed still filling.  (The comment in
+the page claiming a ~300 s breakthrough was never true of the run beside it.)
+
+This script re-uses the page's cells verbatim — bootstrap, packing, sdf, physics, driver —
+so there is one definition of the case, and only overrides how far it is carried.  The
+page and its published numbers are left exactly as they are.
+
+    python render_long_movie.py [tend] [out.mp4]
+"""
+import os
+import re
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+QMD = HERE / "index.qmd"
+STOP_AT = "run-base"          # everything before the page's own run is setup we want
+
+
+def cells_upto(qmd: Path, stop: str) -> list[tuple[str, str]]:
+    """The page's python cells in document order, up to but excluding `stop`.
+
+    Unlabelled cells count: a notebook shares one namespace, so skipping a cell that only
+    does `import time` breaks a later one.
+    """
+    out = []
+    for block in re.findall(r"^```\{python\}\n(.*?)^```", qmd.read_text(), re.S | re.M):
+        m = re.search(r"^#\|\s*label:\s*(\S+)", block, re.M)
+        label = m.group(1) if m else "(unlabelled)"
+        if label == stop:
+            return out
+        out.append((label, block))
+    sys.exit(f"cell {stop!r} not found in {qmd}")
+
+
+def main() -> int:
+    tend = float(sys.argv[1]) if len(sys.argv) > 1 else 1600.0
+    out = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "trickle-flow-packing.mp4")
+
+    ns: dict = {"__name__": "__main__"}
+    os.chdir(HERE)                       # the cells write and read beside the page
+    for name, code in cells_upto(QMD, STOP_AT):
+        print(f"--- cell {name}", flush=True)
+        exec(compile(code, f"<{name}>", "exec"), ns)
+
+    # Steps scale with physical time; the published run needed 9151 for 420 s, and dt falls
+    # as liquid loads the bed, so give the cap generous headroom rather than a tight guess.
+    max_steps = int(30 * tend)
+    print(f"\n=== running to t = {tend:g} s (cap {max_steps} steps) ===", flush=True)
+    t0 = time.time()
+    run = ns["trickle"](tend=tend, max_steps=max_steps)
+    print(f"{run['steps']} steps to t = {run['t']:.0f} s in {(time.time() - t0) / 60:.0f} min",
+          flush=True)
+    broke = breakthrough(run)
+    print(f"  liquid injected {run['inflow']:.6g}, left {run['outflow']:.6g}", flush=True)
+    print(f"  breakthrough: " + (f"t = {run['hist'][broke]['t']:.0f} s"
+                                 if broke is not None else "NONE — still filling at the end"),
+          flush=True)
+    print(f"  budget defect {run['drift'] / run['inflow']:.2e} relative;  "
+          f"max|div(open u)| {run['div_max']:.2e}", flush=True)
+
+    np.savez_compressed(HERE / "trickle_long.npz",
+                        frames=np.array([r["frame"] for r in run["hist"]], dtype=np.float32),
+                        t=np.array([r["t"] for r in run["hist"]], dtype=np.float64),
+                        outflow=run["outflow"], inflow=run["inflow"], steps=run["steps"])
+    render(ns, run, out, broke)
+    return 0
+
+
+def breakthrough(run) -> int | None:
+    """First history index at which liquid is actually leaving the domain.
+
+    `outflow` is cumulative, so the test is on its increase, not its value; the very first
+    samples carry round-off of order 1e-24.
+    """
+    ref = 1e-6 * run["inflow"]
+    for i, r in enumerate(run["hist"]):
+        if r["outflow"] > ref:
+            return i
+    return None
+
+
+def render(ns, run, out: str, broke: int | None) -> None:
+    """The page's `movie` cell, over this run's history."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib import animation
+
+    frames = [r["frame"] for r in run["hist"]]
+    times = [r["t"] for r in run["hist"]]
+    nx, nz = run["nx"], run["nz"]
+    # the same mid-plane slice the page's fig-panels cell builds
+    sdf_mid = ns["bed_sdf"](nx, nz, run["P"]["pos"], run["P"]["R"])[:, nx // 2, :]
+    x = np.arange(nx) + 0.5
+    z = np.arange(nz) + 0.5
+
+    figm, axm = plt.subplots(figsize=(3.2, 6.0), dpi=110)
+
+    def draw(k):
+        axm.clear()
+        axm.contourf(x, z, (sdf_mid < 0).T.astype(float), levels=[0.5, 1.5], colors=["0.72"])
+        axm.contourf(x, z, np.where((sdf_mid > 0) & (frames[k] > 0.02), frames[k], np.nan).T,
+                     levels=np.linspace(0, 1, 11), cmap="Blues", vmin=0, vmax=1)
+        axm.contourf(x, z, (sdf_mid < 0).T.astype(float), levels=[0.5, 1.5], colors=["0.72"])
+        axm.set_title(f"t = {times[k]:.0f} s")
+        axm.set(xlim=(0, nx), ylim=(0, nz), aspect="equal",
+                xlabel="x  [cells]", ylabel="z  [cells]")
+        axm.grid(False)
+
+    # Stop a little after the liquid first leaves the bed: the plateau that follows adds
+    # running time and shows nothing new.
+    last = len(frames) if broke is None else min(len(frames), int(broke * 1.25) + 10)
+    every = max(1, last // 400)                 # keep the film ~20 s regardless of run length
+    anim = animation.FuncAnimation(figm, draw, frames=range(0, last, every), blit=False)
+    anim.save(out, fps=20, dpi=110)
+    plt.close(figm)
+    print(f"wrote {out} ({len(range(0, last, every))} frames of {len(frames)}, "
+          f"to t = {times[last - 1]:.0f} s)", flush=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
