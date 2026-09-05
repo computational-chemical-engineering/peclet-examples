@@ -1,0 +1,202 @@
+---
+title: "Voronoi update throughput: repair vs rebuild, workstation → H100"
+subtitle: "How fast `peclet.voro` brings a Voronoi tessellation of moving points up to date each step — 8.7× a cold build on an 8-thread host, 4.0–4.6× on H100s at 400 000 seeds per GPU with 80 % weak-scaling efficiency, cell volumes exact to 1e-11 — and the two places where it is not yet fast."
+author: "Peclet"
+date: "2026-09-05"
+categories: [voro, performance, MPI, multi-GPU, benchmark, scaling]
+resources:
+  - results/
+---
+
+## What this measures
+
+Every moving-cell method in `peclet.voro` — Lloyd relaxation of a pore mesh, the body-fitted
+flow solver on seeds that follow the flow, power-diagram contact detection, the moving-cell
+multiphase track — pays the same bill each time step: the Voronoi cells of the *moved* seeds have
+to be brought up to date. Rebuilding the whole tessellation from scratch is the safe way and the
+slow one. The engine's alternative is a **repair**:
+
+1. a **certificate** kernel over all cells decides which cells can have changed topology
+   (a plane that used to cut the cell no longer does, or a neighbour that used not to cut it now does);
+2. the cells whose topology is intact are only **re-evaluated** (vertices recomputed on the
+   resident plane set — a few flops per plane);
+3. the flagged cells are **re-clipped** from scratch, and an adaptive gate hands the whole step
+   to a full rebuild when more than a set fraction of the cells is flagged.
+
+The figure of merit is the per-step wall time of that path relative to the production cold build,
+as a function of how far the seeds move per step (in units of the mean seed spacing). Two
+questions decide whether the method tracks are viable at all:
+
+- **Is the repair exact?** Its cell volumes must equal a cold build's to round-off; a repair that
+  quietly drifts is worse than a slow rebuild.
+- **Does it scale?** Across MPI ranks (one GPU each) the repair has to keep its advantage while the
+  distributed cold build pays a ghost-layer gather every step.
+
+Both were measured on the workstation first (RTX 5080 + 8 OpenMP threads, 2026-09-03) and then on
+one `gpu_h100` node of Snellius (4 × H100, 2026-09-05). The raw logs sit in
+[`results/`](results/) and the two figures are produced by [`plot_throughput.py`](plot_throughput.py).
+
+## The instrument
+
+`voro/tests/kokkos/bench_report --repair N nSteps` builds N uniform random seeds in the periodic
+unit box (`MovingTessellation`, FP64), moves every seed by a random displacement of fixed length
+$\delta$ per step, and for each $\delta$ in the sweep times `nSteps` repair steps against `nSteps`
+cold builds of the *same* positions, reporting the flagged fraction, the gate decisions, and the
+maximum relative cell-volume deviation between the two paths. `voro/tests/kokkos_mpi/bench_repair_mpi
+N nSteps [--sdf]` is the distributed version on the core ORB decomposition
+(`DistributedMovingTessellation`): the repair of the owned cells is checked against a distributed
+cold build every step, and with `--sdf` the same run passes through a solid (a sphere ∪ torus core
+scene, `SdfScene`) with an additional check against a *single-rank* cold SDF build.
+
+## Workstation baseline (RTX 5080, 8-thread host)
+
+![Left: repair speed-up over the cold build vs. displacement per step, N = 200 000. Right: the
+maximum relative cell-volume deviation of the repair from a cold build of the same positions. Solid:
+the near-miss certificate (default since voro `4953948`); dashed: the original local
+certificate.](workstation.png)
+
+| disp | host repair Mcells/s | host speed-up | RTX 5080 repair Mcells/s | RTX 5080 speed-up | flagged % | max rel. ΔV |
+|---|---|---|---|---|---|---|
+| 1e-4 | 3.69 | **8.7** | 2.41 | **2.3** | 1.4 | 6e-11 |
+| 2e-4 | 3.35 | 8.0 | 2.48 | 2.2 | 2.7 | 4e-11 |
+| 5e-4 | 1.69 | 3.9 | 2.64 | 2.5 | 6.5 | 1.5e-7 / 2e-11 |
+| 1e-3 | 1.65 | 4.8 | 1.84 | 1.7 | 12.5 | 4e-12 |
+| 2e-3 | 1.01 | 2.3 | 1.56 | 1.5 | 23.2 | 9e-12 / 9e-7 |
+| 5e-3 | 0.57 | 1.3 | 0.98 | 1.0 | 47.5 | 1e-11 |
+| ≥ 1e-2 (gate → rebuild) | 0.25 | 0.6 | 0.84 | 0.8–0.9 | 72–100 | 1e-15 |
+
+: Near-miss certificate, N = 200 000, 8 steps per displacement (`results/workstation/repair_*_nearmiss.csv`).
+The host cold build is 0.42–0.45 Mcells/s, the RTX 5080's 1.0–1.2 Mcells/s FP64. The suite's study
+page records a 9.7× host speed-up for this row from a quieter run of the same binary; the 8.7× here is
+the logged sweep. {#tbl-workstation}
+
+Three things the baseline says:
+
+- **The repair path is the right idea, and the host proves it**: at $10^{-4}$ spacing per step the
+  8-thread host updates 3.7 Mcells/s, 8.7× its own cold build, re-clipping 1.4 % of the cells.
+- **The GPU update path is latency-bound, not throughput-bound.** The RTX 5080's repair is
+  *slower* than the host's although its cold build is 2.5× faster: at small displacements the
+  step's work is a full-N certificate kernel plus a gather of ~3k cells — microseconds of compute —
+  and what is left is the launch and synchronisation structure of `MovingTessellation::step`
+  (per-step grid rebuild, compact with a host round-trip counter, a verify loop with more round
+  trips). Fusing the compact into the certify kernel and keeping the counters on device is the
+  open tuning item; the ceiling is the certificate kernel alone.
+- **The gate's rebuild costs 0.8–0.9× a cold build**, so "never much slower than rebuilding" holds
+  on both backends.
+
+### The repair was not exact — and the benchmark is what showed it
+
+The first sweep (dashed curves, `results/workstation/repair_*_local_cert.csv`) ran 12.6× on the
+host and 3.2× on the GPU — and its volume error grew with the displacement to $5\times10^{-4}$ per
+step, with ~250 neighbour relations *missed* per step on both backends. The local certificate saw
+lost faces and flipped partners but not **gained** neighbours whose plane had been just outside the
+cell before the move. Over 400 steps this accumulated to the $1.6\times10^{-3}$ drift the dynamic
+tests had been carrying, independent of the certificate tolerance.
+
+The fix is the **near-miss certificate**: every (re)build records the candidate planes that missed
+the cell by less than half a skin, and the certificate re-tests exactly those each step. The repair
+becomes exact to $10^{-11}$ per step ($5.5\times10^{-11}$ over 400 steps at the default tolerance,
+$1.2\times10^{-15}$ at a tight one), at ~70 % of the previous speed — the price is the extended-reach
+emission in every gather. The residual "misses" are zero-area slivers below the tolerance. The
+solid curves in the figure are this version, and everything below is measured with it.
+
+## Snellius H100: weak scaling of the distributed repair
+
+One `gpu_h100` node, one MPI rank per GPU (Kokkos CUDA, OpenMPI 5.0.3, CUDA 12.6), **400 000 seeds
+per GPU** so N = 400k / 800k / 1.6M at 1 / 2 / 4 GPUs; job 26366044, `voro/tools/snellius_voro_mpi.sh`.
+
+![Left: wall time per step vs. GPUs for the distributed cold build, the repair at $10^{-4}$
+spacing per step, and the repair through the SDF scene. Right: the same three as weak-scaling
+efficiency $t_1/t_n$.](snellius_h100.png)
+
+| disp | np=1 cold | np=1 repair | speed-up | np=2 cold | np=2 repair | speed-up | np=4 cold | np=4 repair | speed-up | max rel. ΔV |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1e-4 | 149.8 | 37.1 | **4.04** | 174.0 | 40.9 | **4.25** | 212.9 | 46.1 | **4.62** | 2.0e-10 |
+| 2e-4 | 147.4 | 36.8 | 4.01 | 169.8 | 40.4 | 4.20 | 205.4 | 46.0 | 4.47 | 1.7e-9 |
+| 5e-4 | 147.5 | 44.2 | 3.34 | 169.2 | 48.5 | 3.49 | 203.5 | 53.8 | 3.78 | 9.6e-6 |
+| 1e-3 | 147.5 | 64.7 | 2.28 | 169.4 | 68.9 | 2.46 | 204.9 | 74.6 | 2.75 | 2.4e-7 |
+| 2e-3 | 147.5 | 93.0 | 1.59 | 170.0 | 96.8 | 1.76 | 206.0 | 103.4 | 1.99 | **2.8e-4** |
+| 5e-3 | 146.8 | 171.2 | 0.86 | 169.2 | 178.1 | 0.95 | 205.4 | 188.7 | 1.09 | 1.2e-6 |
+| 1e-2 (gate → rebuild) | 147.4 | 188.8 | 0.78 | 168.4 | 201.3 | 0.84 | 205.4 | 219.6 | 0.94 | 1.3e-15 |
+
+: Wall-free periodic box, ms per step; the last column is the worst rank count. `REPAIR(MPI)
+exactness: PASS` at every rank count. {#tbl-h100}
+
+| | 1 GPU (400k) | 2 GPUs (800k) | 4 GPUs (1.6M) |
+|---|---|---|---|
+| cold build, aggregate Mcells/s | 2.71 | 4.72 | 7.79 |
+| repair at 1e-4, aggregate Mcells/s | 10.8 | 19.6 | 34.7 |
+| weak-scaling efficiency, cold build | 100 % | 87 % | 72 % |
+| weak-scaling efficiency, repair at 1e-4 | 100 % | 91 % | **80 %** |
+| weak-scaling efficiency, gate rebuild (1e-2) | 100 % | 94 % | 86 % |
+
+: Throughput and efficiency from @tbl-h100; the cold-build times are the sweep medians (147.5 / 169.5 / 205.4 ms — the first row carries the warm-up). {#tbl-h100-eff}
+
+The same sweep through the SDF scene (`--sdf`): the distributed SDF repair reproduces the
+single-rank cold SDF build to $10^{-10}$ in every cell with zero emptiness mismatches at every row
+and rank count — but its cost is another matter (below).
+
+| disp | np=1 cold | np=1 repair | ratio | np=2 cold | np=2 repair | ratio | np=4 cold | np=4 repair | ratio |
+|---|---|---|---|---|---|---|---|---|---|
+| 1e-4 | 155.8 | 174.8 | 0.89 | 178.8 | 182.4 | 0.98 | 209.5 | 197.5 | 1.06 |
+| 2e-4 … 2e-3 | ~154 | ~176 | 0.87–0.88 | ~176 | ~181 | 0.97 | ~206 | ~195 | 1.05–1.06 |
+| 5e-3 | 154.3 | 187.1 | 0.82 | 175.6 | 194.3 | 0.90 | 206.1 | 210.7 | 0.98 |
+| 1e-2 | 154.2 | 197.8 | 0.78 | 175.7 | 208.7 | 0.84 | 205.5 | 226.6 | 0.91 |
+
+: SDF scene (sphere ∪ torus), ms per step; `REPAIR(MPI,SDF) exactness: PASS`, `emptyMismatch = 0`. {#tbl-h100-sdf}
+
+## What the numbers say
+
+- **The repair scales weakly at 80 % to 4 GPUs, and its advantage over rebuilding *grows* with the
+  rank count** (4.0× → 4.6×): the distributed cold build pays the ghost-layer gather every step
+  while the repair only touches the flagged cells. The cold build itself scales at 72 % — the
+  ORB block's halo-to-volume ratio at 400k seeds per rank. Per GPU, the H100 cold build is
+  2.7 Mcells/s FP64 (2.4× the RTX 5080, whose FP64 rate is a fraction of its FP32) and its repair
+  10.8 Mcells/s (4.4× the RTX 5080, 2.9× the 8-thread host).
+- **The gate rebuild stays at 0.78–0.94× a cold build** distributed, as on the workstation.
+- **Not yet fast: the SDF-walled repair costs a cold build (0.87–1.06×) while the certificate flags
+  no cell.** The per-step cost is therefore outside the re-clip; the candidate is the boundary
+  watch, which evaluates the wall for *every* cell every step, plus the SDF clip inside the full
+  re-evaluation. A kernel-level split of the step (certify / re-evaluate / re-clip timers) will say
+  which. Until then a walled moving-cell case gains nothing from repairing over rebuilding — the
+  tuning item with the largest payoff for the body-fitted and multiphase tracks, since every one of
+  their cases has walls.
+- **One exactness caveat, open:** at $2\times10^{-3}$ spacing per step the wall-free repair deviates
+  by $2.8\times10^{-4}$ (1 GPU) and $1.5\times10^{-4}$ (4 GPUs) in one cell's relative volume,
+  against $\le 10^{-5}$ in every other row; it shows at np = 1, so it is not a distribution
+  artefact. The workstation's near-miss table has $9\times10^{-12}$ / $9\times10^{-7}$ for the same
+  row, and the suite's dynamic test has a known nondeterministic case at this displacement: a
+  thread- or atomic-order dependence of the moving repair in the $10^{-3}$–$5\times10^{-3}$ band.
+  The bench's PASS gate is looser than the $10^{-11}$ the certificate achieves elsewhere; the
+  residual miss is real and needs a deterministic worklist order or a tighter certificate there.
+
+The distributed flow solver's gates ran in the same job (`test_flow_mpi`, 4 ranks, a $24^3$-seed
+jittered lattice, 20 Taylor–Green steps): collocated RK3 agrees with the single-rank reference to
+$1.0\times10^{-15}$ in velocity, implicit diffusion to $4.2\times10^{-11}$, the covolume solver to
+$2.6\times10^{-14}$, the device-packed ghost exchange equals the host path in every entry, and the
+isolated distributed pressure solve has true residual equal to its recursive residual — the H100
+row of the method plan's C5 rung.
+
+## Reproduce this
+
+Workstation (`voro` built with `-DPECLET_VORO_KOKKOS=ON` against the suite's `host-openmp` and
+`nvidia-cuda` prefixes):
+
+```bash
+cd suite/voro
+OMP_NUM_THREADS=8 OMP_PROC_BIND=false ./build_host/tests/kokkos/bench_report --repair 200000 8
+./build_cuda/tests/kokkos/bench_report --repair 200000 8
+./build_cuda/tests/kokkos/bench_report --cold            # cold build vs N
+```
+
+Snellius (billed per allocated GPU; the script asks for the 4 H100s of one node and uses 1, 2, 4
+of them in turn; ~8 minutes):
+
+```bash
+cd $SUITE/voro && sbatch tools/snellius_voro_mpi.sh     # -> voro-mpi-<jobid>.out
+```
+
+Then `python plot_throughput.py` in this directory regenerates both figures from `results/`. The
+suite's own record of these numbers, with the cold-build-vs-N table and the tuning history, is
+`suite/docs/studies/voro_update_throughput.md`; the method plan that this rung (A4) belongs to is
+`suite/docs/VORONOI_METHODS_PLAN.md`.

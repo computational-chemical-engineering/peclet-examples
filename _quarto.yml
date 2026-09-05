@@ -142,6 +142,8 @@ website:
             text: "Parallel scaling vs CaNS, incflo & OpenFOAM"
           - href: benchmarks/porous-scaling/index.qmd
             text: "Porous-bed scaling & permeability (Snellius H100)"
+          - href: benchmarks/voro-update-throughput/index.qmd
+            text: "Voronoi update throughput (workstation → H100)"
     right:
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"

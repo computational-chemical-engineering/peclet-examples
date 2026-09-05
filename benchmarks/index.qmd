@@ -109,6 +109,20 @@ bugs the study flushed out: a deterministic dem packing corruption specific to t
 *flow · dem · HPC · MPI · multi-GPU · IBM · permeability · Snellius*
 :::
 
+::: {.g-col-12 .g-col-md-6}
+### [Voronoi update throughput: repair vs rebuild, workstation → H100 →](voro-update-throughput/index.qmd)
+The engine figure of merit for every moving-cell method in `peclet.voro`: how fast a Voronoi
+tessellation of *moving* points is brought up to date each step, against rebuilding it from
+scratch. A per-step **repair** (certificate → re-evaluate → re-clip the flagged cells) runs
+**8.7× faster than a cold build on an 8-thread host** and 4.0–4.6× on H100s at 400k seeds per GPU,
+with **80 % weak-scaling efficiency to 4 GPUs** and cell volumes exact to 1e-11 — but only after
+the benchmark itself exposed that the first certificate silently missed 0.1 % of the gained
+neighbours per step. Also records what is *not* yet fast: the SDF-walled repair costs a cold
+build while flagging no cell, and the RTX 5080 update path is launch-latency bound.
+
+*voro · performance · MPI · multi-GPU · weak scaling · Snellius*
+:::
+
 :::
 
 ## How to read these

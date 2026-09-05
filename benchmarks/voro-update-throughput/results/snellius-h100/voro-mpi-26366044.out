@@ -1,0 +1,106 @@
+[snellius_env] GCCcore/13.3.0 GCC/13.3.0 OpenMPI/5.0.3-GCC-13.3.0 gompi/2024a CUDA/12.6.0 UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0 Python/3.12.3-GCCcore-13.3.0 
+== voro 9a3d6a2, core c98964a, morton 2a810b7
+== built
+---- np=1: build_snellius_mpi/bench_repair_mpi 400000 8
+=== distributed repair vs cold build (np=1, 1 proc/core) N=400000 nSteps=8 sp=0.01357 rcut=3.50·sp ===
+  disp    cold_ms  repair_ms  speedup  regath%       p1%       p2%    maxRelV
+ 0.000     149.76      37.08     4.04      0.0       1.4       0.0   7.38e-11
+ 0.000     147.42      36.80     4.01      0.0       2.7       0.0   6.04e-11
+ 0.001     147.52      44.18     3.34      0.0       6.6       0.0   5.25e-11
+ 0.001     147.50      64.67     2.28      0.0      12.6       0.0   1.66e-10
+ 0.002     147.45      93.01     1.59      0.0      23.2       0.0   2.75e-04
+ 0.005     146.80     171.17     0.86     12.5      47.5       0.0   6.97e-11
+ 0.010     147.41     188.81     0.78     25.0       0.0       0.0   9.24e-16
+REPAIR(MPI) exactness: PASS
+---- np=1: build_snellius_mpi/bench_repair_mpi 400000 8 --sdf
+=== distributed repair vs cold build (np=1, 1 proc/core) N=400000 nSteps=8 sp=0.01357 rcut=3.50·sp [SDF scene] ===
+  disp    cold_ms  repair_ms  speedup  regath%       p1%       p2%    maxRelV
+ 0.000     155.78     174.81     0.89      0.0       0.0       0.0   3.69e-12
+        vs single-rank cold SDF build: maxRelV=5.86e-12  emptyMismatch=0
+ 0.000     153.60     177.21     0.87      0.0       0.0       0.0   3.84e-12
+        vs single-rank cold SDF build: maxRelV=1.58e-11  emptyMismatch=0
+ 0.001     154.19     176.48     0.87      0.0       0.0       0.0   1.62e-10
+        vs single-rank cold SDF build: maxRelV=1.62e-10  emptyMismatch=0
+ 0.001     154.16     176.00     0.88      0.0       0.0       0.0   3.42e-11
+        vs single-rank cold SDF build: maxRelV=3.42e-11  emptyMismatch=0
+ 0.002     154.08     176.23     0.87      0.0       0.0       0.0   1.62e-11
+        vs single-rank cold SDF build: maxRelV=4.54e-12  emptyMismatch=0
+ 0.005     154.27     187.06     0.82     12.5       0.0       0.0   4.84e-12
+        vs single-rank cold SDF build: maxRelV=4.82e-12  emptyMismatch=0
+ 0.010     154.17     197.80     0.78     25.0       0.0       0.0   2.10e-11
+        vs single-rank cold SDF build: maxRelV=4.88e-11  emptyMismatch=0
+REPAIR(MPI,SDF) exactness: PASS
+---- np=2: build_snellius_mpi/bench_repair_mpi 800000 8
+=== distributed repair vs cold build (np=2, 1 proc/core) N=800000 nSteps=8 sp=0.01077 rcut=3.50·sp ===
+  disp    cold_ms  repair_ms  speedup  regath%       p1%       p2%    maxRelV
+ 0.000     173.98      40.89     4.25      0.0       1.4       0.0   1.82e-10
+ 0.000     169.77      40.39     4.20      0.0       2.7       0.0   6.49e-11
+ 0.001     169.18      48.47     3.49      0.0       6.6       0.0   9.61e-06
+ 0.001     169.40      68.91     2.46      0.0      12.5       0.0   1.84e-10
+ 0.002     169.96      96.83     1.76      0.0      23.2       0.0   1.54e-08
+ 0.005     169.19     178.13     0.95     12.5      47.5       0.0   7.04e-07
+ 0.010     168.43     201.33     0.84     25.0       0.0       0.0   9.18e-16
+REPAIR(MPI) exactness: PASS
+---- np=2: build_snellius_mpi/bench_repair_mpi 800000 8 --sdf
+=== distributed repair vs cold build (np=2, 1 proc/core) N=800000 nSteps=8 sp=0.01077 rcut=3.50·sp [SDF scene] ===
+  disp    cold_ms  repair_ms  speedup  regath%       p1%       p2%    maxRelV
+ 0.000     178.82     182.37     0.98      0.0       0.0       0.0   1.64e-11
+        vs single-rank cold SDF build: maxRelV=4.24e-11  emptyMismatch=0
+ 0.000     175.39     181.41     0.97      0.0       0.0       0.0   1.88e-11
+        vs single-rank cold SDF build: maxRelV=1.88e-11  emptyMismatch=0
+ 0.001     175.96     180.72     0.97      0.0       0.0       0.0   4.46e-11
+        vs single-rank cold SDF build: maxRelV=4.46e-11  emptyMismatch=0
+ 0.001     176.39     181.26     0.97      0.0       0.0       0.0   1.13e-10
+        vs single-rank cold SDF build: maxRelV=1.54e-11  emptyMismatch=0
+ 0.002     175.35     180.89     0.97      0.0       0.0       0.0   8.39e-11
+        vs single-rank cold SDF build: maxRelV=8.39e-11  emptyMismatch=0
+ 0.005     175.56     194.33     0.90     12.5       0.0       0.0   2.68e-11
+        vs single-rank cold SDF build: maxRelV=2.68e-11  emptyMismatch=0
+ 0.010     175.68     208.70     0.84     25.0       0.0       0.0   2.02e-11
+        vs single-rank cold SDF build: maxRelV=4.76e-11  emptyMismatch=0
+REPAIR(MPI,SDF) exactness: PASS
+---- np=4: build_snellius_mpi/bench_repair_mpi 1600000 8
+=== distributed repair vs cold build (np=4, 1 proc/core) N=1600000 nSteps=8 sp=0.00855 rcut=3.50·sp ===
+  disp    cold_ms  repair_ms  speedup  regath%       p1%       p2%    maxRelV
+ 0.000     212.87      46.12     4.62      0.0       1.4       0.0   2.02e-10
+ 0.000     205.40      45.95     4.47      0.0       2.7       0.0   1.74e-09
+ 0.001     203.51      53.79     3.78      0.0       6.5       0.0   5.11e-11
+ 0.001     204.91      74.60     2.75      0.0      12.5       0.0   2.37e-07
+ 0.002     205.95     103.40     1.99      0.0      23.2       0.0   1.47e-04
+ 0.005     205.43     188.68     1.09     12.5      47.4       0.0   1.21e-06
+ 0.010     205.40     219.62     0.94     25.0       0.0       0.0   1.26e-15
+REPAIR(MPI) exactness: PASS
+---- np=4: build_snellius_mpi/bench_repair_mpi 1600000 8 --sdf
+=== distributed repair vs cold build (np=4, 1 proc/core) N=1600000 nSteps=8 sp=0.00855 rcut=3.50·sp [SDF scene] ===
+  disp    cold_ms  repair_ms  speedup  regath%       p1%       p2%    maxRelV
+ 0.000     209.50     197.54     1.06      0.0       0.0       0.0   1.36e-10
+        vs single-rank cold SDF build: maxRelV=1.36e-10  emptyMismatch=0
+ 0.000     206.08     196.00     1.05      0.0       0.0       0.0   7.62e-11
+        vs single-rank cold SDF build: maxRelV=7.62e-11  emptyMismatch=0
+ 0.001     205.62     196.16     1.05      0.0       0.0       0.0   1.25e-10
+        vs single-rank cold SDF build: maxRelV=3.59e-11  emptyMismatch=0
+ 0.001     205.76     195.52     1.05      0.0       0.0       0.0   1.22e-10
+        vs single-rank cold SDF build: maxRelV=1.22e-10  emptyMismatch=0
+ 0.002     205.32     193.73     1.06      0.0       0.0       0.0   1.26e-10
+        vs single-rank cold SDF build: maxRelV=1.31e-10  emptyMismatch=0
+ 0.005     206.07     210.68     0.98     12.5       0.0       0.0   1.86e-10
+        vs single-rank cold SDF build: maxRelV=3.81e-11  emptyMismatch=0
+ 0.010     205.52     226.57     0.91     25.0       0.0       0.0   2.73e-11
+        vs single-rank cold SDF build: maxRelV=4.16e-11  emptyMismatch=0
+REPAIR(MPI,SDF) exactness: PASS
+---- np=4: build_snellius_mpi/test_flow_mpi 24 20
+  (X) device-packed exchange == host path: 0 differing entries  OK
+  (A) distributed pressure solve: 52 PCG iterations, recursive residual 9.37e-13, TRUE residual 9.37e-13; |K 1| 0.0e+00, symmetry 3.6e-15, ghost gid mismatches 0  OK
+  (B) C5 distributed collocated TGV (RK3): np=4 n=24 steps=20 ghosts=23383 | max |U - U_ref| / max|U| = 1.013e-15 (gate 1e-12), E/E_ref - 1 = 0.000e+00 (gate 1e-13), max face div 1.6e-14, flagged cells 0, PCG iters 49  OK
+    (last pressure solve: 49 iterations, relative residual 9.96e-13, amg 1)
+---- np=4: build_snellius_mpi/test_flow_mpi 24 20
+srun: Step created for StepId=26366044.7
+  (X) device-packed exchange == host path: 0 differing entries  OK
+  (A) distributed pressure solve: 52 PCG iterations, recursive residual 9.37e-13, TRUE residual 9.37e-13; |K 1| 0.0e+00, symmetry -1.8e-15, ghost gid mismatches 0  OK
+  (B) C5 distributed collocated TGV (implicit diffusion): np=4 n=24 steps=20 ghosts=23383 | max |U - U_ref| / max|U| = 4.167e-11 (gate 1e-09), E/E_ref - 1 = 2.220e-15 (gate 1e-12), max face div 5.5e-14, flagged cells 0, PCG iters 51  OK
+    (last pressure solve: 51 iterations, relative residual 6.35e-13, amg 1)
+---- np=4: build_snellius_mpi/test_flow_mpi 24 20
+  (X) device-packed exchange == host path: 0 differing entries  OK
+  (B) C5 distributed collocated TGV (covolume RK3): np=4 n=24 steps=20 ghosts=23383 | max |U - U_ref| / max|U| = 2.635e-14 (gate 1e-12), E/E_ref - 1 = 1.110e-16 (gate 1e-13), max face div 8.5e-13, flagged cells 0, PCG iters 0  OK
+    (last pressure solve: 0 iterations, relative residual 0.00e+00, amg 1)
+== done
