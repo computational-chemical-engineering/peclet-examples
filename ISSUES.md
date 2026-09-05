@@ -615,7 +615,7 @@ exactly the shell's lowest body-frame point, max overlap 0.0000, against falling
 fix. The `pall-ring-packing` page's `Simulation(600)` workaround has been removed.
 
 *(original report below)*
-- **Status:** open
+- **Status:** RESOLVED (dem `5c53d41`, see above; this line read "open" until the 0.7.0 release check on 2026-09-05)
 - **Package / area:** dem (contact-buffer sizing / composed analytic shapes)
 - **Found in:** examples/pall-ring-packing (48 composed analytic rings, 1200-probe shells)
 - **Observed:** two symptoms of one cause.
