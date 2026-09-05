@@ -24,6 +24,12 @@ def main() -> int:
     ap.add_argument("--spin", type=float, default=25.0, help="degrees of camera drift")
     ap.add_argument("--size", type=int, nargs=2, default=(1080, 1350))
     ap.add_argument("--every", type=int, default=1)
+    ap.add_argument("--cut", type=float, default=1.0,
+                    help="keep this fraction of the depth (1.0 = whole bed)")
+    ap.add_argument("--grain-opacity", type=float, default=0.20,
+                    help="a packing at porosity 0.4 hides its own interior whether it is cut "
+                         "open or not - a cut face is just a wall.  Ghosting the grains and "
+                         "leaving the liquid opaque is what makes the rivulets readable")
     args = ap.parse_args()
 
     import pyvista as pv
@@ -48,8 +54,9 @@ def main() -> int:
         g.point_data["v"] = arr.ravel(order="F")
         return g
 
-    grains = image_of(sdf).contour([0.0], scalars="v")
-    grains = grains.clip_box([0, nx, 0, nx, z0 - 1, z1 + 1], invert=False)
+    ycut = nx * args.cut
+    box = [0, nx, 0, ycut, z0 - 1, z1 + 1]
+    grains = image_of(sdf).contour([0.0], scalars="v").clip_box(box, invert=False)
 
     writer = imageio.get_writer(args.out or args.run.parent / "trickle_rivulets.mp4",
                                 fps=args.fps, quality=9, macro_block_size=1)
@@ -62,26 +69,36 @@ def main() -> int:
         t = float(d["t"])
         pl.clear()
         pl.set_background("#0E1116")
-        pl.add_mesh(grains, color="#9aa3ad", smooth_shading=True,
-                    specular=0.25, specular_power=12, opacity=1.0)
+        pl.add_mesh(grains, color="#aab3bd", smooth_shading=True, specular=0.18,
+                    specular_power=10, opacity=args.grain_opacity)
         try:
             iso = image_of(C).contour([0.5], scalars="v")
             if iso.n_points:
-                iso = iso.clip_box([0, nx, 0, nx, 0, z1 + 8], invert=False)
+                iso = iso.clip_box([0, ycut, 0, ycut, 0, z1 + 8], invert=False) \
+                    if False else iso.clip_box([0, nx, 0, ycut, 0, z1 + 8], invert=False)
                 iso["height"] = iso.points[:, 2]
                 pl.add_mesh(iso, scalars="height", cmap="ocean_r", show_scalar_bar=False,
-                            smooth_shading=True, specular=0.9, specular_power=40,
-                            opacity=0.96)
+                            smooth_shading=True, specular=1.0, specular_power=60,
+                            opacity=1.0, ambient=0.18, diffuse=0.9)
         except Exception:
             pass
         # the column, so the eye has a frame to read the bed against
         pl.add_mesh(pv.Box([0, nx, 0, nx, z0, z1]).extract_all_edges(),
                     color="#2b3542", line_width=2)
-        az = -60 + args.spin * np.sin(2 * np.pi * n / max(len(frames), 1))
-        r = 2.6 * nx
+        # let PyVista fit the bounds rather than guessing a radius: the domain is twice as
+        # tall as it is wide, and a hand-picked distance put the camera inside the packing
+        # The bed is kept for y < ycut, so the exposed face points at +y: the camera has to
+        # sit BEHIND the cut, or it stares at the sealed outer wall of spheres.
+        # The offset has to be LONG compared with the domain, or the view direction is
+        # dominated by the z term and the camera ends up overhead looking down at a plan.
+        az = 74 + args.spin * np.sin(2 * np.pi * n / max(len(frames), 1))
+        R = 4.0 * nz
         pl.camera_position = [
-            (nx / 2 + r * np.cos(np.radians(az)), nx / 2 + r * np.sin(np.radians(az)), zmid + 0.35 * nz),
+            (nx / 2 + R * np.cos(np.radians(az)), nx / 2 + R * np.sin(np.radians(az)),
+             zmid + 0.22 * R),
             (nx / 2, nx / 2, zmid), (0, 0, 1)]
+        pl.reset_camera()
+        pl.camera.zoom(1.28)
         pl.add_text(f"t = {t:6.0f} s", position="upper_left", font_size=13, color="#dfe6ee")
         writer.append_data(pl.screenshot(return_img=True))
         if n % 20 == 0:
