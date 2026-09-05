@@ -49,7 +49,9 @@ def cells_upto(qmd: Path, stop: str) -> list[tuple[str, str]]:
 
 def main() -> int:
     tend = float(sys.argv[1]) if len(sys.argv) > 1 else 1600.0
-    out = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "trickle-flow-packing.mp4")
+    # NOT the page's committed movie: this script's default once silently overwrote it
+    # with a different run, which git noticed and a reader would not have.
+    out = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "trickle_long_run.mp4")
     # optional grid override: the page's own half-resolution variant is 8x cheaper and
     # reaches physical times the production grid cannot in a sitting
     grid = {}

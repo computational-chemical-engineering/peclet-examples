@@ -34,3 +34,7 @@ dist/
 **/*.quarto_ipynb
 examples/fluidized-bed/verma_frames/
 benchmarks/foxberry-scaling/results/**/*.log
+
+# run logs and frame dumps from the long solver scripts
+*.log
+examples/*/rivulets_*/
