@@ -70,7 +70,7 @@ def main():
     r0 = 0.001  # canonical radius; per-particle scale multiplies it
     sim.set_sphere_shape(r0)
     sim.set_domain((XLO - 0.01, YLO - 0.01, ZLO - 0.01), (XHI + 0.01, YHI + 0.01, ZHI + 0.01))
-    sim.enable_periodicity(False, False, False)
+    sim.set_periodic(False, False, False)
 
     wall = build_wall_sdf(box_sdf, ((XLO - 0.01, YLO - 0.01, ZLO - 0.01),
                                     (XHI + 0.01, YHI + 0.01, ZHI + 0.01)),

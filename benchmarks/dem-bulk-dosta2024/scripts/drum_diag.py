@@ -46,7 +46,7 @@ def main():
     sim.set_sphere_shape(0.001)
     lo, hi = (-0.105, -0.036, -0.105), (0.105, 0.036, 0.105)
     sim.set_domain(lo, hi)
-    sim.enable_periodicity(False, False, False)
+    sim.set_periodic(False, False, False)
     wall = build_wall_sdf(drum_sdf, (lo, hi), resolution=(192, 72, 192))
     wid = wall.add_to(sim, restitution=0.4, friction=0.2)
     sim.set_wall_velocity(wid, (0, 0, 0), (0, -OMEGA, 0), (0, 0, 0))

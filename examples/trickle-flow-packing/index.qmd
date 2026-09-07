@@ -160,9 +160,9 @@ def settle_bed(N=34, R=7.7, L=48.0, H=260.0, seed=5, dt=0.004, fall=9000, quench
     from peclet.dem import build_wall_sdf
     rng = np.random.default_rng(seed)
     s = dem.Simulation(N)
-    s.initialize(shape_type=1, radius=R)
+    s.initialize_shape(shape_type=1, radius=R)
     s.set_domain((0.0, 0.0, -R), (L, L, H))
-    s.enable_periodicity(True, True, False)          # periodic sides, a floor below
+    s.set_periodic(True, True, False)          # periodic sides, a floor below
     s.set_gravity(0.0, 0.0, -9.81)
     s.set_material_params(0.1, 0.0, 0.35)            # restitution, cohesion, friction
     s.set_solver_iterations(24, 8)

@@ -53,10 +53,10 @@ print(f"[pack] grid {GNX}x{GNY}x{GNZ} rcells={RCELLS:g} -> box {box[0]:.2f}x{box
       flush=True)
 
 sim = dem.Simulation(N)
-sim.initialize(shape_type=1, radius=1.0)
+sim.initialize_shape(shape_type=1, radius=1.0)
 half = box / 2.0
 sim.set_domain(tuple(-half), tuple(half))
-sim.enable_periodicity(True, True, True)
+sim.set_periodic(True, True, True)
 sim.set_gravity(0.0, 0.0, 0.0)
 sim.set_material_params(0.0, 0.0, 0.0)  # inelastic: kinetic energy is drained, packing settles
 sim.set_solver_iterations(ITERS, ITERS)
@@ -79,7 +79,7 @@ for i in range(grow_steps + RELAX):
         asleep_max = max(asleep_max, sim.num_asleep())
 t1 = time.time()
 
-ov = sim.get_max_overlap()
+ov = sim.max_overlap()
 gf = sim.get_growth_factor()
 p = np.asarray(sim.get_positions()).reshape(-1, 3).astype(np.float64)
 s = np.asarray(sim.get_scales()).astype(np.float64)
@@ -94,7 +94,7 @@ if ov > 0.05:
     sys.exit(f"FATAL: residual overlap {ov} > 5% of R -- packing not converged")
 
 # Independent union-volume check -- does NOT trust the sim's own overlap report. An unresolved
-# packing (contact pipeline silently inert: seen on Snellius 2026-08-14, get_max_overlap()~0 on
+# packing (contact pipeline silently inert: seen on Snellius 2026-08-14, max_overlap()~0 on
 # a bed whose true pairwise overlaps averaged 0.5 R) loses ~20% of the solid volume to overlaps,
 # so the voxelized union fraction falls far below the analytic phi. 8 voxels per R.
 dx = 0.125

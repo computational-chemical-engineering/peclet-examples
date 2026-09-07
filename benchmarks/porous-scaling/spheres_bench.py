@@ -177,7 +177,7 @@ p0(f"[sdf] built in {time.perf_counter() - t_sdf0:.1f}s  voxel solid fraction={p
 # Independent gate on the ARTIFACT, not the packer's self-report: an unresolved packing (overlapping
 # spheres) has union volume < N*V_sphere, so the sampled fraction falls below the analytic phi.
 # Seen in the wild (Snellius 2026-08-14, 2 of 6 rungs): dem's contact pipeline silently no-opped,
-# get_max_overlap() reported ~0 past pack_bed's gate, phi_voxel came out 0.40 -> k was 4.2x off.
+# max_overlap() reported ~0 past pack_bed's gate, phi_voxel came out 0.40 -> k was 4.2x off.
 if abs(phi_vox - float(pk["phi"])) > 0.02:
     p0(f"FATAL: voxel solid fraction {phi_vox:.4f} vs packing phi {float(pk['phi']):.4f} -- "
        f"the bed in {PACK} is not a converged packing (overlapping spheres?). Refusing to run.")
@@ -220,7 +220,7 @@ if IBM == "ghost":
     s.set_ghost_projection(True, _mo, _ro)
 elif IBM != "cutcell":
     raise SystemExit(f"unknown IBM={IBM!r} (cutcell|ghost)")
-s.set_solid(sdf, cutcell_pressure=True, pressure_coarse="rediscretized")
+s.set_solid(sdf, cutcell_pressure=True)
 
 
 def gmean_u():

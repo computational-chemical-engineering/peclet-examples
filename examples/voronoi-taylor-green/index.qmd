@@ -67,7 +67,7 @@ $\mathrm{Re} = UL/\nu = 100$ — and SSP-RK3 with a pressure projection per stag
 n, L, nu = 16, 1.0, 0.01
 pos = jittered_lattice(n, L, jitter=0.2, seed=3)
 t = voro.Tessellation()
-t.set_box((L, L, L))
+t.set_domain(extent=(L, L, L))
 t.build(pos)
 k = 2 * np.pi / L
 T, dt = 0.25, 0.2 * L / n            # CFL 0.2 on the seed spacing
@@ -76,9 +76,10 @@ runs = {}
 for layout in ("covolume", "collocated"):
     f = voro.FlowSolver(t, nu, layout=layout)
     f.set_velocity(taylor_green(pos, 0.0, nu, L))
+    f.set_dt(T / steps)
     E0, E, times = f.kinetic_energy(), [1.0], [0.0]
     for s in range(steps):
-        f.step(1, T / steps)
+        f.step(1)
         E.append(f.kinetic_energy() / E0); times.append((s + 1) * T / steps)
     U = f.get_velocity()
     Uex = taylor_green(pos, T, nu, L)
@@ -111,11 +112,11 @@ cell-velocity error at $t = T$ for both schemes.
 ```{python}
 def tgv_error(layout, n, nu=0.01, L=1.0, T=0.25):
     pos = jittered_lattice(n, L, jitter=0.2, seed=n)
-    t = voro.Tessellation(); t.set_box((L, L, L)); t.build(pos)
+    t = voro.Tessellation(); t.set_domain(extent=(L, L, L)); t.build(pos)
     f = voro.FlowSolver(t, nu, layout=layout)
     f.set_velocity(taylor_green(pos, 0.0, nu, L))
     steps = int(np.ceil(T / (0.2 * L / n)))
-    f.step(steps, T / steps)
+    f.set_dt(T / steps); f.step(steps)
     U, Uex, V = f.get_velocity(), taylor_green(pos, T, nu, L), f.get_cell_volume()[:, None]
     return np.sqrt(np.sum((U - Uex) ** 2 * V) / np.sum(Uex ** 2 * V))
 

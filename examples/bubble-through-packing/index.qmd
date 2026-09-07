@@ -152,10 +152,10 @@ is the honest thing to build here.
 def settle_bed(n=N_GRAIN, W=float(NX), Rj=R_JAM, seed=11, steps=4000, dt=5e-3):
     """Drop `n` grains onto a floor in an x/y-periodic column; return the settled centres."""
     s = dem.Simulation(8 * n)                     # headroom for the periodic ghost band
-    s.initialize(shape_type=1, radius=1.0)
+    s.initialize_shape(shape_type=1, radius=1.0)
     s.set_global_scale(Rj)
     s.set_domain((0.0, 0.0, -20.0), (W, W, 400.0))
-    s.enable_periodicity(True, True, False)       # z is closed by the floor plane
+    s.set_periodic(True, True, False)       # z is closed by the floor plane
     s.set_gravity(0.0, 0.0, -9.81)
     s.add_plane(0.0, 0.0, 0.0, 0.0, 0.0, 1.0)     # the floor
     s.set_material_params(0.05, 0.0, 0.6)         # restitution / tangential / friction

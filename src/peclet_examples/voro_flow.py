@@ -81,8 +81,9 @@ def sphere_seeds(n, R, L=1.0, jitter=0.15, wall_margin=0.4, seed=0):
 def march_to_steady(solver, dt, get_scalar, tol=1e-7, chunk=10, max_steps=20000):
     """Step until the monitored scalar changes by less than tol (relative) over a chunk."""
     prev, steps = None, 0
+    solver.set_dt(dt)
     while steps < max_steps:
-        solver.step(chunk, dt)
+        solver.step(chunk)
         steps += chunk
         cur = get_scalar()
         if prev is not None and abs(cur - prev) < tol * abs(cur):

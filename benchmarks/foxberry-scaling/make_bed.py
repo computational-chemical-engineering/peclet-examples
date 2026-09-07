@@ -72,7 +72,7 @@ print(f"[bed] {_desc}  N={NSPH} holdup={HOLDUP} -> r={r_phys:.7f} "
       flush=True)
 
 sim = dem.Simulation(NSPH)
-sim.initialize(shape_type=1, radius=1.0)
+sim.initialize_shape(shape_type=1, radius=1.0)
 half = box / 2.0
 if BED == "walls":
     # Six inward-facing planes on the region boundary, exactly FoxBerry's confinement: its
@@ -82,7 +82,7 @@ if BED == "walls":
     # directly -- and unlike a periodic bed it can be used with FoxBerry's own BCs.
     # The domain is given slack so the box faces never act as a second (periodic) boundary.
     sim.set_domain(tuple(-half * 1.5), tuple(half * 1.5))
-    sim.enable_periodicity(False, False, False)
+    sim.set_periodic(False, False, False)
     for _ax in range(3):
         for _sgn in (-1.0, 1.0):
             _p = [0.0, 0.0, 0.0]; _p[_ax] = _sgn * half[_ax]
@@ -90,7 +90,7 @@ if BED == "walls":
             sim.add_plane(_p[0], _p[1], _p[2], _n[0], _n[1], _n[2])
 else:
     sim.set_domain(tuple(-half), tuple(half))
-    sim.enable_periodicity(True, True, True)
+    sim.set_periodic(True, True, True)
 sim.set_gravity(0.0, 0.0, 0.0)
 sim.set_material_params(0.0, 0.0, 0.0)  # inelastic: kinetic energy drained, packing settles
 sim.set_solver_iterations(ITERS, ITERS)
@@ -112,7 +112,7 @@ for i in range(grow_steps + RELAX):
     sim.step(DT)
 t1 = time.time()
 
-ov = sim.get_max_overlap()
+ov = sim.max_overlap()
 gf = sim.get_growth_factor()
 p = np.asarray(sim.get_positions()).reshape(-1, 3).astype(np.float64)
 s = np.asarray(sim.get_scales()).astype(np.float64)

@@ -120,8 +120,8 @@ mask taken from `get_scales()` stays valid for the whole run.
 
 ```{python}
 d = dem.Simulation(int(1.3*N) + 64)
-d.initialize(shape_type=1, radius=1.0); d.set_sphere_shape(1.0)
-d.set_domain((0, 0, 0), (NX, NY, NZ)); d.enable_periodicity(False, False, False)
+d.initialize_shape(shape_type=1, radius=1.0); d.set_sphere_shape(1.0)
+d.set_domain((0, 0, 0), (NX, NY, NZ)); d.set_periodic(False, False, False)
 d.set_gravity(0, 0, -g_c)
 d.set_material_params(0.9, 0.0, 0.15)           # restitution / friction
 d.set_solver_iterations(10, 4)
@@ -152,7 +152,7 @@ s.set_pressure_pcg(True, 40, 1e-6)
 
 cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_c, rho=rho_g, radius=rad, drag="gidaspow",
              dem_substeps=20, periodic=(False, False, False), move_particles=True, porous=True,
-             eps_min=0.05, smooth_width=1.0)
+             eps_min=0.05, smooth_length=1.0 * s.spacing[0])
 ```
 
 ::: {.callout-important}
@@ -174,8 +174,8 @@ what **MFIX** does:
   default) under-predicts the drag ≈3× exactly where it must carry the bed. Small physical
   porosities are kept; if a drag law misbehaves there, change the correlation, not the ε.
 - **Smooth the porosity, not the grid.** With cells only ~2 diameters wide, a point-particle deposit
-  gives a noisy ε. `smooth_width=1.0` applies MFIX's diffusive smoothing (`DES_DIFFUSE_WIDTH`): a
-  volume-conserving Gaussian of ≈1 cell that decouples the porosity smoothing length from the mesh —
+  gives a noisy ε. `smooth_length=1.0 * s.spacing[0]` (one cell) applies MFIX's diffusive smoothing
+  (`DES_DIFFUSE_WIDTH`): a volume-conserving Gaussian of ≈1 cell that decouples the porosity smoothing length from the mesh —
   the recipe the MFIX-Exa papers call *crucial for grid-independent results*.
 
 The drag law itself is **Gidaspow** — exactly what the MFIX-Exa `biseg` benchmark uses, applied

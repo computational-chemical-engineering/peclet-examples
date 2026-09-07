@@ -296,7 +296,7 @@ else:
     s.set_body_force(float(os.environ.get("F", 1e-3)), 0.0, 0.0)
 
 if CASE == "packed":
-    s.set_solid(sdf, cutcell_pressure=True, pressure_coarse="rediscretized")
+    s.set_solid(sdf, cutcell_pressure=True)
 else:
     allfluid = np.full((lnx, lny, lnz), 1e3, order="F")
     s.set_pressure_geometry(allfluid)

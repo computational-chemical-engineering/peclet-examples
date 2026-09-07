@@ -47,7 +47,7 @@ def sim(n, restitution=0.0, friction=0.0, gravity=(0, 0, 0), dt=0.002):
     s = dem.Simulation(n)
     s.set_sphere_shape(1.0)
     s.set_domain((-60, -60, -60), (60, 60, 60))
-    s.enable_periodicity(False, False, False)
+    s.set_periodic(False, False, False)
     s.set_gravity(*gravity)
     s.set_material_params(restitution, 0.0, friction)
     s.set_solver_iterations(30, 10)

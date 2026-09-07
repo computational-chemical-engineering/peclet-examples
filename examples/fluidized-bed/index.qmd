@@ -125,8 +125,8 @@ the gas (which leaves through the outflow roof above it).
 def make_dem(pos):
     n = len(pos)
     d = dem.Simulation(int(2.2 * n) + 256)
-    d.initialize(shape_type=1, radius=rp)        # sphere at the real grain radius (any unit works)
-    d.set_domain((0, 0, 0), (NX, NY, NZ)); d.enable_periodicity(False, False, False)
+    d.initialize_shape(shape_type=1, radius=rp)        # sphere at the real grain radius (any unit works)
+    d.set_domain((0, 0, 0), (NX, NY, NZ)); d.set_periodic(False, False, False)
     d.set_gravity(0, 0, -grav)
     d.set_material_params(0.8, 0.0, 0.2)          # particle-particle restitution / friction
     d.set_dt(0.05 / 20)

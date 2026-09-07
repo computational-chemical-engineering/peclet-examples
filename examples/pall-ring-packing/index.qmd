@@ -283,7 +283,7 @@ quat0 = rng.normal(size=(N, 4)); quat0 /= np.linalg.norm(quat0, axis=1)[:, None]
 
 sim = pdem.Simulation(N + 8)        # the buffers now follow the capacity; no headroom needed
 sim.set_domain((0.0, -1.2, 0.0), (L, 60.0, L))
-sim.enable_periodicity(True, False, True)
+sim.set_periodic(True, False, True)
 sim.set_gravity(0.0, -9.81, 0.0)
 sim.set_material_params(0.15, 0.0, 0.5)     # restitution_n, restitution_t, friction
 sim.set_solver_iterations(10, 8)

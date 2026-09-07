@@ -60,7 +60,7 @@ y_lo, y_hi, nu, fx, L = 0.25, 0.75, 1.0, 1.0, 1.0
 ni, nr, root = slab_scene(y_lo, y_hi, L)
 def poiseuille(n, quadratic=True):
     pos, h = slab_seeds(n, y_lo, y_hi, L)
-    t = voro.Tessellation(); t.set_box((L, L, L)); t.set_geometry(ni, nr, root=root); t.build(pos)
+    t = voro.Tessellation(); t.set_domain(extent=(L, L, L)); t.set_geometry(ni, nr, root=root); t.build(pos)
     f = voro.FlowSolver(t, nu)
     f.set_body_force(fx, 0.0, 0.0); f.set_stokes(True)
     f.set_implicit_diffusion(True); f.set_wall_gradient_quadratic(quadratic)
@@ -110,7 +110,7 @@ R = (phi * 3 / (4 * np.pi)) ** (1 / 3)
 ni_s, nr_s, root_s = voro.sphere_union_scene([[0.5, 0.5, 0.5]], [R])
 def drag(n):
     pos, h = sphere_seeds(n, R, L, seed=n)
-    t = voro.Tessellation(); t.set_box((L, L, L)); t.set_geometry(ni_s, nr_s, root=root_s); t.build(pos)
+    t = voro.Tessellation(); t.set_domain(extent=(L, L, L)); t.set_geometry(ni_s, nr_s, root=root_s); t.build(pos)
     f = voro.FlowSolver(t, nu)
     f.set_body_force(fx, 0.0, 0.0); f.set_stokes(True); f.set_implicit_diffusion(True)
     f.set_velocity(np.zeros_like(pos))

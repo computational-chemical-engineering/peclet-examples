@@ -87,7 +87,7 @@ N = len(pts)
 
 sim = dem.Simulation(int(1.6*N)+2000)
 sim.initialize_shape(3, he)                     # 3 = BOX (cube)
-sim.set_domain(lo, hi); sim.enable_periodicity(False, False, True)
+sim.set_domain(lo, hi); sim.set_periodic(False, False, True)
 res = (int(2*cx/0.5), int(2*cy/0.5), max(6, int(Lz/0.5)))
 wid = build_wall_sdf(barrel, (lo, hi), resolution=res).add_to(sim, restitution=0.2, friction=1.0)
 sim.set_gravity(0, -g, 0); sim.set_material_params(0.2, 0.0, 0.5); sim.set_solver_iterations(18, 6)

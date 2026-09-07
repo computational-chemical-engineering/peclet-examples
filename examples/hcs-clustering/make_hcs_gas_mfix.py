@@ -46,14 +46,14 @@ def cidx(Pp):
     H, _, _ = np.histogram2d(Pp[:, 0] % Lx, Pp[:, 1] % Ly, bins=nb, range=[[0, Lx], [0, Ly]])
     return float((H.std()/H.mean())/pois)
 
-d = dem.Simulation(N+64); d.initialize(shape_type=1, radius=rp); d.set_sphere_shape(rp)
-d.set_domain((0, 0, 0), (Lx, Ly, Lz)); d.enable_periodicity(True, True, True)
+d = dem.Simulation(N+64); d.initialize_shape(shape_type=1, radius=rp); d.set_sphere_shape(rp)
+d.set_domain((0, 0, 0), (Lx, Ly, Lz)); d.set_periodic(True, True, True)
 d.set_gravity(0, 0, 0); d.set_material_params(e, 0.0, 0.0); d.set_solver_iterations(6, 4); d.set_dt(dt)
 d.set_positions(np.c_[P, np.full(N, 1.0/m_p, np.float32)]); d.set_velocities(v)
 s = flow.Solver(Lx//2, Ly//2, Lz//2); s.set_rho(rho_g); s.set_mu(mu_g); s.set_dt(dt)  # Delta* = 2
 for f in range(6): s.set_domain_bc(f, 0)     # all periodic
 s.set_pressure_pcg(True, 30, 1e-6)
-cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_g, rho=rho_g, radius=rp, drag="tang", h=2.0,
+cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_g, rho=rho_g, radius=rp, drag="tang",
              dem_substeps=1, periodic=(True, True, True), move_particles=True, porous=True)
 # Enforce div(eps u) = 0, dropping the d(eps)/dt RHS source — the SAME constraint MFIX-Exa runs
 # (its include_depdt option is off by default, "under development"). With a trilinear deposit at

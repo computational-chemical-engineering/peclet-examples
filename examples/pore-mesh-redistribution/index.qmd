@@ -76,7 +76,7 @@ print(f"end:   N={len(res_u['positions'])}, max|V/V_ref-1|={res_u['max_rel']:.3f
 fig, ax = plt.subplots(1, 2, figsize=(9, 3.4))
 ax[0].semilogy(h[:, 1], "o-", ms=3, label="max |V/V_ref − 1|"); ax[0].semilogy(h[:, 2], "s-", ms=3, label="rms")
 ax[0].set(xlabel="round", ylabel="relative volume error"); ax[0].legend()
-t = voro.Tessellation(); t.set_box((L, L, L))
+t = voro.Tessellation(); t.set_domain(extent=(L, L, L))
 ni, nr, root = voro.sphere_union_scene(centres, radii); t.set_geometry(ni, nr, root=root)
 t.build(pos0, strict=False)
 v0 = t.volumes(); v0 = v0[v0 > 0] / 0.10**3

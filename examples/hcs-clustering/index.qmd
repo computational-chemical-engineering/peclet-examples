@@ -79,8 +79,8 @@ def cool(e, T0=9.0, nsteps=2200, dt=0.02, seed=1):
     P  += rng.uniform(-0.15, 0.15, P.shape).astype(np.float32); P = np.mod(P, L)
     v   = rng.normal(0, np.sqrt(T0), (N, 3)).astype(np.float32); v -= v.mean(0)
     d = dem.Simulation(N + 64)
-    d.initialize(shape_type=1, radius=rp); d.set_sphere_shape(rp)
-    d.set_domain((0, 0, 0), (L, L, L)); d.enable_periodicity(True, True, True)
+    d.initialize_shape(shape_type=1, radius=rp); d.set_sphere_shape(rp)
+    d.set_domain((0, 0, 0), (L, L, L)); d.set_periodic(True, True, True)
     d.set_gravity(0, 0, 0); d.set_material_params(e, 0.0, 0.0); d.set_solver_iterations(6, 4); d.set_dt(dt)
     d.set_positions(np.c_[P, np.ones(N, np.float32)]); d.set_velocities(v)
     T, ts = [granular_T(np.asarray(d.get_velocities())[:N])], [0.0]
@@ -144,8 +144,8 @@ def init(seed=1, T0=9.0):
     v = rng.normal(0, np.sqrt(T0), (N, 3)).astype(np.float32); v -= v.mean(0)
     return P, v
 def dem_box(P, v, e):
-    d = dem.Simulation(N+64); d.initialize(shape_type=1, radius=rp); d.set_sphere_shape(rp)
-    d.set_domain((0,0,0),(L,L,L)); d.enable_periodicity(True,True,True); d.set_gravity(0,0,0)
+    d = dem.Simulation(N+64); d.initialize_shape(shape_type=1, radius=rp); d.set_sphere_shape(rp)
+    d.set_domain((0,0,0),(L,L,L)); d.set_periodic(True,True,True); d.set_gravity(0,0,0)
     d.set_material_params(e,0.0,0.0); d.set_solver_iterations(6,4); d.set_dt(dt)
     d.set_positions(np.c_[P, np.full(N,1/m_p,np.float32)]); d.set_velocities(v); return d
 
@@ -187,8 +187,8 @@ rng = np.random.default_rng(5); n1 = int(np.ceil(Nc**(1/3))); gl = (np.arange(n1
 Pc = np.array(np.meshgrid(gl, gl, gl, indexing="ij")).reshape(3,-1).T[:Nc].astype(np.float32)
 Pc += rng.uniform(-0.15, 0.15, Pc.shape).astype(np.float32); Pc = np.mod(Pc, Lc)
 vc = rng.normal(0, 3, (Nc, 3)).astype(np.float32); vc -= vc.mean(0)
-dc = dem.Simulation(Nc+64); dc.initialize(shape_type=1, radius=rp); dc.set_sphere_shape(rp)
-dc.set_domain((0,0,0),(Lc,Lc,Lc)); dc.enable_periodicity(True,True,True); dc.set_gravity(0,0,0)
+dc = dem.Simulation(Nc+64); dc.initialize_shape(shape_type=1, radius=rp); dc.set_sphere_shape(rp)
+dc.set_domain((0,0,0),(Lc,Lc,Lc)); dc.set_periodic(True,True,True); dc.set_gravity(0,0,0)
 dc.set_material_params(0.4, 0.0, 0.0); dc.set_solver_iterations(6,4); dc.set_dt(dt)
 dc.set_positions(np.c_[Pc, np.ones(Nc, np.float32)]); dc.set_velocities(vc)
 ci, tci, snaps = [], [], []

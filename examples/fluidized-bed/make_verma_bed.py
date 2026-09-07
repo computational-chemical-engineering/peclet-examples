@@ -70,8 +70,8 @@ pos = np.array(pos[:N], np.float32)
 pos[:, :2] += np.random.default_rng(7).uniform(-0.01, 0.01, (N, 2)).astype(np.float32)
 
 d = dem.Simulation(int(1.15 * N) + 256)
-d.initialize(shape_type=1, radius=rpc)
-d.set_domain((0, 0, 0), (NX, NY, NZ)); d.enable_periodicity(False, False, False)
+d.initialize_shape(shape_type=1, radius=rpc)
+d.set_domain((0, 0, 0), (NX, NY, NZ)); d.set_periodic(False, False, False)
 d.set_gravity(0, 0, -g_c)
 d.set_material_params(0.86, 0.0, 0.1)         # e_n = 0.86 (their Table 6); glass-glass friction 0.1
 d.set_dt(dt / 20)
@@ -92,7 +92,7 @@ print(f"settled in {time.time()-t0:.0f}s: H0 = {H0*100:.1f} cm (target 10, AR = 
 
 # ---- couple: Beetstra drag (their van der Hoef/Beetstra choice), porous gas, implicit drag ----
 cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_c, rho=rho_g, radius=rpc, drag="beetstra",
-             dem_substeps=20, smooth_width=1.0, periodic=(False, False, False),
+             dem_substeps=20, smooth_length=1.0 * s.spacing[0], periodic=(False, False, False),
              move_particles=True, implicit_drag=True, porous=True)
 
 # ---- measurement planes (paper: 5 and 10 cm + partners 10 mm above for the CCF) ----

@@ -150,7 +150,7 @@ plen = 2 * shape.bounding_radius
 sim = dem.Simulation(N)
 shape.apply_to(sim)                              # <-- the imported bean becomes THE shape
 sim.set_domain((0, 0, 0), (D, D, D))
-sim.enable_periodicity(False, False, False)
+sim.set_periodic(False, False, False)
 for point, normal in [((0,0,0),(1,0,0)), ((D,0,0),(-1,0,0)), ((0,0,0),(0,1,0)),
                       ((0,D,0),(0,-1,0)), ((0,0,0),(0,0,1)), ((0,0,D),(0,0,-1))]:
     sim.add_plane(point, normal)                 # six walls
@@ -172,7 +172,7 @@ sim.set_growth_params(rate, 0.06)
 sim.set_thermostat(0.6, 0.004)
 t0 = time.time()
 for i in range(1200):                            # grow to full size, gated on overlap
-    grow = sim.get_max_overlap() < crit and float(sim.get_scales().mean()) < 0.999
+    grow = sim.max_overlap() < crit and float(sim.get_scales().mean()) < 0.999
     sim.set_growth_params(rate if grow else 0.0, sim.get_growth_factor())
     sim.step(dt)
 sim.set_thermostat(0, 1); sim.set_material_params(0, 0, 0)
@@ -182,7 +182,7 @@ for i in range(300):                             # quench to a static packing
 phi = phi_target * float(np.mean(sim.get_scales() ** 3))
 print(f"packed {N} beans in {time.time()-t0:.1f} s")
 print(f"packing fraction phi ~ {phi:.3f}")
-print(f"max overlap = {sim.get_max_overlap()/plen*100:.1f}% of the bean length")
+print(f"max overlap = {sim.max_overlap()/plen*100:.1f}% of the bean length")
 ```
 
 ## The packing — as solid beans

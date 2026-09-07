@@ -89,8 +89,8 @@ pos = np.array(pos[:260_000], np.float32); pos[:, :2] += rng.uniform(-0.03, 0.03
 N = len(pos)
 
 d = dem.Simulation(int(1.15*N) + 128)
-d.initialize(shape_type=1, radius=rp); d.set_sphere_shape(rp)
-d.set_domain((0, 0, 0), (NX, NY, NZ)); d.enable_periodicity(False, False, False)
+d.initialize_shape(shape_type=1, radius=rp); d.set_sphere_shape(rp)
+d.set_domain((0, 0, 0), (NX, NY, NZ)); d.set_periodic(False, False, False)
 d.set_gravity(0, 0, -g_c); d.set_material_params(0.6, 0.0, 0.2); d.set_solver_iterations(12, 4)
 d.set_dt(dt/20)
 wall = lambda p: np.minimum.reduce([R-np.hypot(p[:,0]-cx, p[:,1]-cx), p[:,2], (NZ-2)-p[:,2]])
@@ -157,8 +157,8 @@ def run_injection(inject_ms, n_prep=60, n_rise=180, ramp=15, want_snaps=0):
     "Build a fresh gas+grains from the frozen bed, inject for inject_ms, return (diam-vs-time, snapshots)."
     n_jet = int(round(inject_ms))
     dd = dem.Simulation(int(1.15*N) + 128)
-    dd.initialize(shape_type=1, radius=rp); dd.set_sphere_shape(rp)
-    dd.set_domain((0, 0, 0), (NX, NY, NZ)); dd.enable_periodicity(False, False, False)
+    dd.initialize_shape(shape_type=1, radius=rp); dd.set_sphere_shape(rp)
+    dd.set_domain((0, 0, 0), (NX, NY, NZ)); dd.set_periodic(False, False, False)
     dd.set_gravity(0, 0, -g_c); dd.set_material_params(0.6, 0.0, 0.2); dd.set_solver_iterations(12, 4)
     dd.set_dt(dt/20)
     build_wall_sdf(wall, ((0,0,0),(NX,NY,NZ)), resolution=96).add_to(dd, restitution=0.5, friction=0.3)

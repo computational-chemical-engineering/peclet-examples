@@ -28,9 +28,9 @@ def pack_spheres(n=180, phi_ref=0.63, radius=0.5, seed=3):
     half, dt = side / 2, 0.002
     rng = np.random.default_rng(seed)
     s = dem.Simulation(n)
-    s.initialize(shape_type=1, radius=radius)
+    s.initialize_shape(shape_type=1, radius=radius)
     s.set_domain((-half, -half, -half), (half, half, half))
-    s.enable_periodicity(True, True, True); s.set_gravity(0, 0, 0)
+    s.set_periodic(True, True, True); s.set_gravity(0, 0, 0)
     s.set_material_params(1.0, 1.0, 0.0); s.set_solver_iterations(60, 60)
     pos = rng.uniform(-half, half, (n, 4)).astype(np.float32); pos[:, 3] = 1.0
     s.set_positions(pos)

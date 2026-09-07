@@ -64,7 +64,7 @@ def main():
     lo = (-0.105, -0.036, -0.105)
     hi = (0.105, 0.036, 0.105)
     sim.set_domain(lo, hi)
-    sim.enable_periodicity(False, False, False)
+    sim.set_periodic(False, False, False)
     wall = build_wall_sdf(drum_sdf, (lo, hi), resolution=(192, 72, 192))
     wid = wall.add_to(sim, restitution=0.4, friction=args.wall_mu)
     # wall surface moves +z at +x  <=>  omega_y = -2 rad/s about the drum centre

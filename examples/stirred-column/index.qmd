@@ -150,7 +150,7 @@ placement — and the easiest way to draw the impeller.
 def make_sim(capacity=40000):
     s = pdem.Simulation(capacity)
     s.set_domain((-R_COL-4, -4.0, -R_COL-4), (R_COL+4, H_COL+4, R_COL+4))
-    s.enable_periodicity(False, False, False)
+    s.set_periodic(False, False, False)
     s.set_gravity(0.0, -G, 0.0)
     s.set_sphere_shape(1.0)
     s.set_global_scale(RP)          # ghost band is sized off the real radius; without this the
@@ -479,7 +479,7 @@ CHECK = textwrap.dedent("""
 
     sim = pdem.Simulation(20000)
     sim.set_domain((-R_COL-4, -4.0, -R_COL-4), (R_COL+4, H_COL+4, R_COL+4))
-    sim.enable_periodicity(False, False, False)
+    sim.set_periodic(False, False, False)
     sim.set_gravity(0.0, -G, 0.0); sim.set_sphere_shape(1.0); sim.set_global_scale(RP)
     wc = sim.add_analytic_wall(np.asarray(cni, np.int32), np.asarray(cnr, np.float32),
                                root, True, 0.2, 0.5)

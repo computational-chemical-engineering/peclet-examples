@@ -88,7 +88,7 @@ def fill_drum(friction_wall=1.0, friction_grain=0.7, fill=0.42):
     sim = dem.Simulation(900)
     sim.set_sphere_shape(1.0)
     sim.set_domain(lo, hi)
-    sim.enable_periodicity(False, False, True)     # periodic along the drum axis
+    sim.set_periodic(False, False, True)     # periodic along the drum axis
     wid = build_wall_sdf(drum_sdf, (lo, hi), resolution=140).add_to(
         sim, restitution=0.2, friction=friction_wall)
     sim.set_gravity(0.0, -g, 0.0)
@@ -104,7 +104,7 @@ def fill_drum(friction_wall=1.0, friction_grain=0.7, fill=0.42):
 
     dt, crit = 0.003, 0.06
     for _ in range(1500):                          # grow, gated on overlap
-        grow = sim.get_max_overlap() < crit and float(sim.get_scales().mean()) < 0.999
+        grow = sim.max_overlap() < crit and float(sim.get_scales().mean()) < 0.999
         sim.set_growth_params(1.0 if grow else 0.0, sim.get_growth_factor())
         sim.step(dt)
     sim.set_growth_params(0.0, sim.get_growth_factor())
@@ -114,7 +114,7 @@ def fill_drum(friction_wall=1.0, friction_grain=0.7, fill=0.42):
 
 t0 = time.time()
 sim, wid, N = fill_drum()
-print(f"packed {N} grains in {time.time()-t0:.1f} s; max overlap = {sim.get_max_overlap():.3f} (grain r = 1)")
+print(f"packed {N} grains in {time.time()-t0:.1f} s; max overlap = {sim.max_overlap():.3f} (grain r = 1)")
 ```
 
 ## Step 2 — Pick the spin with the Froude number
