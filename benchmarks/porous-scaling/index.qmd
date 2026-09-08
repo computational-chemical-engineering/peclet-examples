@@ -58,7 +58,7 @@ communication-scaling work of `suite/docs/COMMUNICATION_SCALING.md`, flow `1e9c5
 2026-08). The baseline's fixed toll was diagnosed as *latency-bound halo events* — ~700 per step
 (one per smoother colour per MG level per iteration), not bandwidth and not allreduces. Two
 bit-exact changes attack the event count: every distributed RB-GS sweep now overlaps its exchange
-with the interior sweep, and communication-avoiding smoothing (`PECLET_FLOW_CA`) exchanges a
+with the interior sweep, and communication-avoiding smoothing (`set_comm_avoiding()`, on by default) exchanges a
 2-deep ghost layer once per red–black *pair*, re-smoothing the 1-deep ghost ring so the second
 colour needs no exchange at all. The result at np=32 cut-cell: **1323 → 759 ms/step**
 (12.7 → 22.1 Mcell/s/GPU), lifting weak efficiency **35% → 62%** — with pressure iterations and
@@ -67,17 +67,18 @@ The ablation point (×) shows overlap alone at 13.8 Mcell/s/GPU: the win is almo
 CA halving of event count, confirming the latency diagnosis. The ghost IBM gains the same way
 where its march is stable (np=16: 6966→4281 ms/step).
 
-One anomaly, **traced by a np=8 attribution matrix** (`PECLET_FLOW_CA=mom|mg`, host-staged, and
+One anomaly, **traced by a np=8 attribution matrix** (the momentum-only and pressure-only halves
+of the CA setting, host-staged, and
 UCX-threshold runs; all numerically bit-identical): the np=8 rungs' *projection* phase is slower
 under CA (cut-cell 342→465 ms) even as momentum improves. It is reproducible, bisects entirely to
-the **MG coarse-level CA** (`CA=mom` leaves projection at baseline while keeping the momentum
-win), and is transport-independent (host-staged MPI shows it too; forcing a large
+the **MG coarse-level CA** (`set_comm_avoiding('momentum')` leaves projection at baseline while
+keeping the momentum win), and is transport-independent (host-staged MPI shows it too; forcing a large
 `UCX_RNDV_THRESH` makes it 2× worse — not a protocol-threshold effect). Reading: MG-CA carries a
 small per-V-cycle overhead that every rung pays; np=8 — two nodes, with baseline halo events
 half the price of np=16's — has nothing for the event-halving to save, so only the overhead
 shows, while np=16/32 gain 40–47 %. Practical note: cut-cell full CA is still net faster at np=8
-(988 vs 1239 ms/step); for the projection-dominated ghost IBM at ≤2 nodes, `PECLET_FLOW_CA=mom`
-is the better setting (4917 vs 5312 baseline vs 6337 full-CA ms/step).
+(988 vs 1239 ms/step); for the projection-dominated ghost IBM at ≤2 nodes,
+`set_comm_avoiding('momentum')` is the better setting (4917 vs 5312 baseline vs 6337 full-CA ms/step).
 
 ![Refine ladder](results/snellius-h100/porous_refine.png)
 

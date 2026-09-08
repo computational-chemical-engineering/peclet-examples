@@ -17,7 +17,12 @@ for f in sorted(glob.glob(os.path.join(resdir, "fb_*.json"))):
     d = json.load(open(f))
     if int(d.get("telescope", 0)) != 0 or float(d.get("vres", 0)) <= 0:
         continue
-    flow.set_decomposition_levels(int(d.get("decomp_levels", 7)))
+    # peclet 1.0.0 retired the process-global CutcellMG::setDecompositionLevels; the decomposition
+    # depth is per-solver state now. flow.predict_hierarchy() takes no decomposition-depth argument
+    # (its `levels` is the MG level count), so the ladder it returns is the one the ALIGNED ORB
+    # builds -- for a run recorded with decomp_levels >= 2 the block dims below are indicative,
+    # not the coarse-first partition that ran. The `telescope` flag this script exists to repair
+    # does not depend on it.
     g = d["global"]
     d["telescope"] = 1
     d["hierarchy"] = [{"global": list(gg), "ranks": r, "block0": list(b), "ratio": list(q), "telescope": bool(t)}

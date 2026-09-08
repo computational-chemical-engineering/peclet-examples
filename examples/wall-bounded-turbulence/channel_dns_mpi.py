@@ -26,6 +26,9 @@ Solver knobs (defaults = the production DNS configuration):
     PMAXIT PRTOL     pressure driver iteration cap / tolerance (80 / 1e-4)
     MGLEVELS         pressure multigrid depth (5)
     MEANSCOPE        pressure mean-removal scope: fine (default) | all
+    DECOMP           MPI decomposition depth (0 = aligned ORB, default; >=2 = coarse-first). Fed to
+                     BOTH flow.mpi_block(levels=) and Solver.set_decomposition() -- they must agree.
+                     Replaces the retired PECLET_FLOW_DECOMP_LEVELS environment variable.
 Instrument:
     BENCH_OUT        JSON path for the timing record (default "<OUT>_bench.json")
     LABEL            free-form label copied into the JSON (e.g. "snellius-h100")
@@ -72,6 +75,7 @@ GRAPHAMG = int(os.environ.get("GRAPHAMG", 0))   # force the agglomerated bottom 
 ADVECT = int(os.environ.get("ADVECT", 1))     # 0 = Stokes (no momentum advection)
 DEFCOR = int(os.environ.get("DEFCOR", 1))     # 0 = pure implicit FOU (no deferred correction)
 BOTTOM = os.environ.get("BOTTOM", "smoother")  # coarse-solve policy: smoother | auto | agglomerated
+DECOMP = int(os.environ.get("DECOMP", 0))     # 0 = aligned ORB; >=2 = coarse-first at that depth
                                                # (matches the solver default, so a run is reproducible;
                                                #  the tiled scaling ladder sets auto explicitly)
 BENCH_OUT = os.environ.get("BENCH_OUT", f"{OUT}_bench.json"); LABEL = os.environ.get("LABEL", "")
@@ -83,7 +87,7 @@ nu = (GNY/2.0)/RE_TAU; H = GNY/2.0; fbody = 2.0/GNY; Dplus = 1.0/nu
 
 from peclet import flow
 assert getattr(flow, "has_mpi", False), "flow was NOT built with PECLET_FLOW_MPI=ON"
-origin, size = flow.mpi_block(GNX, GNY, GNZ)          # this rank's ORB block
+origin, size = flow.mpi_block(GNX, GNY, GNZ, levels=DECOMP)   # this rank's ORB block
 ox, oy, oz = origin; lnx, lny, lnz = size
 # GUARD: the ORB must not split the wall-normal (y) direction. A no-slip domain wall + an internal
 # y block-boundary decouples the two halves at the centreline (validated: periodic x/z splits are
@@ -159,6 +163,7 @@ w0 = np.asfortranarray(A*(1.5*fy*lp((lnx, lny, lnz))))
 
 # ---- solver setup (same config on every rank; solver applies wall BCs only to boundary blocks) --
 s = flow.Solver(lnx, lny, lnz)
+s.set_decomposition(DECOMP)   # must match the flow.mpi_block() call above; before init_mpi
 s.init_mpi(GNX, GNY, GNZ)
 s.set_rho(1.0); s.set_mu(nu); s.set_dt(DT)
 s.set_advection(bool(ADVECT)); s.set_advection_scheme(ADV)
@@ -360,7 +365,7 @@ if RANK == 0 and p_iters:
         "omp_threads": os.environ.get("OMP_NUM_THREADS", ""),
         "global": [GNX, GNY, GNZ], "cells": GNX*GNY*GNZ, "cells_per_rank": GNX*GNY*GNZ/NP,
         "re_tau": RE_TAU, "nu": nu, "dt": DT, "adv": ADV, "advect": ADVECT, "defcor": DEFCOR, "forcing": "CFR" if CFR > 0 else "CPG",
-        "cfr": CFR, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL, "mglevels": MGLEVELS,
+        "cfr": CFR, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL, "mglevels": MGLEVELS, "decomp": DECOMP,
         "meanscope": MEANSCOPE, "graphamg": GRAPHAMG, "bottom": BOTTOM, "vsweeps": VSWEEPS, "vtol": VTOL,
         "nsteps": NSTEPS, "warmup": WARMUP, "measured_steps": nmeas,
         "ms_per_step": steady_ms, "mcells_per_s": mcells*1e3/steady_ms,

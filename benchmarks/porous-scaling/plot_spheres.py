@@ -94,7 +94,8 @@ if any(weak.values()):
         if ks and tag == "overlap":
             kn, kv = zip(*ks)
             ax[3].plot(kn, kv, "o-", color=COLOR[ibm], label=ibm)
-    # the CA ablation point: np32 cutcell with PECLET_FLOW_CA=0 (overlap only, no CA smoothing)
+    # the CA ablation point: np32 cutcell with set_comm_avoiding('off') -- overlap only, no CA
+    # smoothing (the runs were made with the since-retired PECLET_FLOW_CA=0 env var)
     noca = [json.load(open(f)) for f in glob.glob(os.path.join(RES, "weak_np*_noca.json"))]
     for d in noca:
         ax[0].plot([d["np"]], [d["mcells_per_s_per_rank"]], "x", ms=9, mew=2,

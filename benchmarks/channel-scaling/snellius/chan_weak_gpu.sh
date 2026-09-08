@@ -187,7 +187,7 @@ case "$ARG" in refine|refine:*)
     # hierarchy nests for the full depth instead of stopping where a block turns odd).
     if [ "$N" = "$MAXN" ]; then
       run_one "$N" "refine_np${N}_amg${TAG}.json"    env GRAPHAMG=1
-      run_one "$N" "refine_np${N}_decomp${TAG}.json" env PECLET_FLOW_DECOMP_LEVELS=8
+      run_one "$N" "refine_np${N}_decomp${TAG}.json" env DECOMP=8
     fi
   done
   FIXED_GNX=0

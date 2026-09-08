@@ -144,9 +144,10 @@ if CASE == "packed":
 from peclet import flow  # noqa: E402
 
 assert getattr(flow, "has_mpi", False), "flow was NOT built with PECLET_FLOW_MPI=ON"
-if DECOMP_LEVELS:
-    flow.set_decomposition_levels(DECOMP_LEVELS)
-origin, size = flow.mpi_block(GNX, GNY, GNZ)
+# peclet 1.0.0: the decomposition depth is per-solver state, not a process-global. The same
+# levels / max_imbalance must be given to BOTH mpi_block() (here) and Solver.set_decomposition()
+# (below, before init_mpi) -- the two derive the same partition and have to agree.
+origin, size = flow.mpi_block(GNX, GNY, GNZ, levels=DECOMP_LEVELS)
 ox, oy, oz = origin
 lnx, lny, lnz = size
 
@@ -247,6 +248,7 @@ if CASE == "packed":
 
 # ---- solver -----------------------------------------------------------------------------------
 s = flow.Solver(lnx, lny, lnz)
+s.set_decomposition(DECOMP_LEVELS)   # must match the flow.mpi_block() call above; before init_mpi
 s.init_mpi(GNX, GNY, GNZ)
 s.set_rho(RHO)
 s.set_mu(MU)

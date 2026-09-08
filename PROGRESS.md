@@ -373,7 +373,8 @@ cylinder deferred pending a peclet.flow inflow/outflow fix).
       branch `vof-examples-4`), executed against a fresh CUDA build of flow `main`
       (`suite/flow-ex/build_cuda`, `origin/main` = `bf3d253`, one docs-only commit past the
       `57a1d0f` the work order named) plus the existing `dem/build_l4_cuda`, with
-      `PECLET_FLOW_EXACT_RESIDUAL=1` on every run.
+      `PECLET_FLOW_EXACT_RESIDUAL=1` on every run. [peclet 1.0.0: that env var is gone —
+      `enable_vof()` sets the exact level-0 residual itself, so the runs are reproducible unchanged.]
       - **The scene.** 64x64x160 closed column (periodic sides, no-slip floor and lid); 26 grains
         settled by `dem` onto a floor plane in a laterally periodic column (loose deposit,
         friction 0.6) and sampled as an SDF at **85 %** of the contact radius — a DEM contact is a

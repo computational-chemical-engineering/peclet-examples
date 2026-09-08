@@ -776,8 +776,9 @@ not example work. The page is the regression test waiting for it.
 **UPDATE 2026-08-31 — the fix landed and this page did NOT recover.** `peclet-flow fb1a1a7`
 (rung A0 of `flow/doc/advective_cutwall_flux_plan.md`) feeds the local rigid-body wall velocity
 into the momentum advection's inputs, on both the explicit and the implicit-FOU paths. Static
-scenes are byte-identical (60/60 MPI ctests, regression +0.00%); `PECLET_FLOW_ADV_WALLVEL=0` is
-the ablation. What it fixed, and what it did not:
+scenes are byte-identical (60/60 MPI ctests, regression +0.00%); `set_advection_wall_velocity(False)`
+is the ablation (it was the `PECLET_FLOW_ADV_WALLVEL=0` environment variable until peclet 1.0.0).
+What it fixed, and what it did not:
 
 - **Fixed — the momentum leak.** Newton audit, towed E4: `F_sphere + F_tank` **+0.32 W → −0.033 W**,
   now smaller than the same probe's advection-OFF residual (−0.070 W). Towed E4 drag
@@ -1332,7 +1333,8 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   mechanism is still not isolated and the entry stays open for that. A solve that gives up on a
   non-finite preconditioner output now sets `pressure_solve_failed()` and reports the iteration
   CAP through `last_pressure_iterations()`, so the usual rule-3b check catches it;
-  `PECLET_FLOW_PRESSURE_STRICT=1` raises instead. `micromodel_2d.py --reproduce-wov7` rebuilds
+  `set_pressure_strict(True)` raises instead (it was the `PECLET_FLOW_PRESSURE_STRICT=1`
+  environment variable until peclet 1.0.0). `micromodel_2d.py --reproduce-wov7` rebuilds
   the original 56-post array and its `Health` tracker counts the breakdowns.
 - **Package / area:** flow (cut-cell VoF + contact angle in an under-resolved throat; the FCG
   pressure driver's preconditioner is where it surfaces)

@@ -454,11 +454,14 @@ because that call fires `set_density_mode`, which reselects the driver — a sel
 made earlier is silently discarded. If Chebyshev caps, `set_pressure_fcg(True, …)` is
 the validated alternative on wall-bounded boxes, again selected last.
 
-**`PECLET_FLOW_EXACT_RESIDUAL=1` is set for every run on this page.** It replaces the
-float band form of the residual by the double flux form; on the Hysing case-2 benchmark
-it removed **7.5 orders** of flux divergence and moved no other digit of the result. At
-density ratio 1000 that is the difference between a divergence number that means
-something and one that does not.
+**The exact level-0 pressure residual is in force for every run on this page.** It
+replaces the float band form of the residual by the double flux form; on the Hysing
+case-2 benchmark it removed **7.5 orders** of flux divergence and moved no other digit of
+the result. At density ratio 1000 that is the difference between a divergence number that
+means something and one that does not. Since peclet 1.0.0 nothing has to be switched on
+for it: `enable_vof()` sets it itself (it was the `PECLET_FLOW_EXACT_RESIDUAL=1`
+environment variable before), and `set_pressure_exact_residual(False)` *after*
+`enable_vof()` is the ablation.
 
 **The time step is re-picked every step.** `step()` enforces the Weymouth--Yue
 boundedness cap (interface CFL 0.25) by *raising*, not by clamping, and in a packing the
@@ -943,10 +946,10 @@ regenerate:
 
 ```bash
 pip install peclet            # CPU wheels; for CUDA: pip install peclet-flow-cu13
-PECLET_FLOW_EXACT_RESIDUAL=1 quarto render examples/bubble-through-packing/index.qmd --execute
+quarto render examples/bubble-through-packing/index.qmd --execute
 # ...or against local source builds of the suite (GPU):
 PECLET_LOCAL_BUILD=/path/to/suite/flow/build_cuda:/path/to/suite/dem/build_cuda \
-PECLET_FLOW_EXACT_RESIDUAL=1 OMP_NUM_THREADS=8 OMP_PROC_BIND=false \
+OMP_NUM_THREADS=8 OMP_PROC_BIND=false \
   quarto render examples/bubble-through-packing/index.qmd --execute
 ```
 

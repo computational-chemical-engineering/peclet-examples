@@ -144,9 +144,11 @@ at that level — on a 24³ grid there is no work for them to lose. The measured
 Every ladder now bottoms at 3³ on one rank, the same as a single-rank solve, which is why the
 iteration counts are rank-independent. The transfer needs no halo exchange (restriction and
 prolongation are inner-only), the gather is a few kB per rank, and the only new communication is a
-`Gatherv`/`Scatterv` per telescoped level per V-cycle. It is opt-in for now (`PECLET_FLOW_TELESCOPE=1`,
-`Solver.set_pressure_telescope(True)`); `flow.predict_hierarchy` prints the ladder any grid/rank
-count would get, without launching anything.
+`Gatherv`/`Scatterv` per telescoped level per V-cycle. It was opt-in during this campaign; since
+2026-09-02 it is the solver **default**, and `Solver.set_pressure_telescope(False)` is the ablation
+(the `PECLET_FLOW_TELESCOPE=1` environment variable the runs on this page used was retired in
+peclet 1.0.0). `flow.predict_hierarchy` prints the ladder any grid/rank count would get, without
+launching anything.
 
 ![](scaling_diagnosis.png)
 
