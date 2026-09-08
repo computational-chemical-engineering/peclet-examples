@@ -81,9 +81,9 @@ for layout in ("covolume", "collocated"):
     for s in range(steps):
         f.step(1)
         E.append(f.kinetic_energy() / E0); times.append((s + 1) * T / steps)
-    U = f.get_velocity()
+    U = f.get_velocities()
     Uex = taylor_green(pos, T, nu, L)
-    err = np.sqrt(np.sum((U - Uex) ** 2 * f.get_cell_volume()[:, None]) / np.sum(Uex ** 2 * f.get_cell_volume()[:, None]))
+    err = np.sqrt(np.sum((U - Uex) ** 2 * f.get_volumes()[:, None]) / np.sum(Uex ** 2 * f.get_volumes()[:, None]))
     runs[layout] = dict(times=np.array(times), E=np.array(E), err=err, div=f.max_divergence())
     print(f"{layout:11s}: E/E0 = {E[-1]:.5f} (exact {np.exp(-4 * nu * k * k * T):.5f}), "
           f"cell-velocity error {err:.3e}, max face divergence {runs[layout]['div']:.1e}")
@@ -117,7 +117,7 @@ def tgv_error(layout, n, nu=0.01, L=1.0, T=0.25):
     f.set_velocity(taylor_green(pos, 0.0, nu, L))
     steps = int(np.ceil(T / (0.2 * L / n)))
     f.set_dt(T / steps); f.step(steps)
-    U, Uex, V = f.get_velocity(), taylor_green(pos, T, nu, L), f.get_cell_volume()[:, None]
+    U, Uex, V = f.get_velocities(), taylor_green(pos, T, nu, L), f.get_volumes()[:, None]
     return np.sqrt(np.sum((U - Uex) ** 2 * V) / np.sum(Uex ** 2 * V))
 
 ns = [8, 16, 24]

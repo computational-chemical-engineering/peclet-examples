@@ -79,7 +79,7 @@ ax[0].set(xlabel="round", ylabel="relative volume error"); ax[0].legend()
 t = voro.Tessellation(); t.set_domain(extent=(L, L, L))
 ni, nr, root = voro.sphere_union_scene(centres, radii); t.set_geometry(ni, nr, root=root)
 t.build(pos0, strict=False)
-v0 = t.volumes(); v0 = v0[v0 > 0] / 0.10**3
+v0 = t.get_volumes(); v0 = v0[v0 > 0] / 0.10**3
 ax[1].hist(v0, bins=np.linspace(0, 3, 61), alpha=0.5, label="start")
 ax[1].hist(1 + res_u["rel"][res_u["volumes"] > 0], bins=np.linspace(0, 3, 61), alpha=0.7, label="redistributed")
 ax[1].set(xlabel="V / V_ref", ylabel="cells"); ax[1].legend()

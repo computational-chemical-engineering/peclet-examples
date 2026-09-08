@@ -66,10 +66,10 @@ def poiseuille(n, quadratic=True):
     f.set_implicit_diffusion(True); f.set_wall_gradient_quadratic(quadratic)
     f.set_velocity(np.zeros_like(pos))
     dt = 20.0 * h * h / nu
-    steps = march_to_steady(f, dt, lambda: f.get_velocity()[:, 0].mean(), tol=1e-9)
-    u = f.get_velocity()[:, 0]
+    steps = march_to_steady(f, dt, lambda: f.get_velocities()[:, 0].mean(), tol=1e-9)
+    u = f.get_velocities()[:, 0]
     uex = fx / (2 * nu) * (pos[:, 1] - y_lo) * (y_hi - pos[:, 1])
-    return pos, u, uex, steps, f.num_wall_faces()
+    return pos, u, uex, steps, f.num_wall_faces
 
 for quad in (False, True):
     for n in (8, 16):
@@ -114,8 +114,8 @@ def drag(n):
     f = voro.FlowSolver(t, nu)
     f.set_body_force(fx, 0.0, 0.0); f.set_stokes(True); f.set_implicit_diffusion(True)
     f.set_velocity(np.zeros_like(pos))
-    V = f.get_cell_volume()
-    usup = lambda: (f.get_velocity()[:, 0] * V).sum() / L**3
+    V = f.get_volumes()
+    usup = lambda: (f.get_velocities()[:, 0] * V).sum() / L**3
     steps = march_to_steady(f, 10.0 * h * h / nu, usup, tol=1e-7)
     K = fx * L**3 / (6 * np.pi * nu * R * usup())
     return K, len(pos), 1 - V.sum() / L**3, steps

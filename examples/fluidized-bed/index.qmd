@@ -154,7 +154,7 @@ internally because the gas here carries the full pressure gradient; gas convecti
 first-order upwind + a deferred-correction TVD term) is on by default. The void-fraction deposit is
 trilinear and **wall-aware** — near the vessel wall a grain's volume is re-weighted onto the fluid
 cells (partition of unity), so no hold-up leaks into the solid — and floored at the
-random-close-packing voidage (`eps_min=0.4`), below which the drag correlations do not apply.
+a void-fraction floor (`eps_min`, default 0.25), below which the drag correlations are not evaluated.
 
 ```{python}
 pos0  = initial_packing()
