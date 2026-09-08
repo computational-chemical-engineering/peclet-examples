@@ -105,7 +105,7 @@ must stop the ball.
 
 ```{python}
 #| label: fig-impact
-#| fig-cap: "Impactor vertical displacement, three bed sizes; MUSEN and LIGGGHTS are re-runs on this machine from the same initial states (paper Fig. 10 shows the eight-code ensemble spanning the same envelope). The dashed curve in the 25k panel is peclet.dem with the stabilization pass disabled (set_stabilization(False)) — the one configuration choice that still matters, and only in this floor-limited case."
+#| fig-cap: "Impactor vertical displacement, three bed sizes; MUSEN and LIGGGHTS are re-runs on this machine from the same initial states (paper Fig. 10 shows the eight-code ensemble spanning the same envelope). The dashed curve in the 25k panel is peclet.dem with the stabilization pass disabled (set_stabilization('off')) — the one configuration choice that still matters, and only in this floor-limited case."
 fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.4), sharey=True)
 for ax, n in zip(axes, (25, 50, 100)):
     series = [("liggghts", C_LIG, "-", "LIGGGHTS"),
@@ -142,7 +142,7 @@ t = 0.1, chaotic enough that the paper averages 10 seeds). `peclet.dem`'s
 stabilization pass — the device that lets it hold deep static columns (see the
 solver note) — drains the ball's last few millimetres of approach, so it arrives at
 the floor quasi-statically and, by the resting-contact rule, correctly does not
-bounce. Disabling the pass (`set_stabilization(False)`, dashed curve) restores the
+bounce. Disabling the pass (`set_stabilization('off')`, dashed curve) restores the
 fast floor strike and a rebound to −0.092, at the soft edge of the envelope. The
 choice is an explicit API switch, not a hidden failure: stabilization on for
 granular-statics work, off for ballistic-restitution studies.
@@ -376,7 +376,7 @@ main sweeps are momentum-conserving; if they end with residual approach above
 (quasi-static pairs only, 2× iteration budget — measured as the point where both
 the 60-layer column and a violent pour hold at nn ≈ 0.98 d_p while the 100k impact
 plateau stays on the references). In dynamic scenes the pass never fires;
-`set_stabilization(False)` disables it outright.
+`set_stabilization('off')` disables it outright.
 
 **5 — Walton tangential restitution β** (landed last, as instrumentation for the
 drum analysis). The velocity solve now implements the full (e, µ, β) impact law:

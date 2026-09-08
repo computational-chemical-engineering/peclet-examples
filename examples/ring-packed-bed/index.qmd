@@ -105,18 +105,18 @@ def pack_ring_bed(N=46, D0=1.0, aspect=1.5, wall_ratio=0.4, target_phi=0.50, see
     side = (N * vp / target_phi) ** (1 / 3); half = 0.5 * side
     rng = np.random.default_rng(seed)
     s = dem.Simulation(N)
-    s.initialize_shape(shape_type=2, radius=R, height=H, thickness=t)   # shape_type 2 = hollow cylinder
+    s.initialize_shape('hollow_cylinder', radius=R, height=H, thickness=t)
     s.set_domain((-half, -half, -half), (half, half, half)); s.set_periodic(True, True, True)
-    s.set_gravity(0, 0, 0); s.set_material_params(1.0, 1.0, 0.0); s.set_solver_iterations(iters, iters)
+    s.set_gravity((0, 0, 0)); s.set_material_params(1.0, 1.0, 0.0); s.set_solver_iterations(iters, iters)
     m = 0.92 * half
     pos = rng.uniform(-m, m, (N, 4)).astype(np.float32); pos[:, 3] = 1.0; s.set_positions(pos)
     s.set_velocities(rng.normal(0, math.sqrt(temp), (N, 3)).astype(np.float32))
     q = rng.normal(0, 1, (N, 4)).astype(np.float32); q /= np.linalg.norm(q, axis=1, keepdims=True)
     s.set_quaternions(q); s.set_angular_velocities(np.zeros((N, 3), np.float32))
     s.set_scales(np.full(N, 1.0, np.float32))
-    gr = growth; s.set_growth_params(gr, scale0); s.set_thermostat(temp, dt)
+    gr = growth; s.set_growth_params(gr, scale0); s.set_thermostat(temp, dt); s.set_dt(dt)
     cool = int(cool_frac * steps)
-    # MONOTONIC growth: relax overlaps at the CURRENT size (dt = 0 steps grow nothing) and only slow
+    # MONOTONIC growth: relax overlaps at the CURRENT size (relax() steps grow nothing) and only slow
     # the growth rate — never shrink the rings back. Un-growing on every overlap spike made the final
     # density seed-dependent, because the GPU contact solve is atomically non-deterministic and a
     # transient spike could trigger a runaway of shrink-steps that quenched a loose bed. One-directional
@@ -124,16 +124,16 @@ def pack_ring_bed(N=46, D0=1.0, aspect=1.5, wall_ratio=0.4, target_phi=0.50, see
     for step in range(steps):
         if step == cool:                                   # anneal: dissipative
             s.set_material_params(0.28, 1.0, 0.0); s.set_thermostat(0.0, 1.8e4 * dt)
-        s.step(dt); ov = float(s.max_overlap())
-        gf = float(s.get_growth_factor())
+        s.step(); ov = float(s.max_overlap)
+        gf = float(s.growth_factor)
         if ov > jam:                                       # overlaps too big -> relax at CURRENT size
             it = 0; prev = ov
             while it < 30:
-                s.step(0.0); it += 1; ro = float(s.max_overlap())   # dt = 0: pure overlap removal
+                s.relax(); it += 1; ro = float(s.max_overlap)      # relax(): pure overlap removal
                 if ro < jam or (it > 6 and ro > 0.98 * prev):
                     break
                 prev = ro
-            if float(s.max_overlap()) > jam:           # still jammed -> slow growth, never un-grow
+            if float(s.max_overlap) > jam:           # still jammed -> slow growth, never un-grow
                 gr = max(gr * 0.9, 0.02); s.set_growth_params(gr, gf)
         elif gf >= 1.0 - 1e-6:
             break                                          # reached full size (box sized for target_phi)
@@ -146,7 +146,7 @@ def pack_ring_bed(N=46, D0=1.0, aspect=1.5, wall_ratio=0.4, target_phi=0.50, see
 def permeability(sim, side, Ng, mu=0.1, F=1e-3, dt=50.0, max_steps=170, vel_iter=120, tol=3e-4,
                  want_field=False):
     """Cut-cell Stokes permeability on an Ng^3 grid. k is in physical (D0=1) units via the cell size."""
-    sdf = np.ascontiguousarray(sim.get_sdf_grid((Ng, Ng, Ng)), np.float64)  # <0 inside solid
+    sdf = np.asfortranarray(sim.get_sdf_grid((Ng, Ng, Ng)), np.float64)  # <0 inside solid
     lv = max(2, int(np.log2(Ng)) - 1)
     s = flow.Solver(Ng, Ng, Ng)
     s.set_rho(1.0); s.set_mu(mu); s.set_dt(dt); s.set_body_force(F, 0, 0); s.set_advection(False)  # Stokes
@@ -209,7 +209,7 @@ def qrot(q, V):                                    # rotate verts by quaternion 
 cv, cf = hollow_cylinder_mesh(g0["R"], g0["Ri"], g0["H"])
 pos = sim0.get_positions().reshape(-1, 3)
 quat = sim0.get_quaternions().reshape(-1, 4)          # (x, y, z, w)
-gf = float(sim0.get_growth_factor())                  # grown size at jamming (get_scales == gf here)
+gf = float(sim0.growth_factor)                  # grown size at jamming (get_scales == gf here)
 V, F, C, off = [], [], [], 0
 for i in range(len(pos)):
     w = qrot(quat[i], cv * gf) + pos[i]               # place this ring in the box

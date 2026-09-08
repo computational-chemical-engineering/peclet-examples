@@ -284,7 +284,7 @@ quat0 = rng.normal(size=(N, 4)); quat0 /= np.linalg.norm(quat0, axis=1)[:, None]
 sim = pdem.Simulation(N + 8)        # the buffers now follow the capacity; no headroom needed
 sim.set_domain((0.0, -1.2, 0.0), (L, 60.0, L))
 sim.set_periodic(True, False, True)
-sim.set_gravity(0.0, -9.81, 0.0)
+sim.set_gravity((0.0, -9.81, 0.0))
 sim.set_material_params(0.15, 0.0, 0.5)     # restitution_n, restitution_t, friction
 sim.set_solver_iterations(10, 8)
 shape_id = sp.register(sim)
@@ -319,7 +319,7 @@ def kinetic():
 
 def advance(n, damp=None, every=45):
     for i in range(n):
-        sim.step(DT)                                  # step() with NO argument advances nothing
+        sim.step()                                    # one substep of the dt set by set_dt
         if damp is not None:
             sim.set_velocities((np.asarray(sim.get_velocities()) * damp).astype(np.float32))
             sim.set_angular_velocities(

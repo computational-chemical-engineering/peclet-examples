@@ -45,10 +45,10 @@ print("peclet.dem backend:", dem.execution_space)
 
 def sim(n, restitution=0.0, friction=0.0, gravity=(0, 0, 0), dt=0.002):
     s = dem.Simulation(n)
-    s.set_sphere_shape(1.0)
+    s.initialize_shape('sphere', 1.0)
     s.set_domain((-60, -60, -60), (60, 60, 60))
     s.set_periodic(False, False, False)
-    s.set_gravity(*gravity)
+    s.set_gravity(gravity)
     s.set_material_params(restitution, 0.0, friction)
     s.set_solver_iterations(30, 10)
     s.set_dt(dt)
@@ -79,7 +79,7 @@ for e in es:
     s.set_positions(np.array([[-3, 0, 0, 1], [3, 0, 0, 1]], np.float32))
     s.set_velocities(np.array([[v0, 0, 0], [-v0, 0, 0]], np.float32))
     for _ in range(4000):
-        s.step(0.002)
+        s.step()
     v = s.get_velocities().reshape(-1, 3)
     meas.append((v[1, 0] - v[0, 0]) / (2 * v0))      # separation / approach
 com_drift = abs((v[0, 0] + v[1, 0]) / 2)             # last case; ~0 for all
@@ -115,7 +115,7 @@ def drop(kind, e, h0=5.0, r=1.0):
     s.set_positions(np.array([[0, h0 + r, 0, 1]], np.float32))
     ys = []
     for _ in range(7000):
-        s.step(0.002); ys.append(s.get_positions().reshape(-1, 3)[0, 1] - r)
+        s.step(); ys.append(s.get_positions().reshape(-1, 3)[0, 1] - r)
     return np.array(ys)
 
 fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.6), sharey=True)
@@ -153,7 +153,7 @@ s.set_positions(np.array([[0, r, 0, 1]], np.float32))
 s.set_velocities(np.array([[v0, 0, 0]], np.float32))
 V, SLIP = [], []
 for _ in range(4000):
-    s.step(0.002)
+    s.step()
     v = s.get_velocities().reshape(-1, 3)[0, 0]
     w = s.get_angular_velocities().reshape(-1, 3)[0, 2]
     V.append(v); SLIP.append(v + w * r)          # contact-point (slip) velocity
@@ -189,7 +189,7 @@ p[:, 3] = 1.0
 s.set_positions(p)
 VMAX, YS = [], []
 for k in range(7000):
-    s.step(0.002)
+    s.step()
     VMAX.append(float(np.abs(s.get_velocities()).max()))
     if k % 50 == 0:
         YS.append(np.sort(s.get_positions().reshape(-1, 3)[:, 1]))
@@ -227,7 +227,7 @@ def collide(spin):
     s.set_angular_velocities(np.array([[0, 0, spin[0]], [0, 0, spin[1]]], np.float32))
     traj = []
     for _ in range(2600):
-        s.step(0.002); traj.append(s.get_positions().reshape(-1, 3)[:, :2].copy())
+        s.step(); traj.append(s.get_positions().reshape(-1, 3)[:, :2].copy())
     return np.array(traj), s.get_velocities().reshape(-1, 3)
 
 fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.8), sharex=True, sharey=True)
@@ -287,7 +287,7 @@ top0 = float(p[:, 1].max())
 
 VMAX = []
 for k in range(5000):
-    s.step(0.002)
+    s.step()
     if k % 10 == 0:
         VMAX.append(float(np.abs(s.get_velocities()).max()))
 P = np.asarray(s.get_positions()).reshape(-1, 3)[:N]
@@ -342,7 +342,7 @@ print(("ALL CHECKS PASS ✅" if allok else "SOME CHECKS FAILED ❌") +
 - **Regression-guard a change.** Run this page before and after touching the solver; the scorecard is
   a fast tripwire for physics regressions (this suite caught an energy-injection bug in the moving-wall
   contact solve).
-- **Non-spherical grains.** Swap `set_sphere_shape` for an imported
+- **Non-spherical grains.** Swap `initialize_shape('sphere', r)` for an imported
   [`build_particle`](../examples/sdf-particle-packing/index.qmd) shape and re-check restitution and
   stacking — the collision model is the same point-shell-vs-SDF machinery.
 

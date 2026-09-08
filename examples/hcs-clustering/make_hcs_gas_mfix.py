@@ -46,9 +46,9 @@ def cidx(Pp):
     H, _, _ = np.histogram2d(Pp[:, 0] % Lx, Pp[:, 1] % Ly, bins=nb, range=[[0, Lx], [0, Ly]])
     return float((H.std()/H.mean())/pois)
 
-d = dem.Simulation(N+64); d.initialize_shape(shape_type=1, radius=rp); d.set_sphere_shape(rp)
+d = dem.Simulation(N+64); d.initialize_shape('sphere', rp)
 d.set_domain((0, 0, 0), (Lx, Ly, Lz)); d.set_periodic(True, True, True)
-d.set_gravity(0, 0, 0); d.set_material_params(e, 0.0, 0.0); d.set_solver_iterations(6, 4); d.set_dt(dt)
+d.set_gravity((0, 0, 0)); d.set_material_params(e, 0.0, 0.0); d.set_solver_iterations(6, 4); d.set_dt(dt)
 d.set_positions(np.c_[P, np.full(N, 1.0/m_p, np.float32)]); d.set_velocities(v)
 s = flow.Solver(Lx//2, Ly//2, Lz//2); s.set_rho(rho_g); s.set_mu(mu_g); s.set_dt(dt)  # Delta* = 2
 for f in range(6): s.set_domain_bc(f, 0)     # all periodic

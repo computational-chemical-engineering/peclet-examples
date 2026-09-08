@@ -28,16 +28,16 @@ def pack_spheres(n=180, phi_ref=0.63, radius=0.5, seed=3):
     half, dt = side / 2, 0.002
     rng = np.random.default_rng(seed)
     s = dem.Simulation(n)
-    s.initialize_shape(shape_type=1, radius=radius)
+    s.initialize_shape('sphere', radius=radius)
     s.set_domain((-half, -half, -half), (half, half, half))
-    s.set_periodic(True, True, True); s.set_gravity(0, 0, 0)
+    s.set_periodic(True, True, True); s.set_gravity((0, 0, 0))
     s.set_material_params(1.0, 1.0, 0.0); s.set_solver_iterations(60, 60)
     pos = rng.uniform(-half, half, (n, 4)).astype(np.float32); pos[:, 3] = 1.0
     s.set_positions(pos)
     s.set_velocities(rng.normal(0, 1, (n, 3)).astype(np.float32))
     s.set_scales(np.full(n, 1.0, np.float32))
     gr = 0.5
-    s.set_growth_params(gr, 0.05); s.set_thermostat(1.0, dt)
+    s.set_growth_params(gr, 0.05); s.set_thermostat(1.0, dt); s.set_dt(dt)
 
     def ofrac():
         return float(s.compute_overlaps()) / max(2 * radius * float(s.get_scales().ravel().mean()), 1e-9)
@@ -50,12 +50,12 @@ def pack_spheres(n=180, phi_ref=0.63, radius=0.5, seed=3):
     for step in range(int(7.0 / dt)):
         if step == cool:
             s.set_material_params(0.5, 1.0, 0.0); s.set_thermostat(0.0, 1e4 * dt)
-        s.step(dt); mo = ofrac()
-        gf = float(s.get_growth_factor())
+        s.step(); mo = ofrac()
+        gf = float(s.growth_factor)
         if mo > 5e-3:
             it = 0; prev = mo
             while it < 40:
-                s.step(0.0); it += 1; mn = ofrac()
+                s.relax(); it += 1; mn = ofrac()
                 if mn < 5e-3 or (it > 8 and mn > 0.98 * prev):
                     break
                 prev = mn
@@ -67,8 +67,8 @@ def pack_spheres(n=180, phi_ref=0.63, radius=0.5, seed=3):
             gr = min(gr * 1.02, 0.5); s.set_growth_params(gr, gf)
     s.set_material_params(0.0, 0.0, 0.0); s.set_thermostat(0.0, 10 * dt)
     for _ in range(1200):
-        s.step(dt)
-    r = radius * s.get_scales().ravel() * float(s.get_growth_factor())
+        s.step()
+    r = radius * s.get_scales().ravel() * float(s.growth_factor)
     c = (s.get_positions()[:, :3].astype(float) + half) % side
     return np.ascontiguousarray(c), np.ascontiguousarray(r.astype(float)), float(side)
 

@@ -53,7 +53,7 @@ elif importlib.util.find_spec("peclet") is None:
 
 ::: {.callout-note}
 ## Requires a recent `peclet`
-`set_wall_transform` and `wall_sdf_at` are new, and the CSG authoring layer
+`set_wall_transform` and `diagnostics.wall_sdf_at` are new, and the CSG authoring layer
 (`peclet.core.geom`) is newer than the current PyPI release; on Colab you need a source build of
 `peclet-core` and `peclet-dem` until the next release goes out. The page is *frozen*, so it renders
 and reads correctly either way.
@@ -140,7 +140,7 @@ def stirrer_tree():
     return np.asarray(ni, np.int32), np.asarray(nr, np.float32), root
 ```
 
-`wall_sdf_at` returns exactly what the narrow phase reads, so it is the honest way to check a
+`diagnostics.wall_sdf_at` returns exactly what the narrow phase reads, so it is the honest way to check a
 placement — and the easiest way to draw the impeller.
 
 ```{python}
@@ -151,8 +151,8 @@ def make_sim(capacity=40000):
     s = pdem.Simulation(capacity)
     s.set_domain((-R_COL-4, -4.0, -R_COL-4), (R_COL+4, H_COL+4, R_COL+4))
     s.set_periodic(False, False, False)
-    s.set_gravity(0.0, -G, 0.0)
-    s.set_sphere_shape(1.0)
+    s.set_gravity((0.0, -G, 0.0))
+    s.initialize_shape('sphere', 1.0)
     s.set_global_scale(RP)          # ghost band is sized off the real radius; without this the
                                     # default globalScale = 1 makes it 10x the grain
     cni, cnr, croot = column_tree()
@@ -168,7 +168,7 @@ def stirrer_mesh(sim, wall, box=(-R_IMP-1, R_IMP+1), ylim=(0.0, 8.0), n=110):
     ys = np.linspace(ylim[0], ylim[1], max(24, int(n*(ylim[1]-ylim[0])/(box[1]-box[0]))))
     X, Y, Z = np.meshgrid(xs, ys, xs, indexing="ij")
     pts = np.ascontiguousarray(np.column_stack([X.ravel(), Y.ravel(), Z.ravel()]).astype(np.float32))
-    fld = np.asarray(sim.wall_sdf_at(wall, pts)).reshape(X.shape)
+    fld = np.asarray(sim.diagnostics.wall_sdf_at(wall, pts)).reshape(X.shape)
     v, f, _, _ = measure.marching_cubes(fld, level=0.0,
                                         spacing=(xs[1]-xs[0], ys[1]-ys[0], xs[1]-xs[0]))
     v = v + np.array([xs[0], ys[0], xs[0]])
@@ -195,7 +195,7 @@ sim.set_wall_transform(w_stir, (0.0, 0.0, 0.0), qaxis([0, 1, 0], 0.0))   # back 
 ## Step 2 — Fill and settle
 
 A jittered lattice inside the column, with anything starting inside the impeller discarded — checked
-with `wall_sdf_at`, not with a hand-written formula that could disagree with the collision geometry.
+with `diagnostics.wall_sdf_at`, not with a hand-written formula that could disagree with the collision geometry.
 
 ```{python}
 #| label: fill
@@ -208,7 +208,7 @@ def fill(sim, w_stir, fill_top=11.0, seed=4):
     P = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
     P = P[np.hypot(P[:, 0], P[:, 2]) < R_COL - 1.3*RP]
     P = np.ascontiguousarray((P + rng.normal(0, 0.06*RP, P.shape)).astype(np.float32))
-    P = np.ascontiguousarray(P[np.asarray(sim.wall_sdf_at(w_stir, P)) > RP*1.15])
+    P = np.ascontiguousarray(P[np.asarray(sim.diagnostics.wall_sdf_at(w_stir, P)) > RP*1.15])
     sim.set_positions(P)
     sim.set_inv_mass(np.full(len(P), 1.0, np.float32))   # dem assigns unit mass regardless of size
     return P
@@ -218,10 +218,10 @@ P0 = fill(sim, w_stir)
 sim.set_dt(DT)
 t0 = time.time()
 for _ in range(700):
-    sim.step(DT)                 # dem.step() with NO argument advances nothing
+    sim.step()                   # one substep of the dt set by set_dt
 Q0 = np.asarray(sim.get_positions()).copy()
 print("%d grains settled in %.0f s   bed y = %.2f .. %.2f   max overlap %.4f (grain radius %.2f)"
-      % (len(Q0), time.time() - t0, Q0[:, 1].min(), Q0[:, 1].max(), sim.max_overlap(), RP))
+      % (len(Q0), time.time() - t0, Q0[:, 1].min(), Q0[:, 1].max(), sim.max_overlap, RP))
 ```
 
 ::: {.callout-important}
@@ -296,7 +296,7 @@ for i in range(n_steps):
     theta += OMEGA * DT
     sim.set_wall_transform(w_stir, (0.0, 0.0, 0.0), qaxis([0, 1, 0], theta))   # the GEOMETRY
     sim.set_wall_velocity(w_stir, (0.0, 0.0, 0.0), (0.0, OMEGA, 0.0), (0.0, 0.0, 0.0))  # the SURFACE
-    sim.step(DT)
+    sim.step()
     if i % sample_every == 0:
         Q = np.asarray(sim.get_positions()); V = np.asarray(sim.get_velocities())
         hist_rev.append(theta / (2*np.pi))
@@ -306,7 +306,7 @@ for i in range(n_steps):
         frames.append(np.asarray(sim.get_positions()).copy())
 wall_time = time.time() - t0
 Qf = np.asarray(sim.get_positions())
-sdf_f = np.asarray(sim.wall_sdf_at(w_col, np.ascontiguousarray(Qf.astype(np.float32))))
+sdf_f = np.asarray(sim.diagnostics.wall_sdf_at(w_col, np.ascontiguousarray(Qf.astype(np.float32))))
 print("%d steps, %.1f revolutions, %.0f s  (%.1f ms/step, %d grains)"
       % (n_steps, NREV, wall_time, 1000*wall_time/n_steps, len(Qf)))
 print("M: %.4f -> %.4f" % (M0, hist_M[-1]))
@@ -480,7 +480,7 @@ CHECK = textwrap.dedent("""
     sim = pdem.Simulation(20000)
     sim.set_domain((-R_COL-4, -4.0, -R_COL-4), (R_COL+4, H_COL+4, R_COL+4))
     sim.set_periodic(False, False, False)
-    sim.set_gravity(0.0, -G, 0.0); sim.set_sphere_shape(1.0); sim.set_global_scale(RP)
+    sim.set_gravity((0.0, -G, 0.0)); sim.initialize_shape('sphere', 1.0); sim.set_global_scale(RP)
     wc = sim.add_analytic_wall(np.asarray(cni, np.int32), np.asarray(cnr, np.float32),
                                root, True, 0.2, 0.5)
     ws = sim.add_analytic_wall(np.asarray(sni, np.int32), np.asarray(snr, np.float32),
@@ -494,10 +494,10 @@ CHECK = textwrap.dedent("""
     P = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
     P = P[np.hypot(P[:, 0], P[:, 2]) < R_COL - 1.3*RP]
     P = np.ascontiguousarray((P + rng.normal(0, 0.06*RP, P.shape)).astype(np.float32))
-    P = np.ascontiguousarray(P[np.asarray(sim.wall_sdf_at(ws, P)) > RP*1.15])
+    P = np.ascontiguousarray(P[np.asarray(sim.diagnostics.wall_sdf_at(ws, P)) > RP*1.15])
     sim.set_positions(P); sim.set_inv_mass(np.full(len(P), 1.0, np.float32)); sim.set_dt(DT)
     for _ in range(300):
-        sim.step(DT)
+        sim.step()
     Q0 = np.asarray(sim.get_positions()).copy()
     tracer = Q0[:, 1] < np.median(Q0[:, 1]); pf = tracer.mean()
     NR, NY = 4, 5
@@ -518,7 +518,7 @@ CHECK = textwrap.dedent("""
         th += OM*DT
         sim.set_wall_transform(ws, (0.0, 0.0, 0.0), qaxis([0, 1, 0], th))
         sim.set_wall_velocity(ws, (0.0, 0.0, 0.0), (0.0, OM, 0.0), (0.0, 0.0, 0.0))
-        sim.step(DT)
+        sim.step()
     Q = np.asarray(sim.get_positions())
     print("RESULT " + json.dumps({"n": int(len(Q)), "M": lac(Q),
                                   "cksum": float(np.abs(Q, dtype=np.float64).sum())}))
@@ -564,7 +564,7 @@ if det_ok:
 | worst single sample / tip speed | `{python} "%.3f" % (max(hist_vmax)/tip)` |
 | grains outside the column | `{python} "%d" % int((sdf_f < 0).sum())` |
 | minimum wall SDF at the end (grain radius `{python} "%.2f" % RP`) | `{python} "%+.3f" % sdf_f.min()` |
-| max grain–grain overlap | `{python} "%.4f" % sim.max_overlap()` |
+| max grain–grain overlap | `{python} "%.4f" % sim.max_overlap` |
 | run cost | `{python} "%.0f s, %.1f ms/step, %s threads" % (wall_time, 1000*wall_time/n_steps, os.environ["OMP_NUM_THREADS"])` |
 | two 1-thread runs of the reduced case | `{python} ("bitwise identical" if det_ok and det_bitwise else "see Step 7")` |
 | 8-thread vs 1-thread Lacey index (reduced case) | `{python} (("%.2e absolute" % det_dM) if det_ok else "see Step 7")` |

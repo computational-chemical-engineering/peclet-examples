@@ -60,7 +60,7 @@ def main():
 
     sim = dem.Simulation(n)
     r0 = 0.001
-    sim.set_sphere_shape(r0)
+    sim.initialize_shape('sphere', r0)
     lo = (-0.105, -0.036, -0.105)
     hi = (0.105, 0.036, 0.105)
     sim.set_domain(lo, hi)
@@ -90,12 +90,13 @@ def main():
     if per_pair:
         sim.set_material_ids(np.where(is_m1, 0, 1).astype(np.int32).tolist())
 
-    sim.set_gravity(0.0, 0.0, -9.81)
+    sim.set_gravity((0.0, 0.0, -9.81))
     sim.set_material_params(args.e, args.beta, args.mu)
     sim.set_solver_iterations(args.iters[0], args.iters[1])
     sim.set_thermostat(0.0, 0.0)
+    sim.set_dt(args.dt)
     if args.jacobi:
-        sim.set_velocity_use_gs(False)
+        sim.diagnostics.set_velocity_solver('jacobi')
     if args.hertz:
         sim.set_hertz_material(0, 1.0e9, 0.2)    # M1
         sim.set_hertz_material(1, 0.5e9, 0.2)    # M2
@@ -125,9 +126,9 @@ def main():
             com_m2.append(p[~is_m1].mean(axis=0))
         if i < nsteps:
             if args.hertz:
-                sim.step_hertz(args.dt, min(rec_every, nsteps - i))
+                sim.step_hertz(min(rec_every, nsteps - i))
             else:
-                sim.step(args.dt)
+                sim.step()
     wall_s = time.perf_counter() - t0
 
     out = args.out or f"case2_peclet{'_jac' if args.jacobi else ''}.npz"

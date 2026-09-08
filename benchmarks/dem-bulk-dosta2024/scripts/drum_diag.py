@@ -43,7 +43,7 @@ def main():
     rho = np.where(is_m1, 2500.0, 2000.0)
 
     sim = dem.Simulation(n)
-    sim.set_sphere_shape(0.001)
+    sim.initialize_shape('sphere', 0.001)
     lo, hi = (-0.105, -0.036, -0.105), (0.105, 0.036, 0.105)
     sim.set_domain(lo, hi)
     sim.set_periodic(False, False, False)
@@ -63,13 +63,14 @@ def main():
     sim.set_inv_inertia(np.repeat((1.0 / (0.4 * m * radii**2))[:, None], 3, 1).astype(np.float32))
     sim.set_velocities(np.zeros((n, 3), np.float32))
     sim.set_material_ids(np.where(is_m1, 0, 1).astype(np.int32).tolist())
-    sim.set_gravity(0, 0, -9.81)
+    sim.set_gravity((0, 0, -9.81))
     sim.set_material_params(0.45, 0.0, 0.25)
     sim.set_solver_iterations(args.iters[0], args.iters[1])
     sim.set_thermostat(0, 0)
+    sim.set_dt(dt)
     import os
     if os.environ.get("NOSTAB"):
-        sim.set_stabilization(False)
+        sim.set_stabilization('off')
     if args.engine == "hertz":
         sim.set_hertz_material(0, 1.0e9, 0.2)
         sim.set_hertz_material(1, 0.5e9, 0.2)
@@ -124,10 +125,10 @@ def main():
               (k * rec, " ".join("%.3f" % x for x in vals), smean, sfrac), flush=True)
         if k < nrec:
             if args.engine == "hertz":
-                sim.step_hertz(dt, per)
+                sim.step_hertz(per)
             else:
                 for _ in range(per):
-                    sim.step(dt)
+                    sim.step()
 
 
 if __name__ == "__main__":

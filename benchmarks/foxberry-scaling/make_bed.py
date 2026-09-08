@@ -72,7 +72,7 @@ print(f"[bed] {_desc}  N={NSPH} holdup={HOLDUP} -> r={r_phys:.7f} "
       flush=True)
 
 sim = dem.Simulation(NSPH)
-sim.initialize_shape(shape_type=1, radius=1.0)
+sim.initialize_shape('sphere', radius=1.0)
 half = box / 2.0
 if BED == "walls":
     # Six inward-facing planes on the region boundary, exactly FoxBerry's confinement: its
@@ -87,11 +87,11 @@ if BED == "walls":
         for _sgn in (-1.0, 1.0):
             _p = [0.0, 0.0, 0.0]; _p[_ax] = _sgn * half[_ax]
             _n = [0.0, 0.0, 0.0]; _n[_ax] = -_sgn          # inward
-            sim.add_plane(_p[0], _p[1], _p[2], _n[0], _n[1], _n[2])
+            sim.add_plane(tuple(_p), tuple(_n))
 else:
     sim.set_domain(tuple(-half), tuple(half))
     sim.set_periodic(True, True, True)
-sim.set_gravity(0.0, 0.0, 0.0)
+sim.set_gravity((0.0, 0.0, 0.0))
 sim.set_material_params(0.0, 0.0, 0.0)  # inelastic: kinetic energy drained, packing settles
 sim.set_solver_iterations(ITERS, ITERS)
 
@@ -102,18 +102,18 @@ _hi = half - (1.0 if BED == "walls" else 0.0)
 pos[:, :3] = rng.uniform(_lo, _hi, (NSPH, 3))
 pos[:, 3] = 1.0
 sim.set_positions(pos)
-sim.set_velocities(np.zeros((NSPH, 4), np.float32))
+sim.set_velocities(np.zeros((NSPH, 3), np.float32))   # dem 1.0.0: per-particle setters are (N,3)
 sim.set_scales(np.ones(NSPH, np.float32))
 
 grow_steps = int(np.ceil(np.log(1.0 / 0.05) / (RATE * DT)))
-sim.set_growth_params(RATE, 0.05)
+sim.set_growth_params(RATE, 0.05); sim.set_dt(DT)
 t0 = time.time()
 for i in range(grow_steps + RELAX):
-    sim.step(DT)
+    sim.step()
 t1 = time.time()
 
-ov = sim.max_overlap()
-gf = sim.get_growth_factor()
+ov = sim.max_overlap
+gf = sim.growth_factor
 p = np.asarray(sim.get_positions()).reshape(-1, 3).astype(np.float64)
 s = np.asarray(sim.get_scales()).astype(np.float64)
 p += half  # store in [0, box)

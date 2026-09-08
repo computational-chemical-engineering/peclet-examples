@@ -144,8 +144,8 @@ def orbit(N, AR, B_, nstep, phi0=np.pi / 2):
     Ix = 0.4 * m * B_ ** 2                       # about the symmetry axis
     It = 0.2 * m * (A ** 2 + B_ ** 2)            # transverse -- the tumbling inertia
     d = pdem.Simulation(8)
-    d.set_gravity(0.0, 0.0, 0.0)
-    d.set_sphere_shape(1.0)
+    d.set_gravity((0.0, 0.0, 0.0))
+    d.initialize_shape('sphere', 1.0); d.set_dt(DT / SUB)
     d.set_positions(np.array([[0.5 * N] * 3], dtype=np.float32))
     d.set_inv_mass(np.array([1.0 / m], dtype=np.float32))
     d.set_inv_inertia(np.array([[1 / Ix, 1 / It, 1 / It]], dtype=np.float32))
@@ -164,7 +164,7 @@ def orbit(N, AR, B_, nstep, phi0=np.pi / 2):
         T = np.asarray(s.hydro_force_torque_reaction())[1][2]
         d.set_external_torques(np.array([T], dtype=np.float32))
         for _ in range(SUB):
-            d.step(DT / SUB)
+            d.step()
         qx, qy, qz, qw = q
         px = 1 - 2 * (qy * qy + qz * qz)              # body-x (symmetry axis) in world
         py = 2 * (qx * qy + qz * qw)

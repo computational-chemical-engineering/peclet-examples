@@ -33,7 +33,7 @@ LAYERS = 60
 
 def make_sim(n, lz=140.0):
     s = dem.Simulation(n)
-    s.set_sphere_shape(R)
+    s.initialize_shape('sphere', R)
     lo, hi = (0.0, 0.0, -1.0), (NX * 1.05 + 1.0, NY * 1.05 + 1.0, lz)
     s.set_domain(lo, hi)
     s.set_periodic(False, False, False)
@@ -42,7 +42,7 @@ def make_sim(n, lz=140.0):
                                      p[:, 1] - lo[1], hi[1] - p[:, 1]]),
         (lo, hi), resolution=(96, 96, 160))
     wall.add_to(s, restitution=0.2, friction=0.3)
-    s.set_gravity(0.0, 0.0, -10.0)
+    s.set_gravity((0.0, 0.0, -10.0))
     s.set_material_params(0.5, 0.0, 0.3)
     s.set_thermostat(0, 0)
     s.set_solver_iterations(12, 8)
@@ -61,7 +61,7 @@ def metrics(s, n):
     z = p[:, 2]
     z95 = float(np.quantile(z, 0.95))
     vz = float(np.abs(v[:, 2]).mean())
-    ov = float(s.max_overlap())
+    ov = float(s.max_overlap)
     # nn spacing on a subsample
     idx = np.random.default_rng(0).choice(n, size=min(4000, n), replace=False)
     from scipy.spatial import cKDTree
@@ -85,9 +85,10 @@ def run(mode, steps=4000, dt=0.01):
     s.set_scales_uniform(1.0)
     s.set_inv_mass(np.ones(n, np.float32))
     s.set_inv_inertia(np.full((n, 3), 1.0 / (0.4 * R * R), np.float32))
+    s.set_dt(dt)
     t0 = time.perf_counter()
     for i in range(steps):
-        s.step(dt)
+        s.step()
     wall = time.perf_counter() - t0
     z95, vz, nn, ov = metrics(s, n)
     # expected dense-bed z95: solid volume / (area * phi~0.6) ~ height

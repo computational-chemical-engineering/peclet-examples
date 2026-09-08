@@ -160,12 +160,12 @@ def settle_bed(N=34, R=7.7, L=48.0, H=260.0, seed=5, dt=0.004, fall=9000, quench
     from peclet.dem import build_wall_sdf
     rng = np.random.default_rng(seed)
     s = dem.Simulation(N)
-    s.initialize_shape(shape_type=1, radius=R)
+    s.initialize_shape('sphere', radius=R)
     s.set_domain((0.0, 0.0, -R), (L, L, H))
     s.set_periodic(True, True, False)          # periodic sides, a floor below
-    s.set_gravity(0.0, 0.0, -9.81)
+    s.set_gravity((0.0, 0.0, -9.81))
     s.set_material_params(0.1, 0.0, 0.35)            # restitution, cohesion, friction
-    s.set_solver_iterations(24, 8)
+    s.set_solver_iterations(24, 8); s.set_dt(dt)
     build_wall_sdf(lambda p: p[:, 2], ((0.0, 0.0, -R), (L, L, H)), resolution=32) \
         .add_to(s, restitution=0.1, friction=0.35)   # the floor: positive above z = 0
     pos = np.zeros((N, 4), np.float32)
@@ -175,7 +175,7 @@ def settle_bed(N=34, R=7.7, L=48.0, H=260.0, seed=5, dt=0.004, fall=9000, quench
     s.set_positions(pos)
     s.set_velocities(np.zeros((N, 3), np.float32))
     for _ in range(fall):
-        s.step(dt)
+        s.step()
     # A zero-restitution quench alone does not come to rest: a grain that lands on top of the pile
     # keeps rolling, and the packing is then reported with a residual velocity of order 1. Draining
     # the kinetic energy directly -- zero the velocities, step, repeat -- turns the tail of the
@@ -186,7 +186,7 @@ def settle_bed(N=34, R=7.7, L=48.0, H=260.0, seed=5, dt=0.004, fall=9000, quench
     for k in range(quench):
         if k % 400 == 0 or k > quench - 200:
             s.set_velocities(zero)
-        s.step(dt)
+        s.step()
     p = s.get_positions()[:, :3].astype(float)
     p[:, 2] -= p[:, 2].min() - R                     # rest the lowest grain on z = 0
     # the velocity ONE step regenerates from rest: a measure of the residual unbalanced force

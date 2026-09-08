@@ -43,16 +43,16 @@ def cidx(Pp):
     H, _, _ = np.histogram2d(Pp[:, 0] % Lx, Pp[:, 1] % Ly, bins=nb, range=[[0, Lx], [0, Ly]])
     return float((H.std()/H.mean())/pois)
 
-d = dem.Simulation(N+64); d.initialize_shape(shape_type=1, radius=rp); d.set_sphere_shape(rp)
+d = dem.Simulation(N+64); d.initialize_shape('sphere', rp)
 d.set_domain((0, 0, 0), (Lx, Ly, Lz)); d.set_periodic(True, True, True)
-d.set_gravity(0, 0, 0); d.set_material_params(e, 0.0, 0.0); d.set_solver_iterations(6, 4); d.set_dt(dt)
+d.set_gravity((0, 0, 0)); d.set_material_params(e, 0.0, 0.0); d.set_solver_iterations(6, 4); d.set_dt(dt)
 d.set_positions(np.c_[P, np.ones(N, np.float32)]); d.set_velocities(v)
 
 ts, Trat, ci = [0.0], [1.0], [cidx(P)]
 snap_targets = {1000: None, 2000: None, 5000: None, 10000: None}
 t0 = time.time()
 for i in range(nsteps):
-    d.step(dt); tstar = (i+1)*dt
+    d.step(); tstar = (i+1)*dt
     if (i+1) % 50 == 0:                          # sample the trajectory every t* = 1
         V = _np(d.get_velocities())[:N]; Pp = _np(d.get_positions())[:N]
         ts.append(tstar); Trat.append(gT(V)/T0); ci.append(cidx(Pp))

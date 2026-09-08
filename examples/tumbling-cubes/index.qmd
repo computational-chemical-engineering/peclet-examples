@@ -16,7 +16,7 @@ in-notebook run needs a GPU build (`PECLET_LOCAL_BUILD`) — it is far too heavy
 ## What you'll learn
 
 `peclet.dem` is not limited to spheres — a particle is a **shape + a surface-point shell**, and the
-built-in **cube** (`initialize_shape(3, …)` (3 = BOX)) collides *every face* against its neighbours and against
+built-in **cube** (`initialize_shape('box', …)`) collides *every face* against its neighbours and against
 the moving [SDF wall](../rotating-drum/index.qmd). Cubes behave nothing like spheres: they **cannot
 roll**, so they **tumble and interlock**, and the collision solver has to resolve many contacts per
 grain. You will:
@@ -65,7 +65,7 @@ plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "figure.facecolor": "wh
 print("peclet.dem backend:", dem.execution_space)
 ```
 
-A cube is one call: `initialize_shape(3, half_extent)` (shape 3 = BOX). The drum is a **z-periodic SDF barrel**
+A cube is one call: `initialize_shape('box', half_extent)`. The drum is a **z-periodic SDF barrel**
 (no end caps — a cube corner would slip through the sharp barrel/cap join, exactly as a sphere does),
 resolved finer than a cube so nothing tunnels. We spin at Froude number `Fr = ω²R/g ≈ 0.4` — the
 cascading regime. Here we run a **modest** count so the page builds in a minute; the hero movie above
@@ -86,16 +86,16 @@ pts = np.array([(x, y, z) for z in gz for x in grid for y in grid
 N = len(pts)
 
 sim = dem.Simulation(int(1.6*N)+2000)
-sim.initialize_shape(3, he)                     # 3 = BOX (cube)
+sim.initialize_shape('box', he)                 # a cube of half-extent he
 sim.set_domain(lo, hi); sim.set_periodic(False, False, True)
 res = (int(2*cx/0.5), int(2*cy/0.5), max(6, int(Lz/0.5)))
 wid = build_wall_sdf(barrel, (lo, hi), resolution=res).add_to(sim, restitution=0.2, friction=1.0)
-sim.set_gravity(0, -g, 0); sim.set_material_params(0.2, 0.0, 0.5); sim.set_solver_iterations(18, 6)
+sim.set_gravity((0, -g, 0)); sim.set_material_params(0.2, 0.0, 0.5); sim.set_solver_iterations(18, 6); sim.set_dt(dt)
 p = np.zeros((N, 4), np.float32); p[:, :3] = pts; p[:, 3] = 1.0
 sim.set_positions(p)                              # axis-aligned seed (random orientations would overlap)
 for _ in range(1100):
-    sim.step(dt)
-print(f"packed {N} cubes (half-extent {he}); {sim.num_contacts()} contacts — every cube face resolved")
+    sim.step()
+print(f"packed {N} cubes (half-extent {he}); {sim.num_contacts} contacts — every cube face resolved")
 ```
 
 Spin the wall, and **record the configuration** — positions **and quaternions** — each frame. That
@@ -106,12 +106,12 @@ omega = np.sqrt(0.4*g/R)                           # Fr = 0.4
 sim.set_wall_velocity(wid, lin_vel=(0, 0, 0), ang_vel=(0, 0, omega), center=(cx, cy, 0))
 rev = int(2*np.pi/omega/dt)
 for _ in range(rev//7):                            # let the cascade establish
-    sim.step(dt)
+    sim.step()
 
 config = []                                        # <-- the exported configuration
 for f in range(48):
     for _ in range(max(1, rev//220)):
-        sim.step(dt)
+        sim.step()
     config.append((sim.get_positions().reshape(-1, 3).copy(),
                    sim.get_quaternions().reshape(-1, 4).copy(),
                    np.linalg.norm(sim.get_velocities().reshape(-1, 3), axis=1)))
@@ -196,7 +196,7 @@ revolution (a larger drum spins slower at fixed Froude number), not the per-step
 
 ## Adapt this yourself
 
-- **Other shapes.** `initialize_shape(2, …)` (2 = hollow cylinder) for Raschig rings, or an arbitrary SDF
+- **Other shapes.** `initialize_shape('hollow_cylinder', …)` for Raschig rings, or an arbitrary SDF
   via [`build_particle`](../sdf-particle-packing/index.qmd) (rods, beans, rounded cubes). The drum
   code is unchanged — only the grain shape differs.
 - **The confinement trick.** Use a **z-periodic barrel** (no end caps): a cube corner tunnels the

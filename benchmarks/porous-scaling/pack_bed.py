@@ -53,11 +53,11 @@ print(f"[pack] grid {GNX}x{GNY}x{GNZ} rcells={RCELLS:g} -> box {box[0]:.2f}x{box
       flush=True)
 
 sim = dem.Simulation(N)
-sim.initialize_shape(shape_type=1, radius=1.0)
+sim.initialize_shape('sphere', radius=1.0)
 half = box / 2.0
 sim.set_domain(tuple(-half), tuple(half))
 sim.set_periodic(True, True, True)
-sim.set_gravity(0.0, 0.0, 0.0)
+sim.set_gravity((0.0, 0.0, 0.0))
 sim.set_material_params(0.0, 0.0, 0.0)  # inelastic: kinetic energy is drained, packing settles
 sim.set_solver_iterations(ITERS, ITERS)
 
@@ -66,21 +66,21 @@ pos = np.empty((N, 4), np.float32)
 pos[:, :3] = rng.uniform(-half, half, (N, 3))
 pos[:, 3] = 1.0
 sim.set_positions(pos)
-sim.set_velocities(np.zeros((N, 4), np.float32))
+sim.set_velocities(np.zeros((N, 3), np.float32))   # dem 1.0.0: per-particle setters are (N,3)
 sim.set_scales(np.ones(N, np.float32))
 
 grow_steps = int(np.ceil(np.log(1.0 / 0.05) / (RATE * DT)))
-sim.set_growth_params(RATE, 0.05)
+sim.set_growth_params(RATE, 0.05); sim.set_dt(DT)
 t0 = time.time()
 asleep_max = 0
 for i in range(grow_steps + RELAX):
-    sim.step(DT)
+    sim.step()
     if i % 100 == 0:
-        asleep_max = max(asleep_max, sim.num_asleep())
+        asleep_max = max(asleep_max, sim.num_asleep)
 t1 = time.time()
 
-ov = sim.max_overlap()
-gf = sim.get_growth_factor()
+ov = sim.max_overlap
+gf = sim.growth_factor
 p = np.asarray(sim.get_positions()).reshape(-1, 3).astype(np.float64)
 s = np.asarray(sim.get_scales()).astype(np.float64)
 p += half  # store in [0, box)

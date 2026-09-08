@@ -70,9 +70,9 @@ pos = np.array(pos[:N], np.float32)
 pos[:, :2] += np.random.default_rng(7).uniform(-0.01, 0.01, (N, 2)).astype(np.float32)
 
 d = dem.Simulation(int(1.15 * N) + 256)
-d.initialize_shape(shape_type=1, radius=rpc)
+d.initialize_shape('sphere', radius=rpc)
 d.set_domain((0, 0, 0), (NX, NY, NZ)); d.set_periodic(False, False, False)
-d.set_gravity(0, 0, -g_c)
+d.set_gravity((0, 0, -g_c))
 d.set_material_params(0.86, 0.0, 0.1)         # e_n = 0.86 (their Table 6); glass-glass friction 0.1
 d.set_dt(dt / 20)
 def wall(p):
@@ -85,7 +85,7 @@ d.set_solver_iterations(120, 4)
 t0 = time.time()
 nset = 12000                                  # 0.24 s of pure DEM settling (pour falls ~0.1 m)
 for _ in range(nset):
-    d.step(dt / 20)
+    d.step()
 pz = d.get_positions()[:N, 2]
 H0 = float(np.percentile(pz, 98)) * h_m
 print(f"settled in {time.time()-t0:.0f}s: H0 = {H0*100:.1f} cm (target 10, AR = 1.0)", flush=True)

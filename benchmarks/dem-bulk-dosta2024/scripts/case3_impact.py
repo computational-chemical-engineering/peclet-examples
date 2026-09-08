@@ -68,7 +68,7 @@ def main():
 
     sim = dem.Simulation(n)
     r0 = 0.001  # canonical radius; per-particle scale multiplies it
-    sim.set_sphere_shape(r0)
+    sim.initialize_shape('sphere', r0)
     sim.set_domain((XLO - 0.01, YLO - 0.01, ZLO - 0.01), (XHI + 0.01, YHI + 0.01, ZHI + 0.01))
     sim.set_periodic(False, False, False)
 
@@ -102,14 +102,15 @@ def main():
         ids[ball] = 1
         sim.set_material_ids(ids.tolist())
 
-    sim.set_gravity(0.0, 0.0, -G)
+    sim.set_gravity((0.0, 0.0, -G))
     sim.set_material_params(0.5, 0.0, 0.3)  # M1-M1
     sim.set_solver_iterations(args.iters[0], args.iters[1])
     sim.set_thermostat(0.0, 0.0)
+    sim.set_dt(args.dt)
     if args.jacobi:
-        sim.set_velocity_use_gs(False)
+        sim.diagnostics.set_velocity_solver('jacobi')
     if os.environ.get("NOSTAB"):
-        sim.set_stabilization(False)
+        sim.set_stabilization('off')
     if args.hertz:
         sim.set_hertz_material(0, 1.0e9, 0.2)    # M1 bed
         sim.set_hertz_material(1, 210.0e9, 0.2)  # steel ball + walls
@@ -127,9 +128,9 @@ def main():
             zs.append(z)
         if i < nsteps:
             if args.hertz:
-                sim.step_hertz(args.dt, min(rec_every, nsteps - i))
+                sim.step_hertz(min(rec_every, nsteps - i))
             else:
-                sim.step(args.dt)
+                sim.step()
     wall_s = time.perf_counter() - t0
 
     out = args.out or f"case3_{args.n}k_peclet{'_jac' if args.jacobi else ''}.npz"

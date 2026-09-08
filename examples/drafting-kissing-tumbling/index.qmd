@@ -122,8 +122,8 @@ def run(DH, steps_max=4000, offset=0.005, adv_scheme=1):
     ma = 2.0 * Vp                                                   # virtual-mass stabiliser (settling page)
     I = 0.4 * m * (DH / 2) ** 2
     d = pdem.Simulation(8)
-    d.set_gravity(0.0, 0.0, 0.0)
-    d.set_sphere_shape(DH / 2)
+    d.set_gravity((0.0, 0.0, 0.0))
+    d.initialize_shape('sphere', DH / 2); d.set_dt(dt / 10)
     d.set_positions(np.array([p1, p2], dtype=np.float32))
     d.set_inv_mass(np.array([1.0 / (m + ma)] * 2, dtype=np.float32))
     d.set_inv_inertia(np.array([[1.0 / I] * 3] * 2, dtype=np.float32))
@@ -143,7 +143,7 @@ def run(DH, steps_max=4000, offset=0.005, adv_scheme=1):
         F += ma * a_prev
         d.set_external_forces(F.astype(np.float32)); d.set_external_torques(T.astype(np.float32))
         for _ in range(10):
-            d.step(dt / 10)
+            d.step()
         Vn = np.asarray(d.get_velocities()).astype(float)
         a_prev = (Vn - V) / dt
         gap = np.linalg.norm(P[1] - P[0]) - DH                         # surface-to-surface
