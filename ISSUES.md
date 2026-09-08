@@ -564,7 +564,7 @@ inside `step()` when β ≤ 0. Full matrix on the merged tree: `tests/kokkos` 36
   (41 -> 29 k/s as the head drops; Torricelli-like) at +35% mean rate.
 - **Expected:** friction-supported orifice arch => head-independent Beverloo rate (23-25 k/s,
   large/small ratio 3.1); reference-amplitude drum oscillation.
-- **Repro:** scripts/case1_silo.py with PECLET_DEM_SYMMETRIC_PGS=1; scripts/case2_mixer.py.
+- **Repro:** scripts/case1_silo.py (formerly "with PECLET_DEM_SYMMETRIC_PGS=1" — never read by dem, so the default solver); scripts/case2_mixer.py.
 - **Notes:** velocity-level friction needs the accumulated per-contact tangential impulse
   clamped against mu*lambda_n (sequential impulse) to hold static shear.
 

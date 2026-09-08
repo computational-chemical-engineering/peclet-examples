@@ -15,6 +15,10 @@
 #   incr. colour  - warm-started contact colouring carried across substeps by contact key.
 #                   PECLET_DEM_NO_INCR_COLOR=1 forces a full recolour every substep.
 #
+# NOTE (2026-09-08): historical record of a closed investigation (materialId OOB, fixed). The env
+# kill-switches below became setters in dem 1.0.0: set_cuda_graphs(False), set_fused_sweeps('off'|'on'),
+# set_incremental_coloring(False) — this script would need pack_bed.py flags to run again.
+#
 # All runs: the known-failing 32^3 phi=0.50 seed=108 config, stock build_cuda.
 # Decision table printed at the end. Each run ~15 s.
 #

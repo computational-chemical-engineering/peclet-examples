@@ -1,5 +1,8 @@
 #!/bin/bash
 # peclet-dem production accuracy runs (sequential on GPU).
+# NOTE (2026-09-08): these runs used to prefix PECLET_DEM_SYMMETRIC_PGS=1. No version of
+# peclet.dem ever read that variable, so every recorded run is the DEFAULT solver; the
+# variable was dropped (dem 1.0.0 has no numerics-changing env vars — use the setters).
 set -u
 cd ~/Codes/dem-bench/peclet
 PY=/home/frankp/Codes/suite/dem/.venv/bin/python
@@ -7,7 +10,7 @@ EXP=/home/frankp/Codes/dem-bench/dem-exp/build
 
 echo "== case3 sym-PGS 50k/100k =="
 for n in 50 100; do
-  PECLET_DEM_SYMMETRIC_PGS=1 PYTHONPATH=$EXP $PY case3_impact.py --n $n \
+  PYTHONPATH=$EXP $PY case3_impact.py --n $n \
     --out case3_${n}k_peclet_sympgs.npz 2>&1 | tail -2
 done
 
@@ -27,13 +30,13 @@ done
 
 echo "== case1 silo full 5 s: symmetric PGS (large/M1 + small/M1) =="
 for o in large small; do
-  PECLET_DEM_SYMMETRIC_PGS=1 PYTHONPATH=$EXP $PY case1_silo.py --orifice $o --mat M1 \
+  PYTHONPATH=$EXP $PY case1_silo.py --orifice $o --mat M1 \
     --tend 5.0 --out case1_${o}_M1_sympgs.npz 2>&1 | tail -1
 done
 
 echo "== case2 drum 5 s: both configs (approximated single pair material) =="
 PYTHONPATH=$EXP $PY case2_mixer.py --out case2_peclet_onesided.npz 2>&1 | tail -2
-PECLET_DEM_SYMMETRIC_PGS=1 PYTHONPATH=$EXP $PY case2_mixer.py \
+PYTHONPATH=$EXP $PY case2_mixer.py \
   --out case2_peclet_sympgs.npz 2>&1 | tail -2
 
 echo "ALL PECLET PRODUCTION DONE"

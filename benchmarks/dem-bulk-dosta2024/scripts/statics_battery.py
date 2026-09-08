@@ -11,7 +11,9 @@ B. POUR-COLLAPSE: the same inventory poured violently (released from height,
    z95 ~ lattice-bed height (the old count-averaged solver jammed at ~55-65%
    of it with deep overlaps), max pair overlap -> ~0.
 
-Run with the default solver and with PECLET_DEM_SYMMETRIC_PGS=1 to compare the
+Historically run "with the default solver and with PECLET_DEM_SYMMETRIC_PGS=1" to compare the
+(NOTE 2026-09-08: that variable was never read by peclet.dem, so both variants were the default
+solver; the env switch is gone — dem 1.0.0 exposes solver choices as setters)
 one-sided branch against pure symmetric warm-started PGS + cone friction.
 """
 import argparse
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["column", "pour", "both"], default="both")
     args = ap.parse_args()
-    tag = "SYM" if os.environ.get("PECLET_DEM_SYMMETRIC_PGS") else "DEFAULT"
+    tag = "DEFAULT"  # the former "SYM" (env PECLET_DEM_SYMMETRIC_PGS) variant was a no-op
     print(f"== statics battery ({tag}) ==")
     if args.mode in ("column", "both"):
         run("column")
