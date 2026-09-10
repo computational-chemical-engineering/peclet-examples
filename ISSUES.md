@@ -177,7 +177,8 @@ the pointwise one on both backends and the entry stays closed.
 - **Status:** RESOLVED (flow `src/flow_ibm.hpp`) — the core blocker (c) is fixed; a
   no-slip immersed body in an inflow/outflow domain now runs stably. See "Resolution" below.
 - **Package / area:** flow — an immersed SDF body (`set_solid`) together with
-  inflow/outflow domain BCs (`set_domain_bc` type 2/3). The suite has never exercised
+  inflow/outflow domain BCs (`set_domain_bc` type 2/3). [1.0.0: `set_domain_bc` takes
+  string types now — 2/3 are `'inflow'`/`'outflow'`.] The suite has never exercised
   this combination (immersed solids use periodic/body-force; inflow/outflow cases —
   channel, BFS — use `set_pressure_geometry` with NO immersed solid). This is the
   "inflow/outflow issue" to repair in `peclet.flow`.
@@ -820,7 +821,8 @@ is now measured false and needs rewriting before the new numbers are published.*
 - **Observed:** the Hysing et al. (IJNMF 60:1259, 2009) rising-bubble benchmark prescribes
   **free-slip** side walls (and no-slip top/bottom). `flow`'s `set_domain_bc` offers
   0 periodic / 1 wall (no-slip) / 2 inflow / 3 outflow — there is no free-slip (symmetry)
-  type, so the prescribed lateral condition cannot be imposed.
+  type, so the prescribed lateral condition cannot be imposed. [1.0.0: these are now the
+  strings `'periodic'`/`'wall'`/`'inflow'`/`'outflow'`/`'slip'`.]
 - **Expected:** a symmetry/free-slip domain BC (zero normal velocity, zero normal gradient of
   the tangential components), which is the standard companion of no-slip in any benchmark suite.
 - **Workaround used (and why it is exact for case 1):** the page runs with **periodic** sides.
@@ -841,7 +843,8 @@ is now measured false and needs rewriting before the new numbers are published.*
   0.54 % of the exact root — but it is the same missing boundary type, and the drop case avoids
   it only by being fully periodic.
 
-**Update 2026-09-04 — implemented (flow `e6c2c4e`).** `set_domain_bc(face, 4)` is a free-slip /
+**Update 2026-09-04 — implemented (flow `e6c2c4e`).** `set_domain_bc(face, 4)` [1.0.0:
+`set_domain_bc(face, 'slip')`] is a free-slip /
 symmetry plane: zero normal velocity, zero normal derivative of the tangential components,
 pressure Neumann like a wall (`vx/vy/vz` ignored). Staggered: the normal component is the
 no-slip treatment with wall velocity 0, the tangential ghost the *even* reflection (or a
@@ -1045,7 +1048,7 @@ every metric; the five verify scripts PASS.
   operator. Byte-identical when no contact angle is set.
 - **Package / area:** flow (VoF wetting — the solid-band fill runs on the SDF classification only)
 - **Found in:** examples/droplet-wetting (while choosing how to model the wall)
-- **Observed:** `set_domain_bc(face, 1)` gives a no-slip domain wall, but the θ-consistent band
+- **Observed:** `set_domain_bc(face, 1)` [1.0.0: `set_domain_bc(face, 'wall')`] gives a no-slip domain wall, but the θ-consistent band
   fill only ever runs on cells classified solid by the SDF geometry. A solver with a domain-BC
   wall and a `set_contact_angle(theta)` call therefore keeps the zero-gradient (90°) `clampFill`
   colour extrapolation on that face — no error, no warning, no diagnostic: the θ field is simply
