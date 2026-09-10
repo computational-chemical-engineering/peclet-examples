@@ -25,7 +25,7 @@ pressure projection**:
 - the **aperture cut-cell** scheme (default): the incompressibility constraint uses the
   fluid *area fraction* of every cut face (finite-volume flux throttling), solved by a
   symmetric multigrid-preconditioned CG;
-- the **directional ghost-cell** scheme (`set_ghost_projection(True, 1, 2)`): a
+- the **directional ghost-cell** scheme (`diagnostics.set_ghost_projection(True, 1, 2)`): a
   point-based finite-difference divergence whose solid faces are closed by the same
   wall-anchored quadratics the momentum IBM uses, solved by multigrid-preconditioned
   BiCGStab. One consistent finite-difference family for no-slip, pressure force and
@@ -91,7 +91,7 @@ K_ZH  = 4.292                    # Zick & Homsy (1982), simple cubic, at PHI0
 CENTRE = [(0.5, 0.5, 0.5)]       # one sphere per period, cell-centred
 
 # the ghost projection ships with peclet-flow > 0.1 wheels; degrade gracefully on older ones
-HAS_GHOST = hasattr(flow.Solver(4, 4, 4), "set_ghost_projection")
+HAS_GHOST = hasattr(flow.Solver(4, 4, 4).diagnostics, "set_ghost_projection")
 print("ghost projection available:", HAS_GHOST)
 ```
 
@@ -129,18 +129,18 @@ def drag(SolverCls, N, ghost=False, phi=PHI0, centres=CENTRE, mu=0.1, F=1e-3,
     s = SolverCls(N, N, N)
     s.set_rho(1.0); s.set_mu(mu); s.set_dt(dt)
     s.set_body_force(F, 0, 0); s.set_advection(False)     # Stokes: inertia off
-    s.set_velocity_solver_params(150)
+    s.diagnostics.set_velocity_solver_params(150)
     s.set_pressure_multigrid(True, levels=max(2, int(np.log2(N)) - 1))
     s.set_pressure_pcg(True, 200, 1e-8)
     if ghost:
-        s.set_ghost_projection(True, 1, 2)   # (matrix, rhs) closure orders: the mixed default
+        s.diagnostics.set_ghost_projection(True, 1, 2)   # (matrix, rhs) closure orders: the mixed default
     s.set_solid(sdf, cutcell_pressure=True)
 
     prev, warm, um, pit, t0 = 0.0, None, [], [], time.time()
     for it in range(max_steps):
         s.step()
         um.append(float(s.get_u().mean()))            # rolling history of <u>
-        pit.append(int(s.last_pressure_iterations()))
+        pit.append(int(s.diagnostics.last_pressure_iterations()))
         if warm is None:                              # still relaxing to steady state
             if it % 10 == 9:
                 if it > 10 and abs(um[-1] - prev) < warm_tol * (abs(um[-1]) + 1e-30):
@@ -289,7 +289,7 @@ real differences are elsewhere:
   over-predict permeability (staggered: +27/+18/+14% vs the aperture reference at
   $N_g$=32/44/56) and their fluid graph fragments (a built-in guard decouples the
   pockets), with BiCGStab counts rising to 30–44. There the aperture cut-cell remains
-  the right tool — on the collocated grid as the `set_face_interp(9)` hybrid, which
+  the right tool — on the collocated grid as the `set_collocated_scheme('gauge-exact')` hybrid, which
   keeps the aperture constraint but adopts the ghost scheme's directional pressure
   gradient (the collocated cut-cell's first-order culprit), converging monotonically
   toward the staggered reference where the plain collocated cut-cell is erratic.
@@ -318,7 +318,7 @@ real differences are elsewhere:
   projection is the accuracy king on either placement (and the only second-order
   option on the collocated grid). For **under-resolved tight-throat porous media**
   (random packings near close packing): use the aperture cut-cell — `flow.Solver`
-  default on the staggered grid, `set_face_interp(9)` on the collocated grid. The
+  default on the staggered grid, `set_collocated_scheme('gauge-exact')` on the collocated grid. The
   staggered `flow.Solver` remains the production default for permeability work.
 
 ## Adapt this yourself
@@ -326,7 +326,7 @@ real differences are elsewhere:
 - **Change the solid fraction.** Raise `PHI0` toward close packing ($\phi_\max=\pi/6$
   for simple cubic) and update `K_ZH` from the Zick & Homsy table (see the
   [Zick–Homsy example](../../examples/zick-homsy/index.qmd)).
-- **Flip the closure orders.** `set_ghost_projection(True, 2, 2)` uses the full
+- **Flip the closure orders.** `diagnostics.set_ghost_projection(True, 2, 2)` uses the full
   quadratic (13-point, nonsymmetric) matrix; `(1, 2)` — the default here — keeps a
   7-point near-symmetric matrix with the second-order constraint in the right-hand
   side, converging through the time stepping. Same steady drag to 3 decimals, flatter

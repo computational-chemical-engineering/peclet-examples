@@ -175,7 +175,7 @@ class Health:
     def __init__(self, cap=PRESS_CAP):
         self.cap, self.iters, self.div, self.capped = cap, 0, 0.0, 0
     def sample(self, s):
-        it = s.last_pressure_iterations()
+        it = s.diagnostics.last_pressure_iterations()
         self.iters = max(self.iters, it)
         self.capped += int(it >= self.cap)
         self.div = max(self.div, s.max_open_divergence_projected())
@@ -313,11 +313,11 @@ def doublet(theta_deg, ca, slip=0.0, wall_shift=WALL_SHIFT, trace=False, max_ste
     every = max(steps // 120, 5)
     s = flow.Solver(NX, NY, NZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.1)
-    s.set_domain_bc(0, 2, U, 0.0, 0.0)          # -x inflow at the fixed superficial velocity
-    s.set_domain_bc(1, 3, 0.0, 0.0, 0.0)        # +x outflow
-    s.set_domain_bc(4, 1, 0.0, 0.0, 0.0)        # +-z walls, buried in the solid
-    s.set_domain_bc(5, 1, 0.0, 0.0, 0.0)
-    s.set_velocity_solver_params(20)
+    s.set_domain_bc('-x', 'inflow', U, 0.0, 0.0)          # -x inflow at the fixed superficial velocity
+    s.set_domain_bc('+x', 'outflow', 0.0, 0.0, 0.0)        # +x outflow
+    s.set_domain_bc('-z', 'wall', 0.0, 0.0, 0.0)        # +-z walls, buried in the solid
+    s.set_domain_bc('+z', 'wall', 0.0, 0.0, 0.0)
+    s.diagnostics.set_velocity_solver_params(20)
     s.set_pressure_multigrid(True, levels=5)
     s.set_pressure_solver_params(80)
     s.set_solid(SDF_D if wall_shift == WALL_SHIFT else doublet_sdf(wall_shift),
@@ -336,11 +336,11 @@ def doublet(theta_deg, ca, slip=0.0, wall_shift=WALL_SHIFT, trace=False, max_ste
     # THE DRIVER IS SELECTED LAST: set_property_model("rho", ...) fires set_density_mode, which
     # reselects Chebyshev and silently discards an earlier choice.
     s.set_pressure_fcg(True, PRESS_CAP, 1e-8)
-    s.set_vof_inflow(0, 1.0)                    # liquid enters
-    s.set_vof_backflow(1, 0.0)                  # gas backflow at the outlet (inletOutlet)
+    s.set_vof_inflow('-x', 1.0)                    # liquid enters
+    s.set_vof_backflow('+x', 0.0)                  # gas backflow at the outlet (inletOutlet)
 
-    eps = np.asarray(s.vof_geometry(0))
-    sand = tuple(s.wall_slip_sandwich_cells()) if slip > 0.0 else None
+    eps = np.asarray(s.diagnostics.vof_geometry(0))
+    sand = tuple(s.diagnostics.wall_slip_sandwich_cells()) if slip > 0.0 else None
     h, hist, tr = Health(), [], []
     bt, ncfl, t, n, err = {"narrow": None, "wide": None}, 0, 0.0, 0, None
     t0 = time.time()
@@ -713,9 +713,9 @@ def packing(theta_deg, ca=1e-3, step_cap=STEP_CAP, after=0.25, every=100):
     U = ca * SIGMA / MU_L
     s = flow.Solver(PNX, PNY, PNZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.05)
-    s.set_domain_bc(4, 2, 0.0, 0.0, U)          # -z inflow (liquid), x/y periodic
-    s.set_domain_bc(5, 3, 0.0, 0.0, 0.0)        # +z outflow
-    s.set_velocity_solver_params(20)
+    s.set_domain_bc('-z', 'inflow', 0.0, 0.0, U)          # -z inflow (liquid), x/y periodic
+    s.set_domain_bc('+z', 'outflow', 0.0, 0.0, 0.0)        # +z outflow
+    s.diagnostics.set_velocity_solver_params(20)
     s.set_pressure_multigrid(True, levels=5)
     s.set_pressure_solver_params(80)
     s.set_solid(SDF_P, cutcell_pressure=True)
@@ -728,9 +728,9 @@ def packing(theta_deg, ca=1e-3, step_cap=STEP_CAP, after=0.25, every=100):
     s.set_surface_tension(SIGMA); s.set_capillary_cfl(CAP_CFL)
     s.set_contact_angle(theta_deg)
     s.set_pressure_fcg(True, PRESS_CAP, 1e-8)
-    s.set_vof_inflow(4, 1.0); s.set_vof_backflow(5, 0.0)
+    s.set_vof_inflow('-z', 1.0); s.set_vof_backflow('+z', 0.0)
 
-    eps = np.asarray(s.vof_geometry(0))
+    eps = np.asarray(s.diagnostics.vof_geometry(0))
     pore = float(eps[:, :, KLO:KHI].sum())
     h, hist, bt, t, n, stop, err = Health(), [], None, 0.0, 0, None, None
     ncfl, t0 = 0, time.time()
@@ -947,8 +947,8 @@ def micromodel(theta_deg, ca=1e-3, pv_stop=0.10, step_cap=STEP_CAP, every=60):
     U = ca * SIGMA / MU_L
     s = flow.Solver(MNX, MNY, MNZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.05)
-    s.set_domain_bc(0, 2, U, 0.0, 0.0); s.set_domain_bc(1, 3, 0.0, 0.0, 0.0)
-    s.set_velocity_solver_params(20)
+    s.set_domain_bc('-x', 'inflow', U, 0.0, 0.0); s.set_domain_bc('+x', 'outflow', 0.0, 0.0, 0.0)
+    s.diagnostics.set_velocity_solver_params(20)
     s.set_pressure_multigrid(True, levels=5); s.set_pressure_solver_params(80)
     s.set_solid(SDF_M, cutcell_pressure=True)
     s.enable_vof()
@@ -960,9 +960,9 @@ def micromodel(theta_deg, ca=1e-3, pv_stop=0.10, step_cap=STEP_CAP, every=60):
     s.set_surface_tension(SIGMA); s.set_capillary_cfl(CAP_CFL)
     s.set_contact_angle(theta_deg)
     s.set_pressure_fcg(True, PRESS_CAP, 1e-8)
-    s.set_vof_inflow(0, 1.0); s.set_vof_backflow(1, 0.0)
+    s.set_vof_inflow('-x', 1.0); s.set_vof_backflow('+x', 0.0)
 
-    eps = np.asarray(s.vof_geometry(0)); arr = slice(int(X_IN), int(X_BT))
+    eps = np.asarray(s.diagnostics.vof_geometry(0)); arr = slice(int(X_IN), int(X_BT))
     pore = float(eps[arr].sum())
     h, hist, t, n, bt, err = Health(), [], 0.0, 0, None, None
     ncfl, t0 = 0, time.time()

@@ -219,11 +219,11 @@ def run_zalesak(steps=STEPS_ZAL, cfl_cap=0.5, C0=C0_zal):
     s.set_vof(C0)
     s.set_state(u, v, w)
     s.set_vof_cfl_limit(cfl_cap)
-    d0, div, cfl = s.vof_diagnostics(), s.max_open_divergence(), 0.0
+    d0, div, cfl = s.diagnostics.vof_diagnostics(), s.max_open_divergence(), 0.0
     for _ in range(steps):
         s.advect_vof(1.0)
-        cfl = max(cfl, s.vof_last_courant())
-    d1, C1 = s.vof_diagnostics(), s.get_vof()
+        cfl = max(cfl, s.diagnostics.vof_last_courant())
+    d1, C1 = s.diagnostics.vof_diagnostics(), s.get_vof()
     l1 = np.abs(C1 - C0).sum()
     return dict(C=C1, l1=l1, rel=l1 / C0.sum(), E1=l1 / (NX * NY * NZ), cfl=cfl, div=div,
                 drift=(d1["sum"] - d0["sum"]) / d0["sum"],
@@ -378,7 +378,7 @@ def run_leveque(n, snapshots=()):
     s.set_rho(1.0); s.set_mu(1.0); s.set_dt(dt)
     s.set_pressure_geometry(np.full((n, n, n), 10.0, order="F"))
     s.enable_vof(); s.set_vof(C0)
-    d0, worst, divmax, snaps = s.vof_diagnostics(), 0.0, 0.0, {}
+    d0, worst, divmax, snaps = s.diagnostics.vof_diagnostics(), 0.0, 0.0, {}
     for st in range(steps):
         ph = np.cos(PI * (st + 0.5) * dt / T_LV)               # MIDPOINT phase: symmetric reversal
         s.set_state(*(np.asfortranarray(a * ph) for a in (u1, v1, w1)))
@@ -386,11 +386,11 @@ def run_leveque(n, snapshots=()):
             divmax = max(divmax, s.max_open_divergence())
         s.advect_vof(dt)
         if (st + 1) % (steps // 8) == 0:
-            d = s.vof_diagnostics()
+            d = s.diagnostics.vof_diagnostics()
             worst = max(worst, abs(d["sum"] - d0["sum"]) / d0["sum"])
         if (st + 1) in snapshots:
             snaps[st + 1] = s.get_vof().copy()
-    d1, C1 = s.vof_diagnostics(), s.get_vof()
+    d1, C1 = s.diagnostics.vof_diagnostics(), s.get_vof()
     l1 = np.abs(C1 - C0).sum()
     return dict(n=n, steps=steps, l1vol=l1 / n**3, rel=l1 / C0.sum(), div=divmax,
                 drift=max(worst, abs(d1["sum"] - d0["sum"]) / d0["sum"]),
@@ -528,10 +528,10 @@ print(f"discrete curl of @eq-potential:  max|div(open u)| = {s.max_open_divergen
 
 # And what the guard is actually protecting you from, measured by disabling it:
 s = probe(geometry=False)             # no cut-cell operator => max_open_divergence() is 0 by fiat
-v0 = s.vof_diagnostics()["sum"]
+v0 = s.diagnostics.vof_diagnostics()["sum"]
 for _ in range(50):
     s.advect_vof(3.75e-3)
-LOSS = (s.vof_diagnostics()["sum"] - v0) / v0
+LOSS = (s.diagnostics.vof_diagnostics()["sum"] - v0) / v0
 print(f"\nsame field, guard inert (no pressure geometry): {100*LOSS:+.2f} % of the liquid "
       f"volume in 50 steps")
 ```
@@ -588,7 +588,7 @@ s.set_state(*(np.asfortranarray(np.full((32, 32, 32), c)) for c in (1.0, 0.0, 0.
 print(f"default cap = {s.vof_cfl_limit()}   (Weymouth's 3-D bound 1/(2(N-1)))")
 for dt in (0.25, 0.26):
     try:
-        s.advect_vof(dt); print(f"  dt = {dt}: ran, interface Courant {s.vof_last_courant():.2f}")
+        s.advect_vof(dt); print(f"  dt = {dt}: ran, interface Courant {s.diagnostics.vof_last_courant():.2f}")
     except RuntimeError as e:
         print(f"  dt = {dt}: refused — {str(e)[:96]}")
 ```
@@ -631,7 +631,7 @@ interface Courant number starts at 0.254 and reaches
 `{python} f"{zal['cfl']:.3f}"`, which is the *global* maximum: that is why this
 page raises the cap to 0.5 for a case whose interface never exceeds 0.255. The
 surface-tension path already guards its interfacial predicate with
-`set_vof_interface_eps`; the Courant band has no such guard yet.
+`diagnostics.set_vof_interface_eps`; the Courant band has no such guard yet.
 :::
 
 ## 5. Through an immersed solid
@@ -646,7 +646,7 @@ $\varepsilon^{\rm eff} = \max(\varepsilon, 1/64)$ — the floor matters, because
 $\varepsilon$ is built by $4^3$ subsampling and a cell can read $\varepsilon=0$
 while still owning an open face. Such a cell is fluid, it receives flux, and the
 naive $\sum\varepsilon C$ would silently drop whatever lands in it;
-`vof_diagnostics()` reports both (`volume` and `raw_volume`).
+`diagnostics.vof_diagnostics()` reports both (`volume` and `raw_volume`).
 
 The test is the one the solver's own gate battery uses: run the single-phase
 solver to a Stokes steady state through a periodic array of four spheres, **freeze
@@ -678,21 +678,21 @@ s.set_body_force(2e-3, 1e-3, 5e-4)
 s.set_solid(PACK, cutcell_pressure=True)
 iters = 0
 for _ in range(60):
-    s.step(); iters = max(iters, s.last_pressure_iterations())
+    s.step(); iters = max(iters, s.diagnostics.last_pressure_iterations())
 DIV_PACK = s.max_open_divergence()
 
 s.enable_vof()
 C0_pack = np.zeros((NPK, NPK, NPK), order="F"); C0_pack[:, :, :NPK // 2] = 1.0
 s.set_vof(C0_pack)
-d0 = s.vof_diagnostics()
+d0 = s.diagnostics.vof_diagnostics()
 dt_pack = 0.2 / s.vof_max_courant()                 # interface Courant 0.2, CUT-CELL rule
 clip, solid, mn, mx = 0.0, 0.0, 1e30, -1e30
 for _ in range(500):
     s.advect_vof(dt_pack)
-    d = s.vof_diagnostics()
+    d = s.diagnostics.vof_diagnostics()
     clip += d["clipped_volume"]; solid = max(solid, abs(d["solid_sum"]))
     mn, mx = min(mn, d["min_fluid"]), max(mx, d["max_fluid"])
-d1, C_pack = s.vof_diagnostics(), s.get_vof()
+d1, C_pack = s.diagnostics.vof_diagnostics(), s.get_vof()
 DRIFT_PACK = (d1["volume"] - d0["volume"]) / d0["volume"]
 
 print(f"{NPK}^3 packing: {d1['solid_cells']} solid cells, {d1['cut_cells']} cut cells;"
@@ -815,18 +815,18 @@ def leveque_colocated(n=32):
         s.set_pressure_geometry(sdf)
         s.enable_vof(); s.set_vof(C0)
     co.set_pressure_chebyshev(True, 500, 1e-14)
-    d0, iters, div, dC = co.vof_diagnostics(), 0, 0.0, 0.0
+    d0, iters, div, dC = co.diagnostics.vof_diagnostics(), 0, 0.0, 0.0
     for i in range(steps):
         ph = np.cos(PI * (i + 0.5) * dt / T_LV)                  # the same midpoint phase
         co.set_state(*(np.asfortranarray(a * ph) for a in (uc, vc, wc)))
         co.step()                                                # projects -> uf/vf/wf, advects C
-        iters = max(iters, co.last_pressure_iterations())
+        iters = max(iters, co.diagnostics.last_pressure_iterations())
         div = max(div, co.max_open_divergence())
         st.set_state(co.get_uf(), co.get_vf(), co.get_wf())      # the SAME face field
         st.advect_vof(dt)
         if (i + 1) % 100 == 0 or i + 1 == steps:
             dC = max(dC, float(np.abs(co.get_vof() - st.get_vof()).max()))
-    d1, C1 = co.vof_diagnostics(), co.get_vof()
+    d1, C1 = co.diagnostics.vof_diagnostics(), co.get_vof()
     l1 = np.abs(C1 - C0).sum()
     return dict(n=n, steps=steps, l1vol=l1 / n**3, rel=l1 / C0.sum(), div=div, iters=iters,
                 drift=(d1["sum"] - d0["sum"]) / d0["sum"], dC=dC, cap=500)
