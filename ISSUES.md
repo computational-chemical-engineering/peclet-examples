@@ -56,8 +56,9 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   measure exists to avoid. The run therefore needs `set_vof_cfl_limit(0.5)` even though the
   interface itself never exceeds 0.255, and the ctest does the same thing for the same reason.
 - **Expected:** the band predicate uses a wisp threshold, the way the interfacial predicate
-  already does (`set_vof_interface_eps`, default 1e-8, added for the curvature cascade at V3).
+  already does (`set_vof_interface_eps` [1.0.0: `diagnostics.set_vof_interface_eps`], default 1e-8, added for the curvature cascade at V3).
 - **Repro:** the `zalesak-run` cell of the page; print `s.vof_last_courant()` each step.
+  [1.0.0: `s.diagnostics.vof_last_courant()`.]
 - **Notes:** conservative in the safe direction (it over-estimates), so it is a usability defect
   rather than a correctness one — but it silently converts a legitimate benchmark setup into a
   throw, and `vof_max_courant()` (which uses the same predicate on the CURRENT field) will size a
@@ -1144,11 +1145,12 @@ Re 30, step by step — the moving-geometry path is Galilean-consistent at finit
   s.set_rho(1.0); s.set_mu(0.1)
   s.set_pressure_geometry(np.full((32, 32, 32), 10.0, order="F"))
   s.enable_vof()
-  s.vof_geometry(0)          # RuntimeError
+  s.vof_geometry(0)          # RuntimeError  [1.0.0: s.diagnostics.vof_geometry(0)]
   s.vof_has_geometry()       # False  <- the predicate that has to guard it
   ```
 - **Notes:** the workaround used on the page is
-  `eps = np.asarray(s.vof_geometry(0)) if s.vof_has_geometry() else np.ones(shape)`. This is the
+  `eps = np.asarray(s.vof_geometry(0)) if s.vof_has_geometry() else np.ones(shape)`
+  [1.0.0: `s.diagnostics.vof_geometry(0)`]. This is the
   same family as the `max_open_divergence()`-returns-0-without-geometry entry above: the
   cut-cell diagnostics are silently or loudly absent on an all-fluid solver, and each one has a
   different failure mode (one returns a wrong number, the other raises).
