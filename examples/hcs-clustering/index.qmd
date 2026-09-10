@@ -152,7 +152,7 @@ def dem_box(P, v, e):
 t_dry, T_dry = runs[0.9]
 P, v = init(); d = dem_box(P, v, 0.9)
 s = flow.Solver(int(L), int(L), int(L)); s.set_rho(rho_g); s.set_mu(mu_g); s.set_dt(dt)
-for f in range(6): s.set_domain_bc(f, 0)           # all periodic
+for face in ('-x', '+x', '-y', '+y', '-z', '+z'): s.set_domain_bc(face, 'periodic')  # all periodic
 s.set_pressure_pcg(True, 30, 1e-6)
 cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_g, rho=rho_g, radius=rp, drag="tang",
              dem_substeps=20, periodic=(True, True, True), move_particles=True)
@@ -341,7 +341,7 @@ read off them. What the gas–solid run on this page matches, item by item:
 - **Fluid.** A volume-averaged incompressible gas: MFIX-Exa advects with the superficial velocity
   ε·**u** and projects ∇·(ε**u**) = 0, with ε in all fluxes. Our run enforces the same constraint
   (the ∂ε/∂t term of the averaged continuity is optional in both codes and off in both runs — in
-  MFIX-Exa by default, "under development"; here via `set_porous_deps_dt(False)`). The momentum is
+  MFIX-Exa by default, "under development"; here via `diagnostics.set_porous_deps_dt(False)`). The momentum is
   advanced in its **ε-conservative form** — ερ(∂u/∂t + u·∇u) with the projection pair derived from
   the same inertia (the flux ε cancels the inertia ε in the Poisson coefficients). This is not a
   detail: with a plain-u momentum the projection drags gas along with the moving porosity at zero

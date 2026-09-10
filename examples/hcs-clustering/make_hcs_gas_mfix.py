@@ -51,7 +51,7 @@ d.set_domain((0, 0, 0), (Lx, Ly, Lz)); d.set_periodic(True, True, True)
 d.set_gravity((0, 0, 0)); d.set_material_params(e, 0.0, 0.0); d.set_solver_iterations(6, 4); d.set_dt(dt)
 d.set_positions(np.c_[P, np.full(N, 1.0/m_p, np.float32)]); d.set_velocities(v)
 s = flow.Solver(Lx//2, Ly//2, Lz//2); s.set_rho(rho_g); s.set_mu(mu_g); s.set_dt(dt)  # Delta* = 2
-for f in range(6): s.set_domain_bc(f, 0)     # all periodic
+for face in ('-x', '+x', '-y', '+y', '-z', '+z'): s.set_domain_bc(face, 'periodic')  # all periodic
 s.set_pressure_pcg(True, 30, 1e-6)
 cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_g, rho=rho_g, radius=rp, drag="tang",
              dem_substeps=1, periodic=(True, True, True), move_particles=True, porous=True)
@@ -61,7 +61,7 @@ cpl = CfdDem(s, d, fluid_dt=dt, mu=mu_g, rho=rho_g, radius=rp, drag="tang",
 # with the term on, the measured particle T/T0 ROSE ~3x past the clustering plateau (no physical
 # energy source exists) while the MFIX benchmark curve decays. (CfdDem enables porous continuity
 # in its constructor, so set this AFTER building the coupler.)
-s.set_porous_deps_dt(False)
+s.diagnostics.set_porous_deps_dt(False)
 
 ts, Trat, ci = [0.0], [1.0], [cidx(P)]
 snaps = {1000: None, 2000: None, 3000: None, 5000: None, 10000: None}
