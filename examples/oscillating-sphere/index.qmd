@@ -105,7 +105,7 @@ def solver(n, r, dt, u_init):
     s = sdflow.Solver(n, n, n)
     s.set_rho(RHO); s.set_mu(MU); s.set_dt(dt)
     s.set_advection(False)                                     # exact in the linearised limit
-    s.set_velocity_solver_params(100)
+    s.diagnostics.set_velocity_solver_params(100)
     s.set_pressure_solver_params(25)
     s.set_pressure_multigrid(True, levels=4)                   # depth >= 4: levels=1 is a 50x tax
     s.set_scene(node_ints, node_reals, inst_ints.ravel(), inst_reals.ravel(), periodic=True)
@@ -149,7 +149,7 @@ def _steady_lambda(n, r, f, dt, tol, maxit):
     """Fixed sphere, uniform body force; iterate to a genuinely steady mean velocity."""
     s = solver(n, r, dt, 0.0)
     s.set_body_force(f, 0.0, 0.0)
-    nc = s.fluid_momentum_cells()[0]
+    nc = s.diagnostics.fluid_momentum_cells()[0]
     prev, it = 0.0, 0
     while it < maxit:
         s.step(); it += 1
@@ -233,7 +233,7 @@ def _oscillate(n, r, delta, spp, nper, fitp):
     period = 2 * np.pi / om
     dt = period / spp
     s = solver(n, r, dt, U0)
-    nc = s.fluid_momentum_cells()[0]
+    nc = s.diagnostics.fluid_momentum_cells()[0]
     t, force, umean = [], [], []
     t0 = time.time()
     for it in range(spp * nper):
