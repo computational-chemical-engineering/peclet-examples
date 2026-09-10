@@ -142,8 +142,8 @@ s.set_rho(1.0)
 s.set_mu(nu)
 s.set_dt(dt)
 s.set_advection(True)
-s.set_advection_scheme(ADV)
-s.set_velocity_solver_params(VSWEEPS, VTOL)
+s.set_advection_scheme('sou' if ADV == 0 else 'koren')
+s.diagnostics.set_velocity_solver_params(VSWEEPS, VTOL)
 s.set_pressure_multigrid(True, MGLEVELS)
 if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
@@ -152,10 +152,10 @@ elif PRESSURE == "cheb":
 elif PRESSURE != "vcycle":
     raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|cheb|vcycle)")
 if WARMSTART:
-    s.set_pressure_warmstart(True)
+    s.diagnostics.set_pressure_warmstart(True)
 if GRAPHAMG:
-    s.set_pressure_graph_amg(True)  # takes effect at the geometry call below
-s.set_pressure_mean_removal(MEANSCOPE)
+    s.diagnostics.set_pressure_graph_amg(True)  # takes effect at the geometry call below
+s.diagnostics.set_pressure_mean_removal(MEANSCOPE)
 # all-fluid cut-cell pressure operator (no solids): the production projection path, all-periodic
 s.set_pressure_geometry(np.asfortranarray(np.full((lnx, lny, lnz), 1e30)))
 s.set_state(u0, v0, w0)
@@ -181,12 +181,12 @@ for istep in range(NSTEPS):
     s.step()
     if (istep + 1) % _hb == 0:
         p0(f"[run] step {istep + 1}/{NSTEPS}")
-    t = s.last_step_timers()
+    t = s.diagnostics.last_step_timers()
     for p in phases:
         acc[p].append(t[p])
     acc["pressure_allreduce_count"].append(t["pressure_allreduce_count"])
     acc.setdefault("momentum_sweeps", []).append(t["momentum_sweeps"])
-    iters.append(s.last_pressure_iterations())
+    iters.append(s.diagnostics.last_pressure_iterations())
 t1 = time.perf_counter()
 wall = world.allreduce(t1 - t0, op=MPI.MAX)
 

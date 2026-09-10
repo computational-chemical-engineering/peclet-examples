@@ -254,7 +254,7 @@ s.set_rho(RHO)
 s.set_mu(MU)
 s.set_dt(DT)
 s.set_advection(bool(ADV))
-s.set_velocity_solver_params(VSWEEPS, VRTOL)
+s.diagnostics.set_velocity_solver_params(VSWEEPS, VRTOL)
 if VMG > 0:
     s.set_velocity_multigrid(True, VMG, VMGCYCLES)  # before geometry: the hierarchy is built at set_solid
 if VRES >= 0:
@@ -282,15 +282,15 @@ HIER = [{"global": list(g), "ranks": r, "block0": list(b), "ratio": list(q), "te
 
 # Domain BCs (before geometry): west inlet, east outlet, four no-slip walls -- FoxBerry's map.
 if BCMODE == "foxberry":
-    s.set_domain_bc(0, 2, UIN, 0.0, 0.0)   # -x inflow
-    s.set_domain_bc(1, 3)                  # +x outflow
-    for f in (2, 3, 4, 5):
-        s.set_domain_bc(f, 1)              # y/z no-slip walls
+    s.set_domain_bc('-x', 'inflow', UIN, 0.0, 0.0)   # -x inflow
+    s.set_domain_bc('+x', 'outflow')                 # +x outflow
+    for f in ('-y', '+y', '-z', '+z'):
+        s.set_domain_bc(f, 'wall')         # y/z no-slip walls
 elif BCMODE == "walls":
     # Ablation: six no-slip walls (Neumann pressure everywhere), body-force driven -- separates
     # the wall/Neumann half of the BC hierarchy from the inflow/outflow (Dirichlet) half.
-    for f in range(6):
-        s.set_domain_bc(f, 1)
+    for f in ('-x', '+x', '-y', '+y', '-z', '+z'):
+        s.set_domain_bc(f, 'wall')
     s.set_body_force(float(os.environ.get("F", 1e-3)), 0.0, 0.0)
 else:
     # Ablation: fully periodic, body-force driven. Physics is NOT FoxBerry's -- this exists only
@@ -316,7 +316,7 @@ for i in range(WARMUP):
     t0 = time.perf_counter()
     s.step()
     p0(f"[run] warmup {i + 1}/{WARMUP} done ({time.perf_counter() - t0:.1f}s, "
-       f"{s.last_pressure_iterations()} pressure iters)")
+       f"{s.diagnostics.last_pressure_iterations()} pressure iters)")
 
 # ---- measured steps ---------------------------------------------------------------------------
 phases = ("step", "predictor", "momentum", "projection", "pressure_allreduce")
@@ -331,14 +331,14 @@ _hb = max(1, NSTEPS // 10)
 for istep in range(NSTEPS):
     s.step()
     if (istep + 1) % _hb == 0:
-        p0(f"[run] step {istep + 1}/{NSTEPS}  ({s.last_pressure_iterations()} pressure iters)")
-    t = s.last_step_timers()
+        p0(f"[run] step {istep + 1}/{NSTEPS}  ({s.diagnostics.last_pressure_iterations()} pressure iters)")
+    t = s.diagnostics.last_step_timers()
     for p in phases:
         acc[p].append(t[p])
     acc["pressure_allreduce_count"].append(t["pressure_allreduce_count"])
-    iters.append(s.last_pressure_iterations())
+    iters.append(s.diagnostics.last_pressure_iterations())
     msweeps.append(t.get("momentum_sweeps", -1))
-    mresid.append(float(s.last_momentum_residual()))
+    mresid.append(float(s.diagnostics.last_momentum_residual()))
 t1 = time.perf_counter()
 wall = world.allreduce(t1 - t0, op=MPI.MAX)
 stats = {}
