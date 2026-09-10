@@ -79,7 +79,7 @@ def make(N, DH, NU, y0):
     ii[0] = (sph, -1); ir[0, 0:3] = (x0, y0, x0); ir[0, 6] = 1.0; ir[0, 7] = 1.0
     s = sdflow.Solver(N, N, N)
     s.set_rho(1.0); s.set_mu(NU); s.set_dt(DT); s.set_advection(True)
-    s.set_velocity_solver_params(60); s.set_pressure_solver_params(20)
+    s.diagnostics.set_velocity_solver_params(60); s.set_pressure_solver_params(20)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(np.asarray(ni, np.int32), np.asarray(nr, float), ii.ravel(), ir.ravel(),
                 periodic=True)

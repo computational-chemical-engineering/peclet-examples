@@ -82,7 +82,7 @@ def solve_pipe(N, Rfrac=0.40, F=1e-3, mu=0.1, nx=6, dt=50.0, max_steps=400):
     s = flow.Solver(nx, N, N)
     s.set_rho(1.0); s.set_mu(mu); s.set_dt(dt)
     s.set_body_force(F, 0.0, 0.0)
-    s.set_velocity_solver_params(120)
+    s.diagnostics.set_velocity_solver_params(120)
     s.set_pressure_solver_params(1)              # axially uniform -> projection is a no-op
     s.set_solid(sdf, cutcell_pressure=False)
     prev = 0.0

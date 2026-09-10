@@ -114,7 +114,7 @@ def make_flow(N, A, B_, U, phi0=None, sweeps=80):
         ir[2, 7] = 1.0
     s = sdflow.Solver(N, N, N)
     s.set_rho(RHO); s.set_mu(MU); s.set_dt(DT); s.set_advection(False)   # Stokes: Jeffery's regime
-    s.set_velocity_solver_params(sweeps); s.set_pressure_solver_params(20)
+    s.diagnostics.set_velocity_solver_params(sweeps); s.set_pressure_solver_params(20)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(ni, nr, ii.ravel(), ir.ravel(), periodic=True)
     s.set_instance_motion(0, lin_vel=[-U, 0, 0])
