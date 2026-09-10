@@ -284,7 +284,7 @@ gathers inner cells only, so the outflow face plane does not survive the merge, 
 refuses the combination outright.
 
 What *is* a default since the variable-density outflow operator was fixed: the $1/\rho_f$ outflow
-correction (`set_outflow_rho_correction`) and the exact pressure residual, which `enable_vof()`
+correction (`diagnostics.set_outflow_rho_correction`) and the exact pressure residual, which `enable_vof()`
 turns on. Together they are why the outlet divergence below reads $10^{-9}$ or smaller
 rather than $10^{-3}$.
 :::
@@ -298,17 +298,17 @@ def trickle(nx=NX, nz=NZ, tend=420.0, ratio=100.0, ugas=0.0, probe=50, cap=PRESS
     P = scene(nx, nz, ratio)
     s = flow.Solver(nx, nx, nz)
     s.set_rho(RHO_L); s.set_mu(MU_L)
-    for f in range(4):
-        s.set_domain_bc(f, 0, 0, 0, 0)               # periodic sides
-    s.set_domain_bc(4, 3, 0, 0, 0)                   # OUTFLOW at the bottom
+    for f in ('-x', '+x', '-y', '+y'):
+        s.set_domain_bc(f, 'periodic')               # periodic sides
+    s.set_domain_bc('-z', 'outflow')                 # OUTFLOW at the bottom
 
     xc = (np.arange(nx) + 0.5)[:, None]; yc = (np.arange(nx) + 0.5)[None, :]
     disc = ((xc - nx / 2) ** 2 + (yc - nx / 2) ** 2) < P["rd"] ** 2
     prof = np.zeros((nx, nx, 3))
     prof[:, :, 2] = np.where(disc, -P["umax"], -ugas * P["umax"])
-    s.set_domain_bc_profile(5, np.ascontiguousarray(prof))          # the distributor: velocity
+    s.set_domain_bc_profile('+z', np.ascontiguousarray(prof))       # the distributor: velocity
 
-    s.set_velocity_solver_params(60)
+    s.diagnostics.set_velocity_solver_params(60)
     s.set_pressure_multigrid(True, levels=6)
     s.set_pressure_solver_params(80)
     s.set_solid(bed_sdf(nx, nz, P["pos"], P["R"]), cutcell_pressure=True)   # the cut-cell IBM
@@ -324,10 +324,10 @@ def trickle(nx=NX, nz=NZ, tend=420.0, ratio=100.0, ugas=0.0, probe=50, cap=PRESS
     s.set_property_model("force_z", "linear", "C", [0.0, -P["drho"] * P["g"]])
     s.enable_vof_momentum(P["rho_g"], RHO_L)
     s.set_pressure_fcg(True, cap, 1e-11)                            # DRIVER LAST -- see above
-    s.set_vof_inflow_profile(5, np.ascontiguousarray(disc.astype(float)))   # ...and its colour
-    s.set_vof_backflow(4, 0.0)                                      # gas re-enters on backflow
+    s.set_vof_inflow_profile('+z', np.ascontiguousarray(disc.astype(float)))   # ...and its colour
+    s.set_vof_backflow('-z', 0.0)                                   # gas re-enters on backflow
 
-    eps = np.asarray(s.vof_geometry(0)).copy()          # cell fluid fraction
+    eps = np.asarray(s.diagnostics.vof_geometry(0)).copy()          # cell fluid fraction
     cut = (eps > 1e-9) & (eps < 1.0 - 1e-9)             # cells the grain surface passes through
     zc = np.arange(nz) + 0.5
     bed = (zc >= P["z0"]) & (zc <= P["z1"])
@@ -349,11 +349,11 @@ def trickle(nx=NX, nz=NZ, tend=420.0, ratio=100.0, ugas=0.0, probe=50, cap=PRESS
         lim = s.vof_step_limits()
         dt = min(dt_cap, 0.4 * lim["cfl_dt"]) if lim["cfl_dt"] > 0 else dt_cap
         s.set_dt(dt); s.step(); t += dt; i += 1
-        it = s.last_pressure_iterations()
+        it = s.diagnostics.last_pressure_iterations()
         it_max = max(it_max, it); capped += it >= cap
         want_snap = bool(snap_t) and t >= snap_t[0]
         if i % probe == 0 or want_snap or t >= tend:
-            d = s.vof_diagnostics()
+            d = s.diagnostics.vof_diagnostics()
             tot = s.vof_bc_volumes_total()              # the ADVECTOR's own boundary fluxes
             b = d["volume"] - sum(tot)
             if b0 is None:
@@ -363,7 +363,7 @@ def trickle(nx=NX, nz=NZ, tend=420.0, ratio=100.0, ugas=0.0, probe=50, cap=PRESS
             div = s.max_open_divergence_projected()     # NON-mutating -- see the note below
             div_max = max(div_max, div)
             C, p = s.get_vof(), np.asarray(s.get_p())
-            cd = s.contact_angle_diagnostics()
+            cd = s.diagnostics.contact_angle_diagnostics()
             hist.append(dict(
                 step=i, t=t, dt=dt, iters=it, div=div, drift=drift, volume=d["volume"],
                 beta=float((eps[:, :, bed] * C[:, :, bed]).sum()) / VB,     # liquid saturation
