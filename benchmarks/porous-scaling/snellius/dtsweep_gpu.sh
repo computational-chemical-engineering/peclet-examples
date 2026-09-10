@@ -38,12 +38,12 @@ esac
 NPZ="$PACKS/packing_256x256x256_r16_phi0.60_s3.npz"
 [ -f "$NPZ" ] || { echo "FATAL: bed $NPZ missing" >&2; exit 1; }
 
-run () { # variant grid faceinterp dt check max
+run () { # variant grid scheme dt check max
   local var=$1 grid=$2 fi=$3 dt=$4 chk=$5 mx=$6
   local out="$RES/dtsweep060_R${R}_${var}_dt${dt}.json"
   [ -f "$out" ] && { echo "[skip] $out"; return; }
   echo "=== R=$R $var DT=$dt (check=$chk max=$mx) ==="
-  env GNX=$G GNY=$G GNZ=$G MGLEVELS=$LV PACK="$NPZ" GRID=$grid IBM=cutcell FACEINTERP=$fi \
+  env GNX=$G GNY=$G GNZ=$G MGLEVELS=$LV PACK="$NPZ" GRID=$grid IBM=cutcell SCHEME=$fi \
       DT=$dt MARCH_TOL=1e-8 CHECK_EVERY=$chk MARCH_MAX=$mx NSTEPS=5 WARMUP=2 \
       LABEL="snellius-h100-dtsweep" OUT="$out" \
     srun --mpi=pmix --ntasks=1 --gpus-per-task=1 --gpu-bind=per_task:1 \
@@ -52,10 +52,10 @@ run () { # variant grid faceinterp dt check max
     || { echo "  [FAILED $var dt=$dt]"; grep -m1 -A6 Traceback "${out%.json}.log" | sed 's/^/    /'; }
 }
 
-run col_mode9 collocated 9 600 2 600
-run col_mode9 collocated 9 60 20 3000
-run col_mode9 collocated 9 6 200 20000
-run stag      staggered  0 600 2 600
-run stag      staggered  0 60 20 3000
-run stag      staggered  0 6 200 20000
+run col_mode9 collocated gauge-exact 600 2 600
+run col_mode9 collocated gauge-exact 60 20 3000
+run col_mode9 collocated gauge-exact 6 200 20000
+run stag      staggered  plain 600 2 600
+run stag      staggered  plain 60 20 3000
+run stag      staggered  plain 6 200 20000
 echo "done -> $RES"

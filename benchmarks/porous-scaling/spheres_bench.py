@@ -22,8 +22,9 @@ Env:
     GNX GNY GNZ   global grid (default: the packing's recorded rung grid)
     IBM           cutcell (default) | ghost
     GRID          staggered (default, flow.Solver) | collocated (flow.SolverColocated)
-    FACEINTERP    collocated cut-cell treatment: 0 = plain (default), 9 = aperture + gpCenterGrad
-                  (mode 9); ignored on the staggered grid, must be 0 with IBM=ghost
+    SCHEME        collocated cut-cell scheme: 'plain' | 'gauge-exact' (default) | 'embed', or
+                  '5' | '6' for the two intermediate embed rungs (diagnostics.set_face_interp);
+                  ignored on the staggered grid, must be 'plain' with IBM=ghost
     GPORDER       ghost closure order "matrix,rhs" (default 2,2; 1,2 = the mixed/deferred mode)
     PUNDER        incremental-pressure under-relaxation omega_p (default 1.0 = off)
     BOTTOM        auto (default) | smoother | agglomerated  (pressure coarse-level solve)
@@ -76,10 +77,10 @@ GNY = int(os.environ.get("GNY", pk["gny"]))
 GNZ = int(os.environ.get("GNZ", pk["gnz"]))
 IBM = os.environ.get("IBM", "cutcell")
 GRID = os.environ.get("GRID", "staggered")       # staggered (flow.Solver) | collocated
-# Collocated scheme. ALWAYS passed explicitly below: since flow made mode 9 ("gauge-exact") the
-# default, a falsy-guarded call would have made FACEINTERP=0 a silent no-op and run the default
-# instead of the plain path -- i.e. the mode-0 baseline would quietly become mode 9.
-FACEINTERP = int(os.environ.get("FACEINTERP", 9))
+# Collocated scheme. ALWAYS passed explicitly below: since flow made "gauge-exact" the
+# default, a falsy-guarded call would have made SCHEME="" a silent no-op and run the default
+# instead of the plain path -- i.e. the plain baseline would quietly become gauge-exact.
+SCHEME = os.environ.get("SCHEME", "gauge-exact")
 BOTTOM = os.environ.get("BOTTOM", "auto")
 NSTEPS = int(os.environ.get("NSTEPS", 25))
 WARMUP = int(os.environ.get("WARMUP", 5))
@@ -115,7 +116,7 @@ ox, oy, oz = origin
 lnx, lny, lnz = size
 
 p0(f"[cfg] global {GNX}x{GNY}x{GNZ} = {GNX * GNY * GNZ / 1e6:.1f}M cells  ranks={NP}  "
-   f"backend={flow.execution_space}  grid={GRID}  IBM={IBM}  face_interp={FACEINTERP}  "
+   f"backend={flow.execution_space}  grid={GRID}  IBM={IBM}  scheme={SCHEME}  "
    f"bottom={BOTTOM}  spheres={len(centers)} "
    f"R={RCELLS:.1f} cells  phi={float(pk['phi']):.4f}  levels={MGLEVELS}  "
    f"pressure={PRESSURE}(maxit={PMAXIT},rtol={PRTOL:g},warmstart={WARMSTART})  "
@@ -197,7 +198,7 @@ s.set_mu(MU)
 s.set_dt(DT)
 s.set_body_force(F, 0.0, 0.0)
 s.set_advection(False)  # creeping Stokes
-s.set_velocity_solver_params(VSWEEPS)
+s.diagnostics.set_velocity_solver_params(VSWEEPS)
 s.set_pressure_multigrid(True, MGLEVELS)
 if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
@@ -208,16 +209,21 @@ elif PRESSURE == "cheby":
 elif PRESSURE != "vcycle":
     raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|vcycle|fcg|cheby)")
 if WARMSTART:
-    s.set_pressure_warmstart(True)
+    s.diagnostics.set_pressure_warmstart(True)
 s.set_pressure_bottom(BOTTOM)
 if GRID == "collocated":
-    s.set_face_interp(FACEINTERP)   # explicit, incl. 0; before set_ghost_projection
+    if SCHEME in ("5", "6"):
+        # the two intermediate Basilisk-embed rungs -- reachable only under diagnostics,
+        # not part of the public 'plain'|'gauge-exact'|'ghost'|'embed' set (1.0.0, QUALITY_PLAN F)
+        s.diagnostics.set_face_interp(int(SCHEME))
+    else:
+        s.set_collocated_scheme(SCHEME)   # 'plain' | 'gauge-exact' | 'embed'; before diagnostics.set_ghost_projection
 if PUNDER != 1.0:
-    s.set_pressure_underrelax(PUNDER)
+    s.diagnostics.set_pressure_underrelax(PUNDER)
 if IBM == "ghost":
     _mo, _ro = (int(v) for v in GPORDER.split(","))
     # before set_solid; MG hierarchy = binary-openness surrogate
-    s.set_ghost_projection(True, _mo, _ro)
+    s.diagnostics.set_ghost_projection(True, _mo, _ro)
 elif IBM != "cutcell":
     raise SystemExit(f"unknown IBM={IBM!r} (cutcell|ghost)")
 s.set_solid(sdf, cutcell_pressure=True)
@@ -273,11 +279,11 @@ for istep in range(NSTEPS):
     s.step()
     if (istep + 1) % _hb == 0:
         p0(f"[run] step {istep + 1}/{NSTEPS}")
-    t = s.last_step_timers()
+    t = s.diagnostics.last_step_timers()
     for p in phases:
         acc[p].append(t[p])
     acc["pressure_allreduce_count"].append(t["pressure_allreduce_count"])
-    iters.append(s.last_pressure_iterations())
+    iters.append(s.diagnostics.last_pressure_iterations())
 t1 = time.perf_counter()
 wall = world.allreduce(t1 - t0, op=MPI.MAX)
 stats = {}
@@ -302,12 +308,12 @@ if MARCH_TOL > 0:
     for it in range(MARCH_MAX):
         s.step()
         msteps += 1
-        mit += s.last_pressure_iterations()
+        mit += s.diagnostics.last_pressure_iterations()
         if TRACE:
             um, ux, vx, wx = trace_u()
             p0(f"[trace] step {msteps:4d}  <u>={um:.6e}  max|u|={ux:.6e}  max|v|={vx:.6e}  "
                f"max|w|={wx:.6e}  maxdiv={s.max_open_divergence():.4e}  "
-               f"iters={s.last_pressure_iterations()}")
+               f"iters={s.diagnostics.last_pressure_iterations()}")
         if it % CHECK_EVERY == CHECK_EVERY - 1:
             m = gmean_u()
             if it >= 3 * CHECK_EVERY and abs(m - prev) < MARCH_TOL * (abs(m) + 1e-300):
@@ -333,7 +339,7 @@ if RANK == 0:
         "global": [GNX, GNY, GNZ], "cells": cells,
         "pack": os.path.basename(PACK), "n_spheres": int(len(centers)),
         "phi_pack": float(pk["phi"]), "phi_voxel": phi_vox, "seed": int(pk["seed"]),
-        "rcells": RCELLS, "ibm": IBM, "grid": GRID, "face_interp": FACEINTERP, "bottom": BOTTOM, "gporder": GPORDER, "punder": PUNDER,
+        "rcells": RCELLS, "ibm": IBM, "grid": GRID, "scheme": SCHEME, "bottom": BOTTOM, "gporder": GPORDER, "punder": PUNDER,
         "mu": MU, "f": F, "dt": DT, "pressure": PRESSURE, "pmaxit": PMAXIT, "prtol": PRTOL,
         "mglevels": MGLEVELS, "vsweeps": VSWEEPS, "warmstart": WARMSTART,
         "nsteps": NSTEPS, "warmup": WARMUP,

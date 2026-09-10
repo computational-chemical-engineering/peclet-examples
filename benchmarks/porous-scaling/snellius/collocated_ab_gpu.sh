@@ -6,7 +6,7 @@
 #
 #   stag_cutcell   flow.Solver        aperture cut-cell     <- the REFERENCE (2nd order, k_inf)
 #   col_mode0      SolverColocated    aperture, plain map   <- the known 1st-order baseline
-#   col_mode9      SolverColocated    aperture + gpCenterGrad (set_face_interp(9))
+#   col_mode9      SolverColocated    aperture + gpCenterGrad (set_collocated_scheme('gauge-exact'))
 #   col_ghost      SolverColocated    directional ghost projection
 #
 # The question this answers: on a BED (not a single smooth sphere) does mode 9 hold a second-order
@@ -69,7 +69,7 @@ run_one () {  # R variant grid ibm faceinterp
   read -r G LV NP <<< "$(cfg_of $R)" || { echo "[FATAL] no cfg for R=$R"; return 1; }
   [ "$NP" -le "$MAXN" ] || { echo "[FATAL] R=$R needs $NP GPUs, allocated $MAXN" >&2; return 1; }
   echo "======= R=$R $var : ${G}^3 = $(( G * G * G / 1000000 ))M on $NP GPU(s), levels=$LV ======="
-  env GNX=$G GNY=$G GNZ=$G MGLEVELS=$LV PACK="$NPZ" GRID=$grid IBM=$ibm FACEINTERP=$fi \
+  env GNX=$G GNY=$G GNZ=$G MGLEVELS=$LV PACK="$NPZ" GRID=$grid IBM=$ibm SCHEME=$fi \
       LABEL="snellius-h100" OUT="$RES/$out" \
     srun --mpi=pmix --ntasks=$NP --gpus-per-task=1 --gpu-bind=per_task:1 \
     "$VENV/bin/python" "$EXDIR/../spheres_bench.py" > "$RES/${out%.json}.log" 2>&1 \
@@ -81,15 +81,16 @@ run_one () {  # R variant grid ibm faceinterp
 }
 
 run_rung () {  # R
-  run_one "$1" stag_cutcell staggered  cutcell 0
-  run_one "$1" col_mode0    collocated cutcell 0
-  run_one "$1" col_mode9    collocated cutcell 9
-  run_one "$1" col_ghost    collocated ghost   0
+  run_one "$1" stag_cutcell staggered  cutcell plain
+  run_one "$1" col_mode0    collocated cutcell plain
+  run_one "$1" col_mode9    collocated cutcell gauge-exact
+  run_one "$1" col_ghost    collocated ghost   plain
   # The Basilisk embed.h line (true-normal wall gradient): the candidate for removing the
-  # collocated accuracy ceiling. 6 = embed momentum + plain projection + openness-weighted cell
-  # correction; 7 = 6 with the wall-aware constraint.
+  # collocated accuracy ceiling. '6' = embed momentum + plain projection + openness-weighted cell
+  # correction (diagnostics.set_face_interp(6), the intermediate rung); embed = '6' with the
+  # wall-aware constraint (set_collocated_scheme('embed'), the complete port).
   run_one "$1" col_embed6   collocated cutcell 6
-  run_one "$1" col_embed7   collocated cutcell 7
+  run_one "$1" col_embed7   collocated cutcell embed
 }
 
 # Argument 3 selects the BED. Both are 16^3 R-unit boxes, so the R -> grid table is shared.
