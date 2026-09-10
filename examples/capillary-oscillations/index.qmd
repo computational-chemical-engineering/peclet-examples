@@ -303,7 +303,7 @@ class Solve:
         self.cap, self.iters, self.div = cap, 0, 0.0
 
     def sample(self, s):
-        self.iters = max(self.iters, s.last_pressure_iterations())
+        self.iters = max(self.iters, s.diagnostics.last_pressure_iterations())
         self.div = max(self.div, s.max_open_divergence())
 
     @property
@@ -318,7 +318,7 @@ class Solve:
 
 ::: {.callout-important}
 ## A run whose pressure solve hit its iteration cap is not a result
-Every run on this page records `last_pressure_iterations()` against its cap and
+Every run on this page records `diagnostics.last_pressure_iterations()` against its cap and
 `max_open_divergence()`, and prints both. A capped solve means the projection did
 not converge, the velocity field is not discretely divergence-free, and a frequency
 measured on it is an artefact of the linear solver. None of the runs below capped.
@@ -354,8 +354,8 @@ def capillary_wave(nx, nu, periods=2.5, rho=1.0, sigma=1.0, cls=flow.Solver):
     s = cls(nx, ny, nz)
     s.set_rho(rho)
     s.set_mu(nu * rho)
-    s.set_domain_bc(4, 1, 0, 0, 0)                     # -z wall
-    s.set_domain_bc(5, 1, 0, 0, 0)                     # +z wall
+    s.set_domain_bc('-z', 'wall', 0, 0, 0)                     # -z wall
+    s.set_domain_bc('+z', 'wall', 0, 0, 0)                     # +z wall
     s.set_pressure_geometry(np.full((nx, ny, nz), 10.0, order="F"))
     s.set_pressure_chebyshev(True, 500, 1e-11)
     s.enable_vof()
