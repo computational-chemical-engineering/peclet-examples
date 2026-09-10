@@ -25,7 +25,7 @@ This page measures peclet's geometric VoF against that check three ways:
    small, *zero to round-off*, at every resolution. The balanced-force
    construction [@francois2006; @popinet2009] is an algebraic identity, and we
    show it holding to $2\times10^{-17}$.
-2. Flip one operator (`set_csf_mode(1)` — the "obvious" cell-centred
+2. Flip one operator (`diagnostics.set_csf_mode('cell')` — the "obvious" cell-centred
    $\sigma\kappa\nabla C$, face-interpolated) and the same run reads
    $5.8\times10^{-2}$. That is a factor $3\times10^{15}$, and it is the
    literature's "naive CSF gives $\sim10^{-2}$" reproduced as a switch.
@@ -169,9 +169,9 @@ capillary limit $\Delta t < \sqrt{(\rho_1+\rho_2)h^3/(4\pi\sigma)}$
 [@brackbill1992] — `capillary_dt()` reports it, and `step()` *enforces* it.
 We run at half of it.
 
-Two instruments earn their keep here. `set_vof_kappa_constant(k)` writes an
+Two instruments earn their keep here. `diagnostics.set_vof_kappa_constant(k)` writes an
 **exact** curvature everywhere and freezes it, which isolates the balanced-force
-identity from the estimator. `set_csf_mode(1)` is the operator **ablation**: the
+identity from the estimator. `diagnostics.set_csf_mode('cell')` is the operator **ablation**: the
 same physics with the force built as a cell-centred $\sigma\kappa\nabla C$ and
 face-interpolated with an arithmetic mean, exactly the way the per-cell body-force
 machinery carries $\rho\mathbf{g}$ — consistent, convergent, and not a discrete
@@ -188,7 +188,7 @@ def maxfacevel(s):                    # == maxvel on the staggered grid; the FAC
     return max(np.abs(s.get_uf()).max(), np.abs(s.get_vf()).max(),   # collocated one (see the
                np.abs(s.get_wf()).max())                             # cross-check at the end)
 
-def droplet(n, R, steps=60, csf_mode=0, exact_kappa=False, interface_eps=None,
+def droplet(n, R, steps=60, csf_mode='face', exact_kappa=False, interface_eps=None,
             cls=flow.Solver, ratio=1.0, mu=MU):
     """A stationary droplet of radius R cells in an n^3 periodic box. Returns a record.
 
@@ -205,28 +205,28 @@ def droplet(n, R, steps=60, csf_mode=0, exact_kappa=False, interface_eps=None,
     s.set_property_model("rho", "linear", "C", [1.0, ratio - 1.0])  # ratio 1: uniform rho, which
                                                                     # isolates the force operator
     s.set_surface_tension(SIGMA)
-    s.set_csf_mode(csf_mode)
+    s.diagnostics.set_csf_mode(csf_mode)
     if exact_kappa:
-        s.set_vof_kappa_constant(2.0 / R)                          # the analytic sphere curvature
-        s.set_vof_kappa_frozen(True)
+        s.diagnostics.set_vof_kappa_constant(2.0 / R)               # the analytic sphere curvature
+        s.diagnostics.set_vof_kappa_frozen(True)
     if interface_eps is not None:
-        s.set_vof_interface_eps(interface_eps)
+        s.diagnostics.set_vof_interface_eps(interface_eps)
     s.set_dt(0.5 * s.capillary_dt())
 
     hist, iters, div = [], 0, 0.0
     for _ in range(steps):
         s.step()
         hist.append(maxvel(s))
-        iters = max(iters, s.last_pressure_iterations())           # rule 3b: a capped solve
+        iters = max(iters, s.diagnostics.last_pressure_iterations())  # rule 3b: a capped solve
         div = max(div, s.max_open_divergence())                    # invalidates the run
     return dict(n=n, R=R, umax=hist[-1], ufmax=maxfacevel(s), hist=np.array(hist),
                 iters=iters, div=div, kappa=s.vof_curvature(),
-                branch=s.vof_curvature_branch(), csf=s.csf_diagnostics(), cap=500)
+                branch=s.vof_curvature_branch(), csf=s.diagnostics.csf_diagnostics(), cap=500)
 ```
 
 ::: {.callout-important}
 ## A run whose pressure solve hit its iteration cap is not a result
-Every run on this page records `last_pressure_iterations()` against the cap it was
+Every run on this page records `diagnostics.last_pressure_iterations()` against the cap it was
 given and `max_open_divergence()`, and reports both. A capped solve means the
 projection did not converge, so the velocity field is *not* discretely
 divergence-free and "the spurious current" measured on it is an artefact of the
@@ -243,13 +243,13 @@ step, pressure driver, viscosity — is identical.
 
 ```{python}
 #| label: switch
-exact = {m: droplet(32, 8.0, steps=30, csf_mode=m, exact_kappa=True) for m in (0, 1)}
+exact = {m: droplet(32, 8.0, steps=30, csf_mode=m, exact_kappa=True) for m in ('face', 'cell')}
 for m, r in exact.items():
-    name = "balanced force (production)" if m == 0 else "cell-centred + interpolated"
+    name = "balanced force (production)" if m == 'face' else "cell-centred + interpolated"
     print(f"csf_mode={m}  {name:<30s}  max|u| = {r['umax']:.3e}   "
           f"Ca = {MU*r['umax']/SIGMA:.3e}   pressure {r['iters']}/{r['cap']}   "
           f"max|div| {r['div']:.1e}")
-RATIO = exact[1]["umax"] / exact[0]["umax"]
+RATIO = exact['cell']["umax"] / exact['face']["umax"]
 print(f"\nthe operator pairing is worth a factor {RATIO:.2e}")
 ```
 
@@ -257,7 +257,7 @@ print(f"\nthe operator pairing is worth a factor {RATIO:.2e}")
 #| label: fig-switch
 #| fig-cap: "One line of the discretization. Both bars are the same droplet, the same exact curvature, the same 30 steps: only the operator that turns σκ∇C into a face force differs. The balanced-force pairing (@eq-balanced) is a discrete gradient, so the projection removes it exactly; the arithmetic-mean interpolation of a cell-centred force is not, and what survives is the classical parasitic current. Note the log scale spans 15 decades."
 fig, ax = plt.subplots(figsize=(5.0, 3.4))
-vals = [exact[0]["umax"], exact[1]["umax"]]
+vals = [exact['face']["umax"], exact['cell']["umax"]]
 bars = ax.bar(["balanced force\n(shipped)", "cell-centred σκ∇C\nface-interpolated"],
               vals, color=[BLUE, RED], width=0.55)
 ax.set_yscale("log")
@@ -272,10 +272,10 @@ ax.grid(axis="x", visible=False)
 plt.show()
 ```
 
-The balanced-force run sits at **`{python} f"{exact[0]['umax']:.2e}"`** — below
+The balanced-force run sits at **`{python} f"{exact['face']['umax']:.2e}"`** — below
 double-precision round-off on a field whose pressure is $O(0.25)$, i.e. the
 velocity never left zero. The ablation sits at
-**`{python} f"{exact[1]['umax']:.2e}"`**, a factor
+**`{python} f"{exact['cell']['umax']:.2e}"`**, a factor
 **`{python} f"{RATIO:.1e}"`** larger. Both runs converged their pressure solve
 in a handful of iterations and carry a divergence at round-off, so neither is a
 solver artefact.
@@ -323,7 +323,7 @@ print(f"\nfitted order of Ca in D/dx: {order:.2f}")
 #| label: fig-order
 #| fig-cap: "Spurious capillary number against droplet resolution, with the computed curvature. The dashed line is the fitted power law. The strip below the axis break is what the same runs give with an *exact* curvature — machine zero, thirteen decades lower, and flat in resolution. The force discretization contributes nothing to these points — every one of them is curvature error."
 from matplotlib.ticker import NullFormatter
-Ca_exact = MU * exact[0]["umax"] / SIGMA
+Ca_exact = MU * exact['face']["umax"] / SIGMA
 fig, (ax, axz) = plt.subplots(2, 1, figsize=(5.0, 4.4), sharex=True,
                               gridspec_kw=dict(height_ratios=[4, 1], hspace=0.12))
 ax.loglog(D, Ca, "o-", color=BLUE, ms=7, lw=1.6, label="computed curvature")
@@ -416,7 +416,7 @@ ax.grid(axis="x", visible=False)
 plt.show()
 ```
 
-`csf_diagnostics()` also counts **orphan faces** — faces the colour jumps across
+`diagnostics.csf_diagnostics()` also counts **orphan faces** — faces the colour jumps across
 but where *neither* cell carries a curvature estimate, so the force would have to
 be dropped. An orphan is a defect, and it is counted rather than hidden; the
 sweep above reports 0–1 per component at every rung.
@@ -433,7 +433,7 @@ $(\kappa_{\text{real}} + 10^{11})/2$.
 
 The fix is a threshold on the predicate — a cell carries an interface only while
 $\varepsilon < C < 1-\varepsilon$. `set_surface_tension` sets
-$\varepsilon = 10^{-8}$; `set_vof_interface_eps(0)` restores the unguarded
+$\varepsilon = 10^{-8}$; `diagnostics.set_vof_interface_eps(0)` restores the unguarded
 predicate, which is the ablation.
 
 ```{python}
@@ -511,7 +511,7 @@ and carries that invisible mode as well.
 CO = flow.SolverColocated
 co_exact = droplet(32, 8.0, steps=30, exact_kappa=True, cls=CO)
 print("exact curvature, uniform rho, 32^3, R = 8, 30 steps")
-for lab, r in (("staggered", exact[0]), ("collocated", co_exact)):
+for lab, r in (("staggered", exact['face']), ("collocated", co_exact)):
     print(f"  {lab:>10}   cell max|u| {r['umax']:.4e}   face max|uf| {r['ufmax']:.4e}"
           f"   pressure {r['iters']}/{r['cap']}   max|div| {r['div']:.1e}")
 ```
@@ -519,7 +519,7 @@ for lab, r in (("staggered", exact[0]), ("collocated", co_exact)):
 The exactness identity survives the move: with an exact $\kappa$ the collocated
 face field sits at `{python} f"{co_exact['ufmax']:.2e}"` and its cell field at
 `{python} f"{co_exact['umax']:.2e}"`, against the staggered
-`{python} f"{exact[0]['umax']:.2e}"` — all three below double-precision round-off
+`{python} f"{exact['face']['umax']:.2e}"` — all three below double-precision round-off
 on a field whose pressure is $O(0.25)$. Nothing is being hidden by an averaging
 operator: the face balance is exact, and the cell sees the average of an exact zero.
 
@@ -596,7 +596,7 @@ this page measures.
   order $\mu\,\Delta t^2$ appears at the first step and then decays.
 - **Change the viscosity.** With an exact curvature the machine-zero result is
   independent of $\mu$ over four decades — a good check that your build is healthy.
-- **Freeze the curvature instead of making it exact.** `set_vof_kappa_frozen(True)`
+- **Freeze the curvature instead of making it exact.** `diagnostics.set_vof_kappa_frozen(True)`
   keeps whatever is in the `kappa` field, which separates "the estimator is wrong"
   from "the estimator is fed back through the transport".
 - **Push the resolution.** $D/\Delta = 48$ needs a $96^3$ box; on a CUDA build that

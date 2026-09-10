@@ -113,7 +113,7 @@ Two design points are worth stating because they are what makes it work:
 
 ::: {.callout-important}
 ## A run whose pressure solve hit its iteration cap is not a result
-Every run on this page records `last_pressure_iterations()` against its cap and
+Every run on this page records `diagnostics.last_pressure_iterations()` against its cap and
 `max_open_divergence()`, and reports both. A capped solve means the projection did
 not converge, the velocity field is not discretely divergence-free, and the
 geometric transport's conservation guarantee — which is *conditional* on that —
@@ -235,7 +235,7 @@ def relax(s, steps, cfl=0.15, probe=25):
         elif dt < dt_cap and c < 0.5 * cfl:
             dt = min(dt_cap, 1.2 * dt); s.set_dt(dt)
         s.step()
-        it = s.last_pressure_iterations()
+        it = s.diagnostics.last_pressure_iterations()
         iters = max(iters, it)
         capped += it >= PRESS_CAP                 # rule: a capped solve invalidates the run
         div = max(div, s.max_open_divergence())   # the conservation floor
@@ -261,11 +261,11 @@ def drop_on_wall(theta, ratio=1.0, steps=500, R=12.0, nx=64, nz=40, zw=4.25,
     s.set_surface_tension(sigma)
     s.set_contact_angle(theta)                         # <- the entire wetting model
 
-    V0 = s.vof_diagnostics()["volume"]
+    V0 = s.diagnostics.vof_diagnostics()["volume"]
     r = relax(s, steps)
 
-    d, cd = s.vof_diagnostics(), s.contact_angle_diagnostics()
-    C, eps = s.get_vof(), s.vof_geometry(0)            # colour and cell fluid fraction
+    d, cd = s.diagnostics.vof_diagnostics(), s.diagnostics.contact_angle_diagnostics()
+    C, eps = s.get_vof(), s.diagnostics.vof_geometry(0)  # colour and cell fluid fraction
     ix = nx // 2
     h = float((C[ix, ix, :] * eps[ix, ix, :]).sum())   # apex height: the colour column
     V = d["volume"]
@@ -507,11 +507,11 @@ def drop_on_sphere(theta, steps=500, Rs=12.0, Rd=8.0, n=64, sigma=1.0, oh=0.1):
     s.set_vof(C0)
     s.set_surface_tension(sigma)
     s.set_contact_angle(theta)
-    V0 = s.vof_diagnostics()["volume"]
+    V0 = s.diagnostics.vof_diagnostics()["volume"]
     r = relax(s, steps)
 
-    d, cd = s.vof_diagnostics(), s.contact_angle_diagnostics()
-    C, eps = s.get_vof(), s.vof_geometry(0)
+    d, cd = s.diagnostics.vof_diagnostics(), s.diagnostics.contact_angle_diagnostics()
+    C, eps = s.get_vof(), s.diagnostics.vof_geometry(0)
     i = int(c)
     H = float((C[i, i, :] * eps[i, i, :])[int(c):].sum()) + Rs     # apex above the centre
     Vm = d["volume"]
@@ -578,7 +578,7 @@ conserved volume and the apex height, and that inversion is badly conditioned:
 here $\mathrm{d}\theta/\mathrm{d}H \approx 10°$ per cell, so a half-cell error in
 a colour column sum — exactly what an interface crossing a cell diagonally gives —
 is worth five degrees. The cap radius is the well-conditioned reading, and the
-solver's *local* estimator (`contact_angle_diagnostics()['mean_apparent_angle']`,
+solver's *local* estimator (`diagnostics.contact_angle_diagnostics()['mean_apparent_angle']`,
 the last column of the table) is the other one: it reads
 `{python} " / ".join(f"{sph[t]['apparent']:.0f}°" for t in SPH_THETAS)` against
 the prescribed 60 / 90 / 120. Global-shape inversions are a trap in wetting
@@ -765,7 +765,7 @@ message: the only visible symptom is a drop that stops at the wrong shape.
 
 ::: {.callout-note}
 ## A domain-BC wall is not a wetting wall
-`set_domain_bc(face, 1)` gives a no-slip domain wall, and it does **not** receive
+`set_domain_bc(face, 'wall')` gives a no-slip domain wall, and it does **not** receive
 the contact-angle fill — the band fill runs on the SDF classification only, so a
 domain wall keeps the zero-gradient (90°) colour extrapolation whatever
 `set_contact_angle` says. Model a wetting wall as an **SDF slab**, which is what
@@ -824,14 +824,14 @@ as well.
   calls work on any SDF, including a `dem`-generated sphere packing — that is the
   trickle-flow example, and the only extra ingredients are two-phase inflow and
   outflow boundaries.
-- **Check the fill you are getting.** `vof_filled_color()` returns the working
+- **Check the fill you are getting.** `diagnostics.vof_filled_color()` returns the working
   colour field *including* the band inside the solid, and
-  `contact_angle_diagnostics()` returns the census of which rule filled each band
+  `diagnostics.contact_angle_diagnostics()` returns the census of which rule filled each band
   cell (`contact_cells` = the θ-plane rule, `neighbour_cells` = averaged from
   mixed neighbours, `pure_cells` = pure-phase continuation) plus the mean locally
   measured apparent angle. If `contact_cells` is zero, your contact line is not
   where you think it is.
-- **Ablate the anchor.** `set_contact_angle_pivot(0..3)` switches the plane's
+- **Ablate the anchor.** `diagnostics.set_contact_angle_pivot('volume'|'centroid'|'projected-centroid'|'contact-line')` switches the plane's
   anchor between the shipped volume-matched one and three geometric alternatives,
   one of which is the obvious "project the interface centroid onto the wall". It
   is *not* idempotent — the prescribed angle stops being a fixed point — and the
