@@ -166,12 +166,12 @@ s = flow.Solver(lnx, lny, lnz)
 s.set_decomposition(DECOMP)   # must match the flow.mpi_block() call above; before init_mpi
 s.init_mpi(GNX, GNY, GNZ)
 s.set_rho(1.0); s.set_mu(nu); s.set_dt(DT)
-s.set_advection(bool(ADVECT)); s.set_advection_scheme(ADV)
-s.set_deferred_correction(bool(DEFCOR))
+s.set_advection(bool(ADVECT)); s.set_advection_scheme('sou' if ADV == 0 else 'koren')
+s.diagnostics.set_deferred_correction(bool(DEFCOR))
 # Momentum: tolerance stop (end the sweep loop once the max increment has contracted to VTOL of the
 # first sweep's; VSWEEPS is the cap). The channel's diffusion number nu*dt ~ 0.013 is easy, so this
 # exits in a few sweeps instead of always running the cap. VTOL=0 restores the legacy fixed count.
-s.set_velocity_solver_params(VSWEEPS, VTOL)
+s.diagnostics.set_velocity_solver_params(VSWEEPS, VTOL)
 s.set_pressure_multigrid(True, MGLEVELS)
 if PRESSURE == "pcg":
     s.set_pressure_pcg(True, PMAXIT, PRTOL)
@@ -179,15 +179,15 @@ elif PRESSURE == "cheb":
     s.set_pressure_chebyshev(True, PMAXIT, PRTOL)
 elif PRESSURE != "vcycle":
     raise SystemExit(f"unknown PRESSURE={PRESSURE!r} (pcg|cheb|vcycle)")
-s.set_pressure_warmstart(True)
-s.set_pressure_mean_removal(MEANSCOPE)
+s.diagnostics.set_pressure_warmstart(True)
+s.diagnostics.set_pressure_mean_removal(MEANSCOPE)
 s.set_pressure_bottom(BOTTOM)
 if GRAPHAMG:
     # The geometric hierarchy is block-local: an axis stops coarsening once a rank's block turns
     # odd, so at high rank counts the coarsest GLOBAL grid is far from coarse. This replaces that
     # bottom with an agglomerated algebraic solve. Applied at the set_pressure_geometry call below.
-    s.set_pressure_graph_amg(True)
-s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)          # no-slip walls on -y,+y ; x,z periodic
+    s.diagnostics.set_pressure_graph_amg(True)
+s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')          # no-slip walls on -y,+y ; x,z periodic
 s.set_body_force(0.0 if CFR > 0 else fbody, 0.0, 0.0)
 s.set_pressure_geometry(np.asfortranarray(np.full((lnx, lny, lnz), 1e30)))
 
@@ -206,7 +206,7 @@ else:
 # ---- constant-flow-rate forcing: global bulk via Allreduce, uniform shift on every rank ---------
 apply_cfr = None; dsum = 0.0; ndsum = 0
 if CFR > 0:
-    cap = s.field_view("u")
+    cap = s.diagnostics.field_view("u")
     if isinstance(cap, np.ndarray):
         uview = cap
     else:
@@ -302,11 +302,11 @@ for it in range(it0 + 1, NSTEPS+1):
         _tc = time.perf_counter(); dd = apply_cfr(); t_cfr = time.perf_counter() - _tc
         if it >= STATSTART: dsum += dd; ndsum += 1
     if it > WARMUP:
-        tm = s.last_step_timers()
+        tm = s.diagnostics.last_step_timers()
         for p in PHASES: acc[p].append(tm[p])
         acc["pressure_allreduce_count"].append(tm["pressure_allreduce_count"])
         acc["momentum_sweeps"].append(tm["momentum_sweeps"])
-        acc["cfr"].append(t_cfr); p_iters.append(s.last_pressure_iterations())
+        acc["cfr"].append(t_cfr); p_iters.append(s.diagnostics.last_pressure_iterations())
     if HB > 0 and it % HB == 0:
         p0(f"  [hb] it={it}/{NSTEPS}  {(time.time()-t0)/(it-it0)*1e3:.0f} ms/step avg")
     do_diag = (DIAG > 0 and (it % DIAG == 0 or it == 1)); do_stat = (it >= STATSTART and it % STATEVERY == 0)

@@ -81,11 +81,11 @@ u0 = np.asfortranarray(u0); v0 = np.asfortranarray(v0); w0 = np.asfortranarray(w
 # ---- solver setup ----------------------------------------------------------
 s = flow.Solver(NX, NY, NZ)
 s.set_rho(1.0); s.set_mu(nu); s.set_dt(DT)
-s.set_advection(True); s.set_advection_scheme(ADV)
-s.set_velocity_solver_params(20)                 # implicit diffusion (small diff number)
+s.set_advection(True); s.set_advection_scheme('sou' if ADV == 0 else 'koren')
+s.diagnostics.set_velocity_solver_params(20)                 # implicit diffusion (small diff number)
 s.set_pressure_multigrid(True, 5)
-s.set_pressure_pcg(True, 80, 1e-4); s.set_pressure_warmstart(True)
-s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)     # no-slip walls on -y,+y ; x,z periodic (default)
+s.set_pressure_pcg(True, 80, 1e-4); s.diagnostics.set_pressure_warmstart(True)
+s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')     # no-slip walls on -y,+y ; x,z periodic (default)
 s.set_body_force(0.0 if CFR > 0 else fbody, 0.0, 0.0)  # CPG body force, or 0 under CFR
 s.set_pressure_geometry(np.asfortranarray(np.full((NX, NY, NZ), 1e30)))  # all-fluid
 s.set_state(u0, v0, w0)
@@ -93,7 +93,7 @@ s.set_state(u0, v0, w0)
 # constant-flow-rate driver: after each step add a uniform shift to u so <u> == CFR (exact, div-free).
 cfr_view = None
 if CFR > 0:
-    cap = s.field_view("u")
+    cap = s.diagnostics.field_view("u")
     if isinstance(cap, np.ndarray):          # host backend -> NumPy view
         uv = cap
     else:                                    # device backend -> zero-copy CuPy

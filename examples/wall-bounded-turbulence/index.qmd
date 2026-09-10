@@ -60,9 +60,9 @@ nx, ny, nz = 384, 128, 128            # reduced box Lx=6H, Lz=2H ; Delta+ = 360/
 nu = (ny/2)/180.0                     # Re_tau = 180
 s = flow.Solver(nx, ny, nz)           # staggered MAC, exact projection
 s.set_rho(1.0); s.set_mu(nu); s.set_dt(0.012)
-s.set_advection(True); s.set_advection_scheme(0)          # 0 = 2nd-order upwind (least dissipative)
-s.set_pressure_multigrid(True, 5); s.set_pressure_pcg(True, 80, 1e-4); s.set_pressure_warmstart(True)
-s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)              # no-slip walls on -y,+y ; x,z periodic
+s.set_advection(True); s.set_advection_scheme('sou')      # 'sou' = 2nd-order upwind (least dissipative)
+s.set_pressure_multigrid(True, 5); s.set_pressure_pcg(True, 80, 1e-4); s.diagnostics.set_pressure_warmstart(True)
+s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')  # no-slip walls on -y,+y ; x,z periodic
 s.set_body_force(2.0/ny, 0.0, 0.0)                        # CPG: pins u_tau = 1
 s.set_pressure_geometry(np.full((nx, ny, nz), 1e30, order='F'))   # all-fluid (domain-BC path)
 s.set_state(u0, v0, w0)               # turbulent initial guess (Reichardt mean + near-wall noise)
