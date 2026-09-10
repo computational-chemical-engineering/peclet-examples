@@ -220,8 +220,8 @@ def hysing(case, nx=64, T=3.0, momentum=True, snap_at=(0.0, 1.5, 3.0), cls=flow.
 
     s = cls(nx, ny, nz)
     s.set_rho(p["rho1"]); s.set_mu(sc.mu(p["mu1"]))
-    s.set_domain_bc(4, 1, 0, 0, 0)                       # no-slip bottom (z-)
-    s.set_domain_bc(5, 1, 0, 0, 0)                       # no-slip top    (z+)
+    s.set_domain_bc('-z', 'wall', 0, 0, 0)                       # no-slip bottom (z-)
+    s.set_domain_bc('+z', 'wall', 0, 0, 0)                       # no-slip top    (z+)
     s.set_pressure_geometry(np.full((nx, ny, nz), 10.0, order="F"))
     s.set_pressure_chebyshev(True, 600, 1e-12)
     s.enable_vof()
@@ -259,7 +259,7 @@ def hysing(case, nx=64, T=3.0, momentum=True, snap_at=(0.0, 1.5, 3.0), cls=flow.
             ncap += int(L["capillary_binds"]); ncfl += int(not L["capillary_binds"])
         t += dt; i += 1
         s.step()
-        iters = max(iters, s.last_pressure_iterations())  # rule 3b: a capped pressure
+        iters = max(iters, s.diagnostics.last_pressure_iterations())  # rule 3b: a capped pressure
         div = max(div, s.max_open_divergence())           # solve invalidates the run
         B = 1.0 - s.get_vof()                             # the bubble indicator
         vb = B.sum()
@@ -278,7 +278,7 @@ def hysing(case, nx=64, T=3.0, momentum=True, snap_at=(0.0, 1.5, 3.0), cls=flow.
 
 ::: {.callout-important}
 ## A run whose pressure solve hit its cap is not a result
-Every run records `last_pressure_iterations()` against its cap (600 here) and
+Every run records `diagnostics.last_pressure_iterations()` against its cap (600 here) and
 `max_open_divergence()`. If the projection had capped, the velocity field would
 not be discretely divergence-free and the rise velocity read off it would be an
 artefact of the linear solver, not of the physics — such a run is **invalid** and
