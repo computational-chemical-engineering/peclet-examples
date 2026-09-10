@@ -111,13 +111,13 @@ def _run(build, n, label, tol, dt, maxit):
 
     s = sdflow.Solver(n, n, n)
     s.set_rho(RHO); s.set_mu(MU); s.set_dt(dt); s.set_advection(False)
-    s.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
+    s.diagnostics.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(np.asarray(ni, dtype=np.int32), np.asarray(nr, dtype=float),
                 inst_ints.ravel(), inst_reals.ravel(), periodic=True)
     s.set_solid_from_scene(True)
     s.set_body_force(FBODY, 0.0, 0.0)
-    nc = s.fluid_momentum_cells()[0]
+    nc = s.diagnostics.fluid_momentum_cells()[0]
     prev, it, t0 = 0.0, 0, time.time()
     while it < maxit:
         s.step(); it += 1

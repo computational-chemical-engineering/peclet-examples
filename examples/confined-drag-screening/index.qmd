@@ -38,7 +38,7 @@ whatever the cavity size. Built that way, the settling benchmark ran 30 % narrow
 "creeping-valued" confinement — measured, cross-checked, and blamed on the advection operator —
 was the geometry. `set_solid_from_scene` now detects it exactly (it re-samples the primary image
 whenever an instance spans more than the box and counts the cells the images changed), warns, and
-exposes `periodic_image_overlap_cells()`. The rule: **slab half-extent = half the box + wall
+exposes `diagnostics.periodic_image_overlap_cells()`. The rule: **slab half-extent = half the box + wall
 thickness, never more.** The last section shows the detector firing.
 :::
 
@@ -106,14 +106,14 @@ def run(DH, Re, duct, steps, slab_half=None):
         ii[1] = (duc, -1); ir[1, 0:3] = (x0, 0.5 * NY, x0); ir[1, 6] = 1.0; ir[1, 7] = 1.0
     s = sdflow.Solver(L, NY, L)
     s.set_rho(1.0); s.set_mu(NU); s.set_dt(DT); s.set_advection(True)
-    s.set_velocity_solver_params(60); s.set_pressure_solver_params(20)
+    s.diagnostics.set_velocity_solver_params(60); s.set_pressure_solver_params(20)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(np.asarray(ni, np.int32), np.asarray(nr, float), ii.ravel(), ir.ravel(),
                 periodic=True)
     if duct:
         s.set_instance_motion(1, lin_vel=[0.0, U, 0.0])    # walls move WITH the plug: zero shear
     s.set_solid_from_scene(True)
-    overlap = s.periodic_image_overlap_cells()
+    overlap = s.diagnostics.periodic_image_overlap_cells()
     s.set_velocity(1, np.full((L, NY, L), U, dtype=np.float64, order="F"))
     vfl = ((L - 2 * WX) ** 2 * NY if duct else L * L * NY) - np.pi / 6 * DH ** 3
     fest = abraham_cd(Re) * 0.5 * U ** 2 * np.pi * (DH / 2) ** 2 * (1.4 if duct else 1.05)

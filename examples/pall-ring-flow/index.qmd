@@ -98,7 +98,7 @@ def build(ni, nr, rt, advect=False, sweeps=60, dt=50.0):
         ir[k, 7] = RES                     # the pack lives in D=1 units; the grid in cells
     s = sdflow.Solver(NX, NY, NX)
     s.set_rho(RHO); s.set_mu(MU); s.set_dt(dt); s.set_advection(advect)
-    s.set_velocity_solver_params(sweeps); s.set_pressure_solver_params(20)
+    s.diagnostics.set_velocity_solver_params(sweeps); s.set_pressure_solver_params(20)
     s.set_pressure_multigrid(True, levels=4)
     t0 = time.time()
     s.set_scene(np.asarray(ni, np.int32), np.asarray(nr, float), ii.ravel(), ir.ravel(),
@@ -107,7 +107,7 @@ def build(ni, nr, rt, advect=False, sweeps=60, dt=50.0):
     return s, time.time() - t0
 
 s, t_cert = build(node_ints, node_reals, root)
-Nc = s.fluid_momentum_cells()
+Nc = s.diagnostics.fluid_momentum_cells()
 print("certified tree:   set_scene + set_solid = %.2f s" % t_cert)
 
 # the SAME solid, authored from the sign-exact (uncertified) hollow-cylinder-shell leaf

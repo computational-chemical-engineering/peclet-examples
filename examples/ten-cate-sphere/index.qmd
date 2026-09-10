@@ -127,7 +127,7 @@ def run_case(case, DH, sweeps=60, gpu_dt=None):
     ii[1] = (sph, -1); ir[1, 0:3] = (x0, y0, x0); ir[1, 6] = 1.0; ir[1, 7] = 1.0
     s = sdflow.Solver(NX, NY, NX)
     s.set_rho(1.0); s.set_mu(NU); s.set_dt(dt); s.set_advection(True)
-    s.set_velocity_solver_params(sweeps); s.set_pressure_solver_params(20)
+    s.diagnostics.set_velocity_solver_params(sweeps); s.set_pressure_solver_params(20)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(np.asarray(ni, np.int32), np.asarray(nr, float), ii.ravel(), ir.ravel(),
                 periodic=True)
