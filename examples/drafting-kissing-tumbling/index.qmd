@@ -79,7 +79,7 @@ in a direction set by the grid.
 
 ```{python}
 #| label: driver
-def run(DH, steps_max=4000, offset=0.005, adv_scheme=1):
+def run(DH, steps_max=4000, offset=0.005, adv_scheme='koren'):
     RATIO = RHO_S / RHO_F
     u_st = (RHO_S - RHO_F) * G_SI * D_SI ** 2 / (18 * MU_SI)      # Stokes terminal, cm/s (an upper bound)
     U_NOM = 0.3 * u_st                                              # nominal terminal (Newton-regime)
@@ -111,11 +111,11 @@ def run(DH, steps_max=4000, offset=0.005, adv_scheme=1):
     ir[:, 6] = 1.0; ir[:, 7] = 1.0
     s = sdflow.Solver(NX, NY, NX)
     s.set_rho(1.0); s.set_mu(NU); s.set_dt(dt); s.set_advection(True); s.set_advection_scheme(adv_scheme)
-    s.set_velocity_solver_params(60); s.set_pressure_solver_params(20)
+    s.diagnostics.set_velocity_solver_params(60); s.set_pressure_solver_params(20)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(np.asarray(ni, np.int32), np.asarray(nr, float), ii.ravel(), ir.ravel(), periodic=True)
     s.set_solid_from_scene(True)
-    assert s.periodic_image_overlap_cells() == 0
+    assert s.diagnostics.periodic_image_overlap_cells() == 0
 
     m = RATIO * (np.pi / 6) * DH ** 3
     Vp = (np.pi / 6) * DH ** 3
