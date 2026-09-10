@@ -25,8 +25,8 @@ estimate $(u_i - u_w)/h_A$ (seed value, wall value, seed-to-wall distance) is th
 $h_A/2$, not at the wall: for the Poiseuille parabola it leaves a residual of exactly $f/4$ on
 the wall row. `peclet.voro` fits instead a wall-anchored quadratic through the wall value, the
 cell and its neighbours (flow's wall-anchored reconstruction on an unstructured mesh), which is
-exact for a parabola. Both are available (`set_wall_gradient_quadratic`); the quadratic is the
-default.
+exact for a parabola. Both are available (`FlowSolver.diagnostics.set_wall_gradient_quadratic`);
+the quadratic is the default.
 
 ```{python}
 #| label: bootstrap
@@ -62,8 +62,8 @@ def poiseuille(n, quadratic=True):
     pos, h = slab_seeds(n, y_lo, y_hi, L)
     t = voro.Tessellation(); t.set_domain(extent=(L, L, L)); t.set_geometry(ni, nr, root=root); t.build(pos)
     f = voro.FlowSolver(t, nu)
-    f.set_body_force(fx, 0.0, 0.0); f.set_stokes(True)
-    f.set_implicit_diffusion(True); f.set_wall_gradient_quadratic(quadratic)
+    f.set_body_force((fx, 0.0, 0.0)); f.set_stokes(True)
+    f.set_implicit_diffusion(True); f.diagnostics.set_wall_gradient_quadratic(quadratic)
     f.set_velocity(np.zeros_like(pos))
     dt = 20.0 * h * h / nu
     steps = march_to_steady(f, dt, lambda: f.get_velocities()[:, 0].mean(), tol=1e-9)
@@ -107,12 +107,12 @@ clipper); seeds closer than $0.4\,h$ to the surface are dropped.
 ```{python}
 phi = 0.216
 R = (phi * 3 / (4 * np.pi)) ** (1 / 3)
-ni_s, nr_s, root_s = voro.sphere_union_scene([[0.5, 0.5, 0.5]], [R])
+ni_s, nr_s, root_s = voro.scenes.sphere_union_scene([[0.5, 0.5, 0.5]], [R])
 def drag(n):
     pos, h = sphere_seeds(n, R, L, seed=n)
     t = voro.Tessellation(); t.set_domain(extent=(L, L, L)); t.set_geometry(ni_s, nr_s, root=root_s); t.build(pos)
     f = voro.FlowSolver(t, nu)
-    f.set_body_force(fx, 0.0, 0.0); f.set_stokes(True); f.set_implicit_diffusion(True)
+    f.set_body_force((fx, 0.0, 0.0)); f.set_stokes(True); f.set_implicit_diffusion(True)
     f.set_velocity(np.zeros_like(pos))
     V = f.get_volumes()
     usup = lambda: (f.get_velocities()[:, 0] * V).sum() / L**3
@@ -139,7 +139,7 @@ mesh has to get right.
 
 - **Any geometry**: `Tessellation.set_geometry` takes the flat scene encoding of
   `peclet.core.geom` (spheres, boxes, cylinders, CSG unions); the solver treats every clipped face
-  as a wall. `voro.sphere_union_scene(centres, radii)` builds a packed bed.
+  as a wall. `voro.scenes.sphere_union_scene(centres, radii)` builds a packed bed.
 - **Graded meshes**: seed the wall layers finer — see the pore-mesh redistribution example — the
   solver does not care where the seeds come from.
 - **Transient flow**: drop `set_stokes(True)`, keep `set_implicit_diffusion(True)` (explicit

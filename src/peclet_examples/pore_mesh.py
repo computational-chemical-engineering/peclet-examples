@@ -1,7 +1,7 @@
 """Helpers for the pore-mesh-voronoi example.
 
 Everything runs through the published `peclet` package: `peclet.dem` for the packing and
-`peclet.voro` for the SDF-walled interstitial Voronoi meshing (`optimize_pore_mesh`,
+`peclet.voro.pore_mesh` for the SDF-walled interstitial Voronoi meshing (`optimize_pore_mesh`,
 `sdf_voronoi_cells`). These helpers add the numpy plumbing (union-SDF seeding, graded target,
 z-slice of the returned polyhedra) so the figures render in a plain numpy/matplotlib environment —
 no VTK needed.
@@ -142,12 +142,13 @@ def seed_graded(centres, radii, L, s_lo=0.10, s_hi=0.35, margin=0.01, jitter=0.3
 
 def section_cells(positions, centres, radii, L, z0):
     """Cross-section polygons of the SDF-clipped Voronoi mesh at the plane z=z0, via
-    ``peclet.voro.sdf_voronoi_section`` — which cuts every cell directly from its dual structure
-    (``ConvexCell::sectionPolygon``), so the plane tiles exactly (no fragile face-by-face slicing).
-    Returns (list of (k,2) polygons, per-cell volume, per-cell seed index)."""
+    ``peclet.voro.pore_mesh.sdf_voronoi_section`` — which cuts every cell directly from its dual
+    structure (``ConvexCell::sectionPolygon``), so the plane tiles exactly (no fragile face-by-face
+    slicing). Returns (list of (k,2) polygons, per-cell volume, per-cell seed index)."""
     from peclet import voro
-    sec = voro.sdf_voronoi_section(np.ascontiguousarray(positions, dtype=np.float64),
-                                   centres, radii, L, (0.0, 0.0, float(z0)), (0.0, 0.0, 1.0))
+    sec = voro.pore_mesh.sdf_voronoi_section(np.ascontiguousarray(positions, dtype=np.float64),
+                                              centres, radii, (L, L, L),
+                                              (0.0, 0.0, float(z0)), (0.0, 0.0, 1.0))
     verts = np.asarray(sec["verts"]); off = np.asarray(sec["offsets"])
     polys = [verts[off[i]:off[i + 1], :2] for i in range(len(off) - 1)]
     return polys, np.asarray(sec["volume"]), np.asarray(sec["seed"])
@@ -168,7 +169,7 @@ def tile_periodic(polys, vals, L):
 
 
 def slice_cells(cells, z0, values=None):
-    """z=z0 cross-section of the polyhedra returned by peclet.voro.sdf_voronoi_cells (points + per-cell
+    """z=z0 cross-section of the polyhedra returned by peclet.voro.pore_mesh.sdf_voronoi_cells (points + per-cell
     face lists): intersect each cell's face edges with the plane, order the crossings into a convex
     polygon. Returns (list of (k,2) polygons, values). `values` defaults to cell volume."""
     P = np.asarray(cells["points"]); faces = np.asarray(cells["faces"]); foff = np.asarray(cells["face_offsets"])

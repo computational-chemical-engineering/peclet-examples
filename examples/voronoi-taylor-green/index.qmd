@@ -167,8 +167,8 @@ plt.show()
 - **Go implicit**: `f.set_implicit_diffusion(True)` is flow's semi-implicit step (explicit
   convection, backward-Euler viscous solve, approximate projection); it removes the diffusive
   step limit for creeping flows.
-- **Go multi-rank**: the same solver runs distributed over `VoronoiHalo` (C++ today;
-  `tests/kokkos_mpi/test_flow_mpi`), np = 2/4 agree with a single rank to 3e-15.
+- **Go multi-rank**: the same solver runs distributed over `voro.VoronoiHalo` / `voro.DistributedTessellation`
+  (both bound Python-side; `tests/kokkos_mpi/test_flow_mpi`), np = 2/4 agree with a single rank to 3e-15.
 
 ## Reproduce this
 

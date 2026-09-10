@@ -441,7 +441,7 @@ inside `step()` when β ≤ 0. Full matrix on the merged tree: `tests/kokkos` 36
   rc = -6 in every mode except explicit `del`; after, all 60 cells silent, exit 0. Nothing needs
   `del` before exit; after an explicit `finalize()` a solver call raises `TypeError` and the
   `*_view` arrays must not be read. Two pre-existing sharp edges seen on the way, NOT fixed here:
-  `peclet.core.amr.Flow.step()` without any `set_solid` segfaults, and a Python-callable
+  `peclet.core.amr.Flow.step()` [now `peclet.amr.Flow.step()` — G.2, 2026-09-10] without any `set_solid` segfaults, and a Python-callable
   `set_solid` deadlocks under the OpenMP host backend (Kokkos worker threads call back into
   Python without the GIL) — use `set_solid_spheres`.
 - **Package / area:** packaging / Python bindings (Kokkos teardown order)
@@ -460,12 +460,15 @@ inside `step()` when β ≤ 0. Full matrix on the merged tree: `tests/kokkos` 36
 ---
 
 ## Pore-space Voronoi mesh: cell collapse + first-order curved-wall gradient
-- **Status:** cause (1) ADDRESSED 2026-09-04 by `peclet.voro.redistribute_pore_mesh` — the
+- **Status:** cause (1) ADDRESSED 2026-09-04 by `peclet.voro.redistribute_pore_mesh` [now
+  `peclet.voro.pore_mesh.redistribute_pore_mesh`, returning a `RedistributeResult` — F,
+  2026-09-10] — the
   topological loop (split / merge / relax / wall re-seed) reaches a uniform target within ~10 %
   per cell (rms 0.04) from a 2x mismatched start with zero dead cells, and rms 0.08 for a
   wall-graded target of slope 0.3 (the first wall shell stays ~1.5x above target; the original
   `clip(φ)` target is unresolvable — neighbouring targets 8x apart). See
-  examples/pore-mesh-redistribution. `optimize_pore_mesh` still cannot polish from there
+  examples/pore-mesh-redistribution. `optimize_pore_mesh` [now `peclet.voro.pore_mesh.optimize_pore_mesh`]
+  still cannot polish from there
   (collapses cells); its `sw=6` on a few hundred seeds segfaulted (fixed: the search window is
   clamped to the grid). Cause (2) open for the optimiser; the FLOW solver on the same meshes
   uses a wall-anchored quadratic wall gradient (examples/voronoi-sphere-drag).
@@ -477,7 +480,8 @@ inside `step()` when β ≤ 0. Full matrix on the merged tree: `tests/kokkos` 36
   SDF (line search `alpha→0`).
 - **Expected:** cells relax toward `V ∝ V_ref` (uniform, or graded `V_ref=φ³` for a wall
   inflation layer) without collapsing.
-- **Repro:** `peclet.voro.optimize_pore_mesh(..., free_energy=True)` on an interstitial seeding →
+- **Repro:** `peclet.voro.optimize_pore_mesh(..., free_energy=True)` [now
+  `peclet.voro.pore_mesh.optimize_pore_mesh(..., free_energy=True)`] on an interstitial seeding →
   the relaxed stages (2 & 4) of examples/pore-mesh-voronoi.
 - **Notes:** two root causes. (1) Position-only relaxation can't move seeds *between* pores,
   so an unmatched seeding collapses cells instead of redistributing — mitigated by

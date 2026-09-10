@@ -92,7 +92,7 @@ C-order convention with z-y-x origin/spacing tuples.
 ```{python}
 sdf_zyx = np.ascontiguousarray(sdf.T, dtype=np.float32)
 pores, seg_flat, conns = pnm.extract_pore_network(sdf_zyx, [0.0] * 3, [1.0] * 3)
-seg = np.asarray(seg_flat, dtype=np.int32).reshape(N, N, N).T   # back to [x,y,z]
+seg = seg_flat.T   # already an int32 (Nz,Ny,Nx) ndarray; transpose back to [x,y,z]
 print(f"{len(pores)} pores, {len(conns)} label adjacencies")
 ```
 
@@ -152,10 +152,10 @@ net = pnm.extract_network_flow(
     np.ascontiguousarray(p.T), np.ascontiguousarray(ox.T), np.ascontiguousarray(oy.T),
     np.ascontiguousarray(oz.T), grad_p_zyx=[0.0, 0.0, -FX])
 
-Q   = np.array(net["throat_flow"])
-dp  = np.array(net["throat_dp"])
-A   = np.array(net["throat_area"])
-res = np.array(net["pore_residual"])
+Q   = net["throat_flow"]
+dp  = net["throat_dp"]
+A   = net["throat_area"]
+res = net["pore_residual"]
 print(f"{len(net['pores'])} pores, {len(Q)} throats")
 print(f"mass balance: max |residual| = {np.abs(res).max():.2e} "
       f"({np.abs(res).max() / np.abs(Q).max():.1e} of the largest throat flow)")

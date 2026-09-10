@@ -11,7 +11,7 @@ jupyter: python3
 &nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
 
 ::: {.callout-note}
-**Experimental API.** The SDF-walled pore-mesh functions used here — `peclet.voro.sdf_voronoi_section`
+**Experimental API.** The SDF-walled pore-mesh functions used here — `peclet.voro.pore_mesh.sdf_voronoi_section`
 (and `optimize_pore_mesh`) — are new and still evolving (see the open issues at the end). The packing
 (`peclet.dem`) is stock.
 :::
@@ -44,7 +44,7 @@ $$ {#eq-target}
 — cells shrink to $s_{lo}$ at the walls and grow to $s_{hi}$ in the open pores. The heuristic below puts
 one seed roughly every $s(\phi)$, in shells around each sphere, so the mesh *is* the target: no
 optimisation needed. (If you later want the volumes made *exactly* equal or exactly on-target,
-`optimize_pore_mesh` relaxes the seed positions — with the caveat in the open issues.)
+`voro.pore_mesh.optimize_pore_mesh` relaxes the seed positions — with the caveat in the open issues.)
 
 ```{python}
 #| label: bootstrap
@@ -104,8 +104,8 @@ print("cells:", {t.split()[0]: len(v) for t, (_, v, _) in zip(titles, sec)})
 ## Step 3 — cross-section: uniform vs graded
 
 We cut the 3-D cells with the plane $z=L/2$ and colour them by cell volume (grey discs = spheres cut by
-the plane). `sdf_voronoi_section` cuts each cell directly from its dual structure — a robust convex
-section that tiles the plane exactly — so no VTK and no fragile face slicing.
+the plane). `voro.pore_mesh.sdf_voronoi_section` cuts each cell directly from its dual structure — a
+robust convex section that tiles the plane exactly — so no VTK and no fragile face slicing.
 
 ```{python}
 #| label: fig-volume
@@ -185,11 +185,11 @@ plt.show()
   field in `pm.seed_graded` from `clip(φ, s_lo, s_hi)` to e.g. `clip(φ², …)` for a thicker layer, or to a
   *solution* field (fine where a gradient is large) for solution-adaptive meshing.
 - **Denser or coarser.** Lower `s_lo` for a finer wall layer — cost grows like $1/s_{lo}^2$, so keep
-  $s_{lo}\gtrsim0.08$ on a packed bed. `sdf_voronoi_section` cuts the section in O(N), so even a fine
-  mesh renders quickly.
+  $s_{lo}\gtrsim0.08$ on a packed bed. `voro.pore_mesh.sdf_voronoi_section` cuts the section in O(N),
+  so even a fine mesh renders quickly.
 - **Equalise further.** If you want the volumes *exactly* equal rather than graded, feed the seeding to
-  `voro.optimize_pore_mesh(positions, vref, …, method="steepest"|"graphamg", free_energy=…)` — but see
-  the open issue below.
+  `voro.pore_mesh.optimize_pore_mesh(positions, target_volumes, sphere_centers, sphere_radii, extent,
+  method="steepest"|"graphamg", free_energy=…)` — but see the open issue below.
 
 ## Open issues (logged in ISSUES.md)
 
@@ -201,13 +201,13 @@ plt.show()
    tightest throats keep a hair of white the mesh can't reach; it shrinks with a finer wall layer. An
    exact tessellator-side curved-wall clip would close it.
 
-*(The cross-section is cut cell-by-cell with `sdf_voronoi_section`, which tiles exactly — the residual
-white is real geometry, item 2, not a slicing artefact.)*
+*(The cross-section is cut cell-by-cell with `voro.pore_mesh.sdf_voronoi_section`, which tiles exactly
+— the residual white is real geometry, item 2, not a slicing artefact.)*
 
 ## Reproduce this
 
 ```bash
-pip install -e .          # + a recent peclet (peclet-voro with optimize_pore_mesh)
+pip install -e .          # + a recent peclet (peclet-voro with voro.pore_mesh.optimize_pore_mesh)
 quarto render examples/pore-mesh-voronoi/index.qmd --execute
 # local suite build instead of PyPI (dem + voro build dirs, os.pathsep-joined):
 PECLET_LOCAL_BUILD=/path/to/suite/dem/build:/path/to/suite/voro/build_py \

@@ -12,7 +12,7 @@ jupyter: python3
 The [pore-mesh example](../pore-mesh-voronoi/index.qmd) showed that a Voronoi pore mesh is only
 as good as its seeding, and that relaxing seed *positions* cannot fix a mismatched start: a seed
 cannot cross a solid grain to reach an under-resolved pore, so the optimiser collapses throat cells
-instead. `peclet.voro.redistribute_pore_mesh` adds the topological moves — **split** a cell that is
+instead. `peclet.voro.pore_mesh.redistribute_pore_mesh` adds the topological moves — **split** a cell that is
 too big (along the wall for wall cells), **remove** a cell that is too small or dead, **relax**
 with a Lloyd blend for shape and a graded volume descent for size, and re-seed the wall layers by
 the graded-shell heuristic — and keeps the best state. You'll see a 2× mismatched uniform start
@@ -54,7 +54,7 @@ while len(centres) < 6:
         centres.append(c); radii.append(r)
 centres, radii = np.array(centres), np.array(radii)
 pos0 = rng.uniform(0, L, (2500, 3))
-pos0 = pos0[voro._union_sdf(pos0, centres, radii, L) > 0.03]
+pos0 = pos0[voro.scenes.sphere_union_sdf(pos0, centres, radii, (L, L, L)) > 0.03]
 print(f"solid fraction {(4 / 3 * np.pi * radii**3).sum():.3f}, {len(pos0)} start seeds")
 ```
 
@@ -64,11 +64,11 @@ The target is $V_\text{ref} = s^3$ with $s = 0.10$ everywhere (`s_lo = s_hi`). T
 the per-round history — seed count, worst and rms relative volume error, dead cells.
 
 ```{python}
-res_u = voro.redistribute_pore_mesh(pos0, centres, radii, L, s_lo=0.10, s_hi=0.10)
-h = np.array(res_u["history"])
+res_u = voro.pore_mesh.redistribute_pore_mesh(pos0, centres, radii, (L, L, L), s_lo=0.10, s_hi=0.10)
+h = np.array(res_u.history)
 print(f"start: N={int(h[0,0])}, max|V/V_ref-1|={h[0,1]:.2f}, rms={h[0,2]:.2f}")
-print(f"end:   N={len(res_u['positions'])}, max|V/V_ref-1|={res_u['max_rel']:.3f}, rms={res_u['rms_rel']:.3f}, "
-      f"dead cells {res_u['n_dead']}, {res_u['rounds']} rounds, +{res_u['n_added']} -{res_u['n_removed']} seeds")
+print(f"end:   N={len(res_u.positions)}, max|V/V_ref-1|={res_u.max_rel:.3f}, rms={res_u.rms_rel:.3f}, "
+      f"dead cells {res_u.num_dead}, {res_u.rounds} rounds, +{res_u.num_added} -{res_u.num_removed} seeds")
 ```
 
 ```{python}
@@ -77,11 +77,11 @@ fig, ax = plt.subplots(1, 2, figsize=(9, 3.4))
 ax[0].semilogy(h[:, 1], "o-", ms=3, label="max |V/V_ref − 1|"); ax[0].semilogy(h[:, 2], "s-", ms=3, label="rms")
 ax[0].set(xlabel="round", ylabel="relative volume error"); ax[0].legend()
 t = voro.Tessellation(); t.set_domain(extent=(L, L, L))
-ni, nr, root = voro.sphere_union_scene(centres, radii); t.set_geometry(ni, nr, root=root)
+ni, nr, root = voro.scenes.sphere_union_scene(centres, radii); t.set_geometry(ni, nr, root=root)
 t.build(pos0, strict=False)
 v0 = t.get_volumes(); v0 = v0[v0 > 0] / 0.10**3
 ax[1].hist(v0, bins=np.linspace(0, 3, 61), alpha=0.5, label="start")
-ax[1].hist(1 + res_u["rel"][res_u["volumes"] > 0], bins=np.linspace(0, 3, 61), alpha=0.7, label="redistributed")
+ax[1].hist(1 + res_u.rel[res_u.volumes > 0], bins=np.linspace(0, 3, 61), alpha=0.7, label="redistributed")
 ax[1].set(xlabel="V / V_ref", ylabel="cells"); ax[1].legend()
 plt.show()
 ```
@@ -95,16 +95,16 @@ example's original $s = \mathrm{clip}(\phi)$ (slope 1, neighbouring targets eigh
 unresolvable by any mesh; slope 0.3 is.
 
 ```{python}
-res_g = voro.redistribute_pore_mesh(pos0, centres, radii, L, s_lo=0.08, s_hi=0.25, slope=0.3)
-hg = np.array(res_g["history"])
-print(f"graded: N {int(hg[0,0])} -> {len(res_g['positions'])}, max|V/V_ref-1| {hg[0,1]:.2f} -> {res_g['max_rel']:.3f}, "
-      f"rms {hg[0,2]:.2f} -> {res_g['rms_rel']:.3f}, dead cells {res_g['n_dead']}")
+res_g = voro.pore_mesh.redistribute_pore_mesh(pos0, centres, radii, (L, L, L), s_lo=0.08, s_hi=0.25, slope=0.3)
+hg = np.array(res_g.history)
+print(f"graded: N {int(hg[0,0])} -> {len(res_g.positions)}, max|V/V_ref-1| {hg[0,1]:.2f} -> {res_g.max_rel:.3f}, "
+      f"rms {hg[0,2]:.2f} -> {res_g.rms_rel:.3f}, dead cells {res_g.num_dead}")
 ```
 
 ```{python}
 #| fig-cap: "Graded target: V/V_ref against the wall distance of each seed after redistribution. The bulk sits on target; the first wall shell's cells stay about 1.5× above it — the radial extent of a cell hugging a curved wall."
-p = res_g["positions"]; rel = res_g["rel"]
-phi = voro._union_sdf(p, centres, radii, L)
+p = res_g.positions; rel = res_g.rel
+phi = voro.scenes.sphere_union_sdf(p, centres, radii, (L, L, L))
 fig, ax = plt.subplots(figsize=(5.5, 3.4))
 ax.plot(phi, 1 + rel, ".", ms=2, alpha=0.5)
 ax.axhline(1, color="k", lw=1); ax.set(xlabel="distance to the nearest grain φ", ylabel="V / V_ref", ylim=(0, 2.5))
@@ -125,13 +125,13 @@ plt.show()
 - **Your packing**: pass the centres and radii of a `peclet.dem` packing; the SDF union and the
   scene are built for you.
 - **Tighter grading**: lower `slope` or raise `s_lo`; keep the target field resolvable.
-- **Feed the flow solver**: `voro.Tessellation` + `set_geometry(*voro.sphere_union_scene(...))`
-  + `build(res["positions"])` gives the mesh to `voro.FlowSolver` — see the sphere-drag example.
+- **Feed the flow solver**: `voro.Tessellation` + `set_geometry(*voro.scenes.sphere_union_scene(...))`
+  + `build(res.positions)` gives the mesh to `voro.FlowSolver` — see the sphere-drag example.
 
 ## Reproduce this
 
 ```bash
-pip install -e .          # + a recent peclet (peclet-voro with redistribute_pore_mesh)
+pip install -e .          # + a recent peclet (peclet-voro with voro.pore_mesh.redistribute_pore_mesh)
 quarto render examples/pore-mesh-redistribution/index.qmd --execute
 PECLET_LOCAL_BUILD=/path/to/suite/voro/build_a0 quarto render examples/pore-mesh-redistribution/index.qmd --execute
 ```
