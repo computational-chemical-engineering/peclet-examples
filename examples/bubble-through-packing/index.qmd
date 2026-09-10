@@ -371,8 +371,8 @@ def column(packed=True, ratio=100.0, Eo=EO, Mo=1e-3, theta=THETA, g=2e-4,
 
     s = cls(nx, nx, nz)
     s.set_rho(rho_l); s.set_mu(mu_l)
-    s.set_domain_bc(4, 1, 0, 0, 0)                     # closed: no-slip floor
-    s.set_domain_bc(5, 1, 0, 0, 0)                     # closed: no-slip lid
+    s.set_domain_bc('-z', 'wall', 0, 0, 0)             # closed: no-slip floor
+    s.set_domain_bc('+z', 'wall', 0, 0, 0)             # closed: no-slip lid
     if packed:
         s.set_solid(SDF, cutcell_pressure=True)        # cut-cell IBM + cut-cell pressure
     else:
@@ -390,7 +390,7 @@ def column(packed=True, ratio=100.0, Eo=EO, Mo=1e-3, theta=THETA, g=2e-4,
                          [-rho_g * g, -(rho_l - rho_g) * g])
     s.set_pressure_chebyshev(True, PRESS_CAP, 1e-12)   # AFTER the rho closure (see below)
 
-    eps = (np.asarray(s.vof_geometry(0)) if s.vof_has_geometry()
+    eps = (np.asarray(s.diagnostics.vof_geometry(0)) if s.vof_has_geometry()
            else np.ones((nx, nx, nz)))                # cell FLUID fraction
     zs = np.arange(nz) + 0.5
     gas0 = eps * (1.0 - np.asarray(s.get_vof()))
@@ -413,7 +413,7 @@ def column(packed=True, ratio=100.0, Eo=EO, Mo=1e-3, theta=THETA, g=2e-4,
             aborted = str(e).split("\n")[0]
             break
         t += dt; i += 1
-        it = s.last_pressure_iterations()
+        it = s.diagnostics.last_pressure_iterations()
         iters = max(iters, it)
         capped += int(it >= PRESS_CAP)
         if capped > 20:                                # a capped solve invalidates the run;
@@ -432,7 +432,7 @@ def column(packed=True, ratio=100.0, Eo=EO, Mo=1e-3, theta=THETA, g=2e-4,
             frames.append((eps * (1.0 - np.asarray(s.get_vof()))).astype(np.float16))
         if i % 25 == 0:
             div = max(div, s.max_open_divergence_projected())   # non-mutating
-    d = s.vof_diagnostics()
+    d = s.diagnostics.vof_diagnostics()
     return dict(label=label, packed=packed, ratio=ratio, Eo=Eo, Mo=Mo, g=g, sigma=sigma,
                 mu_l=mu_l, Ug=Ug, D=D, Re=rho_l * Ug * D / mu_l, T=T, steps=i, nan=nan,
                 t=np.array(ts), zc=np.array(zc), vc=np.array(vc), vol=np.array(vol),
@@ -447,10 +447,10 @@ def column(packed=True, ratio=100.0, Eo=EO, Mo=1e-3, theta=THETA, g=2e-4,
 ## Three rules this page follows, and why each one is not optional
 
 **A run whose pressure solve hit its cap is not a result.** Every run records
-`last_pressure_iterations()` against a cap of `{python} PRESS_CAP` and the
+`diagnostics.last_pressure_iterations()` against a cap of `{python} PRESS_CAP` and the
 **non-mutating** `max_open_divergence_projected()`. Under variable density the pressure
 driver is Chebyshev by default; it must be selected *after* `set_property_model("rho", …)`,
-because that call fires `set_density_mode`, which reselects the driver — a selection
+because that call fires `diagnostics.set_density_mode`, which reselects the driver — a selection
 made earlier is silently discarded. If Chebyshev caps, `set_pressure_fcg(True, …)` is
 the validated alternative on wall-bounded boxes, again selected last.
 
@@ -460,7 +460,7 @@ case-2 benchmark it removed **7.5 orders** of flux divergence and moved no other
 the result. At density ratio 1000 that is the difference between a divergence number that
 means something and one that does not. Since peclet 1.0.0 nothing has to be switched on
 for it: `enable_vof()` sets it itself (it was the `PECLET_FLOW_EXACT_RESIDUAL=1`
-environment variable before), and `set_pressure_exact_residual(False)` *after*
+environment variable before), and `diagnostics.set_pressure_exact_residual(False)` *after*
 `enable_vof()` is the ablation.
 
 **The time step is re-picked every step.** `step()` enforces the Weymouth--Yue

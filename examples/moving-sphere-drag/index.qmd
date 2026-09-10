@@ -47,7 +47,7 @@ elif importlib.util.find_spec("peclet") is None:
 
 ::: {.callout-note}
 ## Requires a recent `peclet`
-The analytic-scene API, `hydro_force_torque_reaction` and `set_fresh_cell_seed` are newer than the
+The analytic-scene API, `hydro_force_torque_reaction` and `diagnostics.set_fresh_cell_seed` are newer than the
 current PyPI release. The page is frozen and renders regardless.
 :::
 
@@ -137,10 +137,10 @@ def _run(N, R, AR, SPP, seed, moving, nper, fitp, dr):
 
     s = sdflow.Solver(N, N, N)
     s.set_rho(RHO); s.set_mu(MU); s.set_dt(dt); s.set_advection(False)
-    s.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
+    s.diagnostics.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(node_ints, node_reals, inst_ints.ravel(), inst_reals.ravel(), periodic=True)
-    s.set_fresh_cell_seed(bool(seed))
+    s.diagnostics.set_fresh_cell_seed(bool(seed))
     s.set_instance_motion(0, lin_vel=[U0, 0.0, 0.0])
     s.set_solid_from_scene(True)
 
@@ -276,7 +276,7 @@ plt.tight_layout(); plt.show()
 
 ## Step 4 — The fix
 
-`set_fresh_cell_seed(True)` gives a just-uncovered point the **local wall velocity** — the
+`diagnostics.set_fresh_cell_seed(True)` gives a just-uncovered point the **local wall velocity** — the
 rigid-body velocity of the instance that released it, evaluated at the nearest wall point, which
 the solver already computes for the no-slip condition. It is bounded, needs no new field, and
 reduces exactly to the old behaviour when nothing moves.
@@ -318,10 +318,10 @@ def run_fre(N, R, AD, Re, SPP=200, nper=3, seed=True):
     s = sdflow.Solver(N, N, N)
     s.set_rho(RHO); s.set_mu(MU); s.set_dt(dt)
     s.set_advection(True)                       # finite Re: the reaction budget carries it
-    s.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
+    s.diagnostics.set_velocity_solver_params(100); s.set_pressure_solver_params(25)
     s.set_pressure_multigrid(True, levels=4)
     s.set_scene(node_ints, node_reals, inst_ints.ravel(), inst_reals.ravel(), periodic=True)
-    s.set_fresh_cell_seed(seed)
+    s.diagnostics.set_fresh_cell_seed(seed)
     s.set_instance_motion(0, lin_vel=[Umax, 0.0, 0.0])
     s.set_solid_from_scene(True)
     t, force, umean = [], [], []
@@ -438,7 +438,7 @@ Blackburn's spectral value across the whole resolution ladder
 
 - **Change the motion.** `set_instance_transform` takes any translation; a body on a prescribed
   path, a rotating one (`quat`), or a trajectory read from a DEM run all use the same call.
-- **Turn the fix off** with `set_fresh_cell_seed(False)` and watch the ringing come back — that is
+- **Turn the fix off** with `diagnostics.set_fresh_cell_seed(False)` and watch the ringing come back — that is
   how every number above was produced.
 - **Push the amplitude.** The spurious content grows with the number of cell crossings per cycle;
   at $A/R = 1$ the sphere sweeps forty cells per cycle.

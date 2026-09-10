@@ -81,12 +81,12 @@ def solve_cylinder(D=10, Um=1.0, Re=100.0, nz=4, dt=0.15, steps=4000, sample=4):
     nu = Um * D / Re
     s = flow.Solver(L, H, nz)
     s.set_rho(1.0); s.set_mu(nu); s.set_dt(dt); s.set_advection(True)
-    s.set_deferred_correction(True)             # higher-order advection: don't damp the instability
-    s.set_domain_bc_profile(0, parabolic_inlet(H, nz, Um))    # -x parabolic inflow
-    s.set_domain_bc(1, 3)                         # +x outflow
-    s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)  # no-slip walls
+    s.diagnostics.set_deferred_correction(True)  # higher-order advection: don't damp the instability
+    s.set_domain_bc_profile('-x', parabolic_inlet(H, nz, Um))    # -x parabolic inflow
+    s.set_domain_bc('+x', 'outflow')              # +x outflow
+    s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')  # no-slip walls
     s.set_backflow_stabilization(0.5)             # let vortices leave the outlet
-    s.set_velocity_solver_params(50)
+    s.diagnostics.set_velocity_solver_params(50)
     s.set_pressure_multigrid(True, levels=5); s.set_pressure_pcg(True, 50, 1e-8)
     s.set_solid(cyl_sdf(L, H, nz, cx, cy, D / 2), cutcell_pressure=True)
     px, py = int(cx + 5 * D), int(cy)

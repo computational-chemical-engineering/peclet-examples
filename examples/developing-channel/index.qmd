@@ -23,8 +23,8 @@ the projection that lets mass leave the domain).
 ## Setup
 
 A channel of height $H$ and length $L$: uniform inlet velocity $U$ on the $-x$ face
-(`set_domain_bc(0, 2, U, 0, 0)`), an outflow on $+x$ (`type 3`), and no-slip walls on
-$\pm y$ (`type 1`). No immersed solid — the domain is all fluid with boundary-condition
+(`set_domain_bc('-x', 'inflow', U, 0, 0)`), an outflow on $+x$ (`type 'outflow'`), and no-slip walls on
+$\pm y$ (`type 'wall'`). No immersed solid — the domain is all fluid with boundary-condition
 pressure faces (`set_pressure_geometry`). The Reynolds number is
 $\mathrm{Re} = U H/\nu$, and the entrance length scales as $L_e \sim 0.04\,\mathrm{Re}\,H$.
 
@@ -58,10 +58,10 @@ def solve_developing(L=120, H=24, Re=60.0, U=1.0, nz=4, dt=0.5, max_steps=5000):
     nu = U * H / Re
     s = flow.Solver(L, H, nz)
     s.set_rho(1.0); s.set_mu(nu); s.set_dt(dt); s.set_advection(True)
-    s.set_domain_bc(0, 2, U, 0.0, 0.0)      # -x uniform inflow (Dirichlet velocity)
-    s.set_domain_bc(1, 3)                    # +x outflow (zero-gradient u, p=0)
-    s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)   # -y, +y no-slip walls
-    s.set_velocity_solver_params(60)
+    s.set_domain_bc('-x', 'inflow', U, 0.0, 0.0)      # -x uniform inflow (Dirichlet velocity)
+    s.set_domain_bc('+x', 'outflow')                   # +x outflow (zero-gradient u, p=0)
+    s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')   # -y, +y no-slip walls
+    s.diagnostics.set_velocity_solver_params(60)
     s.set_pressure_multigrid(True, levels=8)
     s.set_pressure_solver_params(80)
     s.set_pressure_geometry(np.full((L, H, nz), 1e30))   # all-fluid + BC pressure faces

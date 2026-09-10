@@ -44,10 +44,10 @@ def solve_bfs(Re, S=16, Lr=12, U=1.0, nz=4, dt=0.2, steps=12000):
     nu = U * S / Re
     s = flow.Solver(L, H, nz)
     s.set_rho(1.0); s.set_mu(nu); s.set_dt(dt); s.set_advection(True)
-    s.set_domain_bc_profile(0, inlet_profile(H, S, nz, U))  # partial parabolic inlet == the step
-    s.set_domain_bc(1, 3)                                    # +x outflow
-    s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)            # no-slip walls
-    s.set_velocity_solver_params(60)
+    s.set_domain_bc_profile('-x', inlet_profile(H, S, nz, U))  # partial parabolic inlet == the step
+    s.set_domain_bc('+x', 'outflow')                          # +x outflow
+    s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')  # no-slip walls
+    s.diagnostics.set_velocity_solver_params(60)
     s.set_pressure_multigrid(True, levels=8)
     s.set_pressure_solver_params(80)
     s.set_pressure_geometry(np.full((L, H, nz), 1e30, order="F"))

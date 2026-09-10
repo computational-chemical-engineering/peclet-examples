@@ -40,7 +40,7 @@ with $U_{in}$ the mean inlet velocity over the open half.
 A note on the time step: the shear layer springing off the step lip is *stiff* for the
 explicit high-order (SOU) advection correction, so we march at `dt=0.2` — comfortably
 under its stability limit while keeping full second-order accuracy. (Larger steps show a
-roundoff-sensitive transient that can diverge; `set_deferred_correction(False)` — pure
+roundoff-sensitive transient that can diverge; `diagnostics.set_deferred_correction(False)` — pure
 first-order upwind — is the cheap robust alternative.)
 
 ```{python}
@@ -95,10 +95,10 @@ def solve_bfs(Re, S=16, Lr=12, U=1.0, nz=4, dt=0.2, steps=12000):
     nu = U * S / Re
     s = flow.Solver(L, H, nz)
     s.set_rho(1.0); s.set_mu(nu); s.set_dt(dt); s.set_advection(True)
-    s.set_domain_bc_profile(0, inlet_profile(H, S, nz, U))   # inlet == the step
-    s.set_domain_bc(1, 3)                                     # outflow
-    s.set_domain_bc(2, 1); s.set_domain_bc(3, 1)             # no-slip walls
-    s.set_velocity_solver_params(60)
+    s.set_domain_bc_profile('-x', inlet_profile(H, S, nz, U))   # inlet == the step
+    s.set_domain_bc('+x', 'outflow')                          # outflow
+    s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')  # no-slip walls
+    s.diagnostics.set_velocity_solver_params(60)
     s.set_pressure_multigrid(True, levels=8)
     s.set_pressure_solver_params(80)
     s.set_pressure_geometry(np.full((L, H, nz), 1e30, order="F"))
@@ -198,7 +198,7 @@ plt.show()
   Armaly/Biswas benchmark — a genuine quantitative validation of the inflow/outflow
   solver on a *separated* flow.
 - Separated shear layers are numerically stiff for explicit advection corrections; a
-  modest time step (or first-order upwind via `set_deferred_correction(False)`) keeps the
+  modest time step (or first-order upwind via `diagnostics.set_deferred_correction(False)`) keeps the
   march robust.
 
 ## Reproduce this
