@@ -116,7 +116,7 @@ def _run(build, n, label, tol, dt, maxit):
     s.set_scene(np.asarray(ni, dtype=np.int32), np.asarray(nr, dtype=float),
                 inst_ints.ravel(), inst_reals.ravel(), periodic=True)
     s.set_solid_from_scene(True)
-    s.set_body_force(FBODY, 0.0, 0.0)
+    s.set_body_force((FBODY, 0.0, 0.0))
     nc = s.diagnostics.fluid_momentum_cells()[0]
     prev, it, t0 = 0.0, 0, time.time()
     while it < maxit:

@@ -146,7 +146,7 @@ side walls. The coupling ties them together with the **Gidaspow** drag law and t
 ```{python}
 s = flow.Solver(NX, NY, NZ)
 s.set_rho(rho_g); s.set_mu(mu_c); s.set_dt(dt)
-s.set_domain_bc('-z', 'inflow', 0.0, 0.0, U_c); s.set_domain_bc('+z', 'outflow')   # -z inflow, +z outflow
+s.set_domain_bc('-z', 'inflow', velocity=(0.0, 0.0, U_c)); s.set_domain_bc('+z', 'outflow')   # -z inflow, +z outflow
 for face in ('-x', '+x', '-y', '+y'): s.set_domain_bc(face, 'wall')                  # no-slip sides
 s.set_pressure_pcg(True, 40, 1e-6)
 

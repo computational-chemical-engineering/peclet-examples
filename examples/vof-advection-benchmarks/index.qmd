@@ -674,7 +674,7 @@ PACK = sphere_array_sdf(NPK, [(6*f, 7*f, 8*f), (20*f, 9*f, 23*f),
 
 s = flow.Solver(NPK, NPK, NPK)
 s.set_rho(1.0); s.set_mu(0.2); s.set_dt(1.0)
-s.set_body_force(2e-3, 1e-3, 5e-4)
+s.set_body_force((2e-3, 1e-3, 5e-4))
 s.set_solid(PACK, cutcell_pressure=True)
 iters = 0
 for _ in range(60):

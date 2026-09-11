@@ -148,7 +148,7 @@ quoted.
 ```{python}
 #| label: stokes
 F0 = 1e-5
-s.set_body_force(0.0, F0, 0.0)
+s.set_body_force((0.0, F0, 0.0))
 t0 = time.time()
 for _ in range(400):
     s.step()
@@ -195,7 +195,7 @@ rows = []
 # dt shrinks with the drive: explicit SOU advection needs CFL < ~0.5, and U grows with F
 for F, dt_run in ((1e-5, 50.0), (6e-5, 30.0), (2.4e-4, 12.0), (8e-4, 5.0)):
     si, _ = build(node_ints, node_reals, root, advect=(F > 2e-5), sweeps=60, dt=dt_run)
-    si.set_body_force(0.0, F, 0.0)
+    si.set_body_force((0.0, F, 0.0))
     t0 = time.time()
     prev = 0.0
     for k in range(1400):

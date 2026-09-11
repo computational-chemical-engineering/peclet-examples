@@ -196,7 +196,7 @@ s.init_mpi(GNX, GNY, GNZ)
 s.set_rho(1.0)
 s.set_mu(MU)
 s.set_dt(DT)
-s.set_body_force(F, 0.0, 0.0)
+s.set_body_force((F, 0.0, 0.0))
 s.set_advection(False)  # creeping Stokes
 s.diagnostics.set_velocity_solver_params(VSWEEPS)
 s.set_pressure_multigrid(True, MGLEVELS)

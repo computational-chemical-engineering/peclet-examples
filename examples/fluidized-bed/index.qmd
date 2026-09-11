@@ -102,7 +102,7 @@ outflow, and the lateral faces no-slip (the fluid never reaches them — the cyl
 def make_flow(U):
     s = flow.Solver(NX, NY, NZ)
     s.set_rho(rho_g); s.set_mu(mu_g); s.set_dt(0.05)
-    s.set_domain_bc('-z', 'inflow', 0.0, 0.0, U)     # -z: inflow, gas up at U
+    s.set_domain_bc('-z', 'inflow', velocity=(0.0, 0.0, U))     # -z: inflow, gas up at U
     s.set_domain_bc('+z', 'outflow')                 # +z: outflow
     for f in ('-x', '+x', '-y', '+y'): s.set_domain_bc(f, 'wall')   # lateral no-slip
     s.set_pressure_pcg(True, 50, 1e-6)     # geometric-MG-preconditioned CG; 50 iters is plenty here

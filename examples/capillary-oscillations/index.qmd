@@ -354,8 +354,8 @@ def capillary_wave(nx, nu, periods=2.5, rho=1.0, sigma=1.0, cls=flow.Solver):
     s = cls(nx, ny, nz)
     s.set_rho(rho)
     s.set_mu(nu * rho)
-    s.set_domain_bc('-z', 'wall', 0, 0, 0)                     # -z wall
-    s.set_domain_bc('+z', 'wall', 0, 0, 0)                     # +z wall
+    s.set_domain_bc('-z', 'wall', velocity=(0, 0, 0))                     # -z wall
+    s.set_domain_bc('+z', 'wall', velocity=(0, 0, 0))                     # +z wall
     s.set_pressure_geometry(np.full((nx, ny, nz), 10.0, order="F"))
     s.set_pressure_chebyshev(True, 500, 1e-11)
     s.enable_vof()

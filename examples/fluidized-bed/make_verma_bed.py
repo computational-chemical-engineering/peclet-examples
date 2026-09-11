@@ -46,7 +46,7 @@ print(f"grid {NX}x{NY}x{NZ}, h = {h_m*1e3:.3f} mm = {h_m/dp_m:.2f} dp,  U = {U_s
 # ---- gas: cut-cell cylinder, inflow floor at the superficial velocity, outflow roof ----
 s = flow.Solver(NX, NY, NZ)
 s.set_rho(rho_g); s.set_mu(mu_c); s.set_dt(dt)
-s.set_domain_bc('-z', 'inflow', 0.0, 0.0, U_c)
+s.set_domain_bc('-z', 'inflow', velocity=(0.0, 0.0, U_c))
 s.set_domain_bc('+z', 'outflow')
 for f in ('-x', '+x', '-y', '+y'):
     s.set_domain_bc(f, 'wall')

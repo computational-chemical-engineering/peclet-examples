@@ -313,10 +313,10 @@ def doublet(theta_deg, ca, slip=0.0, wall_shift=WALL_SHIFT, trace=False, max_ste
     every = max(steps // 120, 5)
     s = flow.Solver(NX, NY, NZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.1)
-    s.set_domain_bc('-x', 'inflow', U, 0.0, 0.0)          # -x inflow at the fixed superficial velocity
-    s.set_domain_bc('+x', 'outflow', 0.0, 0.0, 0.0)        # +x outflow
-    s.set_domain_bc('-z', 'wall', 0.0, 0.0, 0.0)        # +-z walls, buried in the solid
-    s.set_domain_bc('+z', 'wall', 0.0, 0.0, 0.0)
+    s.set_domain_bc('-x', 'inflow', velocity=(U, 0.0, 0.0))          # -x inflow at the fixed superficial velocity
+    s.set_domain_bc('+x', 'outflow')        # +x outflow
+    s.set_domain_bc('-z', 'wall')        # +-z walls, buried in the solid
+    s.set_domain_bc('+z', 'wall')
     s.diagnostics.set_velocity_solver_params(20)
     s.set_pressure_multigrid(True, levels=5)
     s.set_pressure_solver_params(80)
@@ -713,8 +713,8 @@ def packing(theta_deg, ca=1e-3, step_cap=STEP_CAP, after=0.25, every=100):
     U = ca * SIGMA / MU_L
     s = flow.Solver(PNX, PNY, PNZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.05)
-    s.set_domain_bc('-z', 'inflow', 0.0, 0.0, U)          # -z inflow (liquid), x/y periodic
-    s.set_domain_bc('+z', 'outflow', 0.0, 0.0, 0.0)        # +z outflow
+    s.set_domain_bc('-z', 'inflow', velocity=(0.0, 0.0, U))          # -z inflow (liquid), x/y periodic
+    s.set_domain_bc('+z', 'outflow')        # +z outflow
     s.diagnostics.set_velocity_solver_params(20)
     s.set_pressure_multigrid(True, levels=5)
     s.set_pressure_solver_params(80)
@@ -947,7 +947,7 @@ def micromodel(theta_deg, ca=1e-3, pv_stop=0.10, step_cap=STEP_CAP, every=60):
     U = ca * SIGMA / MU_L
     s = flow.Solver(MNX, MNY, MNZ)
     s.set_rho(RHO_L); s.set_mu(MU_L); s.set_dt(0.05)
-    s.set_domain_bc('-x', 'inflow', U, 0.0, 0.0); s.set_domain_bc('+x', 'outflow', 0.0, 0.0, 0.0)
+    s.set_domain_bc('-x', 'inflow', velocity=(U, 0.0, 0.0)); s.set_domain_bc('+x', 'outflow')
     s.diagnostics.set_velocity_solver_params(20)
     s.set_pressure_multigrid(True, levels=5); s.set_pressure_solver_params(80)
     s.set_solid(SDF_M, cutcell_pressure=True)

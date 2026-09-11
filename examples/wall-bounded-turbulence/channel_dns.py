@@ -86,7 +86,7 @@ s.diagnostics.set_velocity_solver_params(20)                 # implicit diffusio
 s.set_pressure_multigrid(True, 5)
 s.set_pressure_pcg(True, 80, 1e-4); s.diagnostics.set_pressure_warmstart(True)
 s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')     # no-slip walls on -y,+y ; x,z periodic (default)
-s.set_body_force(0.0 if CFR > 0 else fbody, 0.0, 0.0)  # CPG body force, or 0 under CFR
+s.set_body_force((0.0 if CFR > 0 else fbody, 0.0, 0.0))  # CPG body force, or 0 under CFR
 s.set_pressure_geometry(np.asfortranarray(np.full((NX, NY, NZ), 1e30)))  # all-fluid
 s.set_state(u0, v0, w0)
 

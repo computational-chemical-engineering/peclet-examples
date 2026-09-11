@@ -148,7 +148,7 @@ def steady_lambda(n, r, f=1e-4, dt=200.0, tol=1e-7, maxit=4000):
 def _steady_lambda(n, r, f, dt, tol, maxit):
     """Fixed sphere, uniform body force; iterate to a genuinely steady mean velocity."""
     s = solver(n, r, dt, 0.0)
-    s.set_body_force(f, 0.0, 0.0)
+    s.set_body_force((f, 0.0, 0.0))
     nc = s.diagnostics.fluid_momentum_cells()[0]
     prev, it = 0.0, 0
     while it < maxit:

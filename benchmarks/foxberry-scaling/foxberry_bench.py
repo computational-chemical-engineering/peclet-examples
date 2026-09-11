@@ -282,7 +282,7 @@ HIER = [{"global": list(g), "ranks": r, "block0": list(b), "ratio": list(q), "te
 
 # Domain BCs (before geometry): west inlet, east outlet, four no-slip walls -- FoxBerry's map.
 if BCMODE == "foxberry":
-    s.set_domain_bc('-x', 'inflow', UIN, 0.0, 0.0)   # -x inflow
+    s.set_domain_bc('-x', 'inflow', velocity=(UIN, 0.0, 0.0))   # -x inflow
     s.set_domain_bc('+x', 'outflow')                 # +x outflow
     for f in ('-y', '+y', '-z', '+z'):
         s.set_domain_bc(f, 'wall')         # y/z no-slip walls
@@ -291,11 +291,11 @@ elif BCMODE == "walls":
     # the wall/Neumann half of the BC hierarchy from the inflow/outflow (Dirichlet) half.
     for f in ('-x', '+x', '-y', '+y', '-z', '+z'):
         s.set_domain_bc(f, 'wall')
-    s.set_body_force(float(os.environ.get("F", 1e-3)), 0.0, 0.0)
+    s.set_body_force((float(os.environ.get("F", 1e-3)), 0.0, 0.0))
 else:
     # Ablation: fully periodic, body-force driven. Physics is NOT FoxBerry's -- this exists only
     # to separate the cut-cell operator from the domain-BC hierarchy in the investigation.
-    s.set_body_force(float(os.environ.get("F", 1e-3)), 0.0, 0.0)
+    s.set_body_force((float(os.environ.get("F", 1e-3)), 0.0, 0.0))
 
 if CASE == "packed":
     s.set_solid(sdf, cutcell_pressure=True)

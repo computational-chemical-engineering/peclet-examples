@@ -188,7 +188,7 @@ if GRAPHAMG:
     # bottom with an agglomerated algebraic solve. Applied at the set_pressure_geometry call below.
     s.diagnostics.set_pressure_graph_amg(True)
 s.set_domain_bc('-y', 'wall'); s.set_domain_bc('+y', 'wall')          # no-slip walls on -y,+y ; x,z periodic
-s.set_body_force(0.0 if CFR > 0 else fbody, 0.0, 0.0)
+s.set_body_force((0.0 if CFR > 0 else fbody, 0.0, 0.0))
 s.set_pressure_geometry(np.asfortranarray(np.full((lnx, lny, lnz), 1e30)))
 
 # ---- restart (resume fields) or fresh IC --------------------------------------------------------

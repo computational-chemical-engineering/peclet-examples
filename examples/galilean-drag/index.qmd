@@ -95,7 +95,7 @@ def run(moving, N, DH, Re, steps):
     B = abraham_cd(Re) * 0.5 * U ** 2 * np.pi * (DH / 2) ** 2 / N ** 3
     y0 = 0.72 * N if moving else 0.5 * N + OFF
     s, x0 = make(N, DH, NU, y0)
-    s.set_body_force(0.0, B, 0.0)
+    s.set_body_force((0.0, B, 0.0))
     if not moving:
         s.set_velocity(1, np.full((N, N, N), U, dtype=np.float64, order="F"))
     y = y0; F = []; t0 = time.time()

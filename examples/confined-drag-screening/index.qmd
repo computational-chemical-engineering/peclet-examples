@@ -117,7 +117,7 @@ def run(DH, Re, duct, steps, slab_half=None):
     s.set_velocity(1, np.full((L, NY, L), U, dtype=np.float64, order="F"))
     vfl = ((L - 2 * WX) ** 2 * NY if duct else L * L * NY) - np.pi / 6 * DH ** 3
     fest = abraham_cd(Re) * 0.5 * U ** 2 * np.pi * (DH / 2) ** 2 * (1.4 if duct else 1.05)
-    s.set_body_force(0.0, fest / vfl, 0.0)                  # hold the mean against the drag
+    s.set_body_force((0.0, fest / vfl, 0.0))                  # hold the mean against the drag
     nfl = int((np.abs(np.asarray(s.get_v())) > 0).sum())
     F = []; t0 = time.time()
     for k in range(steps):

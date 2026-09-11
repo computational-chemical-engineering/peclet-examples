@@ -371,8 +371,8 @@ def column(packed=True, ratio=100.0, Eo=EO, Mo=1e-3, theta=THETA, g=2e-4,
 
     s = cls(nx, nx, nz)
     s.set_rho(rho_l); s.set_mu(mu_l)
-    s.set_domain_bc('-z', 'wall', 0, 0, 0)             # closed: no-slip floor
-    s.set_domain_bc('+z', 'wall', 0, 0, 0)             # closed: no-slip lid
+    s.set_domain_bc('-z', 'wall', velocity=(0, 0, 0))             # closed: no-slip floor
+    s.set_domain_bc('+z', 'wall', velocity=(0, 0, 0))             # closed: no-slip lid
     if packed:
         s.set_solid(SDF, cutcell_pressure=True)        # cut-cell IBM + cut-cell pressure
     else:

@@ -126,7 +126,7 @@ face fluxes are exactly what the network bookkeeping needs.
 MU, FX = 0.05, 1e-3
 s = flow.Solver(N, N, N)
 s.set_rho(1.0); s.set_mu(MU); s.set_dt(100.0)
-s.set_body_force(FX, 0.0, 0.0)
+s.set_body_force((FX, 0.0, 0.0))
 s.set_solid(np.asfortranarray(sdf), cutcell_pressure=True)
 for _ in range(40):
     s.step()
