@@ -114,17 +114,6 @@ The inlet is a **profile**: `set_domain_bc_profile` prescribes a per-cell vertic
 face. Everywhere inside the cylinder it is the distributor velocity U~mf~; over a small central patch it is
 the **jet**. Re-issuing the profile each step lets us switch the jet on and off.
 
-::: {.callout-warning}
-## [1.0.0 OPEN ISSUE] `set_domain_bc_profile` no longer accepts a per-step re-issue
-Under peclet.flow 1.0.0, `set_domain_bc_profile`/`set_domain_bc` must be called **before** the
-geometry (`set_solid`) is built and now **raise** on any later call — the "re-issue the profile
-each step to ramp the jet" pattern described above is no longer supported and there is no
-replacement setter for a time-varying inlet profile once geometry exists. The code below is
-migrated only as far as the int-\>str codes and the one-time setup order; the per-step re-issue
-inside `run_injection`'s loop is left calling the (now-raising) API rather than inventing a
-workaround, pending a design decision upstream in `flow`.
-:::
-
 ```{python}
 Xc, Yc, _ = np.meshgrid(np.arange(NX)+.5, np.arange(NY)+.5, np.arange(NZ)+.5, indexing="ij")
 solid_sdf = np.asfortranarray((R-np.hypot(Xc-cx, Yc-cx)).astype(np.float64)).flatten(order="F")
@@ -175,8 +164,8 @@ def run_injection(inject_ms, n_prep=60, n_rise=180, ramp=15, want_snaps=0):
     build_wall_sdf(wall, ((0,0,0),(NX,NY,NZ)), resolution=96).add_to(dd, restitution=0.5, friction=0.3)
     dd.set_positions(np.c_[pos_settled, np.full(N, 1/m_p, np.float32)]); dd.set_velocities(np.zeros((N,3), np.float32))
     ss = flow.Solver(NX, NY, NZ); ss.set_rho(rho_g); ss.set_mu(mu_c); ss.set_dt(dt)
-    # [1.0.0: set_domain_bc_profile/set_domain_bc now take str face/type codes, not int, AND raise
-    # if called after the geometry (set_solid) is built -- moved ahead of set_solid accordingly.]
+    # Establishing the face TYPES (periodic -> inflow / outflow) must happen before the geometry;
+    # once set_solid has run, only a VALUE update (the per-step ramp below) is allowed.
     ss.set_domain_bc_profile('-z', inflow_profile(Umf_c)); ss.set_domain_bc('+z', 'outflow')
     ss.set_solid(solid_sdf, True)
     ss.set_pressure_pcg(True, 50, 1e-6)
@@ -191,12 +180,8 @@ def run_injection(inject_ms, n_prep=60, n_rise=180, ramp=15, want_snaps=0):
     dhist, snaps = [], []
     for i in range(total):
         jetting = n_prep <= i < n_prep + n_jet
-        # [1.0.0 OPEN ISSUE, not fixed here: set_domain_bc_profile now raises once geometry is
-        # built (see above), so this per-step re-issue -- which is how the jet is ramped on/off --
-        # can no longer run under the 1.0.0 API. There is no replacement setter for a time-varying
-        # inlet profile after set_solid as of 1.0.0; this needs a design decision upstream in flow,
-        # not a rename. Left as-is (will raise on the first step) rather than inventing a fix or
-        # silently freezing the inflow at Umf_c.]
+        # -z is already 'inflow' (set above, before the geometry), so re-issuing the profile here
+        # each step is a VALUE update -- allowed after set_solid -- and is how the jet ramps on/off.
         ss.set_domain_bc_profile('-z', inflow_profile(jv(i)))
         cc.step()
         P = np.asarray(dd.get_positions())[:N]
