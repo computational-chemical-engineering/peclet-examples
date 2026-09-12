@@ -40,9 +40,15 @@ page that renders is a page whose GPU path ran.
 and `sanity-checks/` all have a freeze older than their source. Plus the failures
 (`capillary-oscillations` needed `mpmath` in the render venv, and its source changed since). Then
 the drift report (old vs new frozen output),
-the stale-prose check (prose quoting a number the new run no longer prints), commit `_freeze/` per
-page, and push. After that, and not before: rebuild flow against core's `cpu-budget` branch for the
-1.0.1 end-to-end gate (suite `docs/RELEASE_PREP.md` §11).
+the stale-prose check (prose quoting a number the new run no longer prints).
+
+**The gate before the push** is a FULL-SITE `quarto render` on the render venv, which has no peclet
+installed — precisely what `publish.yml` does on GitHub. If every freeze matches its source nothing
+executes and it completes; if anything re-executes it fails HERE, before the push, instead of
+turning the Publish job red afterwards. Then commit `_freeze/` and push.
+
+After that, and not before: rebuild flow against core's `cpu-budget` branch for the 1.0.1
+end-to-end gate (suite `docs/RELEASE_PREP.md` §11).
 
 ## VORONOI FLOW SOLVER EXAMPLES (2026-09-04)
 - [x] `examples/voronoi-taylor-green` — peclet.voro's covolume and collocated NS solvers on a
