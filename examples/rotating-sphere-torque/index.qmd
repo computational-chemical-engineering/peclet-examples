@@ -214,7 +214,7 @@ between calibration and prediction.
 ```{python}
 #| label: decay
 from peclet import dem as pdem
-from peclet_coupling.resolved import ResolvedCfdDem
+from peclet.coupling.resolved import ResolvedCfdDem
 
 N, R, DT = 64, 9.6, 5.0
 RHO_P = 5.0

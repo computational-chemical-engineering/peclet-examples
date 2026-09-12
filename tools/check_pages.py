@@ -12,14 +12,21 @@ handing over the geometry. A page that is STILL RUNNING at the timeout has there
 part this check is about, and counts as `past-setup`, not as a failure: the alternative is running
 hour-long simulations in CI to learn nothing new.
 
+It also checks that each page's committed `index.ipynb` — the file the Colab badge opens, and the
+only thing a Colab reader ever runs — still carries the same code as its `index.qmd`. They are
+maintained as a pair by hand, so a fix applied to one and not the other ships broken to exactly the
+audience the badge is for. (Found that way: `rotating-sphere-torque` imported `peclet_coupling`,
+the source-layout name, which no wheel has ever exposed.)
+
     python tools/check_pages.py                        # every page
     python tools/check_pages.py --changed-since origin/main
     python tools/check_pages.py examples/zick-homsy    # named pages
+    python tools/check_pages.py --sync-only            # just the qmd/ipynb pairing, no execution
 
 Exit status is non-zero if any page FAILED. Nothing is committed: the extracted script is written
 into the page directory as `_apicheck.py`, run, and removed.
 """
-import argparse, os, re, subprocess, sys
+import argparse, json, os, re, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -71,12 +78,54 @@ def changed_pages(base: str):
                    and (ROOT / Path(f).parent / "index.qmd").exists()})
 
 
+def executable(chunk: str) -> str:
+    """A cell's actual code: `#|` lines are Quarto cell OPTIONS, and `quarto convert` rewrites them
+    (it unquotes a fig-cap, say). Comparing them would report the converter's own round-trip as
+    drift."""
+    return "\n".join(l for l in chunk.splitlines() if not l.lstrip().startswith("#|")).strip()
+
+
+def notebook_code(ipynb: Path):
+    """The code cells of a committed .ipynb, as one string per cell."""
+    nb = json.loads(ipynb.read_text(errors="ignore"))
+    return [executable("".join(c["source"])) for c in nb["cells"] if c["cell_type"] == "code"]
+
+
+def check_sync(qmds) -> int:
+    """Each page's .ipynb mirror must carry the same code as its .qmd."""
+    bad = 0
+    for qmd in qmds:
+        ipynb = qmd.with_suffix(".ipynb")
+        rel = qmd.parent.relative_to(ROOT)
+        if not ipynb.exists():
+            continue                       # not every page ships a notebook
+        a = [executable(c) for c in CHUNK.findall(qmd.read_text(errors="ignore"))]
+        b = notebook_code(ipynb)
+        if len(a) != len(b):
+            bad += 1
+            print(f"SYNC  FAIL  {rel}   {len(a)} qmd chunks vs {len(b)} notebook cells")
+            continue
+        drift = [i for i, (x, y) in enumerate(zip(a, b)) if x != y]
+        if drift:
+            bad += 1
+            print(f"SYNC  FAIL  {rel}   cell {drift[0]} differs between index.qmd and index.ipynb")
+            for x, y in zip(a[drift[0]].splitlines(), b[drift[0]].splitlines()):
+                if x != y:
+                    print(f"              qmd   {x[:110]}\n              ipynb {y[:110]}")
+                    break
+    if bad == 0:
+        print(f"SYNC  PASS  every .ipynb mirror matches its .qmd ({len(qmds)} pages)")
+    return bad
+
+
 def main():
     a = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     a.add_argument("--timeout", type=int, default=90, help="seconds before a page counts past-setup")
     a.add_argument("--workers", type=int, default=2)
     a.add_argument("--changed-since", metavar="REF", help="only pages touched since REF")
+    a.add_argument("--sync-only", action="store_true",
+                   help="only check that each .ipynb mirror matches its .qmd; execute nothing")
     a.add_argument("pages", nargs="*", help="page directories, e.g. examples/zick-homsy")
     a = a.parse_args()
 
@@ -91,7 +140,10 @@ def main():
         print("no pages to check")
         return 0
 
-    bad = 0
+    bad = check_sync(qmds)
+    if a.sync_only:
+        return 1 if bad else 0
+
     with ThreadPoolExecutor(a.workers) as ex:
         for qmd, verdict, msg in ex.map(lambda q: check(q, a.timeout), qmds):
             bad += verdict == "FAIL"

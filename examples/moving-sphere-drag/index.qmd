@@ -442,7 +442,7 @@ Blackburn's spectral value across the whole resolution ladder
   how every number above was produced.
 - **Push the amplitude.** The spurious content grows with the number of cell crossings per cycle;
   at $A/R = 1$ the sphere sweeps forty cells per cycle.
-- **Couple it.** `peclet_coupling.ResolvedCfdDem` drives exactly this loop from a `peclet.dem`
+- **Couple it.** `peclet.coupling.ResolvedCfdDem` drives exactly this loop from a `peclet.dem`
   particle instead of a prescribed path.
 
 ## Reproduce this
