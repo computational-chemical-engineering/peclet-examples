@@ -1,5 +1,32 @@
 # Overnight build progress
 
+## CURRENT STATE — publishing the gallery against peclet 1.0.0 (2026-09-12)
+
+*Rewritten in place, not appended: this section is a position, not a diary.*
+
+**Where we are.** The 28 commits on local `main` (`948173d..1b370a0`) port every page to the 1.0.0
+API and are **not pushed**, so <https://computational-chemical-engineering.github.io/peclet-examples/>
+still shows the pre-1.0.0 calls. Verified 2026-09-12 against a fresh venv holding
+`peclet[cfd-dem]==1.0.0` from PyPI: **all 53 pages run** — 21 to completion, the rest still running
+at a 90 s timeout, i.e. past setup, which is where an API break shows. Zero API failures remain.
+(`tools/check_pages.py`, now also a CI job — see `.github/workflows/api-check.yml`.)
+
+**What blocks the push.** `_quarto.yml` sets `execute: freeze: auto`, so a page whose source changed
+re-executes at render time — and `publish.yml` deliberately installs no peclet. Pushing as things
+stand makes the Publish job fail on the first solver import. **Every example page is affected**: all
+43 have a source newer than their freeze; the 7 `benchmarks/` pages are static (PNG + `results/`)
+and are not.
+
+**Next action.** Phase I of `suite/docs/RELEASE.md` §10 — re-execute and commit `_freeze/` page by
+page with `render_example.sh <slug>`, then push. Note the local builds that script points at
+(`flow/build_l3_cuda`, `dem/build_l4_cuda`, dated 2026-08-30/31) **predate 1.0.0 and no longer
+match the API**, so they must be rebuilt at the 1.0.0 tags first, or the render must be pointed at
+the PyPI wheels for the pages that do not need CUDA.
+
+**Open decision.** Whether to re-render the expensive/GPU pages at all for this publication, or to
+publish only what can be refreshed cheaply. Not decided here: it is a call about machine time and
+about whether published numbers may move.
+
 ## VORONOI FLOW SOLVER EXAMPLES (2026-09-04)
 - [x] `examples/voronoi-taylor-green` — peclet.voro's covolume and collocated NS solvers on a
       jittered Voronoi mesh: energy decay vs exact, convergence table (collocated 2nd order).

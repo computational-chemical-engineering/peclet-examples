@@ -387,9 +387,10 @@ of Fig. 34.
 ## Reproduce this
 
 ```bash
-# The Haff's-law and clustering sections are pure peclet.dem and run on the PyPI wheels:
-pip install peclet && quarto render examples/hcs-clustering/index.qmd --execute
-# The gas-damping section needs the coupling module (built from source against a Kokkos prefix):
+# Everything on this page runs on the PyPI wheels: the Haff's-law and clustering sections are
+# pure peclet.dem, and the gas-damping section's coupling module ships in the cfd-dem extra.
+pip install "peclet[cfd-dem]" && quarto render examples/hcs-clustering/index.qmd --execute
+# Or from source, against a Kokkos prefix (what a GPU run or a local solver change needs):
 tools/bootstrap_deps.sh host-openmp
 for m in flow dem coupling; do
   cmake -S $m -B $m/build -DCMAKE_PREFIX_PATH="$PWD/extern/install/host-openmp"; cmake --build $m/build -j
