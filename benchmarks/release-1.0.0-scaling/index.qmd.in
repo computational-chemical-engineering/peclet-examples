@@ -91,7 +91,9 @@ limit of strong scaling on this hardware, and it is why the weak ladder is the h
 earns its keep on a large subdomain, and the fixed problem here fits on one of them to begin with.
 
 Taken together the two machines price the same work: on this case one H100 is worth roughly
-**{{cores_per_gpu}} Genoa cores**.
+**{{cores_per_gpu}} Genoa cores** — crediting the CPU with the best per-core throughput anywhere on
+its ladder (the {{cores_per_gpu_rung}}-core rung, which has the most memory bandwidth per core).
+Read against its most contended rung the ratio is larger; the conservative number is the one quoted.
 
 ## Where the step goes
 

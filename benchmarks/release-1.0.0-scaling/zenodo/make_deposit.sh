@@ -21,19 +21,13 @@ NAME="peclet-flow-1.0.0-scaling"
 OUT="$BENCH/zenodo/build"
 rm -rf "$OUT"; mkdir -p "$OUT"
 
-command -v quarto >/dev/null || { echo "FATAL: quarto is needed to render the report"; exit 1; }
+command -v pandoc >/dev/null || { echo "FATAL: pandoc is needed to render the report"; exit 1; }
 [ -f "$BENCH/summary.md" ] || { echo "FATAL: run 'python analyze.py results' first"; exit 1; }
+[ -f "$BENCH/index.qmd" ]  || { echo "FATAL: run 'python render_page.py' first"; exit 1; }
 
 # --- 1. the standalone report: ONE source (index.qmd), rendered self-contained --------------
 echo "== rendering the report"
-quarto render "$BENCH/index.qmd" --to html --embed-resources \
-  --output "$NAME-report.html" --output-dir "$OUT" 2>&1 | tail -3
-if quarto render "$BENCH/index.qmd" --to pdf --output "$NAME-report.pdf" \
-     --output-dir "$OUT" >/dev/null 2>&1; then
-  echo "== PDF rendered"
-else
-  echo "== PDF skipped (no LaTeX toolchain); the HTML report is self-contained"
-fi
+python3 "$BENCH/make_report.py" "$OUT"
 
 # --- 2. the artifact: everything needed to redo the measurement -----------------------------
 echo "== packaging $NAME.tar.gz"

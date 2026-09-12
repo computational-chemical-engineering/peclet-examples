@@ -271,6 +271,14 @@ def fig_strong(runs, out):
         t = np.array([ms(r) / 1e3 for r in sel])
         ax.loglog(n, t, "o-", color=c, lw=2, ms=7, label="peclet.flow 1.0.0")
         ax.loglog(n, t[0] * n[0] / n, ls="--", lw=1, color=MUTED, label="ideal")
+        # plain numbers on both log axes: "4 x 10^0 s" is unreadable for a quantity like 4 s
+        ax.set_xticks(n, [f"{int(v)}" for v in n], minor=False)
+        ax.set_xticks([], [], minor=True)
+        lo, hi = t.min(), t.max()
+        yt = [v for v in (0.2, 0.3, 0.5, 0.7, 1, 2, 3, 5, 7, 10, 20, 30, 50, 100, 200)
+              if lo / 1.6 <= v <= hi * 1.6]
+        ax.set_yticks(yt, [f"{v:g}" for v in yt], minor=False)
+        ax.set_yticks([], [], minor=True)
         ax.set_xlabel(xl)
         ax.set_ylabel("wall time per step  [s]")
         ax.set_title(f"{sel[0]['cells_total'] / 1e6:.0f} M cells, fixed", fontsize=9, color=INK2,
@@ -294,23 +302,30 @@ def fig_phases(runs, out):
     n = [r["ranks"] for r in sel]
     x = np.arange(len(sel))
     parts = ("predictor", "momentum", "projection")
+    vals = {k: np.array([1e3 * float(np.median([s[k] for s in r["perf"]["steps"]])) for r in sel])
+            for k in parts}
+    tot = np.array([ms(r) for r in sel])
     bottom = np.zeros(len(sel))
     for key, c in zip(parts, (BLUE, ORANGE, AQUA)):
-        v = np.array([1e3 * float(np.median([s[key] for s in r["perf"]["steps"]])) for r in sel])
+        v = vals[key]
         ax.bar(x, v, 0.62, bottom=bottom, color=c, label=key,
                edgecolor=SURFACE, linewidth=2)      # 2px surface gap between segments
         for xi, vi, bi in zip(x, v, bottom):
-            if vi > 0.06 * (bottom + v).max():
+            # label only a segment big enough to hold one — the predictor is ~0.1 % of the step
+            if vi > 0.08 * tot.max():
                 ax.text(xi, bi + vi / 2, f"{vi:.0f}", ha="center", va="center",
                         color=SURFACE, fontsize=7.5)
         bottom += v
-    tot = np.array([ms(r) for r in sel])
     ax.plot(x, tot, "o", color=INK, ms=5, label="total step")
     ax.set_xticks(x)
     ax.set_xticklabels([str(v) for v in n])
     ax.set_xlabel("H100 GPUs  (384³ cells each)")
     ax.set_ylabel("time per step  [ms]")
-    ax.legend(loc="upper left", ncol=2)
+    ax.set_ylim(0, 1.28 * tot.max())
+    hs, ls = ax.get_legend_handles_labels()
+    order = [ls.index(k) for k in (*parts, "total step")]
+    ax.legend([hs[i] for i in order], [ls[i] for i in order], loc="upper left", ncol=4,
+              columnspacing=1.0, handletextpad=0.5, fontsize=8)
     ax.set_title("Where the step goes, across the weak ladder", fontsize=10.5, loc="left",
                  color=INK)
     fig.tight_layout()
@@ -357,12 +372,17 @@ def headline(runs):
     ladder("s", pick(runs, "bed", "strong", "genoa"))
     ladder("st", pick(runs, "tgv", "strong", "genoa"))
 
-    # what one H100 is worth, on this workload, measured on the same case at both ends
+    # What one H100 is worth on this workload. Deliberately the CONSERVATIVE reading: the CPU is
+    # credited with its BEST per-core throughput anywhere on its ladder (the sub-node rungs, which
+    # have the most memory bandwidth per core), not with its most contended one — quoting the
+    # 1536-core rung instead would roughly double the ratio in peclet's favour.
     g1 = pick(runs, "bed", "weak", "h100")
     c = pick(runs, "bed", "strong", "genoa")
     if g1 and c:
-        per_core = c[-1]["perf"]["mcells_per_s"] / c[-1]["ranks"]
+        best = max(c, key=lambda r: r["perf"]["mcells_per_s"] / r["ranks"])
+        per_core = best["perf"]["mcells_per_s"] / best["ranks"]
         h["cores_per_gpu"] = f"{g1[0]['perf']['mcells_per_s'] / per_core:.0f}"
+        h["cores_per_gpu_rung"] = best["ranks"]
         h["cpu_top_n"] = c[-1]["ranks"]
 
     # the cross-rung / cross-machine equivalence gate

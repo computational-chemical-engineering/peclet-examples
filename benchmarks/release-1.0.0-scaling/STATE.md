@@ -30,28 +30,33 @@ permeability march (phase B, `MARCH_TOL=1e-5`) runs only at a few rungs.
 
 ## Where we are now
 
-- Driver, bed generator, provisioning and rung scripts written; driver validated against an API
-  stub at np=1,2,4 (tiling exact, φ_voxel 0.4499 vs 0.4500 at every tiling).
-- Bed artifact grown and gated (overlap 0, independent voxel fraction 0.4553 vs 0.4500 analytic).
-- Snellius site builds of `v1.0.0` **in flight**: jobs 26628297 (h100), 26628298 (cpu),
-  one tree per backend under `$PROJ/suite-v1.0.0-bench-<target>`.
+- Site builds done, one tree per backend (`$PROJ/suite-v1.0.0-bench-{h100,cpu}`), censuses pulled
+  into the artifact. flow 1.0.0, `has_mpi=True`, Cuda and OpenMP.
+- **Pilot passed, including the memory-fit gate**: 384³ = 56.6 M cells on ONE H100 with the fp64
+  operator default, 4.0 s/step, 29.7 pressure iterations, `max|div|` 2.7e-14. The 1.81-Gcell top
+  rung is therefore on; the 320³ fallback is not needed.
+- All ladders queued and largely complete; the permeability march converges in **40 steps**, so it
+  runs across the whole weak ladder rather than at three points.
+- Analysis, generated page and deposit packaging written and committed.
 
 ## Next action
 
-1. When the h100 venv lands: **pilot** — 1 GPU bed strong (memory-fit gate at 56.6 M cells/GPU with
-   the fp64 operator default), then 4 GPUs weak. Then the CPU pilot at 192 ranks.
-2. Full ladders, top rung repeated for the allocation-spread control.
-3. Analysis + plots + `index.qmd` + standalone report; then the Zenodo deposit.
+1. Drain the queue, pull results, `python analyze.py results && python render_page.py`.
+2. Eyeball the figures, add the card to `benchmarks/index.qmd`, commit results.
+3. Package the deposit; **ask before any Zenodo upload** (a draft is reversible, publishing is not).
+4. After the DOI exists: swap `PecletBenchmarks` in MORPHO (`morpho-application-M1.tex:240-247`,
+   a TODO the proposal already carries) and re-check the sentence's two numbers.
 
 ## Gates
 
 | Gate | Value | Status |
 |---|---|---|
-| 384³/GPU fits in 94 GB with fp64 operators | — | **pilot** (fallback 320³/GPU = 1.05 Gcells) |
-| ⟨u⟩ agrees across every rung | — | pending |
-| φ_voxel vs packing φ, every run | 0.4499 vs 0.4500 (stub) | passing |
-| pressure iterations flat across the weak ladder | — | pending |
-| blocks uniform on the weak ladder | true at np=1,2,4 (stub) | pending on real ORB |
+| 384³/GPU fits in 94 GB with fp64 operators | 4.0 s/step on one H100 | **PASS** |
+| ⟨u⟩ agrees across every rung and both machines | worst 8e−11; exactly 0 between 1 H100 and 384 cores | **PASS** |
+| φ_voxel vs packing φ, every run | 0.4500 vs 0.4500 | **PASS** |
+| pressure iterations flat across the weak ladder | 29.7 → 30.0 through 8 GPUs | passing so far |
+| blocks uniform on the weak ladder | uniform at every rung | **PASS** |
+| pressure solve never at its cap | worst 33 of 200 | **PASS** |
 
 ## Budget
 
