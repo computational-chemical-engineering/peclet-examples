@@ -41,6 +41,30 @@ pip install peclet-flow-cu13 peclet-dem-cu13   # CUDA wheels for the GPU section
 
 ---
 
+## Start here: the 1.0.0 film
+
+:::::: {.section-lead}
+Seven minutes on what the suite does and — at length — the evidence for it: the exact solutions
+first, then published experiments, then performance measured against another open-source solver on
+the same grid and the same machine.
+
+::::::
+
+<div class="ratio ratio-16x9" style="max-width:900px;margin:0 auto;">
+  <iframe src="https://www.youtube.com/embed/L_uAHnL6Gq8?rel=0&amp;modestbranding=1"
+          title="Peclet 1.0.0 — resolve what you can, model what you must"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+          style="border:0;border-radius:6px;"></iframe>
+</div>
+
+Every movie on this site is also on the channel, next to the page it came from:
+[**@PecletHPC**](https://www.youtube.com/@PecletHPC) · and the documentation is at
+[computational-chemical-engineering.github.io/peclet](https://computational-chemical-engineering.github.io/peclet/).
+
+---
+
 ## Single-phase flow
 
 :::::: {.section-lead}

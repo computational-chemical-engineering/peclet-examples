@@ -145,6 +145,11 @@ website:
           - href: benchmarks/voro-update-throughput/index.qmd
             text: "Voronoi update throughput (workstation → H100)"
     right:
+      - text: "Docs"
+        href: "https://computational-chemical-engineering.github.io/peclet/"
+      - icon: youtube
+        href: "https://www.youtube.com/@PecletHPC"
+        aria-label: "Peclet on YouTube"
       - icon: github
         href: "https://github.com/computational-chemical-engineering/peclet-examples"
 

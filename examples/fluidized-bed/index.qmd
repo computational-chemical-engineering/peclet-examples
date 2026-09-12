@@ -345,7 +345,14 @@ And the bubbles themselves, rendered as the ε = 0.7 isosurface — the same con
 draws in its Figure 6: small bubbles emerge near the distributor, coalesce into large central
 bubbles, and erupt through the domed, breathing bed surface.
 
-{{< video verma_bubbles.mp4 >}}
+<div class="ratio ratio-16x9" style="max-width:900px;margin:0 auto;">
+  <iframe src="https://www.youtube.com/embed/hYOgKVjl_SI?rel=0&amp;modestbranding=1&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=hYOgKVjl_SI"
+          title="A million-particle fluidized bed on one GPU — online CFD–DEM coupling"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+          style="border:0;border-radius:6px;"></iframe>
+</div>
 
 **How close is the reproduction?** With *no tuned parameters* — geometry, material, restitution,
 velocity, and drag closure all taken from their tables, plus this suite's documented defaults —
