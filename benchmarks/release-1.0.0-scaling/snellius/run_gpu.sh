@@ -56,13 +56,13 @@ echo "===== $CASE $MODE, $N GPU(s), ${SLURM_NNODES:-1} node(s) -> $(basename "$O
 env CASE="$CASE" MODE="$MODE" \
     GPR="${GPR:-384}" GN="${GN:-384}" \
     PACK="${PACK:-$BENCH/bed_phi0.45_r18_s0.npz}" \
-    NSTEPS="${NSTEPS:-20}" WARMUP="${WARMUP:-3}" \
+    NSTEPS="${NSTEPS:-10}" WARMUP="${WARMUP:-3}" \
     MARCH_TOL="${MARCH_TOL:-0}" MARCH_MAX="${MARCH_MAX:-600}" \
     LEVELS="${LEVELS:-10}" LABEL="snellius-h100${TAG}" OUT="$OUT" \
   srun --mpi=pmix --ntasks="$N" --gpus-per-task=1 --gpu-bind=per_task:1 \
     "$VENV/bin/python" "$BENCH/scaling_bench.py" > "${OUT%.json}.log" 2>&1
 rc=$?
-grep -E "^\[(cfg|sdf|perf|phys|out)" "${OUT%.json}.log" || true
+grep -E "^\[(cfg|sdf|perf|gate|phys|out)" "${OUT%.json}.log" || true
 if [ $rc -ne 0 ]; then
   echo "  [FAILED rc=$rc] ${OUT%.json}.log:"
   grep -m1 -A8 "Traceback" "${OUT%.json}.log" | sed 's/^/    /'

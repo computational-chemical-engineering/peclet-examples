@@ -7,6 +7,10 @@
 #   sbatch --nodes=1 run_cpu.sh strong bed 192
 #   sbatch --nodes=8 run_cpu.sh strong bed 1536 rerun
 #
+# --mem=0 is load-bearing, not tidiness: --exclusive grants the NODE but Slurm still caps memory at
+# ntasks x DefMemPerCPU (1792 MiB here), so the 24-rank rung — which needs the MOST memory per rank —
+# gets 43 GB of a 344 GB node and is OOM-killed. Measured: job 26628456.
+#
 # The sub-node rungs (24, 48, 96) have up to 8x the memory bandwidth per rank of the full-node
 # rungs. That FLATTERS the baseline and therefore UNDERSTATES the efficiencies computed against
 # it; the apples-to-apples segment is 192 -> 1536 (1, 2, 4, 8 full nodes).
@@ -16,6 +20,7 @@
 #SBATCH --job-name=pec-cpu
 #SBATCH --partition=genoa
 #SBATCH --exclusive
+#SBATCH --mem=0
 #SBATCH --time=02:00:00
 #SBATCH --output=pec-cpu-%j.out
 #SBATCH --account=tes24005
@@ -50,13 +55,13 @@ echo "===== $CASE $MODE, $N ranks, ${SLURM_NNODES:-1} node(s) -> $(basename "$OU
 env CASE="$CASE" MODE="$MODE" \
     GPR="${GPR:-384}" GN="${GN:-384}" \
     PACK="${PACK:-$BENCH/bed_phi0.45_r18_s0.npz}" \
-    NSTEPS="${NSTEPS:-20}" WARMUP="${WARMUP:-3}" \
+    NSTEPS="${NSTEPS:-10}" WARMUP="${WARMUP:-3}" \
     MARCH_TOL="${MARCH_TOL:-0}" MARCH_MAX="${MARCH_MAX:-600}" \
     LEVELS="${LEVELS:-10}" LABEL="snellius-genoa${TAG}" OUT="$OUT" \
   srun --mpi=pmix --ntasks="$N" --cpus-per-task=1 \
     "$VENV/bin/python" "$BENCH/scaling_bench.py" > "${OUT%.json}.log" 2>&1
 rc=$?
-grep -E "^\[(cfg|sdf|perf|phys|out)" "${OUT%.json}.log" || true
+grep -E "^\[(cfg|sdf|perf|gate|phys|out)" "${OUT%.json}.log" || true
 if [ $rc -ne 0 ]; then
   echo "  [FAILED rc=$rc] ${OUT%.json}.log:"
   grep -m1 -A8 "Traceback" "${OUT%.json}.log" | sed 's/^/    /'
