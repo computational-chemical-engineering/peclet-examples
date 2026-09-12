@@ -56,7 +56,7 @@ jobs:
       # that is the run that catches a release moving the API with no commit in this repo.
       # Cheap, needs nothing installed, and catches the class that shipped broken to Colab: a page
       # fixed in index.qmd and not in the index.ipynb the badge opens. Always every page.
-      - name: The .ipynb mirrors must match their .qmd
+      - name: Mirrors in sync, and every data file a page reads is in git
         run: python tools/check_pages.py --sync-only
 
       - name: Check the pages

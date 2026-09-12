@@ -12,11 +12,16 @@ handing over the geometry. A page that is STILL RUNNING at the timeout has there
 part this check is about, and counts as `past-setup`, not as a failure: the alternative is running
 hour-long simulations in CI to learn nothing new.
 
-It also checks that each page's committed `index.ipynb` — the file the Colab badge opens, and the
-only thing a Colab reader ever runs — still carries the same code as its `index.qmd`. They are
-maintained as a pair by hand, so a fix applied to one and not the other ships broken to exactly the
-audience the badge is for. (Found that way: `rotating-sphere-torque` imported `peclet_coupling`,
-the source-layout name, which no wheel has ever exposed.)
+Two more checks run first, both cheap and needing nothing installed:
+
+  SYNC   each page's committed `index.ipynb` — the file the Colab badge opens, and the only
+         thing a Colab reader ever runs — must carry the same code as its `index.qmd`. They are a
+         hand-maintained pair, so a fix applied to one and not the other ships broken to exactly
+         the audience the badge is for. (Found that way: `rotating-sphere-torque` imported
+         `peclet_coupling`, the source-layout name, which no wheel has ever exposed.)
+  DATA   a data file a page reads must be in git. `.gitignore` ignores `*.npz`, so every one is
+         tracked only by force-add — and hcs-clustering shipped depending on 5.2 MB that never was,
+         which nobody else could render.
 
     python tools/check_pages.py                        # every page
     python tools/check_pages.py --changed-since origin/main
@@ -91,6 +96,43 @@ def notebook_code(ipynb: Path):
     return [executable("".join(c["source"])) for c in nb["cells"] if c["cell_type"] == "code"]
 
 
+DATA_SUFFIXES = {".npz", ".npy", ".csv", ".vti", ".vtp", ".h5", ".json", ".txt", ".dat"}
+DATA_LITERAL = re.compile(r"""["']([^"'\n]+\.(?:npz|npy|csv|vti|vtp|h5|json|txt|dat))["']""")
+
+
+def check_data(qmds) -> int:
+    """A page may not depend on a data file that exists only on the author's machine.
+
+    `.gitignore` ignores *.npz, so every data file is tracked only by force-add — and one page
+    (hcs-clustering) shipped depending on 5.2 MB that was never added, which nobody else, Colab
+    included, could render. Flags a referenced file that EXISTS here but is untracked; a path that
+    does not exist is ignored, since the page may well write it before reading it.
+    """
+    tracked = set(subprocess.run(["git", "-C", str(ROOT), "ls-files"],
+                                 capture_output=True, text=True).stdout.split())
+    bad = 0
+    for qmd in qmds:
+        rel = qmd.parent.relative_to(ROOT)
+        missing = []
+        for chunk in CHUNK.findall(qmd.read_text(errors="ignore")):
+            for lit in DATA_LITERAL.findall(chunk):
+                if lit.startswith(("http://", "https://")):
+                    continue
+                f = (qmd.parent / lit).resolve()
+                try:
+                    key = f.relative_to(ROOT).as_posix()
+                except ValueError:
+                    continue                       # outside the repo; not ours to police
+                if f.exists() and key not in tracked and key not in missing:
+                    missing.append(key)
+        if missing:
+            bad += 1
+            print(f"DATA  FAIL  {rel}   untracked but required: {', '.join(missing[:4])}")
+    if bad == 0:
+        print(f"DATA  PASS  every data file a page reads is in git ({len(qmds)} pages)")
+    return bad
+
+
 def check_sync(qmds) -> int:
     """Each page's .ipynb mirror must carry the same code as its .qmd."""
     bad = 0
@@ -140,7 +182,7 @@ def main():
         print("no pages to check")
         return 0
 
-    bad = check_sync(qmds)
+    bad = check_sync(qmds) + check_data(qmds)
     if a.sync_only:
         return 1 if bad else 0
 
