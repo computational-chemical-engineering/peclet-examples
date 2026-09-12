@@ -35,8 +35,11 @@ page that renders is a page whose GPU path ran.
    `render_example.sh` (which pointed at build trees from 2026-08-30, before the physical-domain
    API) now points at `build_gal_cuda`.
 
-**Next action.** Finish the renders; re-run the failures (`capillary-oscillations` needed `mpmath`
-in the render venv, and its source changed since); then the drift report (old vs new frozen output),
+**Next action.** Finish the renders, then the TAIL QUEUE, which the main batch does not cover
+(it listed `examples/*` only): `benchmarks/dem-bulk-dosta2024`, `benchmarks/staggered-vs-collocated`
+and `sanity-checks/` all have a freeze older than their source. Plus the failures
+(`capillary-oscillations` needed `mpmath` in the render venv, and its source changed since). Then
+the drift report (old vs new frozen output),
 the stale-prose check (prose quoting a number the new run no longer prints), commit `_freeze/` per
 page, and push. After that, and not before: rebuild flow against core's `cpu-budget` branch for the
 1.0.1 end-to-end gate (suite `docs/RELEASE_PREP.md` §11).
