@@ -107,7 +107,8 @@ $\max V_c$ are what can be computed from $C$ and $\mathbf{u}$ alone.
 import importlib.util, os, subprocess, sys
 _local = os.environ.get("PECLET_LOCAL_BUILD")
 if _local:
-    sys.path.insert(0, _local)                                  # local source build
+    for _p in _local.split(os.pathsep):                         # local source build(s)
+        sys.path.insert(0, _p)
 elif importlib.util.find_spec("peclet") is None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
 ```

@@ -69,8 +69,8 @@ cell) their value is $K_\text{ZH}=4.292$ — the target all four solvers must hi
 import importlib.util, os, subprocess, sys
 _local = os.environ.get("PECLET_LOCAL_BUILD")
 if _local:
-    for p in _local.split(":"):
-        sys.path.insert(0, p)
+    for _p in _local.split(os.pathsep):        # a colon-joined list of build trees, not one path
+        sys.path.insert(0, _p)
 elif importlib.util.find_spec("peclet") is None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
 ```

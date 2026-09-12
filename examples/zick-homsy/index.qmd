@@ -42,7 +42,8 @@ $k = \mu\langle u\rangle / F$.
 import importlib.util, os, subprocess, sys
 _local = os.environ.get("PECLET_LOCAL_BUILD")
 if _local:
-    sys.path.insert(0, _local)
+    for _p in _local.split(os.pathsep):        # a colon-joined list of build trees, not one path
+        sys.path.insert(0, _p)
 elif importlib.util.find_spec("peclet") is None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
 ```
