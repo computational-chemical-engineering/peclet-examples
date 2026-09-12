@@ -21,6 +21,10 @@ dist/
 *.npz
 # the porous-scaling packing beds ARE the reproducibility record (tiny sphere lists, ~20 KB)
 !benchmarks/porous-scaling/results/packings/*.npz
+# ditto the 1.0.0 scaling deposit's unit cell, and there its raw run logs are the EVIDENCE the
+# Zenodo record rests on, so they are versioned rather than ignored
+!benchmarks/release-1.0.0-scaling/*.npz
+!benchmarks/release-1.0.0-scaling/results/**/*.log
 
 # NOTE: _freeze/ is intentionally NOT ignored — the frozen execution outputs
 # (small PNGs + result JSON) are committed so the Pages CI can render without a GPU.
