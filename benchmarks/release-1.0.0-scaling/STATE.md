@@ -30,33 +30,37 @@ permeability march (phase B, `MARCH_TOL=1e-5`) runs only at a few rungs.
 
 ## Where we are now
 
-- Site builds done, one tree per backend (`$PROJ/suite-v1.0.0-bench-{h100,cpu}`), censuses pulled
-  into the artifact. flow 1.0.0, `has_mpi=True`, Cuda and OpenMP.
-- **Pilot passed, including the memory-fit gate**: 384³ = 56.6 M cells on ONE H100 with the fp64
-  operator default, 4.0 s/step, 29.7 pressure iterations, `max|div|` 2.7e-14. The 1.81-Gcell top
-  rung is therefore on; the 320³ fallback is not needed.
-- All ladders queued and largely complete; the permeability march converges in **40 steps**, so it
-  runs across the whole weak ladder rather than at three points.
-- Analysis, generated page and deposit packaging written and committed.
+**The measurement is complete: 40 runs, every gate passing, committed with its raw logs.**
 
-## Next action
+| | |
+|---|---|
+| Weak, H100 | 14.07 → 11.2 Mcell/s per GPU, 1 → 32 GPUs = **79 % at 1.81 Gcells**; pressure iterations flat 29.7 → 29.8 |
+| Weak, control | 88 % at 32 GPUs, 8.0 iterations flat |
+| Strong, genoa | 71.1 s → **0.91 s**, 24 → 1536 cores (78.0×) |
+| Strong, H100 | 4.0 s → **0.55 s**, 1 → 32 GPUs (7.3×) |
+| Equivalence gate | ⟨u⟩ identical to **8e−11** over 28 runs, 1 → 768 ranks, both backends; control to 1e−16 |
+| Permeability | k/R² = 0.017122, agreeing to 5e−13 across 5 rungs |
+| One H100 ≈ | 348 genoa cores (conservative reading) |
 
-1. Drain the queue, pull results, `python analyze.py results && python render_page.py`.
-2. Eyeball the figures, add the card to `benchmarks/index.qmd`, commit results.
-3. Package the deposit; **ask before any Zenodo upload** (a draft is reversible, publishing is not).
-4. After the DOI exists: swap `PecletBenchmarks` in MORPHO (`morpho-application-M1.tex:240-247`,
-   a TODO the proposal already carries) and re-check the sentence's two numbers.
+Deposit packaged locally at `zenodo/build/`: tarball, self-contained HTML + PDF report,
+build censuses, provenance, `MANIFEST.sha256` (~890 KB total).
 
-## Gates
+Two findings the page reports rather than smooths: the reproducible 16-GPU strong-scaling
+anomaly (projection phase, hypothesis flagged untested), and that the CPU ladder's apparent
+122 % of ideal is a flattered baseline plus the automatic momentum-solver switch.
 
-| Gate | Value | Status |
-|---|---|---|
-| 384³/GPU fits in 94 GB with fp64 operators | 4.0 s/step on one H100 | **PASS** |
-| ⟨u⟩ agrees across every rung and both machines | worst 8e−11; exactly 0 between 1 H100 and 384 cores | **PASS** |
-| φ_voxel vs packing φ, every run | 0.4500 vs 0.4500 | **PASS** |
-| pressure iterations flat across the weak ladder | 29.7 → 30.0 through 8 GPUs | passing so far |
-| blocks uniform on the weak ladder | uniform at every rung | **PASS** |
-| pressure solve never at its cap | worst 33 of 200 | **PASS** |
+## Next action — needs the user
+
+1. **Zenodo draft upload** — `ZENODO_TOKEN=... ./zenodo/make_deposit.sh --upload`. Not run: it
+   uses the user's token. Publishing afterwards is a deliberate click; it mints the DOI.
+2. **MORPHO** — once the DOI exists, swap `PecletBenchmarks` (`morpho-application-M1.tex:240-247`,
+   a TODO the proposal already carries) and update the sentence's numbers: the record supports
+   1.8 Gcells at 79 % with cut-cell IBM (88 % without), where the
+   proposal currently says 1.7 Gcells at 86 % from the older channel-DNS page. Part A is closed:
+   this is the user's call, not an edit to make unilaterally.
+3. Optional: two 32-GPU repeat allocations are still queued for the run-to-run spread table. The
+   record stands without them; re-run `analyze.py` + `render_page.py` + `make_deposit.sh` if they
+   land before publication.
 
 ## Budget
 
