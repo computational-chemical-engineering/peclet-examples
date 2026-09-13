@@ -140,7 +140,12 @@ def check_sync(qmds) -> int:
         ipynb = qmd.with_suffix(".ipynb")
         rel = qmd.parent.relative_to(ROOT)
         if not ipynb.exists():
-            continue                       # not every page ships a notebook
+            # A page that ADVERTISES a Colab badge must ship the notebook the badge points at, or
+            # the badge is a 404. Four pages did exactly that.
+            if "colab.research.google.com" in qmd.read_text(errors="ignore"):
+                bad += 1
+                print(f"SYNC  FAIL  {rel}   has a Colab badge but no index.ipynb — the badge 404s")
+            continue                       # otherwise: not every page ships a notebook
         a = [executable(c) for c in CHUNK.findall(qmd.read_text(errors="ignore"))]
         b = notebook_code(ipynb)
         if len(a) != len(b):

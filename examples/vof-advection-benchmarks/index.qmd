@@ -527,26 +527,35 @@ s.set_state(*leveque_fields(n))
 print(f"discrete curl of @eq-potential:  max|div(open u)| = {s.max_open_divergence():.2e}"
       f"   ->   accepted")
 
-# And what the guard is actually protecting you from, measured by disabling it:
-s = probe(geometry=False)             # no cut-cell operator => max_open_divergence() is 0 by fiat
-v0 = s.diagnostics.vof_diagnostics()["sum"]
-for _ in range(50):
+# What the guard protects you from — and what peclet does about it now. Until 1.0.0 a solver with
+# no cut-cell operator reported max_open_divergence() == 0 by construction, which switched the
+# guard off with it, and the same 50 steps then lost the volume below: smoothly, no NaN, with an
+# interface that still looked entirely plausible. peclet 1.0.0 refuses that setup instead of
+# trusting a diagnostic that cannot see (flow WO-R2).
+LOSS_0X = -0.0493                     # measured on 0.x, this field, 50 steps
+s = probe(geometry=False)
+try:
     s.advect_vof(3.75e-3)
-LOSS = (s.diagnostics.vof_diagnostics()["sum"] - v0) / v0
-print(f"\nsame field, guard inert (no pressure geometry): {100*LOSS:+.2f} % of the liquid "
-      f"volume in 50 steps")
+    print("\nno pressure geometry: advected anyway (pre-1.0.0 behaviour)")
+except RuntimeError as e:
+    print("\nno pressure geometry, peclet 1.0.0:\n   ", str(e)[:186])
+print(f"   on 0.x the same 50 steps lost {abs(100*LOSS_0X):.2f} % of the liquid volume, silently")
 ```
 
 A divergence of `{python} f"{DIV_POINTWISE:.2f}"` in cell units feeds
-@eq-telescope directly: fifty steps of it destroy
-**`{python} f"{abs(100*LOSS):.1f}"` %** of the liquid volume — smoothly, with no
-NaN and with an interface that still looks entirely plausible. That second run had
-to be set up *without* a pressure geometry to happen at all — `max_open_divergence()`
-is an openness-weighted diagnostic and returns 0 by construction when the solver
-has no cut-cell operator, which switches the guard off with it. That is the one
-sharp edge on this API, and it is why every run on this page calls
-`set_pressure_geometry` even where there is no solid: an all-positive SDF costs
-nothing and keeps the guard live.
+@eq-telescope directly: fifty steps of it destroyed
+**`{python} f"{abs(100*LOSS_0X):.1f}"` %** of the liquid volume — smoothly, with no
+NaN and with an interface that still looked entirely plausible.
+
+That run was possible at all only because `max_open_divergence()` is an
+openness-weighted diagnostic that returns 0 by construction when the solver has no
+cut-cell operator, which switched the guard off with it. **That sharp edge is
+closed**: since 1.0.0 `advect_vof` refuses a solver with no pressure geometry
+rather than trusting a number that cannot see anything, which is why the cell
+above can only show you the refusal and quote the old loss. Every run on this page
+still calls `set_pressure_geometry` even where there is no solid — an all-positive
+SDF costs nothing, and now it is the supported way to say so rather than a
+workaround for a silent failure.
 
 ::: {.callout-important}
 ## The staggered sample is a special case, not a rule
