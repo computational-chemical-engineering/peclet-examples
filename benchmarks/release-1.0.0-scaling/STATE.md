@@ -58,9 +58,9 @@ anomaly (projection phase, hypothesis flagged untested), and that the CPU ladder
    1.8 Gcells at 79 % with cut-cell IBM (88 % without), where the
    proposal currently says 1.7 Gcells at 86 % from the older channel-DNS page. Part A is closed:
    this is the user's call, not an edit to make unilaterally.
-3. Optional: two 32-GPU repeat allocations are still queued for the run-to-run spread table. The
-   record stands without them; re-run `analyze.py` + `render_page.py` + `make_deposit.sh` if they
-   land before publication.
+**The measurement is closed.** 41 runs, queue empty, all repeats folded in: three separate 8-node
+allocations at 1.81 Gcells agree to 1.00x, and every repeat in the study sits between 1.00x and
+1.06x. Nothing further is queued.
 
 ## Budget
 
