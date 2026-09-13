@@ -45,10 +45,10 @@ Every run starts from rest and takes the same 13 steps, so the mean velocity
 $\langle u \rangle$ at the end is one number that every rung must return — at any rank count, on
 either machine. It costs one global reduction, and it is checked for every run in the record.
 
-::: {.callout-important title="One state, 28 runs, two machines"}
+::: {.callout-important title="One state, 30 runs, two machines"}
 $\langle u \rangle = 1.638889605549e-04$
 
-across **28 runs** spanning 1 to 768 ranks, both the CUDA and the OpenMP
+across **30 runs** spanning 1 to 768 ranks, both the CUDA and the OpenMP
 backend, single-rank and distributed, and domains from 56.6 M to
 1.81 billion cells. Worst relative deviation **8e−11**; peak divergence
 3e-14. The geometry-free control is tighter still: **1e−16** — machine
@@ -180,6 +180,8 @@ to 5e−13 — the same physical answer from the single-GPU cell and from the ti
   stated exception**: the pressure multigrid is asked for as much depth as the grid admits rather
   than the default of four levels. Depth is a property of the grid, not a tuning constant. The
   out-of-the-box depth is measured at one rung and is in the tables.
+- `PECLET_CORE_GPU_AWARE_MPI` is deliberately left unset, so the shipped auto-detection decides the
+  halo transport and the runs record what it chose: on this machine, **DEVICE MPI buffers (auto)**.
 - Runs whose pressure solve touched its iteration cap would be reported as capped rather than
   plotted as timings. None did: the worst rung used a small fraction of the cap.
 

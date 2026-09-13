@@ -34,6 +34,8 @@
 | bed_strong_gpu32 | 32 | h100 | 56.6 M | 1.638889605549e-04 | 0.00e+00 |
 | bed_weak_gpu32 | 32 | h100 | 1811.9 M | 1.638889605647e-04 | 5.94e-11 |
 | bed_weak_gpu32_march | 32 | h100 | 1811.9 M | 1.638889605647e-04 | 5.94e-11 |
+| bed_weak_gpu32_r2 | 32 | h100 | 1811.9 M | 1.638889605647e-04 | 5.94e-11 |
+| bed_weak_gpu32_r3 | 32 | h100 | 1811.9 M | 1.638889605647e-04 | 5.94e-11 |
 | bed_strong_cpu48 | 48 | genoa | 56.6 M | 1.638889605549e-04 | 0.00e+00 |
 | bed_strong_cpu96 | 96 | genoa | 56.6 M | 1.638889605549e-04 | 0.00e+00 |
 | bed_strong_cpu192 | 192 | genoa | 56.6 M | 1.638889605549e-04 | 0.00e+00 |
@@ -41,7 +43,7 @@
 | bed_strong_cpu384 | 384 | genoa | 56.6 M | 1.638889605549e-04 | 0.00e+00 |
 | bed_strong_cpu768 | 768 | genoa | 56.6 M | 1.638889605549e-04 | 0.00e+00 |
 
-**PASS** — worst relative deviation 8.38e-11 across 28 runs, 1 to 768 ranks, 2 machine(s).
+**PASS** — worst relative deviation 8.38e-11 across 30 runs, 1 to 768 ranks, 2 machine(s).
 
 ## bed: u_mean after 13 steps from rest, h = 0.0555556, MG depth 10, velocity multigrid on
 
@@ -81,14 +83,14 @@ peclet 1.0.0 selects the momentum solver from the per-rank workload (`set_veloci
 | case | configuration | runs | value | vs. first |
 |---|---|---:|---:|---:|
 | bed | MG depth 4, velocity MG off | 1 | 1.638889605551e-04 | — |
-| bed | MG depth 10, velocity MG off | 28 | 1.638889605549e-04 | 9.97e-13 |
+| bed | MG depth 10, velocity MG off | 30 | 1.638889605549e-04 | 9.97e-13 |
 | bed | MG depth 10, velocity MG on | 3 | 1.638890208586e-04 | 3.68e-07 |
 | tgv | MG depth 10, velocity MG off | 6 | 2.981944304649e-03 | — |
 | tgv | MG depth 10, velocity MG on | 1 | 2.981908755561e-03 | 1.19e-05 |
 
 ## Sampled solid fraction vs the packing
 
-Worst deviation 0.0000 over 32 runs (the driver refuses to run past 0.02). **PASS**
+Worst deviation 0.0000 over 34 runs (the driver refuses to run past 0.02). **PASS**
 
 ## Pressure solve converged (never at its iteration cap)
 
@@ -96,5 +98,5 @@ Worst deviation 0.0000 over 32 runs (the driver refuses to run past 0.02). **PAS
 
 ## Weak ladder: every rank owns an identical block
 
-**PASS** — uniform at all 17 weak rungs.
+**PASS** — uniform at all 19 weak rungs.
 

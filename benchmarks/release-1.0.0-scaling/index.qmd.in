@@ -180,6 +180,8 @@ to {{k_spread}} — the same physical answer from the single-GPU cell and from t
   stated exception**: the pressure multigrid is asked for as much depth as the grid admits rather
   than the default of four levels. Depth is a property of the grid, not a tuning constant. The
   out-of-the-box depth is measured at one rung and is in the tables.
+- `PECLET_CORE_GPU_AWARE_MPI` is deliberately left unset, so the shipped auto-detection decides the
+  halo transport and the runs record what it chose: on this machine, **{{halo_path}}**.
 - Runs whose pressure solve touched its iteration cap would be reported as capped rather than
   plotted as timings. None did: the worst rung used a small fraction of the cap.
 

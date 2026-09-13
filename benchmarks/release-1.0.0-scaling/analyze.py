@@ -232,14 +232,18 @@ def summary(runs):
                        f"{p['max_open_divergence']:.2e} |")
         out.append("")
 
+    # Run-to-run spread means the SAME computation on a different allocation. Runs that differ in
+    # solver configuration (the LEVELS sensitivity point) are a different computation and would be
+    # read as machine variability they are not.
     spread = {}
     for r in runs:
-        spread.setdefault((r["case"], r["mode"], r["_machine"], r["ranks"]), []).append(r)
+        cfg = (r["solver"]["levels_requested"], bool(r["solver"]["velocity_multigrid_active"]))
+        spread.setdefault((r["case"], r["mode"], r["_machine"], r["ranks"], cfg), []).append(r)
     rep = {k: v for k, v in spread.items() if len(v) > 1}
     if rep:
         out += ["## Repeat allocations (run-to-run spread)", "",
                 "| ladder | ranks | ms/step per allocation | spread |", "|---|---:|---|---:|"]
-        for (case, mode, mach, n), v in sorted(rep.items()):
+        for (case, mode, mach, n, _cfg), v in sorted(rep.items()):
             t = [ms(x) for x in v]
             out.append(f"| {case} {mode} {mach} | {n} | {', '.join(f'{x:.1f}' for x in t)} | "
                        f"{max(t) / min(t):.2f}× |")
@@ -530,6 +534,16 @@ def headline(runs):
             h["anom_repeats"] = len(t)
             h["anom_spread"] = f"{max(t) / min(t):.2f}"
             break
+
+    # Which MPI buffer path the SHIPPED auto-detection actually chose (the runs leave
+    # PECLET_CORE_GPU_AWARE_MPI unset on purpose, and log the resolution).
+    for r in pick(runs, "bed", "weak", "h100")[-1:]:
+        log = r["_file"].with_suffix(".log")
+        if log.exists():
+            for line in log.read_text().splitlines():
+                if "peclet.core halo:" in line:
+                    h["halo_path"] = line.split("peclet.core halo:")[1].strip()
+                    break
 
     march = [r for r in runs if r.get("physics_result")]
     if march:
