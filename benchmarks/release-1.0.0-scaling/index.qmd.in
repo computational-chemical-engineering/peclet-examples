@@ -205,5 +205,11 @@ rejected, are in [`DECISIONS.md`](DECISIONS.md).
 
 ## Cite
 
-The archived record — data, scripts and this report — carries its own DOI. Cite the **concept DOI**
-so the reference follows later versions rather than going stale.
+The measurement in this page — the driver, the geometry, the cluster scripts, every raw result and
+log, and a standalone report — is archived as a dataset with its own DOI, separate from the
+software it measures. Cite the record's **concept DOI** rather than a version DOI, so the reference
+follows later campaigns instead of going stale, and cite
+[peclet itself](https://doi.org/10.5281/zenodo.21132445) for the software.
+
+*The DOI is added here when the deposit is published; until then this page and the repository
+directory are the record.*

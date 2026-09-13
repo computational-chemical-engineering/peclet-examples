@@ -1,6 +1,6 @@
 # peclet 1.0.0 scaling deposit — campaign state
 
-*Rewritten in place at every milestone. A position, not a diary; the history is in `DECISIONS.log`.*
+*Rewritten in place at every milestone. A position, not a diary; the history is in `DECISIONS.md`.*
 
 ## Objective
 
