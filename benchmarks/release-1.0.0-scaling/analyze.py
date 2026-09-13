@@ -465,6 +465,72 @@ def headline(runs):
         h["switch_delta"] = f"{abs(v[0] - grp[0]['gate']['value']) / abs(grp[0]['gate']['value']):.1e}".replace("e-", "e−")
         h["switch_cells_per_rank_k"] = f"{sw[0]['cells_per_rank'] / 1e3:.0f}"
 
+    # where the weak ladder's loss actually accumulates
+    if len(wb) > 1:
+        def med(r, k):
+            return 1e3 * float(np.median([st[k] for st in r["perf"]["steps"]]))
+        for key in ("momentum", "projection"):
+            a, b = med(wb[0], key), med(wb[-1], key)
+            h[f"ph_{key}_base"] = f"{a:.0f}"
+            h[f"ph_{key}_top"] = f"{b:.0f}"
+            h[f"ph_{key}_growth"] = f"{100 * (b / a - 1):.0f}"
+        h["ph_predictor_base"] = f"{med(wb[0], 'predictor'):.1f}"
+
+    # A rung that is SLOWER than the one below it on a strong ladder is either noise or a real
+    # effect; the repeat allocations decide which, and the phase timers say where it lives.
+    tg_ = pick(runs, "bed", "strong", "h100")
+    for prev, cur in zip(tg_, tg_[1:]):
+        if ms(cur) > ms(prev):
+            def med(r, k):
+                return 1e3 * float(np.median([st[k] for st in r["perf"]["steps"]]))
+            h["anom_n"] = cur["ranks"]
+            h["anom_prev_n"] = prev["ranks"]
+            h["anom_ms"] = f"{ms(cur):.0f}"
+            h["anom_prev_ms"] = f"{ms(prev):.0f}"
+            h["anom_proj"] = f"{med(cur, 'projection'):.0f}"
+            h["anom_prev_proj"] = f"{med(prev, 'projection'):.0f}"
+            h["anom_mom"] = f"{med(cur, 'momentum'):.0f}"
+            h["anom_prev_mom"] = f"{med(prev, 'momentum'):.0f}"
+            reps = [x for x in runs if x["case"] == "bed" and x["mode"] == "strong"
+                    and x["_machine"] == "h100" and x["ranks"] == cur["ranks"]]
+            t = [ms(x) for x in reps]
+            h["anom_repeats"] = len(t)
+            h["anom_spread"] = f"{max(t) / min(t):.2f}"
+            break
+
+    # where the weak ladder's loss actually accumulates
+    if len(wb) > 1:
+        def med(r, k):
+            return 1e3 * float(np.median([st[k] for st in r["perf"]["steps"]]))
+        for key in ("momentum", "projection"):
+            a, b = med(wb[0], key), med(wb[-1], key)
+            h[f"ph_{key}_base"] = f"{a:.0f}"
+            h[f"ph_{key}_top"] = f"{b:.0f}"
+            h[f"ph_{key}_growth"] = f"{100 * (b / a - 1):.0f}"
+        h["ph_predictor_base"] = f"{med(wb[0], 'predictor'):.1f}"
+
+    # A rung that is SLOWER than the one below it on a strong ladder is either noise or a real
+    # effect; the repeat allocations decide which, and the phase timers say where it lives.
+    tg_ = pick(runs, "bed", "strong", "h100")
+    for prev, cur in zip(tg_, tg_[1:]):
+        if ms(cur) > ms(prev):
+            def med(r, k):
+                return 1e3 * float(np.median([st[k] for st in r["perf"]["steps"]]))
+            h["anom_n"] = cur["ranks"]
+            h["anom_prev_n"] = prev["ranks"]
+            h["anom_ms"] = f"{ms(cur):.0f}"
+            h["anom_prev_ms"] = f"{ms(prev):.0f}"
+            h["anom_proj"] = f"{med(cur, 'projection'):.0f}"
+            h["anom_prev_proj"] = f"{med(prev, 'projection'):.0f}"
+            h["anom_mom"] = f"{med(cur, 'momentum'):.0f}"
+            h["anom_prev_mom"] = f"{med(prev, 'momentum'):.0f}"
+            reps = [x for x in runs if x["case"] == "bed" and x["mode"] == "strong"
+                    and x["_machine"] == "h100" and x["ranks"] == cur["ranks"]]
+            t = [ms(x) for x in reps]
+            h["anom_repeats"] = len(t)
+            h["anom_spread"] = f"{max(t) / min(t):.2f}"
+            break
+
     march = [r for r in runs if r.get("physics_result")]
     if march:
         ks = [r["physics_result"]["k_over_R2"] for r in march]

@@ -36,7 +36,8 @@ Env:
     GPR         MODE=weak:   cells per rank per axis (default 384); global = GPR * tiles
     PACK        unit-cell packing npz from make_bed.py (required for CASE=bed)
     TILE        CASE=tgv: cells per Taylor-Green vortex (default 64)
-    NSTEPS      timed steps (default 20)
+    NSTEPS      timed steps (default 10). Every rung of every ladder must use the SAME
+                WARMUP+NSTEPS, or the <u> equivalence gate below is comparing different states.
     WARMUP      untimed steps before them (default 3)
     MARCH_TOL   phase B: relative steady tolerance on <u> (default 0 = SKIP the march; the
                 permeability is a property of the unit cell, so it is measured at a few rungs,
@@ -70,7 +71,7 @@ GN = int(os.environ.get("GN", 384))
 GPR = int(os.environ.get("GPR", 384))
 PACK = os.environ.get("PACK", "")
 TILE = int(os.environ.get("TILE", 64))
-NSTEPS = int(os.environ.get("NSTEPS", 20))
+NSTEPS = int(os.environ.get("NSTEPS", 10))
 WARMUP = int(os.environ.get("WARMUP", 3))
 MARCH_TOL = float(os.environ.get("MARCH_TOL", 0.0))
 MARCH_MAX = int(os.environ.get("MARCH_MAX", 600))

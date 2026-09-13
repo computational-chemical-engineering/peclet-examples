@@ -70,3 +70,27 @@
   sub-node rungs (24/48/96) up to 8x the per-rank memory bandwidth of the full-node rungs, which
   flatters the baseline and understates the reported efficiencies. Stated in the report; the
   apples-to-apples segment is 192 -> 1536.
+
+2026-09-13  The reproducible 16-GPU strong-scaling anomaly is REPORTED, not diagnosed.
+  At 16 GPUs the fixed-problem step (926 ms) is slower than at 8 (857 ms), and a second allocation
+  reproduces it to 1.00x — so it is structural, not node placement. It lives entirely in the
+  projection phase (303 -> 514 ms) with an identical multigrid hierarchy at both rungs.
+  Options: (a) spend GPU budget bisecting it (decomposition shape, halo pattern, coarse-level
+  behaviour); (b) report the measurement and name the untested hypothesis.
+  CHOSEN (b). The deposit's scope is what 1.0.0 does, not why; a reproducible anomaly reported with
+  its phase attribution is a contribution, and smoothing it away or calling it noise would be the
+  failure. The suspicion (8 GPUs give cubic per-rank blocks, 16 give 1:2:2) is stated AS a
+  hypothesis. Follow-up belongs in the suite's own scaling work, not here.
+
+2026-09-13  The Taylor-Green run is presented as a CONTROL, not as "the cost of the IBM".
+  The first draft said the geometry costs a factor 1.0x in step time. That comparison is not
+  like-for-like: the control advects and the bed case is creeping (advection off), so the two differ
+  in physics as well as geometry. The page now says so explicitly and quotes only what the control
+  does isolate — the 3.7x pressure-iteration ratio, and the weak-efficiency gap (88 % vs 79 %).
+
+2026-09-13  The equivalence gate groups by SOLVER CONFIGURATION as well as by problem.
+  set_velocity_multigrid_auto turns the velocity multigrid on below ~65k cells/rank, so the
+  1536-core rungs run a different momentum solver from the rest of the ladder. Ungrouped, the gate
+  reported 3.7e-07 and hid a 8.4e-11 agreement inside it. Grouped, the record reads: 8.4e-11 over
+  25 runs and two backends; 1.4e-16 for the control; the three switched rungs identical to the last
+  digit. The distance between configurations is reported as its own measurement.
