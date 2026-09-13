@@ -86,23 +86,34 @@ def fmt(x, n=3):
 def gates(runs):
     """Every run of the same problem must reproduce the same state after the same steps from rest.
 
-    Runs are grouped by (case, resolution, step count): a run at a different grid spacing or a
-    different number of steps is a DIFFERENT problem, and comparing it here would be meaningless
-    rather than informative. A group of one is reported but cannot fail."""
+    Runs are grouped by (case, resolution, step count, SOLVER CONFIGURATION): a run at a different
+    grid spacing, a different number of steps, or a different solver is a DIFFERENT computation, and
+    comparing it here would be meaningless rather than informative. A group of one is reported but
+    cannot fail.
+
+    The solver configuration is part of the key because peclet 1.0.0 switches the momentum solver by
+    itself: `set_velocity_multigrid_auto` turns the velocity multigrid ON below ~65k cells per rank,
+    so the top CPU rungs run a different momentum solve from the rest of the same ladder. Both are
+    converged; they are not the same iterate. Lumping them together would hide a genuine agreement
+    inside a spurious disagreement. The difference BETWEEN configurations is reported separately,
+    below, because it is a property worth quoting rather than a defect to bury."""
     lines = ["# Correctness gates", ""]
     ok = True
     groups = {}
     for r in runs:
         if r.get("gate"):
-            groups.setdefault((r["case"], round(r["spacing"], 12), r["gate"]["steps"]), []).append(r)
+            cfg = (r["solver"]["levels_requested"], bool(r["solver"]["velocity_multigrid_active"]))
+            groups.setdefault((r["case"], round(r["spacing"], 12), r["gate"]["steps"], cfg),
+                              []).append(r)
 
-    for (case, h, steps), rs in sorted(groups.items()):
+    for (case, h, steps, cfg), rs in sorted(groups.items()):
         rs.sort(key=lambda r: (r["ranks"], r["_file"].stem))
         vals = np.array([r["gate"]["value"] for r in rs])
         ref = vals[0]
         rel = np.abs(vals - ref) / abs(ref) if ref else np.abs(vals)
         q = rs[0]["gate"]["quantity"]
-        lines += [f"## {case}: {q} after {steps} steps from rest, h = {h:g}", ""]
+        lines += [f"## {case}: {q} after {steps} steps from rest, h = {h:g}, "
+                  f"MG depth {cfg[0]}, velocity multigrid {'on' if cfg[1] else 'off'}", ""]
         lines += ["| run | ranks | machine | cells | value | rel. dev. |",
                   "|---|---:|---|---:|---:|---:|"]
         for r, v, d in zip(rs, vals, rel):
@@ -118,6 +129,31 @@ def gates(runs):
                     f"{len({r['_machine'] for r in rs})} machine(s).")
             ok = ok and verdict == "PASS"
         lines += ["", f"**{verdict}**{note}", ""]
+
+    # What the automatic configuration switches cost in agreement. Not a failure: a different
+    # solver is a different iterate. Worth quoting, because it is the size of the only disagreement
+    # anywhere in the record.
+    by_case = {}
+    for (case, h, steps, cfg), rs in groups.items():
+        by_case.setdefault((case, h, steps), []).append((cfg, rs[0]["gate"]["value"], len(rs)))
+    rows = [(c, v) for c, v in by_case.items() if len(v) > 1]
+    if rows:
+        lines += ["## Between configurations (not a gate — a measurement)", "",
+                  "peclet 1.0.0 selects the momentum solver from the per-rank workload "
+                  "(`set_velocity_multigrid_auto`, on below ~65k cells/rank) and the multigrid depth "
+                  "is a study parameter. Runs that differ in either are different computations; this "
+                  "is how far apart their answers land.", "",
+                  "| case | configuration | runs | value | vs. first |",
+                  "|---|---|---:|---:|---:|"]
+        for (case, _h, _st), v in sorted(rows):
+            v.sort(key=lambda t: (t[0][0], t[0][1]))
+            ref = v[0][1]
+            for cfg, val, n in v:
+                d = abs(val - ref) / abs(ref) if ref else 0.0
+                lines.append(f"| {case} | MG depth {cfg[0]}, velocity MG "
+                             f"{'on' if cfg[1] else 'off'} | {n} | {val:.12e} | "
+                             f"{'—' if d == 0 else f'{d:.2e}'} |")
+        lines.append("")
 
     # the geometry is resampled independently on every rank of every rung
     bed = [r for r in runs if r["case"] == "bed"]
@@ -224,8 +260,8 @@ def fig_weak(runs, out):
     tgv = pick(runs, "tgv", "weak", "h100")
     if not bed:
         return
-    fig, (a1, a2) = plt.subplots(2, 1, figsize=(5.4, 5.0), sharex=True,
-                                 gridspec_kw={"height_ratios": [1.35, 1]})
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(5.4, 4.6), sharex=True,
+                                 gridspec_kw={"height_ratios": [1.15, 1]})
     for sel, c, lab in ((bed, BLUE, "cut-cell IBM, sphere packing"),
                         (tgv, ORANGE, "Taylor–Green (no geometry)")):
         if not sel:
@@ -285,8 +321,9 @@ def fig_strong(runs, out):
                      loc="left")
         ax.legend(loc="lower left")
         e = (t[0] * n[0] / n[-1]) / t[-1]
-        ax.annotate(f"{100 * e:.0f} % of ideal\nat {int(n[-1])}", (n[-1], t[-1]),
-                    textcoords="offset points", xytext=(-6, 8), ha="right", fontsize=8, color=INK)
+        ax.annotate(f"{100 * e:.0f} % of ideal at {int(n[-1])}", (n[-1], t[-1]),
+                    textcoords="offset points", xytext=(-4, -16), ha="right", fontsize=8,
+                    color=INK)
     fig.suptitle("Strong scaling, one fixed problem — cut-cell IBM through a sphere packing",
                  x=0.02, ha="left", fontsize=10.5)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
@@ -385,18 +422,48 @@ def headline(runs):
         h["cores_per_gpu_rung"] = best["ranks"]
         h["cpu_top_n"] = c[-1]["ranks"]
 
-    # the cross-rung / cross-machine equivalence gate
-    grp = [r for r in runs if r["case"] == "bed" and r.get("gate")
-           and abs(r["spacing"] - (wb[0]["spacing"] if wb else 0)) < 1e-12]
+    # The cross-rung / cross-machine equivalence gate, restricted to ONE solver configuration:
+    # the auto rule switches the momentum solver below ~65k cells/rank, and a different solver is a
+    # different iterate. The switched rungs are reported on their own terms just below.
+    def grp_of(case, vmg):
+        # the case's own production resolution (its most common spacing), not the bed's
+        sp = [r["spacing"] for r in runs if r["case"] == case and r.get("gate")]
+        if not sp:
+            return []
+        ref = max(set(sp), key=sp.count)
+        return [r for r in runs if r["case"] == case and r.get("gate")
+                and abs(r["spacing"] - ref) < 1e-12
+                and r["solver"]["levels_requested"] == 10
+                and bool(r["solver"]["velocity_multigrid_active"]) is vmg]
+
+    grp = grp_of("bed", False)
     if grp:
         vals = np.array([r["gate"]["value"] for r in grp])
         rel = np.abs(vals - vals[0]) / abs(vals[0])
         h["gate_value"] = f"{vals[0]:.12e}"
-        h["gate_digits"] = f"{vals[0]:.10e}"
         h["gate_worst"] = f"{rel.max():.0e}".replace("e-", "e−")
         h["gate_runs"] = len(grp)
         h["gate_max_ranks"] = max(r["ranks"] for r in grp)
+        h["gate_machines"] = len({r["_machine"] for r in grp})
         h["gate_max_div"] = f"{max(r['gate']['max_open_divergence'] for r in grp):.0e}"
+        h["gate_max_cells"] = f"{max(r['cells_total'] for r in grp) / 1e9:.2f}"
+
+    tg = grp_of("tgv", False)
+    if tg:
+        v = np.array([r["gate"]["value"] for r in tg])
+        h["tgv_gate_worst"] = f"{(np.abs(v - v[0]) / abs(v[0])).max():.0e}".replace("e-", "e−")
+        h["tgv_gate_runs"] = len(tg)
+        h["tgv_gate_max_ranks"] = max(r["ranks"] for r in tg)
+
+    sw = grp_of("bed", True)
+    if sw and grp:
+        v = np.array([r["gate"]["value"] for r in sw])
+        h["switch_ranks"] = min(r["ranks"] for r in sw)
+        h["switch_runs"] = len(sw)
+        h["switch_spread"] = ("0" if len(v) == 1 or np.ptp(v) == 0
+                              else f"{(np.ptp(v) / abs(v[0])):.0e}".replace("e-", "e−"))
+        h["switch_delta"] = f"{abs(v[0] - grp[0]['gate']['value']) / abs(grp[0]['gate']['value']):.1e}".replace("e-", "e−")
+        h["switch_cells_per_rank_k"] = f"{sw[0]['cells_per_rank'] / 1e3:.0f}"
 
     march = [r for r in runs if r.get("physics_result")]
     if march:
