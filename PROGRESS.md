@@ -37,8 +37,10 @@ page that renders is a page whose GPU path ran.
 
 **Next action.** Finish the renders, then the TAIL QUEUE, which the main batch does not cover
 (it listed `examples/*` only): `benchmarks/dem-bulk-dosta2024`, `benchmarks/staggered-vs-collocated`
-and `sanity-checks/` all have a freeze older than their source. Plus the failures
-(`capillary-oscillations` needed `mpmath` in the render venv, and its source changed since). Then
+and `sanity-checks/` all have a freeze older than their source. Plus the failures:
+`capillary-oscillations` (needed `mpmath` in the render venv, and its source changed since) and
+**`pore-scale-imbibition`, which hit the 1-hour cap at cell 19/21 (`micromodel-run`)** — it wants a
+3-4 hour budget, not a longer nudge. Both had their old freeze restored, so nothing is lost. Then
 the drift report (old vs new frozen output),
 the stale-prose check (prose quoting a number the new run no longer prints).
 
