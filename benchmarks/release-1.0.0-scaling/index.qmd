@@ -202,8 +202,10 @@ sbatch -p genoa --gpus-per-node=0 -c 32 -t 02:00:00    snellius/install_bench.sh
 python analyze.py results              # tables, gates, figures
 ```
 
-The runbook is [`README.md`](README.md); the design decisions, including the ones that were
-rejected, are in [`DECISIONS.md`](DECISIONS.md).
+The runbook is [`README.md`](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/benchmarks/release-1.0.0-scaling/README.md); the design decisions, including the ones that
+were rejected, are in [`DECISIONS.md`](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/benchmarks/release-1.0.0-scaling/DECISIONS.md). The whole directory — driver, geometry,
+cluster scripts, raw results and logs — is
+[on GitHub](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/release-1.0.0-scaling).
 
 ## Cite
 
