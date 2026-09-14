@@ -55,6 +55,29 @@ _quarto.yml              site config (freeze: auto)
   committed. The Pages CI then **renders only** — no GPU, no compiled solver
   needed. Regenerate a page's freeze with `quarto render <page> --execute`.
 - **GitHub Pages** is published by `.github/workflows/publish.yml` on push to `main`.
+- **A stale freeze does not fail loudly.** If a page's source changes without its freeze,
+  `freeze: auto` re-executes it at render time — and the bootstrap cell's
+  `elif find_spec("peclet") is None` branch then *pip-installs peclet* and runs the page on CPU
+  wheels. So the failure mode is a slow, silent CPU re-execution (wrong numbers for a
+  GPU-authored page, or a job that runs to GitHub's 6-hour limit), not a clean red build. Before
+  pushing a freeze refresh, render the WHOLE site on an interpreter with no peclet installed and
+  check that **nothing executes** — that is the only test that distinguishes the two.
+
+### Provenance of the current freezes (2026-09-14)
+
+Every solver-backed page was re-executed on one RTX 5080 against **peclet 1.0.0** builds — local
+CUDA builds of core, flow, dem, voro, pnm and coupling from the 1.0.0 tags, supplied through
+`PECLET_LOCAL_BUILD` to an interpreter with no peclet installed.
+
+`pip install peclet` now resolves to **1.0.1**, so a reader runs one patch release ahead of the
+frozen numbers. That is deliberate and it moves nothing: the only 1.0.1 change with a numerical
+mechanism is core's `cpu_budget.hpp`, which sizes the Kokkos host pool from a cgroup quota, and it
+cannot act here on three counts — the render host has no quota, the render drivers pin
+`OMP_NUM_THREADS=8` (an explicit setting makes `defaultHostThreads()` return 0 by design), and the
+binaries were built from core v1.0.0, which does not contain the file. Everything else in 1.0.1 is
+wheel platform matrices, Kokkos vendoring fallbacks and platform guards; the two other compute-path
+edits are a `Kokkos::Threads` branch that a CUDA+OpenMP build never compiles and an `M_PI` ->
+`constexpr` substitution with identical digits.
 
 ## Large files
 
