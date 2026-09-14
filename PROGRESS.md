@@ -1,59 +1,37 @@
 # Overnight build progress
 
-## CURRENT STATE — publishing the gallery against peclet 1.0.0 (2026-09-13)
+## CURRENT STATE — the gallery is re-rendered against peclet 1.0.0 (2026-09-14)
 
 *Rewritten in place, not appended: this section is a position, not a diary.*
 
-**Where we are.** The commits on local `main` from `948173d` port every page to the 1.0.0 API and
-are **not pushed**, so the published gallery still shows pre-1.0.0 calls. All 53 pages were verified
-to run against `peclet[cfd-dem]==1.0.0` from PyPI (`tools/check_pages.py`, now CI via
-`.github/workflows/api-check.yml`). The GPU re-render of `_freeze/` is **in progress**.
+**Done.** All 46 pages re-executed on the GPU against fresh `build_gal_cuda` trees built from the
+1.0.0 tags, from an interpreter with NO peclet installed (`PECLET_LOCAL_BUILD` supplied core, flow,
+dem, voro, pnm, coupling — so a page that rendered is a page whose GPU path ran). Zero cell errors
+anywhere. Freezes committed in `33d4cb3`.
 
-**Why the freezes must be regenerated at all.** `execute: freeze: auto` re-executes a page whose
-source changed, and `publish.yml` deliberately installs no peclet — so pushing without fresh freezes
-turns the Publish job red. Every example page is affected; the 7 `benchmarks/` pages are static.
+**The gate passed**: a full-site `quarto render` on the peclet-free interpreter re-executed **0**
+pages, built 57, and produced 0 cell errors — which is what `publish.yml` does in CI.
 
-**The re-render.** On the GPU, per the user (2026-09-12): a CPU trial moved DEM numbers ~20 %
-(rotating-drum peak grain speed 19.4 -> 15.1), which is the DEM *method* work since these pages were
-published, not a backend artefact — and the pages are authored against GPU runs either way. Fresh
-`build_gal_cuda` trees were built from the 1.0.0 tags in core, flow, dem, voro, pnm and coupling,
-because **every pre-existing `build_*_cuda` tree predated its module's 1.0.0 release commit**. The
-render venv deliberately has **no peclet installed**: `PECLET_LOCAL_BUILD` supplies all six, so a
-page that renders is a page whose GPU path ran.
+**What the re-render found**, all fixed and gated in CI (`tools/check_pages.py`, `api-check.yml`):
+15 of 38 Colab notebooks had drifted from their `.qmd`; four pages advertised a Colab badge pointing
+at a notebook that was never committed; `rotating-sphere-torque` imported `peclet_coupling`, which
+no wheel exposes; 12 pages read `PECLET_LOCAL_BUILD` as one path and so silently rendered against
+the installed WHEEL; `hcs-clustering` depended on 5.2 MB of untracked data; and
+`vof-advection-benchmarks` demonstrated a bug that flow 1.0.0 fixed, so it raised.
 
-**Three defects that only the re-render could find** (all fixed, all now gated):
+**One open defect, not ours to fix here** — ISSUES.md `b5b40fe`: capillary-oscillations'
+height-function curvature falls back to the PLIC paraboloid on ~90 % of interface cells (was 37 %)
+and the droplet damping deficit doubles. Not the backend (reproduced on OpenMP at the same tag), not
+the tolerances, not the enum, not units (identity metric). Brackets flow `2f93ec0`.
 
-1. **15 of 38 Colab notebooks had drifted from their `.qmd`** — and the `.ipynb` is the only file a
-   Colab reader runs. `random-packed-bed` and `ring-packed-bed` still carried the pre-1.0.0 growth
-   loop. All regenerated with `quarto convert`; `check_pages.py --sync-only` now gates the pair in CI.
-2. **`rotating-sphere-torque` imported `peclet_coupling.resolved`** — the source-layout name, which
-   no wheel has ever exposed. That page could never have run on Colab.
-3. **12 pages treated `PECLET_LOCAL_BUILD` as one path** instead of a list, so the import fell
-   through to the installed wheel. Anyone rendering those against a local build on a machine with
-   peclet installed silently rendered against the WHEEL — which is a provenance question for their
-   published numbers, not just an inconvenience. All 46 bootstraps now split on `os.pathsep`, and
-   `render_example.sh` (which pointed at build trees from 2026-08-30, before the physical-domain
-   API) now points at `build_gal_cuda`.
+**Known follow-up.** `examples/pall-ring-packing/pall_ring_pack.npz` is regenerated when that page
+runs, and the pages render alphabetically — so `pall-ring-flow` consumed the OLD pack before
+`pall-ring-packing` wrote a new one. The committed pack was therefore kept at its previous content,
+so `pall-ring-flow`'s freeze and the pack agree. To refresh both properly, render
+`pall-ring-packing` FIRST, commit the pack, then render `pall-ring-flow`.
 
-**Next action.** Finish the renders, then the TAIL QUEUE, which the main batch does not cover
-(it listed `examples/*` only): `benchmarks/dem-bulk-dosta2024`, `benchmarks/staggered-vs-collocated`
-and `sanity-checks/` all have a freeze older than their source. Plus the failures:
-`capillary-oscillations` (needed `mpmath` in the render venv, and its source changed since) and
-two pages that hit the 1-hour cap and want a **multi-hour budget, run serially on the one GPU**:
-`pore-scale-imbibition` (reached cell 19/21, `micromodel-run`) and `rayleigh-benard` (only cell
-6/10). Every failure had its old freeze restored, so nothing is lost — but note their SOURCES
-changed tonight, so their stale freezes cannot simply be published: `freeze: auto` would re-execute
-them in a CI that has no peclet. They have to be rendered, it is only a question of when. Then
-the drift report (old vs new frozen output),
-the stale-prose check (prose quoting a number the new run no longer prints).
-
-**The gate before the push** is a FULL-SITE `quarto render` on the render venv, which has no peclet
-installed — precisely what `publish.yml` does on GitHub. If every freeze matches its source nothing
-executes and it completes; if anything re-executes it fails HERE, before the push, instead of
-turning the Publish job red afterwards. Then commit `_freeze/` and push.
-
-After that, and not before: rebuild flow against core's `cpu-budget` branch for the 1.0.1
-end-to-end gate (suite `docs/RELEASE_PREP.md` §11).
+**Next action.** Push, then watch the Publish job. Two files in the tree are NOT mine and must not
+be swept into a commit: `examples/trickle-flow-packing/render_rivulets_3d.py` and `run_rivulets.sh`.
 
 ## VORONOI FLOW SOLVER EXAMPLES (2026-09-04)
 - [x] `examples/voronoi-taylor-green` — peclet.voro's covolume and collocated NS solvers on a
