@@ -85,6 +85,19 @@ GPU-aware-MPI probe (`KOKKOS_ENABLE_THREADS` is not defined in a CUDA+OpenMP bui
 `M_PI` -> a `constexpr` carrying the identical literal. So this record's 1.0.0 subject is unaffected
 too, and flow is in any case still 1.0.0 on PyPI.
 
+## Open questions in the results themselves
+
+A dedicated discussion of the performance results was requested on 2026-09-14. The agenda, and
+where each number lives, is in the memory note `peclet-1-0-0-scaling-deposit.md`. In short: the
+projection phase is where the weak ladder loses (+68 % across the ladder against momentum's +12 %,
+at a flat iteration count); the 16-GPU strong rung is reproducibly anomalous and its
+decomposition-shape hypothesis is untested; the geometry's share of the weak loss is 79 % vs the
+control's 88 %, on a control that is not a clean IBM-cost comparison; the strong ladder's turnover
+at 8 GPUs is starvation, not a defect; and the CPU ladder's 122 %-of-ideal is a flattered baseline
+plus the automatic momentum-solver switch. Everything needed to re-argue any of it is in
+`summary.md`, `gates.md`, `headline.json` and the per-step arrays inside each `results/**/*.json`;
+`python analyze.py results` regenerates all of it.
+
 ## Next action — needs the user
 
 1. **Zenodo draft upload** — `ZENODO_TOKEN=... ./zenodo/make_deposit.sh --upload`. Not run: it
