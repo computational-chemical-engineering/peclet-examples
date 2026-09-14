@@ -70,15 +70,23 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
      is real, not a relabelling.
   4. **Not the backend**, as above.
 
-  What DID change in the window is that **flow's height-function and PLIC implementations were
-  replaced by core's** (QUALITY_PLAN G.2 consolidation): `src/vof/curvature.hpp` went from ~800
-  lines to a shim that does `#include "peclet/core/vof/curvature.hpp"` + `using namespace
-  peclet::core::vof`, and `plic.hpp` with it — 1407 lines deleted against 397 added across
-  `curvature.hpp`, `curvature_field.hpp` and `plic.hpp`. Consolidating two independently written
-  implementations into one templated copy is exactly where a behavioural difference hides, and it
-  is the first place to look: **compare core's `hfColumnHeight` / PLIC reconstruction against
-  flow's pre-G.2 versions**, not the units. Not investigated further here; the page is the
-  reproducer and it runs in ~5 minutes.
+  What DID change in the window is that **flow's height-function and PLIC kernels were replaced by
+  core's**, in flow **`2f93ec0`**, *"refactor(vof): promote the container-free L1 kernels to
+  peclet::core::vof (WO-W0 item 6)"*, 2026-09-02 — **96 insertions against 1754 deletions** across
+  `src/vof/{curvature,cutcell,plic,wetting}.hpp`. `curvature.hpp` is now 29 lines: a comment block
+  and `#include "peclet/core/vof/curvature.hpp"`. It lands just inside the window (it is an ancestor
+  of `v1.0.0` and is NOT in the build that produced the 2026-09-02 freeze), and it is by far the
+  largest behavioural surface in it. Consolidating two independently written implementations into
+  one templated copy is exactly where a behavioural difference hides.
+
+  **The searchable handle is `2f93ec0` / WO-W0 item 6 — NOT "QUALITY_PLAN G.2"**, which is the
+  unrelated AMR relocation; an earlier revision of this entry said G.2 and would have cost the next
+  reader an hour.
+
+  So: **diff core's `hfColumnHeight` and PLIC reconstruction against flow's pre-consolidation
+  versions at `518c2a5:src/vof/{curvature,plic}.hpp`** — with `cutcell.hpp` and `wetting.hpp` in the
+  same commit and therefore also in scope. Not the units. Not investigated further here; the page is
+  the reproducer and it runs in ~5 minutes.
 
   The 2.7-percentage-point CUDA/OpenMP spread in the damping deficit (-34.9 vs -37.6 %) is a second,
   smaller observation: the suite's standing position is that a backend is a faithful port, and a
