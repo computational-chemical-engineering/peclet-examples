@@ -20,6 +20,54 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 ---
 
+## Height-function curvature falls back to the PLIC paraboloid on ~90 % of interface cells (was 37 %), and the droplet damping deficit doubles with it
+
+- **Status:** open, NOT a backend difference — reproduced on CUDA and OpenMP from the same source
+- **Package / area:** flow (VoF curvature: height function vs PLIC paraboloid)
+- **Found in:** examples/capillary-oscillations, during the 1.0.0 gallery re-render (2026-09-14)
+- **Observed:** the page's own curvature-branch census, same page, same inputs, three builds:
+
+  | build | HF | HF (other dir) | PLIC paraboloid | fallback % |
+  |---|---|---|---|---|
+  | the committed freeze (pre-1.0.0, 2026-09-02) | 791 | 0 | 464 | **37.0 %** |
+  | 1.0.0, CUDA | 129 | 0 | 1109 | **89.6 %** |
+  | 1.0.0, OpenMP | 132 | 2 | 1109 | **89.6 %** |
+
+  CUDA and OpenMP agree to 3 cells in ~1240 and the PLIC count is identical, so the backend is not
+  the variable — **flow changed between the build that produced the committed freeze and 1.0.0.**
+  The mode-2 droplet damping moves with it, at mu = 0.0025:
+
+  | build | fitted rate | exact | deficit |
+  |---|---|---|---|
+  | committed (pre-1.0.0) | 1.472e-03 | 1.780e-03 | **-17.3 %** |
+  | 1.0.0, CUDA | 1.158e-03 | 1.780e-03 | **-34.9 %** |
+  | 1.0.0, OpenMP | 1.110e-03 | 1.780e-03 | **-37.6 %** |
+
+  The frequency moves far less (-5.58 % -> -5.02 / -5.14 %), and everything else on the page is
+  stable: standing-wave frequency identical to four digits, pressure iterations identical, volume
+  drift actually better (-1.4e-14 -> -4.4e-16). So this is specific to the curvature path and what
+  it feeds, not a general VoF regression.
+
+- **Expected:** either the height function keeps its stencil on most interface cells as it did, or
+  the change is deliberate and the damping cost of it is known and recorded. A curvature estimator
+  changing its mind on 2 of every 3 interface cells is not drift, and a physical observable moving
+  by half again is not noise.
+- **Repro:** render `examples/capillary-oscillations` against any 1.0.0 build and read the `census`
+  cell; compare against the freeze committed on 2026-09-02. ~5 min on a GPU build.
+- **Notes / where to look first:** between that freeze and 1.0.0, flow `c4c2b2a` ("the anisotropic
+  VoF half — PLIC, curvature, CSF, wetting, phase change", Phase 3 V0-V5) rewrote exactly this code,
+  and `8a4397c` / `05c0974` moved sigma and curvature onto the caller's units. A height-function
+  acceptance test that used to be expressed in cell units and is now applied to physical lengths
+  would produce precisely this signature — the same geometry, far more rejections — and would be a
+  units bug rather than a numerics one. Not investigated further here; this page is the reproducer.
+
+  The 2.7-percentage-point CUDA/OpenMP spread in the damping deficit (-34.9 vs -37.6 %) is a second,
+  smaller observation: the suite's standing position is that a backend is a faithful port, and a
+  page-level observable differing by 4 % relative is worth its own look once the main change is
+  understood.
+
+---
+
 ## `max_open_divergence()` returns exactly 0 without geometry — so `advect_vof`'s divergence guard is silently inert on a bare box
 - **Status:** RESOLVED (flow WO-R2, `advect_vof` now throws without a cut-cell pressure operator and uses `max_open_divergence_projected()`; 2026-09-03)
 - **Package / area:** flow (VoF transport / cut-cell diagnostics)
