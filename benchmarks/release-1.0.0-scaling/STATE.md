@@ -70,6 +70,21 @@ The gallery campaign's own full deploy supersedes this entirely — at which poi
 `deploy/benchmark-1.0.0-page` can be deleted (`git push origin --delete deploy/benchmark-1.0.0-page`
 and `git worktree remove`).
 
+## PUSH HOLD — do not push peclet-examples main (agreed 2026-09-14)
+
+The gallery campaign holder (session suite-01) asked for it, and the reason is sound: it has ~161
+modified `_freeze/` files plus page-source fixes in its working tree, and a push carrying a
+half-finished freeze set is worse than one carrying none. It will message when its full-site render
+on the peclet-free venv passes and it has pushed. **One local commit is waiting** (a DECISIONS.md
+entry; no code, no freezes). Nothing here needs main: the page is live off
+`deploy/benchmark-1.0.0-page`.
+
+It also confirmed, by diffing the tags rather than assuming, that **1.0.1 requires no re-render**:
+family-wide only two compute-path files changed — a `Kokkos::Threads` branch in core's
+GPU-aware-MPI probe (`KOKKOS_ENABLE_THREADS` is not defined in a CUDA+OpenMP build) and dem's
+`M_PI` -> a `constexpr` carrying the identical literal. So this record's 1.0.0 subject is unaffected
+too, and flow is in any case still 1.0.0 on PyPI.
+
 ## Next action — needs the user
 
 1. **Zenodo draft upload** — `ZENODO_TOKEN=... ./zenodo/make_deposit.sh --upload`. Not run: it
