@@ -45,9 +45,18 @@ Env:
     MARCH_MAX   phase B step cap (default 600)
     DIFFNUM     diffusion number mu*dt/(rho*h^2) that sets dt (default 6.0)
     LEVELS      pressure MG depth requested (default 10 -> clamped to what the grid admits)
-    VMG         momentum solver, PINNED across the ladder: auto (default = the 1.0.0 rule,
-                which switches to the V-cycle below 65536 cells/rank) | off (red-black
-                Gauss-Seidel at every rank count) | on (velocity V-cycle at every rank count)
+    VMG         momentum solver, PINNED across the ladder instead of left to the 1.0.0 auto
+                rule (which switches below 65536 cells/rank, so only the top rung of a strong
+                ladder crosses it and the ladder changes ALGORITHM there):
+                  auto  the shipped rule (default)
+                  off   red-black Gauss-Seidel at every rank count
+                  on    velocity V-cycle at every rank count
+                  cheb  Chebyshev semi-iteration at every rank count
+                  mgcheb  velocity V-cycle with a Chebyshev smoother on every level
+    CHEB_MAXIT  VMG=cheb: iteration cap per component (default 400)
+    MGCHEB_DEGREE / MGCHEB_RATIO
+                VMG=mgcheb: polynomial degree (0 = follow the V-cycle's pre/post/bottom
+                sweep counts) and the spectral interval ratio [hi/ratio, hi] (default 10)
     VMG_LEVELS  VMG=on: velocity-MG depth (default 3 = what the auto rule selects)
     VMG_VCYCLES VMG=on: V-cycle cap per component (default 40 = what the auto rule selects)
     MU F RHO    viscosity / body force / density (default 0.1 / 1e-3 / 1.0)
@@ -83,10 +92,13 @@ MARCH_MAX = int(os.environ.get("MARCH_MAX", 600))
 DIFFNUM = float(os.environ.get("DIFFNUM", 6.0))
 LEVELS = int(os.environ.get("LEVELS", 10))
 VMG = os.environ.get("VMG", "auto").lower()
-if VMG not in ("auto", "off", "on"):
-    raise SystemExit(f"VMG must be auto|off|on, got {VMG!r}")
+if VMG not in ("auto", "off", "on", "cheb", "mgcheb"):
+    raise SystemExit(f"VMG must be auto|off|on|cheb|mgcheb, got {VMG!r}")
 VMG_LEVELS = int(os.environ.get("VMG_LEVELS", 3))
 VMG_VCYCLES = int(os.environ.get("VMG_VCYCLES", 40))
+CHEB_MAXIT = int(os.environ.get("CHEB_MAXIT", 400))
+MGCHEB_DEGREE = int(os.environ.get("MGCHEB_DEGREE", 0))
+MGCHEB_RATIO = float(os.environ.get("MGCHEB_RATIO", 10.0))
 MU = float(os.environ.get("MU", 0.1))
 F = float(os.environ.get("F", 1e-3))
 RHO = float(os.environ.get("RHO", 1.0))
@@ -258,6 +270,12 @@ if VMG == "off":
     s.set_velocity_multigrid(False)
 elif VMG == "on":
     s.set_velocity_multigrid(True, VMG_LEVELS, VMG_VCYCLES)
+elif VMG == "cheb":
+    s.set_velocity_multigrid(False)          # also clears the auto rule
+    s.set_velocity_chebyshev(True, CHEB_MAXIT)
+elif VMG == "mgcheb":
+    s.set_velocity_multigrid(True, VMG_LEVELS, VMG_VCYCLES)
+    s.set_velocity_mg_chebyshev(True, MGCHEB_DEGREE, MGCHEB_RATIO)
 if CASE == "bed":
     s.set_advection(False)                 # creeping flow
     s.set_body_force((F, 0.0, 0.0))
@@ -388,6 +406,10 @@ if RANK == 0:
                    "telescope": bool(s.pressure_telescope),
                    "velocity_multigrid_active": bool(s.diagnostics.velocity_multigrid_active()),
                    "vmg_pin": VMG,
+                   "cheb_active": bool(getattr(s, "velocity_chebyshev_active", lambda: False)()),
+                   "mgcheb_active": bool(getattr(s, "velocity_mg_chebyshev", lambda: False)()),
+                   "mgcheb_degree": MGCHEB_DEGREE if VMG == "mgcheb" else None,
+                   "mgcheb_ratio": MGCHEB_RATIO if VMG == "mgcheb" else None,
                    "vmg_levels": VMG_LEVELS if VMG == "on" else None,
                    "vmg_vcycles": VMG_VCYCLES if VMG == "on" else None,
                    "pressure_rtol_default": True},
