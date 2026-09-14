@@ -1,0 +1,219 @@
+---
+title: "Parallel performance of peclet.flow 1.0.0"
+subtitle: "Cut-cell immersed-boundary flow through a sphere packing: weak scaling to 32 H100 GPUs and 1.81 billion cells, strong scaling to 1536 cores — and one number every rung has to reproduce."
+author: "Peclet"
+date: "2026-09-13"
+categories: [flow, HPC, MPI, multi-GPU, IBM, benchmark, scaling]
+format:
+  html:
+    toc: true
+---
+
+This page is the human-readable face of a citable record: the archived dataset carries the driver,
+the geometry, the cluster scripts, every raw result and the analysis that turns them into these
+tables. It states what **peclet.flow 1.0.0** does on the hardware it was measured on. It is
+not a comparison against other codes, and it makes no claim about any other version.
+
+## What is measured
+
+**Creeping flow through a periodic random sphere packing, with the cut-cell immersed boundary
+method**, driven by a body force in a triply periodic box. One MPI rank per GPU or per core.
+
+The physical unit of the study is a **unit cell**: 1043 spheres of radius $R = 1$ at solid fraction
+$\phi = 0.45$ in a cubic box of $21.333\,R$, resolved at $384^3$ cells — so $R = 18$ cells,
+comfortably inside the resolution at which this discretization's permeability has converged. That
+cell is 56.6 M cells, and it is what one H100 holds.
+
+Four ladders, one case:
+
+| Ladder | Machine | What changes | Rungs |
+|---|---|---|---|
+| **Weak** | Snellius `gpu_h100` | one unit cell **per GPU**, the domain grows with the GPU count | 1 → 32 GPUs, 56.6 M → 1.81 Gcells |
+| **Strong (CPU)** | Snellius `genoa` | one fixed unit cell, more cores | 24 → 1536 cores |
+| **Strong (GPU)** | Snellius `gpu_h100` | one fixed unit cell, more GPUs | 1 → 32 GPUs |
+| **Control** | both | Taylor–Green vortices, no geometry, same grids | subset |
+
+The weak ladder **tiles one unit cell**. Rung $N$ is an exact periodic replication of the same
+problem, $N$ times over — the porous-media analogue of tiling vortices. That choice is what makes
+the physics observable exact rather than statistical: the tiled problem *is* the same problem, so
+its answer must be the same number, and any disagreement is a defect rather than bed-to-bed
+scatter.
+
+## Correctness first
+
+Every run starts from rest and takes the same 13 steps, so the mean velocity
+$\langle u \rangle$ at the end is one number that every rung must return — at any rank count, on
+either machine. It costs one global reduction, and it is checked for every run in the record.
+
+::: {.callout-important title="One state, 30 runs, two machines"}
+$\langle u \rangle = 1.638889605549e-04$
+
+across **30 runs** spanning 1 to 768 ranks, both the CUDA and the OpenMP
+backend, single-rank and distributed, and domains from 56.6 M to
+1.81 billion cells. Worst relative deviation **8e−11**; peak divergence
+3e-14. The geometry-free control is tighter still: **1e−16** — machine
+epsilon — over 6 runs to 768 ranks.
+:::
+
+That is the claim the timings rest on. A fast rung that has quietly stopped solving the same
+problem is worth nothing, so the equivalence is established first and the performance is read only
+from runs that pass it.
+
+**Where the record does *not* return one number, and why.** At 1536 cores this problem
+is down to 37 k cells per rank, and peclet 1.0.0 switches its momentum
+solver by itself below ~65 k — so those rungs run the velocity multigrid where the rest of the
+ladder does not. A different solver is a different iterate, and the two land
+**3.7e−07** apart in $\langle u \rangle$. That is a configuration difference rather than a
+parallel-consistency one, and the evidence is that it is perfectly repeatable: 3
+separate 1536-core allocations return values identical to the last digit
+(spread 0). The gate table groups by solver configuration for this reason.
+
+::: {.callout-note collapse="true" title="All correctness gates, in full"}
+{{< include gates.md >}}
+:::
+
+## Weak scaling — the distributed solve
+
+![Per-GPU throughput and pressure iterations, 1 → 32 H100 GPUs at $384^3$ cells each.](weak_scaling.png)
+
+Per-GPU throughput goes from **14.1** to **11.2 Mcell/s** between 1 and
+32 GPUs: **79 % weak efficiency** at 1.81 billion cells, an
+aggregate 358 Mcell/s. The pressure solve takes **29.7 iterations per
+step at 1 GPU and 29.8 at 32** — flat, which is the property that matters: a
+weak ladder whose iteration count climbs is not weak-scaling, however level its throughput curve
+looks. The multigrid hierarchy reaches 8 levels and the coarse levels telescope onto
+fewer ranks as they shrink, so the coarsest grid stays solvable however many ranks the fine grid
+is spread over.
+
+## Strong scaling — one fixed problem
+
+![The same 56.6 M-cell problem, on more cores and on more GPUs.](strong_scaling.png)
+
+On CPU, 24 → 1536 cores takes the step from 71.1 s to **0.91 s**,
+a **78.0×** speedup — nominally 122 % of ideal, which is above 100 % and
+should not be read as the solver beating linear scaling. Two things inflate it, and both are worth
+naming rather than banking. The 24-core baseline has the whole node's memory bandwidth to
+itself, so it is a flattered reference; and at 1536 cores the automatic rule switches
+the momentum solver (above), so the top rung runs a *different and better* algorithm — 768 →
+1536 alone returns 3.3× for a doubling. The honest reading is that this problem strong-scales
+well across the whole CPU ladder, not that it exceeds ideal.
+
+On GPU the same problem goes from 4.0 s on one H100 to **0.55 s on 32**
+(7.3×, 23 % of ideal). The efficiency falls off where it should: at
+32 GPUs each device holds only 1.8 M cells, far below what saturates an
+H100, and the step becomes a latency problem rather than a throughput one. **That is the honest
+limit of strong scaling on this hardware, and it is why the weak ladder is the headline** — a GPU
+earns its keep on a large subdomain, and the fixed problem here fits on one of them to begin with.
+
+One rung does not behave, and it is reproducible. At **16 GPUs the step is slower than at
+8** (926 ms against 857 ms) — 2 separate
+allocations agree to 1.00×, so this is not node placement. The phase timers put all of it
+in the **projection**: 303 → 514 ms while the momentum solve keeps scaling
+(553 → 411 ms), with an identical multigrid hierarchy at both rungs. The
+decomposition shape is the obvious suspect — 8 GPUs give every rank a cubic block,
+16 give it a 1:2:2 one — but that is a hypothesis, not a result: this record reports the
+measurement and does not diagnose it.
+
+Taken together the two machines price the same work: on this case one H100 is worth roughly
+**348 Genoa cores**. That is the conservative reading — the CPU is credited with the
+best per-core throughput anywhere on its ladder, which is its 1536-core rung, the
+one that also benefits from the momentum-solver switch. Against its weakest rung the ratio is
+several times larger.
+
+## Where the step goes
+
+![Per-phase median times across the weak ladder.](phase_breakdown.png)
+
+The step is two solves and a negligible explicit stage (the predictor is 5.1 ms,
+about a tenth of a percent). Across the weak ladder the **momentum solve grows
+12 %** (3013 → 3372 ms from 1 to 32
+GPUs) while the **pressure projection grows 68 %**
+(1006 → 1687 ms). Since the iteration count is flat, that gap is
+not algorithmic: it is where the global coupling lives. The projection is the phase that carries
+the weak ladder's loss, and it is the phase to attack for a code that wants the next factor at this
+scale.
+
+## The geometry-free control
+
+The Taylor–Green control runs the identical grids and the identical decomposition with no geometry
+at all. It is **not** a measurement of what the immersed boundary costs, and should not be read as
+one: the control solves an advecting flow while the bed case is creeping (advection off), so the
+two differ in the physics as well as in the geometry.
+
+What it does isolate is the solver floor and the shape of the scaling. Two things follow. The
+cut-cell pressure operator needs **3.7×** the iterations of the all-fluid one
+(29.7 against 8.0), which is what a matrix whose coefficients span the
+aperture contrast of a dense bed costs. And the whole step nevertheless lands within
+**1.0×** of the control's, because the control spends on advection roughly what the bed
+spends on its stiffer pressure solve. The control also weak-scales slightly better
+(88 % against 79 % at 32 GPUs), which puts a number on how much
+of the loss at the top of the ladder is the geometry's irregular work rather than the
+communication both cases share.
+
+## Permeability
+
+Marched to steady state, the unit cell has $k/R^2 = 0.017122$ (40 steps to a
+relative tolerance of $10^{-5}$). Measured at 5 points of the ladder, the estimates agree
+to 5e−13 — the same physical answer from the single-GPU cell and from the tiled
+1.81-billion-cell domain.
+
+## Results in full
+
+{{< include summary.md >}}
+
+## Reading the numbers fairly
+
+- The CPU rungs take **exclusive** nodes, so the sub-node rungs (24, 48, 96) have up to
+  8× the memory bandwidth per rank of the full-node rungs. That flatters the baseline and therefore
+  **understates** the efficiencies computed against it; the apples-to-apples segment is 192 →
+  1536.
+- The weak ladder's large rungs are **periodic replications** of one unit cell, not independent
+  beds. That is what makes the physics gate exact; it is not a statement about bed-to-bed
+  variability.
+- Timings are the **median** of 10 timed steps after 3 warm-up steps, taken
+  as the slowest rank's wall time for each step. The per-run spread is in the tables; repeats of
+  the top rungs on separate allocations are reported separately, because node placement moves a
+  large-rank number by more than the solver does.
+- The configuration is the **shipped 1.0.0 default** — MG-PCG at a relative tolerance of
+  $10^{-8}$, coarse-level telescoping, the agglomerated coarse solve, the velocity-multigrid auto
+  rule, double operator storage, and the shipped auto-detection of GPU-aware MPI — with **one
+  stated exception**: the pressure multigrid is asked for as much depth as the grid admits rather
+  than the default of four levels. Depth is a property of the grid, not a tuning constant. The
+  out-of-the-box depth is measured at one rung and is in the tables.
+- `PECLET_CORE_GPU_AWARE_MPI` is deliberately left unset, so the shipped auto-detection decides the
+  halo transport and the runs record what it chose: on this machine, **DEVICE MPI buffers (auto)**.
+- Runs whose pressure solve touched its iteration cap would be reported as capped rather than
+  plotted as timings. None did: the worst rung used a small fraction of the cap.
+
+## Reproduce it
+
+The published wheels cannot run this — MPI is a build-time option in `flow` and the PyPI wheels are
+single-rank — so the study builds the released tag from source, with one tree per backend.
+
+```bash
+git clone https://github.com/computational-chemical-engineering/peclet-examples
+cd peclet-examples/benchmarks/release-1.0.0-scaling
+
+sbatch --nodes=1 --gpus-per-node=1 --ntasks-per-node=1 snellius/install_bench.sh v1.0.0 h100
+sbatch -p genoa --gpus-per-node=0 -c 32 -t 02:00:00    snellius/install_bench.sh v1.0.0 cpu
+
+./snellius/submit_ladders.sh pilot     # the go/no-go rungs
+./snellius/submit_ladders.sh weak      # and strong-gpu, strong-cpu, tgv, march, spread, levels
+python analyze.py results              # tables, gates, figures
+```
+
+The runbook is [`README.md`](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/benchmarks/release-1.0.0-scaling/README.md); the design decisions, including the ones that
+were rejected, are in [`DECISIONS.md`](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/benchmarks/release-1.0.0-scaling/DECISIONS.md). The whole directory — driver, geometry,
+cluster scripts, raw results and logs — is
+[on GitHub](https://github.com/computational-chemical-engineering/peclet-examples/tree/main/benchmarks/release-1.0.0-scaling).
+
+## Cite
+
+The measurement in this page — the driver, the geometry, the cluster scripts, every raw result and
+log, and a standalone report — is archived as a dataset with its own DOI, separate from the
+software it measures. Cite the record's **concept DOI** rather than a version DOI, so the reference
+follows later campaigns instead of going stale, and cite
+[peclet itself](https://doi.org/10.5281/zenodo.21132445) for the software.
+
+*The DOI is added here when the deposit is published; until then this page and the repository
+directory are the record.*

@@ -28,6 +28,20 @@ benchmark), the characterization is measured *against it*.
 ::: {.grid}
 
 ::: {.g-col-12 .g-col-md-6}
+### [Parallel performance of peclet.flow 1.0.0 →](release-1.0.0-scaling/index.qmd)
+The archived performance record of the 1.0.0 release, on one case measured four ways: **weak
+scaling to 32 H100 GPUs and 1.81 billion cells at 79 % efficiency**, with the pressure solve pinned
+at 29.8 iterations from 1 GPU to 32; strong scaling of one fixed 56.6 M-cell problem across 24 →
+1536 Genoa cores and 1 → 32 GPUs; and a geometry-free Taylor–Green control on the same grids.
+Correctness comes before speed: every run returns the *same* mean velocity after the same steps —
+25 runs, both backends, worst deviation 8e−11 — and the weak ladder tiles one unit cell, so its
+permeability is a single number every rung has to reproduce rather than a scatter across beds.
+Data and scripts are archived with a DOI.
+
+*flow · HPC · MPI · multi-GPU · IBM · benchmark · scaling*
+:::
+
+::: {.g-col-12 .g-col-md-6}
 ### [peclet.dem vs the DEM8 bulk-process benchmark →](dem-bulk-dosta2024/index.qmd)
 The three Dosta et al. (2024) community benchmark cases — silo emptying (100k),
 drum mixing (38k bimodal), and ball impact on 25–100k beds — run from the paper's
