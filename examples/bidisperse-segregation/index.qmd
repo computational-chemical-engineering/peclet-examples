@@ -9,6 +9,7 @@ bibliography: ../../references.bib
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/bidisperse-segregation/index.ipynb){target="_blank"}
+[![Download notebook](https://img.shields.io/badge/Download-notebook-F37626?logo=jupyter&logoColor=white)](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/bidisperse-segregation/index.ipynb){target="_blank"}
 &nbsp;This is an **online** CFD–DEM example (the two solvers exchange drag and void fraction every step), so it needs the `peclet-coupling` module — built from source, see *Reproduce*. It reproduces the **Bidisperse segregation** case from the [MFIX-Exa qualitative benchmarks](https://mfix.netl.doe.gov/doc/mfix-exa/guide/latest/test_benchmarks/qualitative_bencharks/biseg.html), which in turn follows the NETL rig and the classic experiments of Goldschmidt et al. [@goldschmidt2003].
 
 ## What you'll learn

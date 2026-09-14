@@ -8,6 +8,7 @@ jupyter: python3
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/trickle-flow-packing/index.ipynb){target="_blank"}
+[![Download notebook](https://img.shields.io/badge/Download-notebook-F37626?logo=jupyter&logoColor=white)](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/trickle-flow-packing/index.ipynb){target="_blank"}
 &nbsp;Wants a GPU build: a DEM packing, one $48\times48\times96$ two-phase run and three on half
 that grid, each several thousand steps.
 
