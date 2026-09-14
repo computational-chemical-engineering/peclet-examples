@@ -1,0 +1,42 @@
+# Pressure-multigrid hierarchy for the strong-scaling ladder (384^3, LEVELS=10, telescope on)
+#
+# Produced by peclet.flow.predict_hierarchy -- a pure function of (grid, ranks, levels,
+# telescope, decomposition): no MPI, no allocation, so it reproduces anywhere:
+#   python -c "import peclet.flow as f; print(f.predict_hierarchy(384,384,384,16,10,True))"
+# flow 1.0.0, the same build as the CPU ladder.  generated 2026-09-15
+#
+# Columns: level, global dims, ranks holding it, block-0 dims, coarsening ratio, and
+# whether the transition OUT of that level telescopes onto fewer ranks.
+
+== 8 GPUs: 8 levels
+   L0  global  384x 384x 384   ranks   8   block 192x192x192   ratio 222   tele no
+   L1  global  192x 192x 192   ranks   8   block  96x 96x 96   ratio 222   tele no
+   L2  global   96x  96x  96   ranks   8   block  48x 48x 48   ratio 222   tele no
+   L3  global   48x  48x  48   ranks   8   block  24x 24x 24   ratio 222   tele no
+   L4  global   24x  24x  24   ranks   8   block  12x 12x 12   ratio 222   tele no
+   L5  global   12x  12x  12   ranks   8   block   6x  6x  6   ratio 222   tele no
+   L6  global    6x   6x   6   ranks   8   block   3x  3x  3   ratio 222   tele YES
+   L7  global    3x   3x   3   ranks   1   block   3x  3x  3   ratio 111   tele no
+   level-0 block 192x192x192: volume 7077888, surface 221184, surface/volume 0.0312
+
+== 16 GPUs: 8 levels
+   L0  global  384x 384x 384   ranks  16   block  96x192x192   ratio 222   tele no
+   L1  global  192x 192x 192   ranks  16   block  48x 96x 96   ratio 222   tele no
+   L2  global   96x  96x  96   ranks  16   block  24x 48x 48   ratio 222   tele no
+   L3  global   48x  48x  48   ranks  16   block  12x 24x 24   ratio 222   tele no
+   L4  global   24x  24x  24   ranks  16   block   6x 12x 12   ratio 222   tele no
+   L5  global   12x  12x  12   ranks  16   block   3x  6x  6   ratio 222   tele YES
+   L6  global    6x   6x   6   ranks   1   block   6x  6x  6   ratio 222   tele no
+   L7  global    3x   3x   3   ranks   1   block   3x  3x  3   ratio 111   tele no
+   level-0 block 96x192x192: volume 3538944, surface 147456, surface/volume 0.0417
+
+== 32 GPUs: 8 levels
+   L0  global  384x 384x 384   ranks  32   block  96x 96x192   ratio 222   tele no
+   L1  global  192x 192x 192   ranks  32   block  48x 48x 96   ratio 222   tele no
+   L2  global   96x  96x  96   ranks  32   block  24x 24x 48   ratio 222   tele no
+   L3  global   48x  48x  48   ranks  32   block  12x 12x 24   ratio 222   tele no
+   L4  global   24x  24x  24   ranks  32   block   6x  6x 12   ratio 222   tele no
+   L5  global   12x  12x  12   ranks  32   block   3x  3x  6   ratio 222   tele YES
+   L6  global    6x   6x   6   ranks   1   block   6x  6x  6   ratio 222   tele no
+   L7  global    3x   3x   3   ranks   1   block   3x  3x  3   ratio 111   tele no
+   level-0 block 96x96x192: volume 1769472, surface 92160, surface/volume 0.0521

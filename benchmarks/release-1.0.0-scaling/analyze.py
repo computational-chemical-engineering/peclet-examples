@@ -16,6 +16,7 @@ result whose bed is not a converged packing, and a rung whose pressure solve hit
 reported as such rather than plotted as a timing.
 """
 import json
+import statistics
 import pathlib
 import sys
 
@@ -569,6 +570,122 @@ def headline(runs):
     return h
 
 
+
+# ------------------------------------------------------- 2026-09-15 addendum (see index.qmd.in)
+# Numbers for the three corrections this record carries. Two are re-readings of the deposit's OWN
+# results (the all-reduce share of the projection; the depth of the weak ladder's hierarchy); the
+# third comes from a companion campaign, benchmarks/momentum-solver, which re-ran the CPU ladder
+# with the momentum solver PINNED instead of left to the 1.0.0 auto rule. Missing companion data
+# is not an error -- the keys simply do not appear, and render_page.py then refuses any sentence
+# that quotes them, which is the behaviour we want.
+def addendum(runs, here):
+    h = {}
+
+    # (a) the 16-GPU anomaly: what the deposit's own timers rule out.
+    sg = {r["ranks"]: r for r in pick(runs, case="bed", mode="strong", machine="h100")}
+    if {8, 16, 32} <= set(sg):
+        a = sg[16]
+        st = a["perf"]["steps"]
+        med = lambda rr, k: statistics.median([x[k] for x in rr["perf"]["steps"] if k in x])
+        h["anom_ar_ms"] = f"{med(a, 'pressure_allreduce') * 1e3:.1f}"
+        h["anom_ar_pct"] = f"{100 * med(a, 'pressure_allreduce') / med(a, 'projection'):.1f}"
+        h["anom_next_n"] = 32
+        h["anom_next_ms"] = f"{ms(sg[32]):.0f}"
+        h["anom_next_mom"] = f"{med(sg[32], 'momentum') * 1e3:.0f}"
+
+    # (b) the weak ladder's hierarchy DEEPENS with rank count, so part of the projection's growth
+    #     is extra coarse levels rather than a parallel loss.
+    wb = pick(runs, case="bed", mode="weak", machine="h100")
+    if wb:
+        h["w_base_levels"] = len(wb[0]["solver"]["level_ratios"])
+        h["w_top_levels"] = len(wb[-1]["solver"]["level_ratios"])
+        medt = lambda rr, k: statistics.median([x[k] for x in rr["perf"]["steps"] if k in x])
+        h["w_top_ar_ms"] = f"{medt(wb[-1], 'pressure_allreduce') * 1e3:.1f}"
+        h["w_top_ar_pct"] = f"{100 * medt(wb[-1], 'pressure_allreduce') / medt(wb[-1], 'projection'):.1f}"
+        h["w_base_ar_ms"] = f"{medt(wb[0], 'pressure_allreduce') * 1e3:.2f}"
+        h["ph_momentum_share_base"] = f"{100 * medt(wb[0], 'momentum') / (ms(wb[0]) / 1e3):.0f}"
+        h["ph_momentum_share_top"] = f"{100 * medt(wb[-1], 'momentum') / (ms(wb[-1]) / 1e3):.0f}"
+
+    # (c) surface/volume of the level-0 block at 8/16/32 ranks, from hierarchy_predict.txt (which
+    #     peclet.flow.predict_hierarchy wrote -- a pure function, reproducible without a cluster).
+    hp = here / "hierarchy_predict.txt"
+    if hp.exists():
+        cur = None
+        for line in hp.read_text().splitlines():
+            if line.startswith("== "):
+                cur = line.split()[1]
+            elif "surface/volume" in line and cur:
+                h[f"sv_{cur}"] = line.rsplit(None, 1)[1]
+                h[f"block_{cur}"] = line.split("block ")[1].split(":")[0]
+
+    # (d) the companion pinned-solver campaign.
+    mom = here.parent / "momentum-solver" / "results"
+    if mom.exists():
+        mr = [json.loads(f.read_text()) for f in sorted(mom.rglob("*.json"))]
+        mr = [r for r in mr if r.get("schema") == "peclet-scaling-1"]
+        def pin_ladder(pin, tag):
+            """Median over repeat allocations at each rung, and the spread across them. The top
+            rung of this ladder is known to move by up to ~1.5x on node placement alone, so a
+            single allocation there is not a measurement -- the spread is reported, not hidden."""
+            sel = {}
+            for r in mr:
+                if r["solver"].get("vmg_pin") != pin or tag not in str(r.get("label", "")):
+                    continue
+                sel.setdefault(r["ranks"], []).append(ms(r))
+            med = {n: statistics.median(v) for n, v in sel.items()}
+            spread = {n: (max(v) / min(v) if len(v) > 1 else 1.0) for n, v in sel.items()}
+            nrep = {n: len(v) for n, v in sel.items()}
+            return med, spread, nrep
+        (off, off_sp, off_nr), (on, on_sp, on_nr) = pin_ladder("off", "vmgoff"), pin_ladder("on", "vmgon")
+        common = sorted(set(off) & set(on))
+        if common:
+            ratios = {n: off[n] / on[n] for n in common}
+            best = max(ratios, key=ratios.get)
+            h["mom_best_ratio"] = f"{ratios[best]:.2f}"
+            h["mom_best_n"] = best
+            h["mom_best_cells_k"] = f"{mr[0]['cells_total'] / best / 1e3:.0f}"
+            h["mom_min_ratio"] = f"{min(ratios.values()):.2f}"
+            h["mom_min_n"] = min(ratios, key=ratios.get)
+            h["mom_rungs"] = len(common)
+            lo, hi = min(common), max(common)
+            h["mom_lo_n"], h["mom_hi_n"] = lo, hi
+            h["mom_sp_off"] = f"{off[lo] / off[hi]:.1f}"
+            h["mom_sp_on"] = f"{on[lo] / on[hi]:.1f}"
+            h["mom_eff_off"] = f"{100 * (off[lo] / off[hi]) / (hi / lo):.0f}"
+            h["mom_eff_on"] = f"{100 * (on[lo] / on[hi]) / (hi / lo):.0f}"
+            h["mom_lo_cells_m"] = f"{mr[0]['cells_total'] / lo / 1e6:.2f}"
+            h["mom_top_spread_on"] = f"{on_sp[hi]:.2f}"
+            h["mom_top_spread_off"] = f"{off_sp[hi]:.2f}"
+            h["mom_top_reps_on"] = on_nr[hi]
+            h["mom_top_reps_off"] = off_nr[hi]
+            # The headline ratio range deliberately EXCLUDES any rung whose repeats disagree by
+            # more than 1.15x: at that point the allocation, not the solver, is what was measured.
+            # ... and the TOP rung must have at least two allocations to count at all, since one
+            # allocation there is an allocation, not a measurement.
+            solid = [n for n in common
+                     if max(on_sp[n], off_sp[n]) <= 1.15
+                     and (n != hi or min(on_nr[n], off_nr[n]) >= 2)]
+            if solid:
+                h["mom_solid_lo_ratio"] = f"{min(ratios[n] for n in solid):.2f}"
+                h["mom_solid_hi_ratio"] = f"{max(ratios[n] for n in solid):.2f}"
+                h["mom_solid_rungs"] = len(solid)
+                h["mom_solid_max_n"] = max(solid)
+        swp = [statistics.median([x["momentum_sweeps"] / 3 for x in r["perf"]["steps"]
+                                  if "momentum_sweeps" in x])
+               for r in mr if r["solver"].get("vmg_pin") == "off"
+               and any("momentum_sweeps" in x for x in r["perf"]["steps"])]
+        if swp:
+            h["mom_cap"] = f"{max(swp):.0f}"
+            h["mom_cap_all"] = "yes" if min(swp) == max(swp) else "no"
+        vsw = [statistics.median([x["momentum_sweeps"] / 3 for x in r["perf"]["steps"]
+                                 if "momentum_sweeps" in x])
+               for r in mr if r["solver"].get("vmg_pin") == "on"
+               and any("momentum_sweeps" in x for x in r["perf"]["steps"])]
+        if vsw:
+            h["mom_vcycles"] = f"{statistics.median(vsw):.1f}"
+    return h
+
+
 def main():
     runs = load(ROOT)
     if not runs:
@@ -579,6 +696,7 @@ def main():
     (here / "gates.md").write_text(g + "\n")
     (here / "summary.md").write_text(summary(runs) + "\n")
     hl = headline(runs)
+    hl.update(addendum(runs, here))
     (here / "headline.json").write_text(json.dumps(hl, indent=1, sort_keys=True) + "\n")
     fig_weak(runs, here)
     fig_strong(runs, here)

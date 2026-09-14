@@ -32,9 +32,15 @@ python3 "$BENCH/make_report.py" "$OUT"
 # --- 2. the artifact: everything needed to redo the measurement -----------------------------
 echo "== packaging $NAME.tar.gz"
 COMMIT=$(git -C "$BENCH" rev-parse HEAD)
+# The companion pinned-momentum-solver campaign goes in too. The 2026-09-15 addendum quotes its
+# numbers, and analyze.py reads them from the SIBLING directory -- so a record that shipped without
+# it could not reproduce its own corrections, which is exactly the failure this deposit is built to
+# avoid. Both directories extract as siblings, so the relative path still resolves.
+ADDENDUM=momentum-solver
 tar --exclude='__pycache__' --exclude='zenodo/build' --exclude='.quarto' \
-    --exclude='*.tar.gz' -czf "$OUT/$NAME.tar.gz" \
-    -C "$(dirname "$BENCH")" "$(basename "$BENCH")"
+    --exclude='*.tar.gz' --exclude='logs' -czf "$OUT/$NAME.tar.gz" \
+    -C "$(dirname "$BENCH")" "$(basename "$BENCH")" \
+    $([ -d "$(dirname "$BENCH")/$ADDENDUM" ] && echo "$ADDENDUM")
 
 # --- 3. provenance: what produced these numbers ---------------------------------------------
 {

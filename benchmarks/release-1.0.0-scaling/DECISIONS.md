@@ -123,3 +123,36 @@
   run 34819466850. The `github-pages` environment is main-only, so that branch was allowed
   temporarily and THE POLICY WAS REMOVED IMMEDIATELY AFTER — verified back to main-only.
   Reversible by: the campaign's own full deploy, which supersedes it entirely.
+
+2026-09-15  The record is AMENDED IN PLACE rather than re-measured, and the measurements stand.
+  Rejected: re-running the ladders with the momentum solver pinned and publishing those as the
+  headline.
+  Reason: the question this record answers is what peclet.flow 1.0.0 does with its shipped
+  defaults. A ladder run with a hand-pinned solver answers a different and also useful question,
+  which is what the companion campaign `benchmarks/momentum-solver` is for. Replacing the numbers
+  would silently change the subject; correcting the readings does not.
+  Evidence: benchmarks/momentum-solver/{STATE.md,results}.
+
+2026-09-15  The 16-GPU anomaly's decomposition-shape hypothesis is WITHDRAWN, not merely flagged.
+  Superseded: the 2026-09-13 entry, which stated it AS a suspicion and declined to test it.
+  Reason: the record's own rungs contradict it. Surface-to-volume of the level-0 block is monotone
+  in rank count (0.0312 / 0.0417 / 0.0521 at 8 / 16 / 32 GPUs) and the 32-GPU rung -- the most
+  elongated block and the worst ratio -- is the FASTEST rung on the ladder. A monotone quantity
+  cannot produce a non-monotone dip. What replaces it is a list of what the anomaly is not, which
+  is a stronger statement than an untested suspicion.
+  Evidence: hierarchy_predict.txt (peclet.flow.predict_hierarchy, flow 1.0.0), summary.md.
+
+2026-09-15  "The projection's weak-scaling growth is where the global coupling lives" is CORRECTED.
+  Reason: the record's own `pressure_allreduce` timer puts the global reduction at 0.6 % of the
+  projection at the top weak rung. The growth is coarse-level latency plus a hierarchy that
+  DEEPENS along the ladder (8 levels at 1 GPU, 10 at 32) because weak scaling grows the global
+  grid -- part of which is not a parallel inefficiency at all.
+
+2026-09-15  The companion campaign is archived INSIDE this deposit's tarball.
+  Reason: the addendum quotes its numbers and analyze.py reads them from the sibling directory, so
+  a record shipped without it could not reproduce its own corrections -- the exact failure this
+  deposit's "no number the data does not contain" rule exists to prevent.
+
+2026-09-15  NOT TAKEN, needs the user: whether the 1.0.0 shipped default (`vmgAutoCells_ = 65536`)
+  should change, and whether the GPU ladders are also at the momentum cap. The second is being
+  measured; the first is a release decision.

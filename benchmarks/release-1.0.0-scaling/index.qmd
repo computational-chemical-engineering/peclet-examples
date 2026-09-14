@@ -14,6 +14,17 @@ the geometry, the cluster scripts, every raw result and the analysis that turns 
 tables. It states what **peclet.flow 1.0.0** does on the hardware it was measured on. It is
 not a comparison against other codes, and it makes no claim about any other version.
 
+::: {.callout-note title="Amended 2026-09-15"}
+The measurements are unchanged. Three readings of them were corrected after a companion campaign
+(`benchmarks/momentum-solver`, archived alongside this record) re-ran the CPU ladder with the
+momentum solver pinned: the 1536-core gate difference is a **capped** momentum solve
+against a converged one; the 16-GPU anomaly's decomposition-shape hypothesis is
+**withdrawn**, contradicted by this record's own rungs; and the weak ladder's projection growth is
+**not** the global reduction, which the timers put at 0.6 % of the phase. Each
+correction is marked in place below. Nothing here revises a timing, an efficiency or the
+permeability.
+:::
+
 ## What is measured
 
 **Creeping flow through a periodic random sphere packing, with the cut-cell immersed boundary
@@ -68,6 +79,23 @@ parallel-consistency one, and the evidence is that it is perfectly repeatable: 3
 separate 1536-core allocations return values identical to the last digit
 (spread 0). The gate table groups by solver configuration for this reason.
 
+::: {.callout-important title="Amended 2026-09-15: the two values are a capped solve and a converged one"}
+A companion campaign (`benchmarks/momentum-solver`) re-ran this CPU ladder with the momentum
+solver **pinned** at every rung instead of left to the automatic rule, and recorded the sweep count
+the solver already reports and this record did not keep. On **every** rung of the CPU ladder the
+red-black momentum solve runs **200 sweeps per component — its iteration cap
+(`velIters_`)** — while the velocity multigrid converges in 9.7. So the
+3.7e−07 above is not two converged solutions of the same equation reached by different
+routes: it is a **capped** solve against a **converged** one, and the multigrid value is the
+converged one.
+
+Nothing in the timings below changes — they remain what peclet 1.0.0 does with its shipped
+defaults, which is the question this record set out to answer. What changes is the reading: the
+cross-rung equivalence gate demonstrates **reproducibility**, which it genuinely has to
+8e−11, and not convergence of the momentum solve. Whether the GPU ladders are also at
+the cap was not measured here.
+:::
+
 ::: {.callout-note collapse="true" title="All correctness gates, in full"}
 {{< include gates.md >}}
 :::
@@ -98,6 +126,25 @@ the momentum solver (above), so the top rung runs a *different and better* algor
 1536 alone returns 3.3× for a doubling. The honest reading is that this problem strong-scales
 well across the whole CPU ladder, not that it exceeds ideal.
 
+::: {.callout-important title="Amended 2026-09-15: how much of it was the solver switch"}
+The companion pinned-solver ladder answers this quantitatively. Run with one algorithm from
+24 to 1536 cores, the ladder reads **49.2×
+(77 % of ideal) for red-black Gauss-Seidel** and **19.1×
+(30 %) for the velocity multigrid** — each the honest scaling of a single algorithm,
+and neither above 100 %. The 122 % figure above is what you get by measuring a capped
+solver at the bottom of a ladder and a converged one at the top.
+
+The same ladder says the multigrid is the better momentum solver **at every rank count**, not only
+below the threshold where 1.0.0 switches to it: it wins by 1.66× to
+2.23× across the 6 rungs with repeat allocations, and its
+margin is *largest* at the biggest blocks (2.23× at 384 cores,
+147 k cells per rank) — the opposite of the threshold's premise, and still
+2.23× ahead at 2.36 M cells per rank. That is a defect in a shipped
+default rather than a property of this benchmark, and it is recorded here because a reader sizing a
+job from these numbers should know that `set_velocity_multigrid(True)` is worth roughly a factor of
+two on CPU across this whole range.
+:::
+
 On GPU the same problem goes from 4.0 s on one H100 to **0.55 s on 32**
 (7.3×, 23 % of ideal). The efficiency falls off where it should: at
 32 GPUs each device holds only 1.8 M cells, far below what saturates an
@@ -110,9 +157,25 @@ One rung does not behave, and it is reproducible. At **16 GPUs the step is slowe
 allocations agree to 1.00×, so this is not node placement. The phase timers put all of it
 in the **projection**: 303 → 514 ms while the momentum solve keeps scaling
 (553 → 411 ms), with an identical multigrid hierarchy at both rungs. The
-decomposition shape is the obvious suspect — 8 GPUs give every rank a cubic block,
-16 give it a 1:2:2 one — but that is a hypothesis, not a result: this record reports the
-measurement and does not diagnose it.
+decomposition shape is the obvious suspect — 8 GPUs give every rank a cubic block
+(192x192x192), 16 give it a 1:2:2 one (96x192x192).
+
+**That suspicion does not survive this record's own data, and is withdrawn (2026-09-15).** The
+32-GPU rung has a *more* elongated block (96x96x192) and a *worse* surface-to-volume
+ratio (0.0521 against 0.0417 at 16 and 0.0312 at 8 —
+`hierarchy_predict.txt`), and it is the **fastest** rung on the ladder at 552 ms. A
+monotone quantity cannot produce a non-monotone dip. What the measurements do establish is a list
+of what the anomaly is *not*: not node placement (2 allocations, different node
+sets, agreeing to 1.00×); not the momentum phase, which is on trend
+(553 → 411 → 284 ms); not the iteration count, flat at
+29.7; and not the global reduction, which the timers put at 4.1 ms,
+0.8 % of the projection. Nor is it the multigrid hierarchy: all three rungs build
+8 levels, and the slow rung at 16 GPUs and the fastest one at 32
+have *identical* structure down to the level at which the coarse grids telescope onto fewer ranks
+(L5 for both; 8 GPUs, the other fast rung, telescopes one level later — see
+`hierarchy_predict.txt`). The two rungs that bracket the anomaly therefore differ from it in
+opposite directions on every structural quantity available. The
+anomaly is real, reproducible, confined to the projection, and undiagnosed.
 
 Taken together the two machines price the same work: on this case one H100 is worth roughly
 **348 Genoa cores**. That is the conservative reading — the CPU is credited with the
@@ -128,10 +191,25 @@ The step is two solves and a negligible explicit stage (the predictor is 5.1 ms,
 about a tenth of a percent). Across the weak ladder the **momentum solve grows
 12 %** (3013 → 3372 ms from 1 to 32
 GPUs) while the **pressure projection grows 68 %**
-(1006 → 1687 ms). Since the iteration count is flat, that gap is
-not algorithmic: it is where the global coupling lives. The projection is the phase that carries
-the weak ladder's loss, and it is the phase to attack for a code that wants the next factor at this
-scale.
+(1006 → 1687 ms). The iteration count is flat, so the gap is
+not a convergence effect.
+
+**Amended 2026-09-15.** This record previously read that gap as "where the global coupling lives".
+Its own timers do not support that: the pressure all-reduce is 10.5 ms at the top rung
+against a 1687 ms projection — **0.6 %** — and its growth from
+0.32 ms accounts for a comparably small share of the increase. The global reduction is
+not where the weak ladder loses. Two things that are: the V-cycle's coarse levels are
+latency-bound, each costing a halo exchange on a grid too small to amortise it; and the hierarchy
+**deepens along the ladder**, from 8 levels at 1 GPU to 10 at
+32, because weak scaling grows the global grid — so part of that growth is extra levels
+per V-cycle and is not a parallel inefficiency at all.
+
+A second correction of emphasis. The projection carries the weak ladder's *loss*, but the momentum
+solve carries the *time*: it is 75 % of the step at 1 GPU and
+67 % at 32. Removing the projection's entire weak-scaling excess
+would save less than halving the momentum solve would — and on CPU, pinning the momentum solver
+does roughly that (above). Both statements are true and this record originally made only the
+first.
 
 ## The geometry-free control
 

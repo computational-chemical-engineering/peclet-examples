@@ -14,6 +14,17 @@ the geometry, the cluster scripts, every raw result and the analysis that turns 
 tables. It states what **peclet.flow {{flow_version}}** does on the hardware it was measured on. It is
 not a comparison against other codes, and it makes no claim about any other version.
 
+::: {.callout-note title="Amended 2026-09-15"}
+The measurements are unchanged. Three readings of them were corrected after a companion campaign
+(`benchmarks/momentum-solver`, archived alongside this record) re-ran the CPU ladder with the
+momentum solver pinned: the {{switch_ranks}}-core gate difference is a **capped** momentum solve
+against a converged one; the {{anom_n}}-GPU anomaly's decomposition-shape hypothesis is
+**withdrawn**, contradicted by this record's own rungs; and the weak ladder's projection growth is
+**not** the global reduction, which the timers put at {{w_top_ar_pct}} % of the phase. Each
+correction is marked in place below. Nothing here revises a timing, an efficiency or the
+permeability.
+:::
+
 ## What is measured
 
 **Creeping flow through a periodic random sphere packing, with the cut-cell immersed boundary
@@ -68,6 +79,23 @@ parallel-consistency one, and the evidence is that it is perfectly repeatable: {
 separate {{switch_ranks}}-core allocations return values identical to the last digit
 (spread {{switch_spread}}). The gate table groups by solver configuration for this reason.
 
+::: {.callout-important title="Amended 2026-09-15: the two values are a capped solve and a converged one"}
+A companion campaign (`benchmarks/momentum-solver`) re-ran this CPU ladder with the momentum
+solver **pinned** at every rung instead of left to the automatic rule, and recorded the sweep count
+the solver already reports and this record did not keep. On **every** rung of the CPU ladder the
+red-black momentum solve runs **{{mom_cap}} sweeps per component — its iteration cap
+(`velIters_`)** — while the velocity multigrid converges in {{mom_vcycles}}. So the
+{{switch_delta}} above is not two converged solutions of the same equation reached by different
+routes: it is a **capped** solve against a **converged** one, and the multigrid value is the
+converged one.
+
+Nothing in the timings below changes — they remain what peclet 1.0.0 does with its shipped
+defaults, which is the question this record set out to answer. What changes is the reading: the
+cross-rung equivalence gate demonstrates **reproducibility**, which it genuinely has to
+{{gate_worst}}, and not convergence of the momentum solve. Whether the GPU ladders are also at
+the cap was not measured here.
+:::
+
 ::: {.callout-note collapse="true" title="All correctness gates, in full"}
 {{< include gates.md >}}
 :::
@@ -98,6 +126,25 @@ the momentum solver (above), so the top rung runs a *different and better* algor
 {{s_top_n}} alone returns 3.3× for a doubling. The honest reading is that this problem strong-scales
 well across the whole CPU ladder, not that it exceeds ideal.
 
+::: {.callout-important title="Amended 2026-09-15: how much of it was the solver switch"}
+The companion pinned-solver ladder answers this quantitatively. Run with one algorithm from
+{{mom_lo_n}} to {{mom_hi_n}} cores, the ladder reads **{{mom_sp_off}}×
+({{mom_eff_off}} % of ideal) for red-black Gauss-Seidel** and **{{mom_sp_on}}×
+({{mom_eff_on}} %) for the velocity multigrid** — each the honest scaling of a single algorithm,
+and neither above 100 %. The {{s_strong_eff}} % figure above is what you get by measuring a capped
+solver at the bottom of a ladder and a converged one at the top.
+
+The same ladder says the multigrid is the better momentum solver **at every rank count**, not only
+below the threshold where 1.0.0 switches to it: it wins by {{mom_solid_lo_ratio}}× to
+{{mom_solid_hi_ratio}}× across the {{mom_solid_rungs}} rungs with repeat allocations, and its
+margin is *largest* at the biggest blocks ({{mom_best_ratio}}× at {{mom_best_n}} cores,
+{{mom_best_cells_k}} k cells per rank) — the opposite of the threshold's premise, and still
+{{mom_best_ratio}}× ahead at {{mom_lo_cells_m}} M cells per rank. That is a defect in a shipped
+default rather than a property of this benchmark, and it is recorded here because a reader sizing a
+job from these numbers should know that `set_velocity_multigrid(True)` is worth roughly a factor of
+two on CPU across this whole range.
+:::
+
 On GPU the same problem goes from {{t_base_s}} s on one H100 to **{{t_top_s}} s on {{t_top_n}}**
 ({{t_speedup}}×, {{t_strong_eff}} % of ideal). The efficiency falls off where it should: at
 {{t_top_n}} GPUs each device holds only {{t_top_per_gpu_m}} M cells, far below what saturates an
@@ -110,9 +157,25 @@ One rung does not behave, and it is reproducible. At **{{anom_n}} GPUs the step 
 allocations agree to {{anom_spread}}×, so this is not node placement. The phase timers put all of it
 in the **projection**: {{anom_prev_proj}} → {{anom_proj}} ms while the momentum solve keeps scaling
 ({{anom_prev_mom}} → {{anom_mom}} ms), with an identical multigrid hierarchy at both rungs. The
-decomposition shape is the obvious suspect — {{anom_prev_n}} GPUs give every rank a cubic block,
-{{anom_n}} give it a 1:2:2 one — but that is a hypothesis, not a result: this record reports the
-measurement and does not diagnose it.
+decomposition shape is the obvious suspect — {{anom_prev_n}} GPUs give every rank a cubic block
+({{block_8}}), {{anom_n}} give it a 1:2:2 one ({{block_16}}).
+
+**That suspicion does not survive this record's own data, and is withdrawn (2026-09-15).** The
+{{anom_next_n}}-GPU rung has a *more* elongated block ({{block_32}}) and a *worse* surface-to-volume
+ratio ({{sv_32}} against {{sv_16}} at {{anom_n}} and {{sv_8}} at {{anom_prev_n}} —
+`hierarchy_predict.txt`), and it is the **fastest** rung on the ladder at {{anom_next_ms}} ms. A
+monotone quantity cannot produce a non-monotone dip. What the measurements do establish is a list
+of what the anomaly is *not*: not node placement ({{anom_repeats}} allocations, different node
+sets, agreeing to {{anom_spread}}×); not the momentum phase, which is on trend
+({{anom_prev_mom}} → {{anom_mom}} → {{anom_next_mom}} ms); not the iteration count, flat at
+{{t_base_iters}}; and not the global reduction, which the timers put at {{anom_ar_ms}} ms,
+{{anom_ar_pct}} % of the projection. Nor is it the multigrid hierarchy: all three rungs build
+{{levels}} levels, and the slow rung at {{anom_n}} GPUs and the fastest one at {{anom_next_n}}
+have *identical* structure down to the level at which the coarse grids telescope onto fewer ranks
+(L5 for both; {{anom_prev_n}} GPUs, the other fast rung, telescopes one level later — see
+`hierarchy_predict.txt`). The two rungs that bracket the anomaly therefore differ from it in
+opposite directions on every structural quantity available. The
+anomaly is real, reproducible, confined to the projection, and undiagnosed.
 
 Taken together the two machines price the same work: on this case one H100 is worth roughly
 **{{cores_per_gpu}} Genoa cores**. That is the conservative reading — the CPU is credited with the
@@ -128,10 +191,25 @@ The step is two solves and a negligible explicit stage (the predictor is {{ph_pr
 about a tenth of a percent). Across the weak ladder the **momentum solve grows
 {{ph_momentum_growth}} %** ({{ph_momentum_base}} → {{ph_momentum_top}} ms from 1 to {{w_top_n}}
 GPUs) while the **pressure projection grows {{ph_projection_growth}} %**
-({{ph_projection_base}} → {{ph_projection_top}} ms). Since the iteration count is flat, that gap is
-not algorithmic: it is where the global coupling lives. The projection is the phase that carries
-the weak ladder's loss, and it is the phase to attack for a code that wants the next factor at this
-scale.
+({{ph_projection_base}} → {{ph_projection_top}} ms). The iteration count is flat, so the gap is
+not a convergence effect.
+
+**Amended 2026-09-15.** This record previously read that gap as "where the global coupling lives".
+Its own timers do not support that: the pressure all-reduce is {{w_top_ar_ms}} ms at the top rung
+against a {{ph_projection_top}} ms projection — **{{w_top_ar_pct}} %** — and its growth from
+{{w_base_ar_ms}} ms accounts for a comparably small share of the increase. The global reduction is
+not where the weak ladder loses. Two things that are: the V-cycle's coarse levels are
+latency-bound, each costing a halo exchange on a grid too small to amortise it; and the hierarchy
+**deepens along the ladder**, from {{w_base_levels}} levels at 1 GPU to {{w_top_levels}} at
+{{w_top_n}}, because weak scaling grows the global grid — so part of that growth is extra levels
+per V-cycle and is not a parallel inefficiency at all.
+
+A second correction of emphasis. The projection carries the weak ladder's *loss*, but the momentum
+solve carries the *time*: it is {{ph_momentum_share_base}} % of the step at 1 GPU and
+{{ph_momentum_share_top}} % at {{w_top_n}}. Removing the projection's entire weak-scaling excess
+would save less than halving the momentum solve would — and on CPU, pinning the momentum solver
+does roughly that (above). Both statements are true and this record originally made only the
+first.
 
 ## The geometry-free control
 
