@@ -54,12 +54,31 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   by half again is not noise.
 - **Repro:** render `examples/capillary-oscillations` against any 1.0.0 build and read the `census`
   cell; compare against the freeze committed on 2026-09-02. ~5 min on a GPU build.
-- **Notes / where to look first:** between that freeze and 1.0.0, flow `c4c2b2a` ("the anisotropic
-  VoF half — PLIC, curvature, CSF, wetting, phase change", Phase 3 V0-V5) rewrote exactly this code,
-  and `8a4397c` / `05c0974` moved sigma and curvature onto the caller's units. A height-function
-  acceptance test that used to be expressed in cell units and is now applied to physical lengths
-  would produce precisely this signature — the same geometry, far more rejections — and would be a
-  units bug rather than a numerics one. Not investigated further here; this page is the reproducer.
+- **Notes / where to look first.** The obvious suspect is units — the Phase 3 anisotropic work
+  (`c4c2b2a`) put a `metric.maxH()` factor into this path, and `8a4397c` / `05c0974` moved sigma and
+  curvature onto the caller's units. **It is not that, on this page.** Four things were checked and
+  each is ruled out:
+
+  1. **The metric is the identity here.** `oscillating_drop` builds `flow.Solver(n, n, n)` — the
+     cell-unit constructor, drop radius in cells — so `metric.maxH() == 1` and every metric-scaled
+     length (`ptW = ptWeightWidth * metric.maxH()`, `dW = weightWidth * metric.maxH()`) is exactly
+     what it was before Phase 3. A units mechanism cannot fire at the unit metric.
+  2. **The tolerances are byte-identical** across the window: `monoTol = 1e-6`, `interfaceEps = 0.0`,
+     `cosMin = 0.2`, `weightWidth`, `ptWeightWidth`.
+  3. **The branch enum did not renumber** — `kCurvNone/Hf/HfMixed/HfFit/Pv/PvReduced/NoEstimate`
+     = 0..6 at both commits — so the census means the same thing in both freezes and the migration
+     is real, not a relabelling.
+  4. **Not the backend**, as above.
+
+  What DID change in the window is that **flow's height-function and PLIC implementations were
+  replaced by core's** (QUALITY_PLAN G.2 consolidation): `src/vof/curvature.hpp` went from ~800
+  lines to a shim that does `#include "peclet/core/vof/curvature.hpp"` + `using namespace
+  peclet::core::vof`, and `plic.hpp` with it — 1407 lines deleted against 397 added across
+  `curvature.hpp`, `curvature_field.hpp` and `plic.hpp`. Consolidating two independently written
+  implementations into one templated copy is exactly where a behavioural difference hides, and it
+  is the first place to look: **compare core's `hfColumnHeight` / PLIC reconstruction against
+  flow's pre-G.2 versions**, not the units. Not investigated further here; the page is the
+  reproducer and it runs in ~5 minutes.
 
   The 2.7-percentage-point CUDA/OpenMP spread in the damping deficit (-34.9 vs -37.6 %) is a second,
   smaller observation: the suite's standing position is that a backend is a faithful port, and a
