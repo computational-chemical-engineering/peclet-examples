@@ -49,6 +49,27 @@ Two findings the page reports rather than smooths: the reproducible 16-GPU stron
 anomaly (projection phase, hypothesis flagged untested), and that the CPU ladder's apparent
 122 % of ideal is a flattered baseline plus the automatic momentum-solver switch.
 
+## Published (2026-09-14)
+
+The page is **live**: <https://computational-chemical-engineering.github.io/peclet-examples/benchmarks/release-1.0.0-scaling/>
+
+It could not ride the normal pipeline: "Publish gallery to GitHub Pages" has been red since
+2026-09-05 because another session's 1.0.0 API page ports are pushed while their regenerated
+`_freeze/` outputs are not, so 47 pages re-execute in a CI that deliberately installs no peclet.
+(Those commits reached origin because THIS session's `git push` carried them out of the shared
+checkout — see DECISIONS.md.)
+
+So this page was deployed surgically, and the branch `deploy/benchmark-1.0.0-page` records exactly
+what went out: base `cde8b25` (the last green deploy, where every freeze matches its source, so the
+render executes nothing) plus this page and its card — `git diff cde8b25..deploy/benchmark-1.0.0-page`
+touches nothing else. Run 34819466850, build and deploy both green, verified live (page 200, all
+three figures 200, headline numbers present in the served HTML). The `github-pages` environment
+briefly allowed that branch; **the policy has been removed and is `main`-only again**.
+
+The gallery campaign's own full deploy supersedes this entirely — at which point
+`deploy/benchmark-1.0.0-page` can be deleted (`git push origin --delete deploy/benchmark-1.0.0-page`
+and `git worktree remove`).
+
 ## Next action — needs the user
 
 1. **Zenodo draft upload** — `ZENODO_TOKEN=... ./zenodo/make_deposit.sh --upload`. Not run: it
