@@ -8,6 +8,7 @@ jupyter: python3
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/pore-scale-imbibition/index.ipynb){target="_blank"}
+[![Download notebook](https://img.shields.io/badge/Download-notebook-F37626?logo=jupyter&logoColor=white)](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/pore-scale-imbibition/index.ipynb){target="_blank"}
 &nbsp;Wants a GPU build: this page runs fourteen two-phase simulations, several of
 them $10^4$ steps long. On an idle GPU the CUDA backend is 3–7× the 8-thread
 OpenMP host build at these grid sizes, so the host path is for reading the code,

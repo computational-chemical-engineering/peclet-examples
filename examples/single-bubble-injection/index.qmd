@@ -9,6 +9,7 @@ bibliography: ../../references.bib
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/single-bubble-injection/index.ipynb){target="_blank"}
+[![Download notebook](https://img.shields.io/badge/Download-notebook-F37626?logo=jupyter&logoColor=white)](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/single-bubble-injection/index.ipynb){target="_blank"}
 &nbsp;An **online** CFD–DEM example (drag and void fraction exchanged every step) — needs the `peclet-coupling` module (built from source, see *Reproduce*) and a GPU for the 260k-grain bed. It reproduces the **Single Bubble Injection** case from the [MFIX-Exa qualitative benchmarks](https://mfix.netl.doe.gov/doc/mfix-exa/guide/latest/test_benchmarks/qualitative_bencharks/single_bubble.html), which follows the magnetic-resonance-imaging experiments of Boyce and coworkers [@boyce2019].
 
 ## What you'll learn

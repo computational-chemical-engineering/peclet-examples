@@ -8,6 +8,7 @@ jupyter: python3
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/capillary-oscillations/index.ipynb){target="_blank"}
+[![Download notebook](https://img.shields.io/badge/Download-notebook-F37626?logo=jupyter&logoColor=white)](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/capillary-oscillations/index.ipynb){target="_blank"}
 &nbsp;Five runs of one to three thousand steps each — minutes on a GPU build, slow but
 possible on a Colab CPU runtime.
 

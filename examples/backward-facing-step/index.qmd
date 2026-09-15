@@ -8,6 +8,7 @@ jupyter: python3
 ---
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/computational-chemical-engineering/peclet-examples/blob/main/examples/backward-facing-step/index.ipynb){target="_blank"}
+[![Download notebook](https://img.shields.io/badge/Download-notebook-F37626?logo=jupyter&logoColor=white)](https://github.com/computational-chemical-engineering/peclet-examples/blob/main/examples/backward-facing-step/index.ipynb){target="_blank"}
 &nbsp;Runs on a free Colab CPU runtime — the first cell installs `peclet` from PyPI.
 
 ## What you'll learn
