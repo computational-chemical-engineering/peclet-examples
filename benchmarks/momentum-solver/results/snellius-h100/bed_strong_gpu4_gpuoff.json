@@ -1,0 +1,251 @@
+{
+ "schema": "peclet-scaling-1",
+ "label": "snellius-h100_gpuoff",
+ "case": "bed",
+ "mode": "strong",
+ "ranks": 4,
+ "tiles": [
+  1,
+  1,
+  1
+ ],
+ "grid": [
+  384,
+  384,
+  384
+ ],
+ "cells_total": 56623104.0,
+ "cells_per_rank": 14155776.0,
+ "extent": [
+  21.333333333333332,
+  21.333333333333332,
+  21.333333333333332
+ ],
+ "spacing": 0.05555555555555555,
+ "r_cells": 18.0,
+ "cells_per_vortex": null,
+ "phi_packing": 0.44998367674632855,
+ "phi_voxel": 0.4499702806825991,
+ "blocks_uniform": true,
+ "pack": "bed_phi0.45_r18_s0.npz",
+ "flow_version": "1.0.0",
+ "backend": "Cuda",
+ "physics": {
+  "rho": 1.0,
+  "mu": 0.1,
+  "body_force": 0.001,
+  "dt": 0.18518518518518517,
+  "diffusion_number": 6.0
+ },
+ "solver": {
+  "levels_requested": 10,
+  "level_ratios": [
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    1,
+    1,
+    1
+   ]
+  ],
+  "telescope": true,
+  "velocity_multigrid_active": false,
+  "vmg_pin": "off",
+  "cheb_active": false,
+  "mgcheb_active": false,
+  "mgcheb_degree": null,
+  "mgcheb_ratio": null,
+  "vmg_levels": null,
+  "vmg_vcycles": null,
+  "pressure_rtol_default": true
+ },
+ "perf": {
+  "warmup": 3,
+  "nsteps": 10,
+  "ms_per_step_median": 1203.3800910576247,
+  "ms_per_step_mean": 1212.44664080441,
+  "ms_per_step_min": 1202.296828967519,
+  "ms_per_step_max": 1255.602699937299,
+  "mcells_per_s": 47.05338273482253,
+  "mcells_per_s_per_rank": 11.763345683705632,
+  "pressure_iters_mean": 29.7,
+  "pressure_iters_max": 33,
+  "steps": [
+   {
+    "wall": 1.255602699937299,
+    "iters": 33,
+    "predictor": 0.0013150390004739165,
+    "momentum": 0.828962059924379,
+    "projection": 0.42454562697093934,
+    "pressure_allreduce": 0.002063944000000001,
+    "pressure_allreduce_count": 672.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.243048302945681,
+    "iters": 32,
+    "predictor": 0.0013167989673092961,
+    "momentum": 0.828046708018519,
+    "projection": 0.4129948520567268,
+    "pressure_allreduce": 0.0020819169999999995,
+    "pressure_allreduce_count": 652.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.2034767400473356,
+    "iters": 29,
+    "predictor": 0.0013168900040909648,
+    "momentum": 0.8280540270498022,
+    "projection": 0.37345520907547325,
+    "pressure_allreduce": 0.0015070040000000006,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.2032834420679137,
+    "iters": 29,
+    "predictor": 0.0013138290960341692,
+    "momentum": 0.8279680889099836,
+    "projection": 0.3733388290274888,
+    "pressure_allreduce": 0.002013116000000001,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.203588959062472,
+    "iters": 29,
+    "predictor": 0.0013128190767019987,
+    "momentum": 0.8283879949012771,
+    "projection": 0.3732194509357214,
+    "pressure_allreduce": 0.0014757849999999992,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.203155562048778,
+    "iters": 29,
+    "predictor": 0.0013185689458623528,
+    "momentum": 0.8280586970504373,
+    "projection": 0.37314212194178253,
+    "pressure_allreduce": 0.0015468370000000001,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.204158873995766,
+    "iters": 29,
+    "predictor": 0.0013134089531376958,
+    "momentum": 0.8281210770364851,
+    "projection": 0.3740236839512363,
+    "pressure_allreduce": 0.0022207870000000005,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.202296828967519,
+    "iters": 29,
+    "predictor": 0.0013175091007724404,
+    "momentum": 0.8274505119770765,
+    "projection": 0.3728840739931911,
+    "pressure_allreduce": 0.0015107499999999997,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.2031137829180807,
+    "iters": 29,
+    "predictor": 0.001312169013544917,
+    "momentum": 0.8279446989763528,
+    "projection": 0.3732223300030455,
+    "pressure_allreduce": 0.0014742469999999986,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 1.202741216053255,
+    "iters": 29,
+    "predictor": 0.001312720007263124,
+    "momentum": 0.8277972999494523,
+    "projection": 0.3729777620173991,
+    "pressure_allreduce": 0.0015384669999999997,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 600.0
+   }
+  ]
+ },
+ "gate": {
+  "steps": 13,
+  "quantity": "u_mean",
+  "value": 0.00016388896055492022,
+  "max_open_divergence": 2.7355402184181967e-14
+ },
+ "physics_result": {},
+ "env": {
+  "OMPI_MCA_plm_slurm_args": "--external-launcher",
+  "SLURM_JOB_USER": "tec16020",
+  "SLURM_JOB_UID": "45030",
+  "SLURM_JOB_GPUS": "0,1,2,3",
+  "SLURM_JOB_START_TIME": "1789436000",
+  "OMPI_MCA_btl": "^ofi",
+  "SLURM_JOB_END_TIME": "1789438701",
+  "SLURM_JOB_CPUS_PER_NODE": "64",
+  "UCX_NET_DEVICES": "mlx5_5:1,mlx5_4:1,mlx5_3:1,mlx5_0:1,mlx5_2:1,ib-bond0",
+  "SLURM_JOB_PARTITION": "gpu_h100",
+  "SLURM_JOB_NUM_NODES": "1",
+  "OMPI_MCA_pml": "ucx",
+  "SLURM_JOBID": "26712620",
+  "SLURM_JOB_QOS": "normal",
+  "UCX_MODULE_DIR": "/sw/arch/RHEL9/EB_production/2024/software/UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0/ucx",
+  "PECLET_BIND_GPU": "0",
+  "OMPI_MCA_mtl": "^ofi",
+  "OMPI_MCA_orte_tmpdir_base": "/dev/shm/",
+  "OMPI_MCA_coll_han_priority": "0",
+  "OMP_PROC_BIND": "false",
+  "PECLET_CORE_HALO_VERBOSE": "1",
+  "SLURM_JOB_ACCOUNT": "tes24005",
+  "UCX_MEMTYPE_CACHE": "n",
+  "SLURM_JOB_ID": "26712620",
+  "OMP_NUM_THREADS": "8",
+  "UCX_PROTO_ENABLE": "n",
+  "SLURM_JOB_NAME": "pec-mgpu",
+  "SLURM_JOB_GID": "44804",
+  "SLURM_JOB_NODELIST": "gcn123",
+  "SLURM_JOB_GROUP": "tec16020",
+  "OMPI_MCA_orte_precondition_transports": "01979a2c00000000-01979a2c00000000"
+ },
+ "host": "gcn123.local.snellius.surf.nl",
+ "timestamp": "2026-09-15T03:33:51+0200"
+}

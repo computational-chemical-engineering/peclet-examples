@@ -654,6 +654,7 @@ def addendum(runs, here):
             h["mom_eff_off"] = f"{100 * (off[lo] / off[hi]) / (hi / lo):.0f}"
             h["mom_eff_on"] = f"{100 * (on[lo] / on[hi]) / (hi / lo):.0f}"
             h["mom_lo_cells_m"] = f"{mr[0]['cells_total'] / lo / 1e6:.2f}"
+            h["mom_hi_cells_k"] = f"{mr[0]['cells_total'] / hi / 1e3:.0f}"
             h["mom_top_spread_on"] = f"{on_sp[hi]:.2f}"
             h["mom_top_spread_off"] = f"{off_sp[hi]:.2f}"
             h["mom_top_reps_on"] = on_nr[hi]
@@ -677,6 +678,32 @@ def addendum(runs, here):
         if swp:
             h["mom_cap"] = f"{max(swp):.0f}"
             h["mom_cap_all"] = "yes" if min(swp) == max(swp) else "no"
+        # The GPU A/B: same pins, on H100, at the deposit's own 1- and 4-GPU strong rungs.
+        gpu = {}
+        for r in mr:
+            if r.get("backend") != "Cuda":
+                continue
+            gpu.setdefault((r["ranks"], r["solver"].get("vmg_pin")), []).append(r)
+        for n in (1, 4):
+            o, v = gpu.get((n, "off")), gpu.get((n, "on"))
+            if o and v:
+                h[f"mom_gpu{n}_off"] = f"{ms(o[0]):.0f}"
+                h[f"mom_gpu{n}_on"] = f"{ms(v[0]):.0f}"
+                h[f"mom_gpu{n}_ratio"] = f"{ms(o[0]) / ms(v[0]):.2f}"
+                mo = statistics.median([x["momentum"] for x in o[0]["perf"]["steps"]])
+                mv = statistics.median([x["momentum"] for x in v[0]["perf"]["steps"]])
+                h[f"mom_gpu{n}_mom_off"] = f"{mo * 1e3:.0f}"
+                h[f"mom_gpu{n}_mom_on"] = f"{mv * 1e3:.0f}"
+                h[f"mom_gpu{n}_mom_ratio"] = f"{mo / mv:.2f}"
+                sw = statistics.median([x["momentum_sweeps"] / 3 for x in o[0]["perf"]["steps"]
+                                        if "momentum_sweeps" in x])
+                h[f"mom_gpu{n}_sweeps"] = f"{sw:.0f}"
+        # Tie the A/B to THIS record: the pinned-off GPU run must reproduce the deposit's own rung,
+        # or the claim "the deposit's GPU rungs are the capped ones" is not established.
+        own = {r["ranks"]: r for r in pick(runs, case="bed", mode="strong", machine="h100")}
+        if gpu.get((1, "off")) and 1 in own:
+            h["mom_gpu1_match"] = f"{ms(gpu[(1, 'off')][0]) / ms(own[1]):.4f}"
+
         vsw = [statistics.median([x["momentum_sweeps"] / 3 for x in r["perf"]["steps"]
                                  if "momentum_sweeps" in x])
                for r in mr if r["solver"].get("vmg_pin") == "on"

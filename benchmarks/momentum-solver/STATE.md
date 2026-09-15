@@ -71,13 +71,32 @@ remains is that Chebyshev needs two kernel passes (residual, then update) where 
 sweep fuses read and update into one. Only deg 2 / ratio 6 has a genuine exchange saving (172/cmpt
 vs 223, −23 %) — queued at 768 and 1536 cores, where exchanges dominate.
 
+## GPU A/B — the deposit's GPU rungs are capped too (2026-09-15)
+
+| H100 | RB-GS | V-cycle | ratio | RB-GS it/cmpt |
+|---|---:|---:|---:|---:|
+| 1 GPU step ms | 4025 | 1840 | 2.19x | 200 = CAP |
+| 1 GPU momentum ms | 3012 | 828 | 3.64x | |
+| 4 GPU step ms | 1203 | 664 | 1.81x | 200 = CAP |
+
+The pinned-off 1-GPU run reproduces the deposit's own `bed_strong_gpu1` rung to 1.0006x, so it IS
+that rung — the identification is measured, not inferred.
+
+## Chebyshev at the small-block end (2026-09-15)
+
+1536 cores (36 864 cells/rank), single allocations on a rung whose repeats spread 2.01x:
+`cheb` momentum **443 ms** against the five V-cycle allocations' 473 / 518 / 580 / 627 / 1037 ms —
+below all of them. Suggestive of the predicted crossover, NOT conclusive at one allocation on this
+rung. `mgcheb` never wins: 1017.9 (d2r6) / 1226.8 (d4r6) against `cheb` 934.5 at 1536, and 1719.4
+(d4r6) against `on` 1745.3 at 768 — a 1.5 % edge, inside the noise.
+
 ## Next action
 
-1. Collect the 7 queued jobs: `cheb`@1536, `ctl101on2/off2`@1536 (placement repeats),
-   `mgcheb` deg2r6 + deg4r6 @768 and @1536.
-2. `rsync` results, `python report.py results`.
+1. DONE — all 14 jobs ran; results synced and committed.
+2. If the Chebyshev crossover is to be claimed rather than suggested, it needs repeat allocations
+   at 1536 (that rung's spread is 2.01x, so one allocation decides nothing).
 3. Decide whether Chebyshev ships as anything other than an option. The V-cycle is the default
-   recommendation regardless.
+   recommendation regardless, on both machines.
 
 ## Gates — all green
 

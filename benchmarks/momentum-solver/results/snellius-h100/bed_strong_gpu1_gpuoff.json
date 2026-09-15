@@ -1,0 +1,251 @@
+{
+ "schema": "peclet-scaling-1",
+ "label": "snellius-h100_gpuoff",
+ "case": "bed",
+ "mode": "strong",
+ "ranks": 1,
+ "tiles": [
+  1,
+  1,
+  1
+ ],
+ "grid": [
+  384,
+  384,
+  384
+ ],
+ "cells_total": 56623104.0,
+ "cells_per_rank": 56623104.0,
+ "extent": [
+  21.333333333333332,
+  21.333333333333332,
+  21.333333333333332
+ ],
+ "spacing": 0.05555555555555555,
+ "r_cells": 18.0,
+ "cells_per_vortex": null,
+ "phi_packing": 0.44998367674632855,
+ "phi_voxel": 0.4499702806825991,
+ "blocks_uniform": true,
+ "pack": "bed_phi0.45_r18_s0.npz",
+ "flow_version": "1.0.0",
+ "backend": "Cuda",
+ "physics": {
+  "rho": 1.0,
+  "mu": 0.1,
+  "body_force": 0.001,
+  "dt": 0.18518518518518517,
+  "diffusion_number": 6.0
+ },
+ "solver": {
+  "levels_requested": 10,
+  "level_ratios": [
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    1,
+    1,
+    1
+   ]
+  ],
+  "telescope": true,
+  "velocity_multigrid_active": false,
+  "vmg_pin": "off",
+  "cheb_active": false,
+  "mgcheb_active": false,
+  "mgcheb_degree": null,
+  "mgcheb_ratio": null,
+  "vmg_levels": null,
+  "vmg_vcycles": null,
+  "pressure_rtol_default": true
+ },
+ "perf": {
+  "warmup": 3,
+  "nsteps": 10,
+  "ms_per_step_median": 4025.0387594569474,
+  "ms_per_step_mean": 4048.978674493265,
+  "ms_per_step_min": 4024.9039999907836,
+  "ms_per_step_max": 4161.847042036243,
+  "mcells_per_s": 14.067716457875678,
+  "mcells_per_s_per_rank": 14.067716457875678,
+  "pressure_iters_mean": 29.7,
+  "pressure_iters_max": 33,
+  "steps": [
+   {
+    "wall": 4.161847042036243,
+    "iters": 33,
+    "predictor": 0.005092932027764618,
+    "momentum": 3.012458835961297,
+    "projection": 1.1427201200276613,
+    "pressure_allreduce": 0.000373648,
+    "pressure_allreduce_count": 168.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.127630552975461,
+    "iters": 32,
+    "predictor": 0.0050923420349135995,
+    "momentum": 3.0124552559573203,
+    "projection": 1.1086107600713149,
+    "pressure_allreduce": 0.00037361000000000013,
+    "pressure_allreduce_count": 163.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.025238404050469,
+    "iters": 29,
+    "predictor": 0.005090232007205486,
+    "momentum": 3.0124015860492364,
+    "projection": 1.0062857320299372,
+    "pressure_allreduce": 0.00033233899999999996,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.024995650048368,
+    "iters": 29,
+    "predictor": 0.00509178196080029,
+    "momentum": 3.01233629102353,
+    "projection": 1.006141682039015,
+    "pressure_allreduce": 0.00033090900000000005,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.025071559008211,
+    "iters": 29,
+    "predictor": 0.0050911420257762074,
+    "momentum": 3.0123587290290743,
+    "projection": 1.006169902975671,
+    "pressure_allreduce": 0.00033424799999999977,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.024903999990784,
+    "iters": 29,
+    "predictor": 0.005089372978545725,
+    "momentum": 3.012295288965106,
+    "projection": 1.006093312986195,
+    "pressure_allreduce": 0.0003290990000000001,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.025055409991182,
+    "iters": 29,
+    "predictor": 0.005089172045700252,
+    "momentum": 3.012332199024968,
+    "projection": 1.0061941629974172,
+    "pressure_allreduce": 0.00033784,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.0250212389510125,
+    "iters": 29,
+    "predictor": 0.0050917319022119045,
+    "momentum": 3.012381640030071,
+    "projection": 1.0061249519931152,
+    "pressure_allreduce": 0.00033388699999999994,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.025000778958201,
+    "iters": 29,
+    "predictor": 0.005092801991850138,
+    "momentum": 3.012360129971057,
+    "projection": 1.006112972041592,
+    "pressure_allreduce": 0.00033021800000000007,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   },
+   {
+    "wall": 4.0250221089227125,
+    "iters": 29,
+    "predictor": 0.0050911318976432085,
+    "momentum": 3.012392489006743,
+    "projection": 1.0061171930283308,
+    "pressure_allreduce": 0.0003316680000000002,
+    "pressure_allreduce_count": 148.0,
+    "momentum_sweeps": 600.0
+   }
+  ]
+ },
+ "gate": {
+  "steps": 13,
+  "quantity": "u_mean",
+  "value": 0.00016388896055492022,
+  "max_open_divergence": 2.7355575995342743e-14
+ },
+ "physics_result": {},
+ "env": {
+  "OMPI_MCA_plm_slurm_args": "--external-launcher",
+  "SLURM_JOB_USER": "tec16020",
+  "SLURM_JOB_UID": "45030",
+  "SLURM_JOB_GPUS": "0",
+  "SLURM_JOB_START_TIME": "1789425713",
+  "OMPI_MCA_btl": "^ofi",
+  "SLURM_JOB_END_TIME": "1789428414",
+  "SLURM_JOB_CPUS_PER_NODE": "16",
+  "UCX_NET_DEVICES": "mlx5_5:1,mlx5_4:1,mlx5_3:1,mlx5_0:1,mlx5_2:1,ib-bond0",
+  "SLURM_JOB_PARTITION": "gpu_h100",
+  "SLURM_JOB_NUM_NODES": "1",
+  "OMPI_MCA_pml": "ucx",
+  "SLURM_JOBID": "26712616",
+  "SLURM_JOB_QOS": "normal",
+  "UCX_MODULE_DIR": "/sw/arch/RHEL9/EB_production/2024/software/UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0/ucx",
+  "PECLET_BIND_GPU": "0",
+  "OMPI_MCA_mtl": "^ofi",
+  "OMPI_MCA_orte_tmpdir_base": "/dev/shm/",
+  "OMPI_MCA_coll_han_priority": "0",
+  "OMP_PROC_BIND": "false",
+  "PECLET_CORE_HALO_VERBOSE": "1",
+  "SLURM_JOB_ACCOUNT": "tes24005",
+  "UCX_MEMTYPE_CACHE": "n",
+  "SLURM_JOB_ID": "26712616",
+  "OMP_NUM_THREADS": "8",
+  "UCX_PROTO_ENABLE": "n",
+  "SLURM_JOB_NAME": "pec-mgpu",
+  "SLURM_JOB_GID": "44804",
+  "SLURM_JOB_NODELIST": "gcn113",
+  "SLURM_JOB_GROUP": "tec16020",
+  "OMPI_MCA_orte_precondition_transports": "01979a2800000000-01979a2800000000"
+ },
+ "host": "gcn113.local.snellius.surf.nl",
+ "timestamp": "2026-09-15T00:42:59+0200"
+}

@@ -1,0 +1,251 @@
+{
+ "schema": "peclet-scaling-1",
+ "label": "snellius-h100_gpuon",
+ "case": "bed",
+ "mode": "strong",
+ "ranks": 4,
+ "tiles": [
+  1,
+  1,
+  1
+ ],
+ "grid": [
+  384,
+  384,
+  384
+ ],
+ "cells_total": 56623104.0,
+ "cells_per_rank": 14155776.0,
+ "extent": [
+  21.333333333333332,
+  21.333333333333332,
+  21.333333333333332
+ ],
+ "spacing": 0.05555555555555555,
+ "r_cells": 18.0,
+ "cells_per_vortex": null,
+ "phi_packing": 0.44998367674632855,
+ "phi_voxel": 0.4499702806825991,
+ "blocks_uniform": true,
+ "pack": "bed_phi0.45_r18_s0.npz",
+ "flow_version": "1.0.0",
+ "backend": "Cuda",
+ "physics": {
+  "rho": 1.0,
+  "mu": 0.1,
+  "body_force": 0.001,
+  "dt": 0.18518518518518517,
+  "diffusion_number": 6.0
+ },
+ "solver": {
+  "levels_requested": 10,
+  "level_ratios": [
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    1,
+    1,
+    1
+   ]
+  ],
+  "telescope": true,
+  "velocity_multigrid_active": true,
+  "vmg_pin": "on",
+  "cheb_active": false,
+  "mgcheb_active": false,
+  "mgcheb_degree": null,
+  "mgcheb_ratio": null,
+  "vmg_levels": 3,
+  "vmg_vcycles": 40,
+  "pressure_rtol_default": true
+ },
+ "perf": {
+  "warmup": 3,
+  "nsteps": 10,
+  "ms_per_step_median": 663.8276425073855,
+  "ms_per_step_mean": 672.6012382074259,
+  "ms_per_step_min": 643.3518909616396,
+  "ms_per_step_max": 735.2607529610395,
+  "mcells_per_s": 85.2979001991018,
+  "mcells_per_s_per_rank": 21.32447504977545,
+  "pressure_iters_mean": 29.7,
+  "pressure_iters_max": 33,
+  "steps": [
+   {
+    "wall": 0.7352607529610395,
+    "iters": 33,
+    "predictor": 0.0013186689466238022,
+    "momentum": 0.30813516699709,
+    "projection": 0.42509349307511,
+    "pressure_allreduce": 0.002526988000000002,
+    "pressure_allreduce_count": 672.0,
+    "momentum_sweeps": 31.0
+   },
+   {
+    "wall": 0.7203694561030716,
+    "iters": 32,
+    "predictor": 0.0013180490350350738,
+    "momentum": 0.3064227309077978,
+    "projection": 0.41196939104702324,
+    "pressure_allreduce": 0.001930465,
+    "pressure_allreduce_count": 652.0,
+    "momentum_sweeps": 31.0
+   },
+   {
+    "wall": 0.6744326760526747,
+    "iters": 29,
+    "predictor": 0.0013137999922037125,
+    "momentum": 0.2979147210717201,
+    "projection": 0.3745361900655553,
+    "pressure_allreduce": 0.0019637960000000007,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 30.0
+   },
+   {
+    "wall": 0.6728679978987202,
+    "iters": 29,
+    "predictor": 0.0013183390256017447,
+    "momentum": 0.2969544699881226,
+    "projection": 0.3739538040244952,
+    "pressure_allreduce": 0.001937087,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 30.0
+   },
+   {
+    "wall": 0.672230222960934,
+    "iters": 29,
+    "predictor": 0.0013132899766787887,
+    "momentum": 0.296846010023728,
+    "projection": 0.37342956906650215,
+    "pressure_allreduce": 0.0018452530000000005,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 30.0
+   },
+   {
+    "wall": 0.6554250620538369,
+    "iters": 29,
+    "predictor": 0.0013141490053385496,
+    "momentum": 0.28044163598679006,
+    "projection": 0.37299658195115626,
+    "pressure_allreduce": 0.0017246590000000001,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 28.0
+   },
+   {
+    "wall": 0.6529932520352304,
+    "iters": 29,
+    "predictor": 0.0013182590482756495,
+    "momentum": 0.2779765159357339,
+    "projection": 0.37302402197383344,
+    "pressure_allreduce": 0.0018127319999999998,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 28.0
+   },
+   {
+    "wall": 0.6536639659898356,
+    "iters": 29,
+    "predictor": 0.0013141399249434471,
+    "momentum": 0.27846858208067715,
+    "projection": 0.37323849997483194,
+    "pressure_allreduce": 0.0016730810000000007,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 28.0
+   },
+   {
+    "wall": 0.6433518909616396,
+    "iters": 29,
+    "predictor": 0.0013127289712429047,
+    "momentum": 0.26842893508728594,
+    "projection": 0.37296811304986477,
+    "pressure_allreduce": 0.001634452000000001,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 27.0
+   },
+   {
+    "wall": 0.6454171050572768,
+    "iters": 29,
+    "predictor": 0.0013141289819031954,
+    "momentum": 0.2704627390485257,
+    "projection": 0.3729613720206544,
+    "pressure_allreduce": 0.0017035680000000008,
+    "pressure_allreduce_count": 592.0,
+    "momentum_sweeps": 27.0
+   }
+  ]
+ },
+ "gate": {
+  "steps": 13,
+  "quantity": "u_mean",
+  "value": 0.00016388902085859007,
+  "max_open_divergence": 2.7355214651087446e-14
+ },
+ "physics_result": {},
+ "env": {
+  "OMPI_MCA_plm_slurm_args": "--external-launcher",
+  "SLURM_JOB_USER": "tec16020",
+  "SLURM_JOB_UID": "45030",
+  "SLURM_JOB_GPUS": "0,1,2,3",
+  "SLURM_JOB_START_TIME": "1789436063",
+  "OMPI_MCA_btl": "^ofi",
+  "SLURM_JOB_END_TIME": "1789438765",
+  "SLURM_JOB_CPUS_PER_NODE": "64",
+  "UCX_NET_DEVICES": "mlx5_5:1,mlx5_4:1,mlx5_3:1,mlx5_0:1,mlx5_2:1,ib-bond0",
+  "SLURM_JOB_PARTITION": "gpu_h100",
+  "SLURM_JOB_NUM_NODES": "1",
+  "OMPI_MCA_pml": "ucx",
+  "SLURM_JOBID": "26712621",
+  "SLURM_JOB_QOS": "normal",
+  "UCX_MODULE_DIR": "/sw/arch/RHEL9/EB_production/2024/software/UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0/ucx",
+  "PECLET_BIND_GPU": "0",
+  "OMPI_MCA_mtl": "^ofi",
+  "OMPI_MCA_orte_tmpdir_base": "/dev/shm/",
+  "OMPI_MCA_coll_han_priority": "0",
+  "OMP_PROC_BIND": "false",
+  "PECLET_CORE_HALO_VERBOSE": "1",
+  "SLURM_JOB_ACCOUNT": "tes24005",
+  "UCX_MEMTYPE_CACHE": "n",
+  "SLURM_JOB_ID": "26712621",
+  "OMP_NUM_THREADS": "8",
+  "UCX_PROTO_ENABLE": "n",
+  "SLURM_JOB_NAME": "pec-mgpu",
+  "SLURM_JOB_GID": "44804",
+  "SLURM_JOB_NODELIST": "gcn123",
+  "SLURM_JOB_GROUP": "tec16020",
+  "OMPI_MCA_orte_precondition_transports": "01979a2d00000000-01979a2d00000000"
+ },
+ "host": "gcn123.local.snellius.surf.nl",
+ "timestamp": "2026-09-15T03:34:44+0200"
+}

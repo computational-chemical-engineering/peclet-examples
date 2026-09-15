@@ -92,8 +92,17 @@ converged one.
 Nothing in the timings below changes — they remain what peclet 1.0.0 does with its shipped
 defaults, which is the question this record set out to answer. What changes is the reading: the
 cross-rung equivalence gate demonstrates **reproducibility**, which it genuinely has to
-8e−11, and not convergence of the momentum solve. Whether the GPU ladders are also at
-the cap was not measured here.
+8e−11, and not convergence of the momentum solve.
+
+**The GPU ladders are at the cap as well** (200 sweeps per component on one H100
+and on four). That is established rather than inferred: the pinned red-black run reproduces this
+record's own 1-GPU rung to 1.0006×, so it *is* that rung. Pinning the velocity
+multigrid instead takes the same 1-GPU step from 4025 to **1840 ms**
+(2.19×, with the momentum phase alone 3.64× faster), and the 4-GPU
+step from 1203 to 664 ms (1.81×). Every figure in this
+record is therefore a measurement of 1.0.0's default momentum solver running at its iteration cap
+— which is what a user gets, and roughly a factor of two off what the same code does with
+`set_velocity_multigrid(True)`.
 :::
 
 ::: {.callout-note collapse="true" title="All correctness gates, in full"}
@@ -113,6 +122,12 @@ looks. The multigrid hierarchy reaches 8 levels and the coarse levels telescope 
 fewer ranks as they shrink, so the coarsest grid stays solvable however many ranks the fine grid
 is spread over.
 
+**On the absolute throughput (amended 2026-09-15).** The Mcell/s figures here are 1.0.0's default
+momentum solver, which is at its iteration cap (above); the same problem on one H100 runs
+2.19× faster with the velocity multigrid pinned. The **efficiency** is a ratio of
+like to like and is not affected — but a reader sizing hardware from the throughput numbers should
+know there is about a factor of two of headroom in them, and that it is one API call away.
+
 ## Strong scaling — one fixed problem
 
 ![The same 56.6 M-cell problem, on more cores and on more GPUs.](strong_scaling.png)
@@ -128,21 +143,29 @@ well across the whole CPU ladder, not that it exceeds ideal.
 
 ::: {.callout-important title="Amended 2026-09-15: how much of it was the solver switch"}
 The companion pinned-solver ladder answers this quantitatively. Run with one algorithm from
-24 to 1536 cores, the ladder reads **49.2×
-(77 % of ideal) for red-black Gauss-Seidel** and **19.1×
-(30 %) for the velocity multigrid** — each the honest scaling of a single algorithm,
+24 to 1536 cores, the ladder reads **50.8×
+(79 % of ideal) for red-black Gauss-Seidel** and **26.4×
+(41 %) for the velocity multigrid** — each the honest scaling of a single algorithm,
 and neither above 100 %. The 122 % figure above is what you get by measuring a capped
 solver at the bottom of a ladder and a converged one at the top.
 
 The same ladder says the multigrid is the better momentum solver **at every rank count**, not only
 below the threshold where 1.0.0 switches to it: it wins by 1.66× to
-2.23× across the 6 rungs with repeat allocations, and its
-margin is *largest* at the biggest blocks (2.23× at 384 cores,
+2.23× across the 6 rungs up to 768 cores, and
+its margin is *largest* at the biggest blocks (2.23× at 384 cores,
 147 k cells per rank) — the opposite of the threshold's premise, and still
 2.23× ahead at 2.36 M cells per rank. That is a defect in a shipped
 default rather than a property of this benchmark, and it is recorded here because a reader sizing a
 job from these numbers should know that `set_velocity_multigrid(True)` is worth roughly a factor of
-two on CPU across this whole range.
+two on CPU across this whole range, and 2.19× on one H100.
+
+The 1536-core rung is deliberately **left out of that range**. It is the rung this study
+found least reproducible: 3 separate allocations of the identical multigrid
+configuration spread **2.01×**, against 1.06× for red-black over
+2. At 37 k cells per rank the step is short enough that node
+placement, not the solver, is what a single allocation measures — which is the same reason the two
+strong-scaling efficiencies above are quoted from medians over repeats and should be read as
+approximate.
 :::
 
 On GPU the same problem goes from 4.0 s on one H100 to **0.55 s on 32**

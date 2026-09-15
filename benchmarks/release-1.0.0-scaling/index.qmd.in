@@ -92,8 +92,17 @@ converged one.
 Nothing in the timings below changes — they remain what peclet 1.0.0 does with its shipped
 defaults, which is the question this record set out to answer. What changes is the reading: the
 cross-rung equivalence gate demonstrates **reproducibility**, which it genuinely has to
-{{gate_worst}}, and not convergence of the momentum solve. Whether the GPU ladders are also at
-the cap was not measured here.
+{{gate_worst}}, and not convergence of the momentum solve.
+
+**The GPU ladders are at the cap as well** ({{mom_gpu1_sweeps}} sweeps per component on one H100
+and on four). That is established rather than inferred: the pinned red-black run reproduces this
+record's own 1-GPU rung to {{mom_gpu1_match}}×, so it *is* that rung. Pinning the velocity
+multigrid instead takes the same 1-GPU step from {{mom_gpu1_off}} to **{{mom_gpu1_on}} ms**
+({{mom_gpu1_ratio}}×, with the momentum phase alone {{mom_gpu1_mom_ratio}}× faster), and the 4-GPU
+step from {{mom_gpu4_off}} to {{mom_gpu4_on}} ms ({{mom_gpu4_ratio}}×). Every figure in this
+record is therefore a measurement of 1.0.0's default momentum solver running at its iteration cap
+— which is what a user gets, and roughly a factor of two off what the same code does with
+`set_velocity_multigrid(True)`.
 :::
 
 ::: {.callout-note collapse="true" title="All correctness gates, in full"}
@@ -112,6 +121,12 @@ weak ladder whose iteration count climbs is not weak-scaling, however level its 
 looks. The multigrid hierarchy reaches {{levels}} levels and the coarse levels telescope onto
 fewer ranks as they shrink, so the coarsest grid stays solvable however many ranks the fine grid
 is spread over.
+
+**On the absolute throughput (amended 2026-09-15).** The Mcell/s figures here are 1.0.0's default
+momentum solver, which is at its iteration cap (above); the same problem on one H100 runs
+{{mom_gpu1_ratio}}× faster with the velocity multigrid pinned. The **efficiency** is a ratio of
+like to like and is not affected — but a reader sizing hardware from the throughput numbers should
+know there is about a factor of two of headroom in them, and that it is one API call away.
 
 ## Strong scaling — one fixed problem
 
@@ -136,13 +151,21 @@ solver at the bottom of a ladder and a converged one at the top.
 
 The same ladder says the multigrid is the better momentum solver **at every rank count**, not only
 below the threshold where 1.0.0 switches to it: it wins by {{mom_solid_lo_ratio}}× to
-{{mom_solid_hi_ratio}}× across the {{mom_solid_rungs}} rungs with repeat allocations, and its
-margin is *largest* at the biggest blocks ({{mom_best_ratio}}× at {{mom_best_n}} cores,
+{{mom_solid_hi_ratio}}× across the {{mom_solid_rungs}} rungs up to {{mom_solid_max_n}} cores, and
+its margin is *largest* at the biggest blocks ({{mom_best_ratio}}× at {{mom_best_n}} cores,
 {{mom_best_cells_k}} k cells per rank) — the opposite of the threshold's premise, and still
 {{mom_best_ratio}}× ahead at {{mom_lo_cells_m}} M cells per rank. That is a defect in a shipped
 default rather than a property of this benchmark, and it is recorded here because a reader sizing a
 job from these numbers should know that `set_velocity_multigrid(True)` is worth roughly a factor of
-two on CPU across this whole range.
+two on CPU across this whole range, and {{mom_gpu1_ratio}}× on one H100.
+
+The {{mom_hi_n}}-core rung is deliberately **left out of that range**. It is the rung this study
+found least reproducible: {{mom_top_reps_on}} separate allocations of the identical multigrid
+configuration spread **{{mom_top_spread_on}}×**, against {{mom_top_spread_off}}× for red-black over
+{{mom_top_reps_off}}. At {{mom_hi_cells_k}} k cells per rank the step is short enough that node
+placement, not the solver, is what a single allocation measures — which is the same reason the two
+strong-scaling efficiencies above are quoted from medians over repeats and should be read as
+approximate.
 :::
 
 On GPU the same problem goes from {{t_base_s}} s on one H100 to **{{t_top_s}} s on {{t_top_n}}**
