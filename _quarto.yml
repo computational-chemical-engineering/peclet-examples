@@ -3,6 +3,15 @@ project:
   output-dir: _site
   # Author in .qmd; the committed .ipynb copies exist only for the "Open in Colab"
   # buttons, so keep them out of the site render (they'd collide with index.html).
+  # The .ipynb are NOT rendered (they would collide with index.html) but they ARE published, beside
+  # their page, so `_download-badge.lua` can link to `index.ipynb` as a SAME-ORIGIN href. That is what
+  # makes the HTML5 `download` attribute work: cross-origin (raw.githubusercontent, a CDN) the browser
+  # ignores it, and raw.githubusercontent serves .ipynb as text/plain so it shows JSON instead of
+  # saving a file. Same-origin, one click puts the notebook on disk.
+  resources:
+    - "examples/**/*.ipynb"
+    - "benchmarks/**/*.ipynb"
+    - "sanity-checks/**/*.ipynb"
   render:
     - "index.qmd"
     - "examples/**/*.qmd"
@@ -166,6 +175,11 @@ format:
 # _freeze/, and let the Pages CI *render only*. This keeps the public build free
 # of any GPU / heavy-solver dependency. `quarto render` re-executes a page only
 # when its source changes; force a refresh with `quarto render --execute`.
+# Adds the "Download notebook" badge next to the Colab badge at RENDER time, so no page source
+# changes and no freeze is invalidated. See the header of the filter for why that matters.
+filters:
+  - _download-badge.lua
+
 execute:
   freeze: auto
 
