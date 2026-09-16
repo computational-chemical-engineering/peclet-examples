@@ -45,9 +45,12 @@ permeability march (phase B, `MARCH_TOL=1e-5`) runs only at a few rungs.
 Deposit packaged locally at `zenodo/build/`: tarball, self-contained HTML + PDF report,
 build censuses, provenance, `MANIFEST.sha256` (~890 KB total).
 
-Two findings the page reports rather than smooths: the reproducible 16-GPU strong-scaling
-anomaly (projection phase, hypothesis flagged untested), and that the CPU ladder's apparent
-122 % of ideal is a flattered baseline plus the automatic momentum-solver switch.
+Two findings the page reports rather than smooths: the reproducible 16-GPU strong-scaling anomaly
+(projection phase; the decomposition-shape hypothesis was WITHDRAWN on 2026-09-15, contradicted by
+this record's own monotone surface-to-volume ratios, and replaced by the list of what the anomaly is
+not), and that the CPU ladder's apparent 122 % of ideal is a flattered baseline plus the automatic
+momentum-solver switch — quantified on 2026-09-15 as 77 % pinned to red-black and 30 % pinned to the
+multigrid over 24 -> 1536 cores.
 
 ## Published (2026-09-14)
 
@@ -70,61 +73,106 @@ The gallery campaign's own full deploy supersedes this entirely — at which poi
 `deploy/benchmark-1.0.0-page` can be deleted (`git push origin --delete deploy/benchmark-1.0.0-page`
 and `git worktree remove`).
 
-## PUSH HOLD — do not push peclet-examples main (agreed 2026-09-14)
+## Version scope — settled 2026-09-16
 
-The gallery campaign holder (session suite-01) asked for it, and the reason is sound: it has ~161
-modified `_freeze/` files plus page-source fixes in its working tree, and a push carrying a
-half-finished freeze set is worse than one carrying none. It will message when its full-site render
-on the peclet-free venv passes and it has pushed. **One local commit is waiting** (a DECISIONS.md
-entry; no code, no freezes). Nothing here needs main: the page is live off
-`deploy/benchmark-1.0.0-page`.
+The push hold is lifted (main moved on, the gallery pipeline is green again) and everything local
+is pushed: the two amendment commits, and a **version-scope note** (`b0a045b`).
 
-It also confirmed, by diffing the tags rather than assuming, that **1.0.1 requires no re-render**:
-family-wide only two compute-path files changed — a `Kokkos::Threads` branch in core's
-GPU-aware-MPI probe (`KOKKOS_ENABLE_THREADS` is not defined in a CUDA+OpenMP build) and dem's
-`M_PI` -> a `constexpr` carrying the identical literal. So this record's 1.0.0 subject is unaffected
-too, and flow is in any case still 1.0.0 on PyPI.
+The question that prompted it: **1.1.0 is about to be released — do these numbers still stand?**
+They do, and the record now says exactly what they are a record *of*.
+
+- **The physics is untouched.** The only compute-path commits since `flow v1.0.0` that could move
+  this case are the SCALING_ISSUES #3/#8 open-face fix (`e144a00`, `d05eb15`), and it is gated on
+  NON-periodic domain faces (`extendSdfDomainGhosts` skips `bc_[face] == 0`; the Dirichlet-aperture
+  half only exists at an outflow). This study is triply periodic, so it is inert here.
+  `k/R^2 = 0.017122` and the 8e-11 equivalence gate stand at 1.1.0.
+- **The default momentum solver changed** (`8acab7c`, superseded hours later by `3e37758`): chosen
+  now by the implicit-diffusion operator's condition number, kappa = 1 + 12 D isotropic, velocity
+  multigrid at kappa >= 13. **Every run in this record is at D = 6.0** (41/41 runs carry
+  `physics.diffusion_number = 6.0`; 37 ran with `velocity_multigrid_active = False`), so
+  **kappa = 73** and 1.1.0 runs this entire study with the V-cycle.
+- Consequence, both ways, now stated on the page and in the Zenodo description: absolute throughput
+  at 1.1.0 is BETTER than every figure here by about the quoted headroom (2.19x at 1 GPU), while the
+  EFFICIENCIES must not be carried across versions — this record's own pinned CPU ladder measures
+  the V-cycle scaling WORSE than red-black (41 % of ideal against 79 %), so a faster default is
+  expected to scale less steeply. 79 % is 1.0.0's number at 1.0.0's default.
+
+**Decision: publish the 1.0.0 record as it stands rather than re-running at 1.1.0.** It is
+version-pinned in its title, version field and provenance; `make_deposit.sh` cites the CONCEPT DOI,
+so a 1.1.0 campaign later becomes version 2 behind the same reference the proposal carries. A
+1.1.0 weak-ladder re-run is an optional version 2 (GPU budget expires 2026-10-31), not a blocker.
+
+**One open accuracy question, cheap to settle** — see "Open questions" below.
 
 ## Open questions in the results themselves
 
-A dedicated discussion of the performance results was requested on 2026-09-14. The agenda, and
-where each number lives, is in the memory note `peclet-1-0-0-scaling-deposit.md`. In short: the
-projection phase is where the weak ladder loses (+68 % across the ladder against momentum's +12 %,
-at a flat iteration count); the 16-GPU strong rung is reproducibly anomalous and its
-decomposition-shape hypothesis is untested; the geometry's share of the weak loss is 79 % vs the
-control's 88 %, on a control that is not a clean IBM-cost comparison; the strong ladder's turnover
-at 8 GPUs is starvation, not a defect; and the CPU ladder's 122 %-of-ideal is a flattered baseline
-plus the automatic momentum-solver switch. Everything needed to re-argue any of it is in
-`summary.md`, `gates.md`, `headline.json` and the per-step arrays inside each `results/**/*.json`;
-`python analyze.py results` regenerates all of it.
+A dedicated discussion of the performance results was requested on 2026-09-14; the agenda is in the
+memory note `peclet-1-0-0-scaling-deposit.md`. Three of its six items were SETTLED by the 2026-09-15
+amendment (the 122 %-of-ideal reading, the 16-GPU decomposition-shape hypothesis, and the
+attribution of the projection's growth to global coupling — the record's own `pressure_allreduce`
+timer puts the reduction at 0.6 % of the projection). What remains open:
+
+- **The projection is where the weak ladder loses**: +68 % across 1 -> 32 GPUs against momentum's
+  +12 %, at a FLAT iteration count (29.8). Not algorithmic — coarse-level latency plus a hierarchy
+  that deepens 8 -> 10 levels along the ladder. That is where a next factor would come from.
+- **The 16-GPU anomaly is unexplained**, now stated as what it is not.
+- **Geometry's share of the weak loss**: 79 % (cut-cell) vs the control's 88 %, on a control that is
+  NOT a clean IBM-cost comparison (it advects; the bed case creeps).
+- **ACCURACY, opened 2026-09-16 — the one thing that could still touch a published number.** The
+  momentum solve in this record ran at its 200-sweep cap and did not meet its tolerance: the rule
+  committed in `flow 3e37758` measures red-black at D = 6 (this study's D) reaching residual 7e-08
+  against a 1e-10 target. The timings are unaffected — they are what 1.0.0 did — but `k/R^2 =
+  0.017122` is a *physical* number marched to steady state through that solve, and its quoted
+  agreement of 5e-13 is cross-rung REPRODUCIBILITY, not accuracy. **Cheap decisive test: march the
+  384^3 unit cell twice on ONE H100, red-black vs pinned velocity multigrid, and compare k.**
+  Minutes of one GPU. If k agrees to the quoted digits the number is safe as published; if it moves,
+  the permeability section needs a sentence. Worth running BEFORE the DOI is minted.
+
+Everything needed to re-argue any of it is in `summary.md`, `gates.md`, `headline.json` and the
+per-step arrays inside each `results/**/*.json`; `python analyze.py results` regenerates all of it.
 
 ## Next action — needs the user
 
-1. **Zenodo draft upload** — `ZENODO_TOKEN=... ./zenodo/make_deposit.sh --upload`. Not run: it
-   uses the user's token. Publishing afterwards is a deliberate click; it mints the DOI.
-2. **MORPHO** — once the DOI exists, swap `PecletBenchmarks` (`morpho-application-M1.tex:240-247`,
-   a TODO the proposal already carries) and update the sentence's numbers: the record supports
-   1.8 Gcells at 79 % with cut-cell IBM (88 % without), where the
-   proposal currently says 1.7 Gcells at 86 % from the older channel-DNS page. Part A is closed:
-   this is the user's call, not an edit to make unilaterally.
-**The measurement is closed.** 41 runs, queue empty, all repeats folded in: three separate 8-node
-allocations at 1.81 Gcells agree to 1.00x, and every repeat in the study sits between 1.00x and
-1.06x. Nothing further is queued.
+1. **Zenodo draft upload** — `ZENODO_TOKEN=... ./zenodo/make_deposit.sh --upload`. Not run: it uses
+   the user's token. The build in `zenodo/build/` is current as of 2026-09-16 and carries the scope
+   note; deposit version `1.0.0+addendum.2026-09-16`. Publishing afterwards is a deliberate click;
+   it mints the DOI.
 
-## Budget
+2. **MORPHO edit — drafted 2026-09-16, apply after the DOI exists.** Part A is closed, so this is
+   the user's call. Two edits, both already sanctioned by the TODO the proposal carries at
+   `morpho-application-M1.tex:246-247`.
 
-- **GPU: 43,604 SBU ≈ 227 H100-hours, EXPIRES 2026-10-31.** Estimated campaign ~20–25 k SBU.
-  Billing is per *allocated* GPU: the 1- and 2-GPU rungs must override `--gpus-per-node`.
-- CPU: 3.5 M SBU on genoa; the ladder costs ~3.5 k. Not a constraint.
+   **(a) `morpho-application-M1.tex:240-241`** — the numbers. Replace:
 
-## Open decisions (with their defaults)
+   > On the national supercomputer Snellius, weak scaling has been
+   > demonstrated to 1.7 billion cells on 32 H100 GPUs at 86\% parallel efficiency, against a
+   > published benchmark record~\cite{PecletBenchmarks}.
 
-- Zenodo licence: CC-BY-4.0 for the data, the repo's licence for the scripts. *Default: proceed.*
-- Whether the deposit's report is HTML or PDF. *Default: both, rendered from one source.*
+   with:
 
-## Anchors
+   > On the national supercomputer Snellius, weak scaling has been
+   > demonstrated to 1.8 billion cells on 32 H100 GPUs at 79\% parallel efficiency with the
+   > cut-cell immersed boundary active (88\% without it on the same grids), against a
+   > published benchmark record~\cite{PecletBenchmarks}.
 
-- driver `scaling_bench.py`, bed `make_bed.py`, rungs `snellius/run_{gpu,cpu}.sh`,
-  provisioning `snellius/install_bench.sh`
-- remote campaign dir `/projects/0/prjs1022/peclet/bench-1.0.0`
-- MORPHO ref [14] TODO: `~/Codes/proposal/ENW-M/morpho/morpho-application-M1.tex`
+   The old 1.7 Gcells / 86 % came from the older channel-DNS page. 79 % is the defensible figure
+   WITH the geometry, which is what MORPHO actually needs; quoting 88 % alone would be the
+   geometry-free control. Then delete the two TODO comment lines at 246-247.
+
+   **(b) `morpho.bib:308`** — retarget the reference from the gallery URL to the dataset DOI:
+
+   ```bibtex
+   @misc{PecletBenchmarks,
+     author = {Peters, E. A. J. F.},
+     title  = {Parallel performance of {peclet.flow} 1.0.0: strong and weak scaling of a
+               cut-cell immersed-boundary incompressible flow solver on {Snellius}
+               ({Genoa} {CPU}, {H100} {GPU})},
+     year   = {2026},
+     howpublished = {Dataset archived on Zenodo},
+     note   = {\href{https://doi.org/10.5281/zenodo.NNNNNNN}{doi:10.5281/zenodo.NNNNNNN}
+               (concept DOI, resolving to the latest version)}
+   }
+   ```
+
+   Use the **concept** DOI Zenodo reports, not the version DOI, so a later 1.1.0 campaign updates
+   the reference instead of stranding it. Rebuild the PDF and check the reference list renders.
