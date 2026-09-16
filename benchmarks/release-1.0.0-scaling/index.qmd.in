@@ -126,7 +126,9 @@ is spread over.
 momentum solver, which is at its iteration cap (above); the same problem on one H100 runs
 {{mom_gpu1_ratio}}× faster with the velocity multigrid pinned. The **efficiency** is a ratio of
 like to like and is not affected — but a reader sizing hardware from the throughput numbers should
-know there is about a factor of two of headroom in them, and that it is one API call away.
+know there is about a factor of two of headroom in them, and that it is one API call away. Nor is
+the efficiency a figure to carry across versions once that call becomes the default — see
+[Reading the numbers fairly](#reading-the-numbers-fairly).
 
 ## Strong scaling — one fixed problem
 
@@ -281,6 +283,21 @@ to {{k_spread}} — the same physical answer from the single-GPU cell and from t
   stated exception**: the pressure multigrid is asked for as much depth as the grid admits rather
   than the default of four levels. Depth is a property of the grid, not a tuning constant. The
   out-of-the-box depth is measured at one rung and is in the tables.
+- **This is a record of {{flow_version}}, and the default it measures has since changed.** {{flow_version}}
+  chose the momentum solver by cells per rank; from the next release it is chosen by the
+  implicit-diffusion operator's condition number, $\kappa = 1 + 12D$ isotropic, with the velocity
+  multigrid taken at $\kappa \ge 13$. **Every run in this record is at $D = 6$, so $\kappa = 73$**
+  — a later version runs this whole study with the velocity multigrid, the solver pinned by hand
+  above, and is therefore *faster* on this case than every absolute figure here by about the
+  headroom quoted. The **efficiencies** move the other way and are the ones to carry forward
+  carefully: the momentum phase is {{ph_momentum_share_base}} % of the step at 1 GPU and grows
+  {{ph_momentum_growth}} % across the weak ladder against the projection's
+  {{ph_projection_growth}} %, so making momentum {{mom_gpu1_mom_ratio}}× cheaper shifts the step
+  toward the phase that scales worst. This record's own pinned ladder measures that trade directly:
+  on 24 → {{s_top_n}} cores, red-black reads {{mom_eff_off}} % of ideal and the velocity multigrid
+  {{mom_eff_on}} %. The {{w_weak_eff}} % weak efficiency here is {{flow_version}}'s, at
+  {{flow_version}}'s default; what a later default achieves on this case is **not measured in this
+  record**.
 - `PECLET_CORE_GPU_AWARE_MPI` is deliberately left unset, so the shipped auto-detection decides the
   halo transport and the runs record what it chose: on this machine, **{{halo_path}}**.
 - Runs whose pressure solve touched its iteration cap would be reported as capped rather than
