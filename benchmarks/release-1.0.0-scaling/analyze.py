@@ -297,25 +297,93 @@ def fig_weak(runs, out):
     plt.close(fig)
 
 
+def pinned_cpu_ladders(bench_dir):
+    """The companion pinned-solver CPU ladders, medians over repeat allocations.
+
+    SCALING_ISSUES of its own: the primary ladder lets 1.0.0's automatic rule choose the momentum
+    solver, so it switches algorithm at its top rung and reads 122 % of ideal. Plotting that curve
+    alone asserts a super-linearity the 2026-09-15 amendment withdrew, so the figure carries the two
+    single-algorithm ladders that correct it. Selection matches the headline code exactly (`vmg_pin`
+    plus the label tag), or the figure and the prose could disagree.
+    """
+    import statistics
+    mom = pathlib.Path(bench_dir).parent / "momentum-solver" / "results"
+    if not mom.exists():
+        return {}
+    mr = [json.loads(f.read_text()) for f in sorted(mom.rglob("*.json"))]
+    mr = [r for r in mr if r.get("schema") == "peclet-scaling-1"]
+    out = {}
+    for pin, tag in (("off", "vmgoff"), ("on", "vmgon")):
+        sel = {}
+        for r in mr:
+            if r["solver"].get("vmg_pin") != pin or tag not in str(r.get("label", "")):
+                continue
+            if "genoa" not in str(r.get("label", "")):   # the companion has GPU runs too
+                continue
+            sel.setdefault(r["ranks"], []).append(ms(r))
+        if sel:
+            out[pin] = {n: (statistics.median(v), min(v), max(v), len(v)) for n, v in sel.items()}
+    return out
+
+
 def fig_strong(runs, out):
     cpu = pick(runs, "bed", "strong", "genoa")
     gpu = pick(runs, "bed", "strong", "h100")
     if not (cpu or gpu):
         return
+    pinned = pinned_cpu_ladders(out)
     fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.4))
-    for ax, sel, c, xl, mach in ((axes[0], cpu, ORANGE, "genoa cores", "genoa"),
-                                 (axes[1], gpu, BLUE, "H100 GPUs", "h100")):
+    eff = lambda nn, tt: 100 * ((tt[0] * nn[0] / nn[-1]) / tt[-1])
+    for ax, sel, xl, mach in ((axes[0], cpu, "genoa cores", "genoa"),
+                              (axes[1], gpu, "H100 GPUs", "h100")):
         if not sel:
             ax.set_visible(False)
             continue
         n = np.array([r["ranks"] for r in sel], float)
         t = np.array([ms(r) / 1e3 for r in sel])
-        ax.loglog(n, t, "o-", color=c, lw=2, ms=7, label="peclet.flow 1.0.0")
-        ax.loglog(n, t[0] * n[0] / n, ls="--", lw=1, color=MUTED, label="ideal")
-        # plain numbers on both log axes: "4 x 10^0 s" is unreadable for a quantity like 4 s
+
+        # The CPU panel carries the two single-algorithm ladders. Without them the default curve's
+        # 122 % reads as super-linear scaling rather than as a change of algorithm mid-ladder --
+        # the reading the 2026-09-15 amendment withdrew. They are drawn UNDER the default and the
+        # default is dashed, because below the switch the default IS red-black: the curves coincide
+        # by construction, and hiding one behind the other would look like a defect instead of the
+        # point. Efficiencies ride in the legend, so no floating label can collide with a curve.
+        if mach == "genoa" and pinned:
+            for pin, col, lab in (("off", ORANGE, "red-black, pinned"),
+                                  ("on", AQUA, "velocity MG, pinned")):
+                d = pinned.get(pin)
+                if not d:
+                    continue
+                pn = np.array(sorted(d), float)
+                pt = np.array([d[int(v)][0] / 1e3 for v in pn])
+                ax.loglog(pn, pt, "s-", color=col, lw=1.8, ms=5, zorder=3,
+                          label=f"{lab} — {eff(pn, pt):.0f} %")
+                # repeat allocations where there are any: the top rung moves ~2x on placement
+                # alone, so a single point there would overstate what was measured.
+                for v in pn:
+                    med, lo_, hi_, nrep = d[int(v)]
+                    if nrep > 1 and hi_ / lo_ > 1.05:
+                        ax.plot([v, v], [lo_ / 1e3, hi_ / 1e3], color=col, lw=1.4, alpha=0.9,
+                                zorder=4, solid_capstyle="butt")
+            ax.annotate("the default switches solver here —\nthe whole of its 122 %",
+                        xy=(n[-1], t[-1]), xycoords="data",
+                        xytext=(0.985, 0.80), textcoords="axes fraction",
+                        ha="right", va="bottom", fontsize=7, color=INK2, linespacing=1.35,
+                        arrowprops=dict(arrowstyle="-", lw=0.8, color=INK2, shrinkA=3, shrinkB=4,
+                                        connectionstyle="arc3,rad=0"))
+
+        dashed = mach == "genoa" and bool(pinned)
+        ax.loglog(n, t, "o--" if dashed else "o-", color=BLUE, lw=2, ms=7, zorder=5,
+                  label=(f"1.0.0 default — {eff(n, t):.0f} %" if dashed else "peclet.flow 1.0.0"),
+                  **({"dashes": (4, 2)} if dashed else {}))
+        ax.loglog(n, t[0] * n[0] / n, ls="--", lw=1, color=MUTED, zorder=1, label="ideal")
+
         ax.set_xticks(n, [f"{int(v)}" for v in n], minor=False)
         ax.set_xticks([], [], minor=True)
-        lo, hi = t.min(), t.max()
+        allt = [t] + ([np.array([d[int(v)][0] / 1e3 for v in sorted(d)]) for d in pinned.values()]
+                      if mach == "genoa" else [])
+        lo = min(float(a_.min()) for a_ in allt)
+        hi = max(float(a_.max()) for a_ in allt)
         yt = [v for v in (0.2, 0.3, 0.5, 0.7, 1, 2, 3, 5, 7, 10, 20, 30, 50, 100, 200)
               if lo / 1.6 <= v <= hi * 1.6]
         ax.set_yticks(yt, [f"{v:g}" for v in yt], minor=False)
@@ -324,11 +392,13 @@ def fig_strong(runs, out):
         ax.set_ylabel("wall time per step  [s]")
         ax.set_title(f"{sel[0]['cells_total'] / 1e6:.0f} M cells, fixed", fontsize=9, color=INK2,
                      loc="left")
-        ax.legend(loc="lower left")
-        e = (t[0] * n[0] / n[-1]) / t[-1]
-        ax.annotate(f"{100 * e:.0f} % of ideal at {int(n[-1])}", (n[-1], t[-1]),
-                    textcoords="offset points", xytext=(-4, -16), ha="right", fontsize=8,
-                    color=INK)
+        ax.legend(loc="lower left", fontsize=7, labelspacing=0.35, borderpad=0.4,
+                  title="% = of ideal, 24 → top rung" if mach == "genoa" and pinned else None,
+                  title_fontsize=6.5)
+        if not (mach == "genoa" and pinned):
+            ax.annotate(f"{eff(n, t):.0f} % of ideal at {int(n[-1])}", (n[-1], t[-1]),
+                        textcoords="offset points", xytext=(-4, -16), ha="right", fontsize=8,
+                        color=INK)
     fig.suptitle("Strong scaling, one fixed problem — cut-cell IBM through a sphere packing",
                  x=0.02, ha="left", fontsize=10.5)
     fig.tight_layout(rect=(0, 0, 1, 0.94))

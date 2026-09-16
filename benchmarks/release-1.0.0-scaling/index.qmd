@@ -132,7 +132,7 @@ the efficiency a figure to carry across versions once that call becomes the defa
 
 ## Strong scaling — one fixed problem
 
-![The same 56.6 M-cell problem, on more cores and on more GPUs.](strong_scaling.png)
+![The same 56.6 M-cell problem, on more cores and on more GPUs. On CPU the shipped 1.0.0 default (dashed) rides exactly on pinned red-black — it *is* red-black — until 1536 cores, where its automatic rule switches to the velocity multigrid. That switch is the whole of its apparent 122 % of ideal; each single-algorithm ladder stays below 100 %. Vertical bars are the spread over repeat allocations, which at the top rung is larger than the difference between the solvers.](strong_scaling.png)
 
 On CPU, 24 → 1536 cores takes the step from 71.1 s to **0.91 s**,
 a **78.0×** speedup — nominally 122 % of ideal, which is above 100 % and

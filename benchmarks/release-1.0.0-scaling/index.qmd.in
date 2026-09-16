@@ -132,7 +132,7 @@ the efficiency a figure to carry across versions once that call becomes the defa
 
 ## Strong scaling — one fixed problem
 
-![The same {{cells_per_gpu_m}} M-cell problem, on more cores and on more GPUs.](strong_scaling.png)
+![The same {{cells_per_gpu_m}} M-cell problem, on more cores and on more GPUs. On CPU the shipped {{flow_version}} default (dashed) rides exactly on pinned red-black — it *is* red-black — until {{s_top_n}} cores, where its automatic rule switches to the velocity multigrid. That switch is the whole of its apparent {{s_strong_eff}} % of ideal; each single-algorithm ladder stays below 100 %. Vertical bars are the spread over repeat allocations, which at the top rung is larger than the difference between the solvers.](strong_scaling.png)
 
 On CPU, {{s_base_n}} → {{s_top_n}} cores takes the step from {{s_base_s}} s to **{{s_top_s}} s**,
 a **{{s_speedup}}×** speedup — nominally {{s_strong_eff}} % of ideal, which is above 100 % and
