@@ -39,44 +39,51 @@ NON-periodic domain faces and this study is triply periodic.
 
 ## Where we are now
 
-**Harness ported, builds provisioning.** No ladder submitted yet, no measurement spent.
+**Builds done, pilot green, ladders NOT yet submitted.**
 
-Pinned ref: **umbrella `5b527ec`** (one ref for the whole build). Its recorded core pointer is one
-commit behind core's HEAD, and that commit (`1974422`) is clang-format reflowing comments only —
-verified semantically inert — so the pin is exact for the compute code.
+Both trees built at the pinned ref and import correctly — `flow 1.0.1 space Cuda has_mpi True`
+and `space OpenMP has_mpi True`. Census confirms umbrella `5b527ec`, core `e6a612d`,
+flow `d05eb15`, morton `6e8abef` in both.
 
-| step | state |
-|---|---|
-| `install_bench.sh` takes a tag, branch **or SHA** (`--detach`), name decorates the paths | done |
-| campaign dir staged at `/projects/0/prjs1022/peclet/bench-1.1.0` | done |
-| CPU build (`26802070`, genoa) | RUNNING — compiling flow |
-| GPU build (`26802061`, gpu_h100) | PENDING (priority) |
-| driver records the momentum solver **by name** (`velocity_solver()`, new in 1.1.0) | done |
-| `analyze.py` stripped of the companion pinned-solver campaign + the overlay figure | done |
-| `index.qmd.in` stripped of every 1.0.0 amendment (337 → 193 lines, no historic reference) | done |
-| Zenodo metadata rewritten for 1.1.0, deposit/report renamed | done |
+### Pilot (2 of 3 rungs; the 4-GPU rung is still queued)
 
-### API compatibility, checked before spending anything
+| rung | ms/step | vmg active | pressure iters | gate ⟨u⟩ |
+|---|---|---|---|---|
+| 1 H100, CUDA | **1840.5** | True | 29.7 | 1.6388902085859007e-04 |
+| 192 genoa cores, OpenMP | 8479.5 | True | 29.7 | 1.6388902085859007e-04 |
 
-The 1.0.0 driver runs unmodified on 1.1.0: every method it calls still exists
-(`set_pressure_multigrid`, `set_solid`, `set_body_force`, `diagnostics.*`,
-`pressure_telescope`, `max_open_divergence`). `set_velocity_chebyshev` was removed, but it never
-shipped in 1.0.0 and the driver never called it. `checkSealedInflowCells` (new, throws at
-`set_solid`) cannot fire here: it needs an inflow face, and this case is triply periodic.
+Two things this establishes before any real money is spent:
 
-**What changes the numbers:** the momentum solver. 1.1.0 selects on
-kappa = 1 + 4·dt·mu·(w_x+w_y+w_z)/rho, V-cycle at kappa >= 13, decided at the head of the first
-`step()`. This case runs at D = 6 → **kappa = 73**, so every rung takes the V-cycle — and the rule
-is **rank-independent**, so unlike 1.0.0 there is no mid-ladder algorithm change. Pressure MG
-default is still 4 levels, so the one stated departure (depth as deep as the grid admits) carries
-over unchanged.
+1. **The condition-number rule selects the V-cycle, as predicted.** 1840.5 ms is the number the
+   previous campaign measured for the velocity multigrid *pinned by hand* (1840 ms) against its own
+   default's 4025 ms. So 1.1.0's automatic rule now picks, by itself, what the old default could
+   not.
+2. **The equivalence gate agrees to the last digit across backends** — CUDA on one GPU and OpenMP
+   on 192 ranks return the same ⟨u⟩. That is the property the whole record rests on.
 
-### Two sections of the page are deliberately unwritten
+### Two defects found and fixed in the pilot, which is what a pilot is for
 
-`index.qmd.in` carries `%%SOLVER_SELECTION_SECTION%%` and `%%STRONG_GPU_ANOMALY_SECTION%%`. Both
-replaced passages every number of which was a 1.0.0 measurement (the mid-ladder solver switch; the
-16-GPU anomaly and its withdrawn hypothesis). Whether 1.1.0 shows either is a question for the new
-data, so they are written FROM the results, not carried across.
+- `velocity_solver()` is bound on **`diagnostics`**, not on the solver. The driver called
+  `s.velocity_solver()` and got an AttributeError. The runs survived only because the diagnostic is
+  read through a guard (`_opt`) that refuses to lose a completed run's timings to a renamed query.
+  Fixed to `s.diagnostics.velocity_solver()` and re-synced; the queued 4-GPU rung picks it up.
+- The build's `flow.__version__` is **1.0.1**, so every result JSON records `flow_version: 1.0.1`.
+  A page titled 1.1.0 whose own raw data says 1.0.1 is not publishable as-is — see the open
+  question below.
+
+### Open — needs the user
+
+1. **Tag and bump 1.1.0 from `5b527ec`?** That makes the version string, the record and the data
+   agree with no re-run. Alternatives: label the record by commit, or carry an explicit
+   "measured at `5b527ec`, released as 1.1.0" provenance line and leave the raw field honest.
+2. **Is anything still due to land in `flow` or `core` before the tag?** A compute-path change
+   forces the affected ladders to re-run; an inert one (the core pointer delta is precedent) does
+   not.
+
+### Next action
+
+Wait for the 4-GPU pilot rung — the first multi-GPU run on this build and so the first exercise of
+the halo path — then release `weak`, `strong-gpu`, `strong-cpu`, `tgv`, `march`, `spread`, `levels`.
 
 ## Budget (checked 2026-09-16)
 

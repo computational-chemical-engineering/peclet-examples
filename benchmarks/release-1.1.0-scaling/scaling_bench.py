@@ -382,8 +382,8 @@ if RANK == 0:
                    # 1.1.0 NAMES the momentum solver in force instead of leaving it to be inferred
                    # from a boolean. Selection happens at the head of the first step(), so this is
                    # only meaningful after the warm-up -- which is where it is read.
-                   "velocity_solver": _opt(lambda: str(s.velocity_solver())),
-                   "velocity_mg_smoother": _opt(lambda: str(s.velocity_mg_smoother())),
+                   "velocity_solver": _opt(lambda: str(s.diagnostics.velocity_solver())),
+                   "velocity_mg_smoother": _opt(lambda: str(s.diagnostics.velocity_mg_smoother())),
                    "pressure_rtol_default": True},
         "perf": {
             "warmup": WARMUP,
