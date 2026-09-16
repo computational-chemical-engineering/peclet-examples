@@ -11,18 +11,22 @@ comparison.
 
 ## What "1.1.0" is
 
-**Not tagged yet.** Every package reads 1.0.1; `v1.0.0` and `v1.0.1` are the only 1.x tags.
-The campaign pins the commits that are slated to become 1.1.0, all clean and pushed:
+**Released 2026-09-16.** The record measures the tag, not a pre-release commit.
 
-| repo | commit | subject |
-|---|---|---|
-| core | `1974422` | style: clang-format the four files the blocking Quality job rejects |
-| morton | `6e8abef` | peclet-morton 1.0.1 |
-| flow | `d05eb15` | flow: gate the open-face fix on the COLLOCATED grid too (SCALING_ISSUES #3/#8) |
+| repo | at `v1.1.0` |
+|---|---|
+| umbrella | `24b0417` (tag `v1.1.0`) |
+| core | `094d2cb` (tag `v1.0.2`) |
+| flow | `b90e6d5` (tag `v1.1.0`) |
+| morton | `6e8abef` (unchanged) |
 
-If 1.1.0 is tagged from exactly these commits the record is 1.1.0 as measured. If more lands
-first, either the record states the delta or the affected ladders re-run. **Confirm before the
-deposit is published.**
+The first trees were built before the tag existed, at umbrella `5b527ec`. The delta to the
+release is **version strings only**: flow gains one release commit (versions + the core repin),
+core gains the clang-format commit (comment re-wrapping, checked) plus its own release commit,
+morton is identical. So those builds were numerically the release — but they reported
+`flow.__version__ = 1.0.1`, and a record titled 1.1.0 whose raw data says 1.0.1 does not ship.
+**Both trees are therefore rebuilt at the tag**, under the name `v1.1.0-tag`, and every published
+run comes from those.
 
 ## Why the numbers must be re-measured rather than carried over
 

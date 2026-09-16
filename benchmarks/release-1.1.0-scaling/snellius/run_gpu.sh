@@ -35,6 +35,19 @@ PROJ="${PROJ:-/projects/0/prjs1022/peclet}"
 VENV="${VENV:-$PROJ/suite-$TAG_VERSION-bench-h100/.venv}"
 source "$VENV/bin/activate"
 
+# --- stale-build guard ---------------------------------------------------------------------
+# The tree name and the version it carries are independent, so a wrong TAG_VERSION silently
+# measures the wrong build -- which is how this suite has lost campaigns before. If the caller
+# says which version it expects, the run REFUSES to start against anything else.
+if [ -n "${EXPECT_FLOW_VERSION:-}" ]; then
+  got=$(python3 -c "import peclet.flow as f; print(f.__version__)" 2>/dev/null)
+  if [ "$got" != "$EXPECT_FLOW_VERSION" ]; then
+    echo "FATAL: venv $VENV carries peclet.flow $got, expected $EXPECT_FLOW_VERSION" >&2
+    exit 1
+  fi
+  echo "== build check: peclet.flow $got from $VENV"
+fi
+
 MODE="${1:?usage: run_gpu.sh <weak|strong> <bed|tgv> <ngpus> [tag]}"
 CASE="${2:?}"
 N="${3:?}"
