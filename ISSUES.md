@@ -22,7 +22,7 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 ## Height-function curvature falls back to the PLIC paraboloid on ~90 % of interface cells (was 37 %), and the droplet damping deficit doubles with it
 
-- **Status:** open, NOT a backend difference — reproduced on CUDA and OpenMP from the same source
+- **Status:** RESOLVED in peclet 1.1.0 (core `e6a612d` + flow `28d3224`); verified 2026-09-16 by re-rendering this page against the PUBLISHED `peclet-cu13` 1.1.0 wheels — see the resolution at the end of the entry
 - **Package / area:** flow (VoF curvature: height function vs PLIC paraboloid)
 - **Found in:** examples/capillary-oscillations, during the 1.0.0 gallery re-render (2026-09-14)
 - **Observed:** the page's own curvature-branch census, same page, same inputs, three builds:
@@ -92,6 +92,41 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
   smaller observation: the suite's standing position is that a backend is a faithful port, and a
   page-level observable differing by 4 % relative is worth its own look once the main change is
   understood.
+
+### Resolution (2026-09-16, peclet 1.1.0)
+
+The suspected commit was innocent and the real cause was a **disagreement about what a pure cell
+is** — the same mechanism that had already been fixed once for phase change. `enable_vof` sets the
+Weymouth–Yue advector's `wispEps = 1e-8`; a cell inside that tolerance is fluxed *algebraically* and
+never reconstructed back onto exactly 1.0, so the colour field legitimately carries bulk liquid at
+`1 - O(1e-9)`. The height function judged purity at its own hard-coded `1e-10`, two orders tighter,
+found no pure end to the column, and rejected it. Cells drifted into the band between the two
+tolerances as a run went on, which is why it degraded *progressively* and why nothing went red — a
+paraboloid fallback is a valid answer.
+
+`core`'s `hfColumnHeight` now **takes** the tolerance (`pureEps`, floored at `kHfPureEps = 1e-10`
+and defaulted to it, so the default path is bit-identical); `flow`'s `Solver::computeVofCurvature`
+passes the advector's `wispEps` at the point of use.
+
+Re-rendered on 2026-09-16 against `peclet-cu13` 1.1.0 **from PyPI** (RTX 5080, `execution_space:
+Cuda`) — not a local build, so this is what a user gets:
+
+| build | HF | HF (other dir) | PLIC paraboloid | fallback % | drop damping (mu=0.0025) |
+|---|---|---|---|---|---|
+| committed freeze (pre-1.0.0, 2026-09-02) | 791 | 0 | 464 | **37.0 %** | 1.460e-3 |
+| 1.0.0, CUDA | 129 | 0 | 1109 | **89.6 %** | 1.029e-3 |
+| 1.0.0, OpenMP | 132 | 2 | 1109 | **89.6 %** | — |
+| **1.1.0 wheel, this re-render** | **783** | **0** | **460** | **37.0 %** | **1.409e-3** |
+
+Back to the pre-regression tier selection to within a few cells in ~1240, and branch 6 ("no
+estimate!", the defect branch) is empty at both viscosities. The `mu = 0.02` row of the same census
+reads 756 / 445 / 37.1 %.
+
+**Still open, carried forward as its own question:** the ~4 % *inviscid* deficit in the drop
+frequency that does not shrink with resolution (the page states it as an unattributed measured
+deviation) is untouched by this fix — it was never the curvature tier. The 2.7-point CUDA/OpenMP
+spread noted above should be re-measured now that the tier selection is correct; it was observed on
+the regressed build, where 90 % of cells were on the fallback path, so it may not survive.
 
 ---
 
