@@ -50,7 +50,12 @@ the same grid and the same machine.
 
 ::::::
 
-<div class="ratio ratio-16x9" style="max-width:900px;margin:0 auto;">
+```{=html}
+<!-- MUST stay inside a ```{=html} fence. Without it Pandoc treats the iframe line as a
+     paragraph and emits <p><iframe></p>; Bootstrap's .ratio sizes DIRECT children only
+     (`.ratio > *`), so the <p> gets the 16x9 box and the iframe falls back to its intrinsic
+     300x150 — the film renders as a thumbnail. Fixed 2026-09-17. -->
+<div class="ratio ratio-16x9" style="max-width:100%;margin:0 auto;">
   <iframe src="https://www.youtube.com/embed/L_uAHnL6Gq8?rel=0&amp;modestbranding=1"
           title="Peclet 1.0.0 — resolve what you can, model what you must"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -58,6 +63,7 @@ the same grid and the same machine.
           allowfullscreen
           style="border:0;border-radius:6px;"></iframe>
 </div>
+```
 
 Every movie on this site is also on the channel, next to the page it came from:
 [**@PecletHPC**](https://www.youtube.com/@PecletHPC) · and the documentation is at
