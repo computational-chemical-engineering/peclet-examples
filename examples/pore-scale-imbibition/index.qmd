@@ -36,7 +36,8 @@ difficulty:
    @zhao2019], invaded at $\theta = 45° / 90° / 135°$: does the *pattern*
    change from compact to
    fingered with wettability, as the published experiment says it must? Barely —
-   and what little change there is runs the wrong way.
+   the three patterns come out within a few per cent of each other on every
+   front measure, and what ordering survives is not in $\theta$.
 
 The headline is a contrast rather than a single number. At $\mathrm{Ca} = 10^{-3}$
 in the doublet the narrow branch ends up **78 % liquid at $\theta = 45°$ and 0.4 %
@@ -1018,7 +1019,7 @@ for th in (45.0, 90.0, 135.0):
 
 ```{python}
 #| label: fig-micromodel
-#| fig-cap: "The invaded region (blue) in the post array at three contact angles, all at the same injected liquid volume (0.10 pore volumes), posts grey. The published experiment turns a compact displacement into a fingered one over this range of contact angle; here the three patterns are barely distinguishable, and what difference there is has the wetting case as the rougher."
+#| fig-cap: "The invaded region (blue) in the post array at three contact angles, all at the same injected liquid volume (0.10 pore volumes), posts grey. The published experiment turns a compact displacement into a fingered one over this range of contact angle; here the three patterns are barely distinguishable, and the smallest spread of all sits between the two wetting extremes."
 fig, ax = plt.subplots(1, 3, figsize=(11, 3.6))
 for k, th in enumerate((45.0, 90.0, 135.0)):
     r = MICRO[th]
@@ -1065,13 +1066,14 @@ goes `{python} f"{MICRO[45.0]['front']['std']:.2f}"` /
 angle reaches every one of the 128 transverse rows, as a single connected cluster.
 The three panels above are, to the eye, the same displacement.
 
-Two things can still be said, and they are worth more than the non-result. The
-wetting extreme is the *rougher* of the two, by
-`{python} f"{100*(MICRO[45.0]['front']['std']/MICRO[135.0]['front']['std']-1):.0f}"` %
-and with the deeper finger, so what little dependence exists runs **backwards**
-against the experiment. And the ordering is broken by the *neutral* case, which sits
-at the rough end alongside the wetting one — which is what a pattern set by the
-imposed flux and the array's own disorder, rather than by wettability, looks like.
+One thing can still be said, and it is worth more than the non-result: the two
+wetting *extremes* are the pair that agree, differing in front roughness by
+`{python} f"{abs(100*(MICRO[45.0]['front']['std']/MICRO[135.0]['front']['std']-1)):.0f}"` %,
+while the *neutral* case is the roughest of the three. A quantity ordered by
+wettability does not put its middle value at the end. That is what a pattern set by
+the imposed flux and the array's own disorder, rather than by wettability, looks
+like — and it is a cleaner statement of the same non-result than a direction would
+have been.
 
 This is the third case on this page to come out the same way, and it is the one
 where the mechanism is easiest to name: **cooperative pore filling requires the

@@ -130,6 +130,45 @@ the regressed build, where 90 % of cells were on the fallback path, so it may no
 
 ---
 
+## The micromodel's theta=45 case was UNCONVERGED, and its fingering was an artifact of that
+
+- **Status:** RESOLVED by re-rendering on peclet 1.1.0 (2026-09-17); the page's prose is updated to
+  match the converged numbers
+- **Package / area:** flow (VoF + cut-cell pressure solve) / the page's own convergence gate
+- **Found in:** examples/pore-scale-imbibition, during the 1.1.0 gallery re-render
+- **Observed:** the committed freeze's theta=45 micromodel run reported `max|div| 3.06e-03` — three
+  orders worse than the theta=90 (`6.25e-09`) and theta=135 (`1.29e-09`) runs beside it in the same
+  table, and the only row on the page anywhere near that. Its front statistics were correspondingly
+  wild, and were the sole source of the page's secondary conclusion:
+
+  | theta | box dim D | rows | mean | std | deepest | clusters | max\|div\| |
+  |---|---|---|---|---|---|---|---|
+  | 45 (committed freeze) | 1.477 | **125/128** | 10.66 | 10.49 | **59** | **18** | **3.06e-03** |
+  | 45 (1.1.0 re-render)  | 1.619 | 128/128 | 7.12 | 4.59 | 17 | 1 | 3.70e-06 |
+  | 90 (re-render)        | 1.607 | 128/128 | 7.32 | 4.95 | 17 | 1 | 5.76e-09 |
+  | 135 (re-render)       | 1.636 | 128/128 | 7.09 | 4.61 | 15 | 1 | 1.38e-09 |
+
+- **Expected:** all three angles to converge to the same tolerance, and the front measures to be
+  comparable unless wettability genuinely changes the pattern.
+- **Why it mattered:** the page's own text already contradicted its own table. The prose asserted
+  "Every angle reaches every one of the 128 transverse rows, as a single connected cluster" while
+  the committed theta=45 row said 125/128 and 18 clusters. That sentence is true of the re-render
+  and was false of the freeze it shipped with — nobody had cross-read the two.
+- **Consequence for the prose:** the claim that "the wetting extreme is the *rougher* ... so what
+  little dependence exists runs **backwards** against the experiment" rested entirely on that
+  unconverged row. At convergence the two wetting extremes agree to well under a per cent in front
+  roughness (4.59 vs 4.61 cells) and the *neutral* case is marginally the roughest. The page's
+  MAIN conclusion — the published wettability trend is not reproduced — is unaffected and in fact
+  cleaner: the spread is now a flat non-result rather than one carried by an outlier. The bullet,
+  the figure caption and the conclusion paragraph are updated accordingly.
+- **Notes:** the rendered inline expression made this self-evident once re-executed — the sentence
+  came out as "the *rougher* of the two, by \-0 %". An inline `{python}` value that contradicts the
+  sentence around it is a good tripwire, and this page had one only by luck. Worth considering
+  whether pages that make a directional claim should assert it in code (and fail) rather than
+  interpolate a number into prose that assumes the sign.
+
+---
+
 ## `max_open_divergence()` returns exactly 0 without geometry — so `advect_vof`'s divergence guard is silently inert on a bare box
 - **Status:** RESOLVED (flow WO-R2, `advect_vof` now throws without a cut-cell pressure operator and uses `max_open_divergence_projected()`; 2026-09-03)
 - **Package / area:** flow (VoF transport / cut-cell diagnostics)
