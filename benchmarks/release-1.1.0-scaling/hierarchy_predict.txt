@@ -1,0 +1,11 @@
+# peclet.flow 1.1.0 predict_hierarchy: the level-0 decomposition of the 384^3 strong case
+# pure function -- this file is reproducible without a cluster
+== 8
+   block 192x192x192: surface/volume 0.0312
+   levels 8  parts (2, 2, 2)
+== 16
+   block 96x192x192: surface/volume 0.0417
+   levels 8  parts (2, 2, 2)
+== 32
+   block 96x96x192: surface/volume 0.0521
+   levels 8  parts (2, 2, 2)
