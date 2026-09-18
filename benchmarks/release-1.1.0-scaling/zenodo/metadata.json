@@ -4,8 +4,9 @@
     "title": "Parallel performance of peclet.flow 1.1.0: strong and weak scaling of a cut-cell immersed-boundary incompressible flow solver on Snellius (Genoa CPU, H100 GPU)",
     "creators": [
       {
-        "name": "Peters, Frank",
-        "affiliation": "Eindhoven University of Technology"
+        "name": "Peters, E.A.J.F.",
+        "affiliation": "Eindhoven University of Technology",
+        "orcid": "0000-0001-6099-3583"
       }
     ],
     "description": "<p>Measurement data and reproduction scripts for the parallel performance of <strong>peclet.flow 1.1.0</strong> solving creeping flow through a periodic random sphere packing with the cut-cell immersed boundary method.</p><p>One physical problem is measured on four ladders: <strong>weak scaling</strong> on 1&ndash;32 NVIDIA H100 GPUs at 384<sup>3</sup> cells per GPU, <strong>strong scaling</strong> of one fixed problem on 24&ndash;1536 AMD Genoa cores and on 1&ndash;32 H100 GPUs, and a geometry-free Taylor&ndash;Green control on the same grids. The weak ladder tiles one unit cell, so every rung is an exact periodic replication of the same problem and the physical observable is a single number that every rung must reproduce &mdash; not a scatter across independently packed beds.</p><p>The record contains the driver, the geometry artifact and the script that generated it, the cluster provisioning and job scripts, the raw per-run JSON and logs, the analysis that produces the tables and figures, and a build census (toolchain, MPI, driver, wheel checksums) for every machine. The solver runs at its shipped 1.1.0 defaults, with one stated exception documented in the report, and each run records the momentum solver the solver itself selected.</p><p><strong>Scope.</strong> This record measures one implementation. It reports peclet.flow 1.1.0 and contains no data from any earlier version: it is a statement of what this release does, not a comparison against its predecessors.</p><p>Runs were performed on the Dutch national supercomputer Snellius (SURF).</p>",
@@ -29,25 +30,13 @@
     ],
     "related_identifiers": [
       {
-        "identifier": "10.5281/zenodo.22801703",
+        "identifier": "10.5281/zenodo.21132445",
         "relation": "isSupplementTo",
         "resource_type": "software",
         "scheme": "doi"
       },
       {
         "identifier": "10.5281/zenodo.21132439",
-        "relation": "isSupplementTo",
-        "resource_type": "software",
-        "scheme": "doi"
-      },
-      {
-        "identifier": "10.5281/zenodo.22801704",
-        "relation": "references",
-        "resource_type": "software",
-        "scheme": "doi"
-      },
-      {
-        "identifier": "10.5281/zenodo.21132445",
         "relation": "references",
         "resource_type": "software",
         "scheme": "doi"
@@ -63,6 +52,12 @@
         "relation": "isSupplementTo",
         "resource_type": "software",
         "scheme": "url"
+      },
+      {
+        "identifier": "10.5281/zenodo.22801704",
+        "relation": "isSupplementTo",
+        "resource_type": "software",
+        "scheme": "doi"
       }
     ],
     "notes": "Scripts in this record are MIT-licensed (as the peclet-examples repository); the measurement data are CC-BY-4.0."
