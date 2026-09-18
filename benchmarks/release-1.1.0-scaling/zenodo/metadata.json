@@ -29,13 +29,25 @@
     ],
     "related_identifiers": [
       {
-        "identifier": "10.5281/zenodo.21132445",
+        "identifier": "10.5281/zenodo.22801703",
         "relation": "isSupplementTo",
         "resource_type": "software",
         "scheme": "doi"
       },
       {
         "identifier": "10.5281/zenodo.21132439",
+        "relation": "isSupplementTo",
+        "resource_type": "software",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "10.5281/zenodo.22801704",
+        "relation": "references",
+        "resource_type": "software",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "10.5281/zenodo.21132445",
         "relation": "references",
         "resource_type": "software",
         "scheme": "doi"
