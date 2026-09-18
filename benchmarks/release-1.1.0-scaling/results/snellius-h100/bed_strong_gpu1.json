@@ -1,0 +1,236 @@
+{
+ "schema": "peclet-scaling-1",
+ "label": "snellius-h100",
+ "case": "bed",
+ "mode": "strong",
+ "ranks": 1,
+ "tiles": [
+  1,
+  1,
+  1
+ ],
+ "grid": [
+  384,
+  384,
+  384
+ ],
+ "cells_total": 56623104.0,
+ "cells_per_rank": 56623104.0,
+ "extent": [
+  21.333333333333332,
+  21.333333333333332,
+  21.333333333333332
+ ],
+ "spacing": 0.05555555555555555,
+ "r_cells": 18.0,
+ "cells_per_vortex": null,
+ "phi_packing": 0.44998367674632855,
+ "phi_voxel": 0.4499702806825991,
+ "blocks_uniform": true,
+ "pack": "bed_phi0.45_r18_s0.npz",
+ "flow_version": "1.1.0",
+ "backend": "Cuda",
+ "physics": {
+  "rho": 1.0,
+  "mu": 0.1,
+  "body_force": 0.001,
+  "dt": 0.18518518518518517,
+  "diffusion_number": 6.0
+ },
+ "solver": {
+  "levels_requested": 10,
+  "level_ratios": [
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    1,
+    1,
+    1
+   ]
+  ],
+  "telescope": true,
+  "velocity_multigrid_active": true,
+  "velocity_solver": "multigrid",
+  "velocity_mg_smoother": "gauss_seidel",
+  "pressure_rtol_default": true
+ },
+ "perf": {
+  "warmup": 3,
+  "nsteps": 10,
+  "ms_per_step_median": 1840.4918960295618,
+  "ms_per_step_mean": 1864.4399843993597,
+  "ms_per_step_min": 1786.3588600885123,
+  "ms_per_step_max": 2031.3521549105644,
+  "mcells_per_s": 30.765201478013203,
+  "mcells_per_s_per_rank": 30.765201478013203,
+  "pressure_iters_mean": 29.7,
+  "pressure_iters_max": 33,
+  "steps": [
+   {
+    "wall": 2.0313521549105644,
+    "iters": 33,
+    "predictor": 0.005093126092106104,
+    "momentum": 0.8820504649775103,
+    "projection": 1.1426525040296838,
+    "pressure_allreduce": 0.0003653570000000001,
+    "pressure_allreduce_count": 168.0
+   },
+   {
+    "wall": 1.9971692629624158,
+    "iters": 32,
+    "predictor": 0.005093185929581523,
+    "momentum": 0.8821237439988181,
+    "projection": 1.1084803841076791,
+    "pressure_allreduce": 0.0003481570000000003,
+    "pressure_allreduce_count": 163.0
+   },
+   {
+    "wall": 1.8677146540721878,
+    "iters": 29,
+    "predictor": 0.005092505947686732,
+    "momentum": 0.8549483570968732,
+    "projection": 1.0062203799607232,
+    "pressure_allreduce": 0.000339405,
+    "pressure_allreduce_count": 148.0
+   },
+   {
+    "wall": 1.8675953939091414,
+    "iters": 29,
+    "predictor": 0.0050911050057038665,
+    "momentum": 0.8550048869801685,
+    "projection": 1.0060710510006174,
+    "pressure_allreduce": 0.000323766,
+    "pressure_allreduce_count": 148.0
+   },
+   {
+    "wall": 1.8675029040314257,
+    "iters": 29,
+    "predictor": 0.00509026600047946,
+    "momentum": 0.8549465370597318,
+    "projection": 1.006034272024408,
+    "pressure_allreduce": 0.00032665600000000004,
+    "pressure_allreduce_count": 148.0
+   },
+   {
+    "wall": 1.8134610679699108,
+    "iters": 29,
+    "predictor": 0.005090235965326428,
+    "momentum": 0.8008563600014895,
+    "projection": 1.0060513019561768,
+    "pressure_allreduce": 0.000333129,
+    "pressure_allreduce_count": 148.0
+   },
+   {
+    "wall": 1.8132736290572211,
+    "iters": 29,
+    "predictor": 0.005089355981908739,
+    "momentum": 0.8007637310074642,
+    "projection": 1.0059912720462307,
+    "pressure_allreduce": 0.0003330579999999999,
+    "pressure_allreduce_count": 148.0
+   },
+   {
+    "wall": 1.8134808880276978,
+    "iters": 29,
+    "predictor": 0.005090045975521207,
+    "momentum": 0.8008676100289449,
+    "projection": 1.0060908410232514,
+    "pressure_allreduce": 0.00033433900000000007,
+    "pressure_allreduce_count": 148.0
+   },
+   {
+    "wall": 1.7864910289645195,
+    "iters": 29,
+    "predictor": 0.005092186038382351,
+    "momentum": 0.7738487309543416,
+    "projection": 1.006085640983656,
+    "pressure_allreduce": 0.0003247470000000002,
+    "pressure_allreduce_count": 148.0
+   },
+   {
+    "wall": 1.7863588600885123,
+    "iters": 29,
+    "predictor": 0.005093335988931358,
+    "momentum": 0.7738147709751502,
+    "projection": 1.006021272041835,
+    "pressure_allreduce": 0.0003213589999999998,
+    "pressure_allreduce_count": 148.0
+   }
+  ]
+ },
+ "gate": {
+  "steps": 13,
+  "quantity": "u_mean",
+  "value": 0.00016388902085859007,
+  "max_open_divergence": 2.7355086579705822e-14
+ },
+ "physics_result": {},
+ "env": {
+  "OMPI_MCA_plm_slurm_args": "--external-launcher",
+  "SLURM_JOB_USER": "tec16020",
+  "SLURM_JOB_UID": "45030",
+  "SLURM_JOB_GPUS": "3",
+  "SLURM_JOB_START_TIME": "1789620329",
+  "OMPI_MCA_btl": "^ofi",
+  "SLURM_JOB_END_TIME": "1789623029",
+  "SLURM_JOB_CPUS_PER_NODE": "16",
+  "UCX_NET_DEVICES": "mlx5_5:1,mlx5_4:1,mlx5_3:1,mlx5_0:1,mlx5_2:1,ib-bond0",
+  "SLURM_JOB_PARTITION": "gpu_h100",
+  "SLURM_JOB_NUM_NODES": "1",
+  "OMPI_MCA_pml": "ucx",
+  "SLURM_JOBID": "26824925",
+  "SLURM_JOB_QOS": "normal",
+  "UCX_MODULE_DIR": "/sw/arch/RHEL9/EB_production/2024/software/UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0/ucx",
+  "PECLET_BIND_GPU": "0",
+  "OMPI_MCA_mtl": "^ofi",
+  "OMPI_MCA_orte_tmpdir_base": "/dev/shm/",
+  "OMPI_MCA_coll_han_priority": "0",
+  "OMP_PROC_BIND": "false",
+  "PECLET_CORE_HALO_VERBOSE": "1",
+  "SLURM_JOB_ACCOUNT": "tes24005",
+  "UCX_MEMTYPE_CACHE": "n",
+  "SLURM_JOB_ID": "26824925",
+  "OMP_NUM_THREADS": "8",
+  "UCX_PROTO_ENABLE": "n",
+  "SLURM_JOB_NAME": "pec-gpu",
+  "SLURM_JOB_GID": "44804",
+  "SLURM_JOB_NODELIST": "gcn128",
+  "SLURM_JOB_GROUP": "tec16020",
+  "OMPI_MCA_orte_precondition_transports": "019950dd00000000-019950dd00000000"
+ },
+ "host": "gcn128.local.snellius.surf.nl",
+ "timestamp": "2026-09-17T06:46:07+0200"
+}

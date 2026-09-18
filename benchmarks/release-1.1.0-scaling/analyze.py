@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Analysis for the peclet 1.0.0 scaling deposit: gates, tables, figures.
+"""Analysis for the peclet 1.1.0 scaling deposit: gates, tables, figures.
 
 Reads every `results/**/*.json` written by `scaling_bench.py` and produces
 
@@ -92,10 +92,12 @@ def gates(runs):
     comparing it here would be meaningless rather than informative. A group of one is reported but
     cannot fail.
 
-    The solver configuration is part of the key because peclet 1.0.0 switches the momentum solver by
-    itself: `set_velocity_multigrid_auto` turns the velocity multigrid ON below ~65k cells per rank,
-    so the top CPU rungs run a different momentum solve from the rest of the same ladder. Both are
-    converged; they are not the same iterate. Lumping them together would hide a genuine agreement
+    The solver configuration is part of the key because a run that solves the momentum equation
+    differently is a different computation, whatever the rank count. 1.1.0 selects on the operator's
+    condition number, which does not depend on the decomposition, so in this record the key is
+    constant across every rung -- but the grouping stays, because it is what would CATCH a split
+    rather than average over one. Lumping different configurations together would hide a genuine
+    agreement
     inside a spurious disagreement. The difference BETWEEN configurations is reported separately,
     below, because it is a property worth quoting rather than a defect to bury."""
     lines = ["# Correctness gates", ""]
@@ -140,10 +142,9 @@ def gates(runs):
     rows = [(c, v) for c, v in by_case.items() if len(v) > 1]
     if rows:
         lines += ["## Between configurations (not a gate — a measurement)", "",
-                  "peclet 1.0.0 selects the momentum solver from the per-rank workload "
-                  "(`set_velocity_multigrid_auto`, on below ~65k cells/rank) and the multigrid depth "
-                  "is a study parameter. Runs that differ in either are different computations; this "
-                  "is how far apart their answers land.", "",
+                  "The momentum solver is selected from the operator's condition number and the "
+                  "multigrid depth is a study parameter. Runs that differ in either are different "
+                  "computations; this is how far apart their answers land.", "",
                   "| case | configuration | runs | value | vs. first |",
                   "|---|---|---:|---:|---:|"]
         for (case, _h, _st), v in sorted(rows):
@@ -290,7 +291,8 @@ def fig_weak(runs, out):
     a2.set_ylabel("pressure iterations\nper step")
     a2.set_ylim(bottom=0)
     log2_axis(a2, ns, "H100 GPUs  (384³ cells each)")
-    fig.suptitle("Weak scaling of peclet.flow 1.0.0 on Snellius H100", x=0.02, ha="left",
+    _ver = (bed or tgv)[0].get("flow_version", "")
+    fig.suptitle(f"Weak scaling of peclet.flow {_ver} on Snellius H100", x=0.02, ha="left",
                  fontsize=10.5, y=0.985)
     fig.tight_layout(rect=(0, 0, 1, 0.97))
     fig.savefig(out / "weak_scaling.png", bbox_inches="tight")
@@ -310,7 +312,8 @@ def fig_strong(runs, out):
             continue
         n = np.array([r["ranks"] for r in sel], float)
         t = np.array([ms(r) / 1e3 for r in sel])
-        ax.loglog(n, t, "o-", color=c, lw=2, ms=7, label="peclet.flow 1.0.0")
+        ax.loglog(n, t, "o-", color=c, lw=2, ms=7,
+                  label=f"peclet.flow {sel[0].get('flow_version','')}")
         ax.loglog(n, t[0] * n[0] / n, ls="--", lw=1, color=MUTED, label="ideal")
         # plain numbers on both log axes: "4 x 10^0 s" is unreadable for a quantity like 4 s
         ax.set_xticks(n, [f"{int(v)}" for v in n], minor=False)
@@ -441,7 +444,15 @@ def headline(runs):
                 and r["solver"]["levels_requested"] == 10
                 and bool(r["solver"]["velocity_multigrid_active"]) is vmg]
 
-    grp = grp_of("bed", False)
+    # WHICH configuration is the primary one is a property of the data, not a constant: 1.0.0's
+    # default left the velocity multigrid off and switched it on at the small-block rungs, while
+    # 1.1.0's condition-number rule turns it on everywhere. Take the majority as primary and report
+    # any minority group on its own terms, so neither version's shape is baked in here.
+    _vmg = [bool(r["solver"]["velocity_multigrid_active"])
+            for r in runs if r["case"] == "bed" and r.get("gate")]
+    primary_vmg = max(set(_vmg), key=_vmg.count) if _vmg else False
+
+    grp = grp_of("bed", primary_vmg)
     if grp:
         vals = np.array([r["gate"]["value"] for r in grp])
         rel = np.abs(vals - vals[0]) / abs(vals[0])
@@ -453,14 +464,14 @@ def headline(runs):
         h["gate_max_div"] = f"{max(r['gate']['max_open_divergence'] for r in grp):.0e}"
         h["gate_max_cells"] = f"{max(r['cells_total'] for r in grp) / 1e9:.2f}"
 
-    tg = grp_of("tgv", False)
+    tg = grp_of("tgv", primary_vmg)
     if tg:
         v = np.array([r["gate"]["value"] for r in tg])
         h["tgv_gate_worst"] = f"{(np.abs(v - v[0]) / abs(v[0])).max():.0e}".replace("e-", "e−")
         h["tgv_gate_runs"] = len(tg)
         h["tgv_gate_max_ranks"] = max(r["ranks"] for r in tg)
 
-    sw = grp_of("bed", True)
+    sw = grp_of("bed", not primary_vmg)
     if sw and grp:
         v = np.array([r["gate"]["value"] for r in sw])
         h["switch_ranks"] = min(r["ranks"] for r in sw)
@@ -578,6 +589,53 @@ def headline(runs):
 # record measures one implementation and carries no data from any other.
 def structural(runs, here):
     h = {}
+
+    # (0) the momentum solver in force. 1.1.0 picks it from the implicit-diffusion operator's
+    # condition number, which depends on dt, mu, rho and h -- NOT on the rank count -- so the whole
+    # study should run one solver. That is a claim the record can check rather than assert, and the
+    # page quotes these keys so a future run that splits the ladder cannot pass unnoticed.
+    sol = sorted({str(r["solver"].get("velocity_solver")) for r in runs})
+    h["solver_name"] = sol[0] if len(sol) == 1 else " / ".join(sol)
+    h["solver_uniform"] = "yes" if len(sol) == 1 else "NO"
+    h["solver_runs"] = len(runs)
+    ds = sorted({float(r["physics"]["diffusion_number"]) for r in runs})
+    if len(ds) == 1:
+        h["diff_number"] = f"{ds[0]:g}"
+        h["kappa"] = f"{1.0 + 12.0 * ds[0]:g}"     # isotropic grid: kappa = 1 + 12 D
+    h["kappa_threshold"] = "13"
+
+    # (0c) the multigrid-depth control: the study's one departure from shipped defaults, priced.
+    lv = [r for r in runs if r["case"] == "bed" and r["mode"] == "weak"
+          and r["solver"]["levels_requested"] == 4]
+    if lv:
+        n = lv[0]["ranks"]
+        full = [r for r in runs if r["case"] == "bed" and r["mode"] == "weak"
+                and r["ranks"] == n and r["solver"]["levels_requested"] != 4]
+        if full:
+            a = statistics.median([r["perf"]["ms_per_step_median"] for r in lv])
+            b = statistics.median([r["perf"]["ms_per_step_median"] for r in full])
+            h["levels4_ms"] = f"{a:,.0f}".replace(",", "\u202f")
+            h["levels10_ms"] = f"{b:,.0f}".replace(",", "\u202f")
+            h["levels4_ratio"] = f"{a / b:.0f}\u00d7"
+            h["levels4_n"] = n
+
+    # (0b) the momentum sweep count at the rungs that bracket any non-monotone step. Identical
+    # sweeps with different wall time separates "more iterations" from "slower iterations", which
+    # is the difference between an algorithmic problem and a machine one.
+    sg = {r["ranks"]: r for r in pick(runs, case="bed", mode="strong", machine="h100")}
+    swp = {}
+    for r in runs:
+        if r["case"] != "bed" or r["mode"] != "strong" or "h100" not in str(r["_file"]):
+            continue
+        v = [x["momentum_sweeps"] for x in r["perf"]["steps"] if "momentum_sweeps" in x]
+        if v:
+            swp.setdefault(r["ranks"], []).append(statistics.median(v))
+    if swp:
+        vals = {n: statistics.median(v) for n, v in swp.items()}
+        h["sweeps_rungs"] = " / ".join(f"{n}" for n in sorted(vals))
+        h["sweeps_values"] = " / ".join(f"{vals[n]:.0f}" for n in sorted(vals))
+        h["sweeps_uniform"] = "yes" if len(set(round(v) for v in vals.values())) == 1 else "NO"
+        h["sweeps_count"] = f"{statistics.median(list(vals.values())):.0f}"
 
     # (a) the 16-GPU anomaly: what the deposit's own timers rule out.
     sg = {r["ranks"]: r for r in pick(runs, case="bed", mode="strong", machine="h100")}

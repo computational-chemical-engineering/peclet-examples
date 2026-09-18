@@ -1,0 +1,246 @@
+{
+ "schema": "peclet-scaling-1",
+ "label": "snellius-h100_sweeps",
+ "case": "bed",
+ "mode": "strong",
+ "ranks": 32,
+ "tiles": [
+  1,
+  1,
+  1
+ ],
+ "grid": [
+  384,
+  384,
+  384
+ ],
+ "cells_total": 56623104.0,
+ "cells_per_rank": 1769472.0,
+ "extent": [
+  21.333333333333332,
+  21.333333333333332,
+  21.333333333333332
+ ],
+ "spacing": 0.05555555555555555,
+ "r_cells": 18.0,
+ "cells_per_vortex": null,
+ "phi_packing": 0.44998367674632855,
+ "phi_voxel": 0.4499702806825991,
+ "blocks_uniform": true,
+ "pack": "bed_phi0.45_r18_s0.npz",
+ "flow_version": "1.1.0",
+ "backend": "Cuda",
+ "physics": {
+  "rho": 1.0,
+  "mu": 0.1,
+  "body_force": 0.001,
+  "dt": 0.18518518518518517,
+  "diffusion_number": 6.0
+ },
+ "solver": {
+  "levels_requested": 10,
+  "level_ratios": [
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    2,
+    2,
+    2
+   ],
+   [
+    1,
+    1,
+    1
+   ]
+  ],
+  "telescope": true,
+  "velocity_multigrid_active": true,
+  "velocity_solver": "multigrid",
+  "velocity_mg_smoother": "gauss_seidel",
+  "pressure_rtol_default": true
+ },
+ "perf": {
+  "warmup": 3,
+  "nsteps": 10,
+  "ms_per_step_median": 541.7127285618335,
+  "ms_per_step_mean": 548.0003017233685,
+  "ms_per_step_min": 520.5169420223683,
+  "ms_per_step_max": 600.8197140181437,
+  "mcells_per_s": 104.52607261107912,
+  "mcells_per_s_per_rank": 3.2664397690962224,
+  "pressure_iters_mean": 29.7,
+  "pressure_iters_max": 33,
+  "steps": [
+   {
+    "wall": 0.6008197140181437,
+    "iters": 33,
+    "predictor": 0.00019349006470292807,
+    "momentum": 0.291957697016187,
+    "projection": 0.30819768691435456,
+    "pressure_allreduce": 0.005941313000000002,
+    "pressure_allreduce_count": 5376.0,
+    "momentum_sweeps": 31.0
+   },
+   {
+    "wall": 0.5891472060466185,
+    "iters": 32,
+    "predictor": 0.00019534898456186056,
+    "momentum": 0.2912078209919855,
+    "projection": 0.29736654297448695,
+    "pressure_allreduce": 0.005304016,
+    "pressure_allreduce_count": 5216.0,
+    "momentum_sweeps": 31.0
+   },
+   {
+    "wall": 0.5496679639909416,
+    "iters": 29,
+    "predictor": 0.00019658892415463924,
+    "momentum": 0.28156038804445416,
+    "projection": 0.2675333770457655,
+    "pressure_allreduce": 0.004360363999999999,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 30.0
+   },
+   {
+    "wall": 0.5524287460139021,
+    "iters": 29,
+    "predictor": 0.0001951489830389619,
+    "momentum": 0.28280428901780397,
+    "projection": 0.2690638640196994,
+    "pressure_allreduce": 0.004451669,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 30.0
+   },
+   {
+    "wall": 0.5490874880924821,
+    "iters": 29,
+    "predictor": 0.00019492802675813437,
+    "momentum": 0.28341215394902974,
+    "projection": 0.2650973859708756,
+    "pressure_allreduce": 0.004310312,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 30.0
+   },
+   {
+    "wall": 0.5316412179963663,
+    "iters": 29,
+    "predictor": 0.00019385002087801695,
+    "momentum": 0.2646969599882141,
+    "projection": 0.26637543994002044,
+    "pressure_allreduce": 0.004472654999999999,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 28.0
+   },
+   {
+    "wall": 0.5288579560583457,
+    "iters": 29,
+    "predictor": 0.0001935290638357401,
+    "momentum": 0.2605614489875734,
+    "projection": 0.26773564296308905,
+    "pressure_allreduce": 0.004610575,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 28.0
+   },
+   {
+    "wall": 0.5343379690311849,
+    "iters": 29,
+    "predictor": 0.00019422895275056362,
+    "momentum": 0.2649976360844448,
+    "projection": 0.26875956600997597,
+    "pressure_allreduce": 0.004862453000000002,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 28.0
+   },
+   {
+    "wall": 0.5234978139633313,
+    "iters": 29,
+    "predictor": 0.00019330799113959074,
+    "momentum": 0.25607648701407015,
+    "projection": 0.26686182292178273,
+    "pressure_allreduce": 0.004503001999999996,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 27.0
+   },
+   {
+    "wall": 0.5205169420223683,
+    "iters": 29,
+    "predictor": 0.00019575899932533503,
+    "momentum": 0.2525151160079986,
+    "projection": 0.26743979298043996,
+    "pressure_allreduce": 0.004692611999999998,
+    "pressure_allreduce_count": 4736.0,
+    "momentum_sweeps": 27.0
+   }
+  ]
+ },
+ "gate": {
+  "steps": 13,
+  "quantity": "u_mean",
+  "value": 0.00016388902085859007,
+  "max_open_divergence": 2.7355964783465533e-14
+ },
+ "physics_result": {},
+ "env": {
+  "OMPI_MCA_plm_slurm_args": "--external-launcher",
+  "SLURM_JOB_USER": "tec16020",
+  "SLURM_JOB_UID": "45030",
+  "SLURM_JOB_GPUS": "0,1,2,3",
+  "SLURM_JOB_START_TIME": "1789712073",
+  "OMPI_MCA_btl": "^ofi",
+  "SLURM_JOB_END_TIME": "1789714773",
+  "SLURM_JOB_CPUS_PER_NODE": "64(x8)",
+  "UCX_NET_DEVICES": "mlx5_5:1,mlx5_4:1,mlx5_3:1,mlx5_0:1,mlx5_2:1,ib-bond0",
+  "SLURM_JOB_PARTITION": "gpu_h100",
+  "SLURM_JOB_NUM_NODES": "8",
+  "OMPI_MCA_pml": "ucx",
+  "SLURM_JOBID": "26877295",
+  "SLURM_JOB_QOS": "normal",
+  "UCX_MODULE_DIR": "/sw/arch/RHEL9/EB_production/2024/software/UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0/ucx",
+  "PECLET_BIND_GPU": "0",
+  "OMPI_MCA_mtl": "^ofi",
+  "OMPI_MCA_orte_tmpdir_base": "/dev/shm/",
+  "OMPI_MCA_coll_han_priority": "0",
+  "OMP_PROC_BIND": "false",
+  "PECLET_CORE_HALO_VERBOSE": "1",
+  "SLURM_JOB_ACCOUNT": "tes24005",
+  "UCX_MEMTYPE_CACHE": "n",
+  "SLURM_JOB_ID": "26877295",
+  "OMP_NUM_THREADS": "8",
+  "UCX_PROTO_ENABLE": "n",
+  "SLURM_JOB_NAME": "pec-gpu",
+  "SLURM_JOB_GID": "44804",
+  "SLURM_JOB_NODELIST": "gcn[117-118,120-122,125,128-129]",
+  "SLURM_JOB_GROUP": "tec16020",
+  "OMPI_MCA_orte_precondition_transports": "019a1d6f00000000-019a1d6f00000000"
+ },
+ "host": "gcn117.local.snellius.surf.nl",
+ "timestamp": "2026-09-18T08:14:54+0200"
+}

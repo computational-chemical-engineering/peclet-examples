@@ -1,158 +1,71 @@
-# peclet 1.0.0 scaling deposit — decision log (append only)
+# peclet 1.1.0 scaling record — decision log (append only)
 
-2026-09-12  Deposit excludes FoxBerry and every external code.
-  Options: (a) carry the FoxBerry head-to-head into the deposit; (b) peclet-only; (c) peclet plus
-  the public codes (CaNS/incflo/OpenFOAM) already in the gallery.
-  CHOSEN (b), by the user. Reasoning: FoxBerry is an in-house TU/e code
-  (gitlab.tue.nl:SMM/Berry_Project) — not public, so its numbers are not independently
-  verifiable by a reader, and a DOI-minted head-to-head against an unpublished code cited in an
-  NWO proposal is a different act from a gallery page. The gallery keeps the comparison.
-  Carried by: this campaign's scope. Reversible by: adding a reference series to the plots.
+What was chosen, what was rejected, and why. The evidence lives in `summary.md`, `gates.md`,
+`headline.json` and the raw `results/**/*.json`.
 
-2026-09-12  One Zenodo Dataset record covering all four ladders (user).
+2026-09-16  SCOPE: this record measures ONE implementation.
+  USER DIRECTIVE. The page and the dataset report peclet.flow 1.1.0 and contain no data from any
+  earlier version — not as a comparison, not as a baseline, not in the figures. Rejected: carrying
+  the predecessor's ladders for contrast, which would have made the record a version comparison
+  rather than a statement of what this release does.
+  Consequences, all executed: the companion pinned-solver campaign and its overlay figure were
+  removed from `analyze.py`; every amendment callout was stripped from the page source; figure
+  titles derive the version from the data instead of a literal.
 
-2026-09-13  Work in the plain peclet-examples checkout, not a worktree.
-  The work is a new additive directory in a repo with no build; other sessions are active in that
-  checkout (its tree was dirty with another session's re-render), so every commit stages named
-  paths only. Reversible by: git mv into a worktree.
+2026-09-16  MEASURE THE RELEASE TAG, not the commit that was about to become it.
+  The first trees were built at umbrella 5b527ec, before v1.1.0 was tagged. The delta to the tag was
+  checked rather than assumed: flow gained one release commit (version strings + the core repin),
+  core gained a clang-format commit (comment re-wrapping) plus its own release commit, morton was
+  identical — so those builds were NUMERICALLY the release. They were still discarded, because they
+  reported `flow.__version__ = 1.0.1` and a record titled 1.1.0 whose raw data says 1.0.1 does not
+  ship. Both trees were rebuilt at the tag and the two pilot runs taken on the earlier build were
+  deleted rather than kept.
+  Evidence: `census-h100.txt` / `census-cpu.txt` (umbrella 24b0417, tag v1.1.0).
 
-2026-09-13  Provisioning is a campaign-local install script, not suite tools/hpc/install_snellius.sh.
-  Options: (a) run the family site installer; (b) a trimmed copy carried inside the artifact.
-  CHOSEN (b): the deposit needs morton+core+flow only, and a 3-hour GPU build that dies on voro
-  costs budget and a day. The copy names its ancestor. Reversible by: calling the suite script.
+2026-09-16  `install_bench.sh` accepts a tag, a branch OR a commit SHA.
+  It cloned `--branch <tag>`, which cannot express "the commit that will become the release". Now it
+  clones, then `checkout --detach`, with a third argument decorating the path. The census records
+  the RESOLVED sha, which is what the record cites.
 
-2026-09-13  ONE TREE PER BACKEND on the cluster ($PROJ/suite-v1.0.0-bench-<target>).
-  Caught before it produced data: the first submission pointed both the CUDA and the host build at
-  one checkout, one extern prefix and one venv, so whichever finished last would own the installed
-  flow. Both jobs cancelled (26628180/26628182) and the mixed tree deleted. Any result from a tree
-  two builds shared is SUSPECT, not merely stale.
+2026-09-17  A RUN REFUSES TO START against a build it was not asked for.
+  The trees are named `v1.1.0-tag` while the run scripts default `TAG_VERSION=v1.1.0`, so one
+  forgotten export would have silently measured the superseded build — the failure mode this suite
+  has lost campaigns to. `EXPECT_FLOW_VERSION` is compared against `peclet.flow.__version__` at the
+  head of every run and the job dies if they differ. Rejected: remembering to pass it.
 
-2026-09-13  Single case family for all four ladders: triply periodic, body-force-driven Stokes flow
-  through a periodic sphere packing, cut-cell IBM.
-  Options: (a) reproduce the inlet/outlet channel case for the strong ladders and use a periodic
-  bed for the weak one; (b) one periodic case family everywhere.
-  CHOSEN (b): the strong and weak ladders then share rung 1 exactly, the same physics gate applies
-  to every run, one bed artifact serves the study, and it avoids the known open-face IBM defect.
-  Reversible by: a BC=channel path in the driver (not written).
+2026-09-17  THE LADDERS WERE RELEASED WITHOUT WAITING FOR THE 4-GPU PILOT.
+  The pilot had been PENDING 5 h on a partition with 51 nodes allocated and 12 reserved. Serialising
+  34 jobs behind it would have cost hours for information the per-run version guard already
+  enforces; a broken multi-GPU halo fails fast rather than consuming the 45-minute cap, and runs on
+  the same `core` the previous campaign exercised to 32 GPUs. The pilot stayed queued as a canary.
+  Rejected: waiting, at a cost measured in hours per rung.
 
-2026-09-13  The weak ladder TILES one unit cell rather than packing a fresh bed per rung.
-  Options: (a) a per-rung random bed (what the earlier porous study did); (b) exact periodic
-  replication of one unit cell.
-  CHOSEN (b): with (a) the permeability scatter across rungs is bed statistics, which is noise in
-  the physics gate. With (b) the tiled problem is the SAME problem, so the observable is one number
-  every rung must reproduce, and disagreement means a defect. Stated in the report: the large
-  rungs are replications, not independent beds.
+2026-09-18  THE MOMENTUM SOLVER IS RECORDED BY NAME, and the sweep count with it.
+  1.1.0 returns `diagnostics.velocity_solver()`; the record stores it rather than inferring the
+  solver from a boolean. `momentum_sweeps` — which the solver already returns — was added to the
+  per-step whitelist after it turned out to be the key that decides whether a slow rung is doing
+  more work or the same work more slowly. Both are read through a guard so a missing diagnostic
+  cannot destroy a completed run's timings.
 
-2026-09-13  New unit cell (1043 spheres, R = 18 cells at 384³) rather than reusing the committed
-  5000-sphere bed (R = 10.7 cells at 384³).
-  Reason: the porous-scaling refine ladder found cut-cell k converged to four digits at R >= 16, so
-  R = 18 makes the physics gate a statement about the solver rather than about an under-resolved
-  bed. Grown with the RELEASED peclet-dem 1.0.0 wheel from PyPI, so the artifact is reproducible
-  with pip. Reversible by: PACK=.
+2026-09-18  THE GATE'S PRIMARY CONFIGURATION IS DERIVED FROM THE DATA.
+  The grouping hard-coded "primary = velocity multigrid OFF", which was the predecessor's default.
+  Under 1.1.0 every run has it ON, so the primary group came out empty and `render_page.py` refused
+  to build the page. Fixed by taking the majority configuration as primary. The grouping itself is
+  KEPT even though this record has only one configuration: it exists to CATCH a split, not to
+  average over one.
 
-2026-09-13  Pressure multigrid depth is requested as deep as the grid admits (LEVELS=10, clamped),
-  not the shipped default of 4.
-  Reason: depth is a property of the grid, not a tuning constant, and a fixed shallow default would
-  make the study measure the default instead of the solver. This is the ONE stated departure from
-  the shipped 1.0.0 configuration; everything else (MG-PCG rtol 1e-8, telescoping, the 'auto'
-  bottom, the velocity-MG auto rule, the coupled momentum tolerance) is untouched, and
-  PECLET_CORE_GPU_AWARE_MPI is left UNSET so the shipped auto-detection is what gets measured.
-  LEVELS=4 is reported as a sensitivity point at one rung. Reversible by: LEVELS=.
+2026-09-18  ONE STATED DEPARTURE FROM SHIPPED DEFAULTS: multigrid depth.
+  The pressure multigrid is asked for as much depth as the grid admits rather than the default four
+  levels, because depth is a property of the grid. The cost of the default is measured rather than
+  argued: the same 8-GPU weak rung at four levels takes 179 435 ms per step against 2 202 ms at full
+  depth — 81× — at an unchanged iteration count. That run is in the tables and excluded from every
+  ladder. Everything else is shipped default.
 
-2026-09-13  The permeability march is OPT-IN, not run at every rung.
-  A 600-step march at 32 GPUs is ~25 minutes for a number that is identical at every rung. Instead
-  every run reports <u> after its fixed WARMUP+NSTEPS from rest — one allreduce, and a sharper gate
-  because it compares a transient the distributed step must reproduce bit-for-bit. The march runs
-  at a few rungs to produce the permeability itself.
-
-2026-09-13  CPU ladder takes EXCLUSIVE nodes at every rung.
-  Trade: exclusive removes shared-node interference (worth more in a citable record) but gives the
-  sub-node rungs (24/48/96) up to 8x the per-rank memory bandwidth of the full-node rungs, which
-  flatters the baseline and understates the reported efficiencies. Stated in the report; the
-  apples-to-apples segment is 192 -> 1536.
-
-2026-09-13  The reproducible 16-GPU strong-scaling anomaly is REPORTED, not diagnosed.
-  At 16 GPUs the fixed-problem step (926 ms) is slower than at 8 (857 ms), and a second allocation
-  reproduces it to 1.00x — so it is structural, not node placement. It lives entirely in the
-  projection phase (303 -> 514 ms) with an identical multigrid hierarchy at both rungs.
-  Options: (a) spend GPU budget bisecting it (decomposition shape, halo pattern, coarse-level
-  behaviour); (b) report the measurement and name the untested hypothesis.
-  CHOSEN (b). The deposit's scope is what 1.0.0 does, not why; a reproducible anomaly reported with
-  its phase attribution is a contribution, and smoothing it away or calling it noise would be the
-  failure. The suspicion (8 GPUs give cubic per-rank blocks, 16 give 1:2:2) is stated AS a
-  hypothesis. Follow-up belongs in the suite's own scaling work, not here.
-
-2026-09-13  The Taylor-Green run is presented as a CONTROL, not as "the cost of the IBM".
-  The first draft said the geometry costs a factor 1.0x in step time. That comparison is not
-  like-for-like: the control advects and the bed case is creeping (advection off), so the two differ
-  in physics as well as geometry. The page now says so explicitly and quotes only what the control
-  does isolate — the 3.7x pressure-iteration ratio, and the weak-efficiency gap (88 % vs 79 %).
-
-2026-09-13  The equivalence gate groups by SOLVER CONFIGURATION as well as by problem.
-  set_velocity_multigrid_auto turns the velocity multigrid on below ~65k cells/rank, so the
-  1536-core rungs run a different momentum solver from the rest of the ladder. Ungrouped, the gate
-  reported 3.7e-07 and hid a 8.4e-11 agreement inside it. Grouped, the record reads: 8.4e-11 over
-  25 runs and two backends; 1.4e-16 for the control; the three switched rungs identical to the last
-  digit. The distance between configurations is reported as its own measurement.
-
-2026-09-14  This session's `git push` carried another session's deliberately-unpushed commits.
-  The gallery re-render campaign (peclet-examples PROGRESS.md, Claude-Session 01RCL1exd...) was
-  holding 37 commits that port every page to the 1.0.0 API, because pushing them without the
-  regenerated `_freeze/` outputs turns the Publish job red — which its own notes said in as many
-  words. Pushing this benchmark from the shared checkout carried them to origin, and the Publish
-  job has been red since (runs 34728504367, 34735258567, 34819804007). A later push carried their
-  remaining commit 45aafa7 too: their commits sit BELOW ours in history, so pushing ours cannot
-  avoid pushing theirs without a rebase.
-  Lesson for a shared checkout: `git push` is not scoped to your own work. Check
-  `git log --oneline origin/main..HEAD` BEFORE pushing, not after, and if it carries commits you
-  did not write, find out whether they were being held.
-  Mitigation: no content of theirs is live — every failed build stops before the deploy job.
-
-2026-09-14  The page was published by a surgical one-off deploy, not by fixing the red pipeline.
-  Options: (a) wait for the re-render campaign (six pages still need renders, two wanting a
-  multi-hour serial GPU budget); (b) set Quarto `freeze: true` so stale pages render from old
-  outputs; (c) install peclet in the publish CI; (d) deploy the last green tree plus this page.
-  CHOSEN (d). (b) would publish 1.0.0 prose against pre-1.0.0 figures on 47 pages — the campaign
-  had already flagged that DEM numbers move ~20 % between those renders, so it would put
-  internally inconsistent pages on a public gallery. (c) would execute those pages on a CPU CI and
-  publish numbers from a machine the pages were not authored against. (a) was the user's explicit
-  no.
-  (d) publishes the site EXACTLY as it was already live plus one static page: base cde8b25 (the
-  last green deploy), `git diff` against it touches only this page's directory and its index card,
-  and the page has zero code cells so nothing executes. Branch `deploy/benchmark-1.0.0-page`,
-  run 34819466850. The `github-pages` environment is main-only, so that branch was allowed
-  temporarily and THE POLICY WAS REMOVED IMMEDIATELY AFTER — verified back to main-only.
-  Reversible by: the campaign's own full deploy, which supersedes it entirely.
-
-2026-09-15  The record is AMENDED IN PLACE rather than re-measured, and the measurements stand.
-  Rejected: re-running the ladders with the momentum solver pinned and publishing those as the
-  headline.
-  Reason: the question this record answers is what peclet.flow 1.0.0 does with its shipped
-  defaults. A ladder run with a hand-pinned solver answers a different and also useful question,
-  which is what the companion campaign `benchmarks/momentum-solver` is for. Replacing the numbers
-  would silently change the subject; correcting the readings does not.
-  Evidence: benchmarks/momentum-solver/{STATE.md,results}.
-
-2026-09-15  The 16-GPU anomaly's decomposition-shape hypothesis is WITHDRAWN, not merely flagged.
-  Superseded: the 2026-09-13 entry, which stated it AS a suspicion and declined to test it.
-  Reason: the record's own rungs contradict it. Surface-to-volume of the level-0 block is monotone
-  in rank count (0.0312 / 0.0417 / 0.0521 at 8 / 16 / 32 GPUs) and the 32-GPU rung -- the most
-  elongated block and the worst ratio -- is the FASTEST rung on the ladder. A monotone quantity
-  cannot produce a non-monotone dip. What replaces it is a list of what the anomaly is not, which
-  is a stronger statement than an untested suspicion.
-  Evidence: hierarchy_predict.txt (peclet.flow.predict_hierarchy, flow 1.0.0), summary.md.
-
-2026-09-15  "The projection's weak-scaling growth is where the global coupling lives" is CORRECTED.
-  Reason: the record's own `pressure_allreduce` timer puts the global reduction at 0.6 % of the
-  projection at the top weak rung. The growth is coarse-level latency plus a hierarchy that
-  DEEPENS along the ladder (8 levels at 1 GPU, 10 at 32) because weak scaling grows the global
-  grid -- part of which is not a parallel inefficiency at all.
-
-2026-09-15  The companion campaign is archived INSIDE this deposit's tarball.
-  Reason: the addendum quotes its numbers and analyze.py reads them from the sibling directory, so
-  a record shipped without it could not reproduce its own corrections -- the exact failure this
-  deposit's "no number the data does not contain" rule exists to prevent.
-
-2026-09-15  NOT TAKEN, needs the user: whether the 1.0.0 shipped default (`vmgAutoCells_ = 65536`)
-  should change, and whether the GPU ladders are also at the momentum cap. The second is being
-  measured; the first is a release decision.
+2026-09-18  THE 16-GPU STRONG RUNG IS REPORTED, REPRODUCIBLE AND UNDIAGNOSED.
+  It takes 1349 ms against 574 at 8 GPUs and 539 at 32 — 2.3× slower than both neighbours. Three
+  further allocations were run specifically to test it; they agree to 1.02×, so it is not placement.
+  Momentum sweeps (29) and pressure iterations (29.7) are identical at all three rungs, so it is not
+  convergence: the same work executes ~2.3× slower. The decomposition-shape explanation is
+  REJECTED on this record's own data — surface-to-volume is monotone (0.0312 / 0.0417 / 0.0521) and
+  the worst-shaped rung is the fastest. Rejected: omitting it, or quoting the ladder without it.
+  Evidence: `hierarchy_predict.txt`, the `_sweeps` runs, `summary.md`.

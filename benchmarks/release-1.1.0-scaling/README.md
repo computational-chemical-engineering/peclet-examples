@@ -62,6 +62,7 @@ sbatch --nodes=1 --gpus-per-node=1 --ntasks-per-node=1 snellius/install_bench.sh
 sbatch -p genoa --gpus-per-node=0 -c 32 -t 02:00:00    snellius/install_bench.sh v1.1.0 cpu
 
 # 3. the ladders (each rung names its own allocation: billing is per ALLOCATED GPU)
+export EXPECT_FLOW_VERSION=1.1.0           # every run refuses a build that is not this version
 ./snellius/submit_ladders.sh pilot        # go/no-go: 1 GPU, 4 GPUs, 192 cores
 ./snellius/submit_ladders.sh weak
 ./snellius/submit_ladders.sh strong-gpu
@@ -88,7 +89,7 @@ PACK=bed_phi0.45_r18_s0.npz CASE=bed MODE=weak GPR=384 \
 |---|---|
 | `scaling_bench.py` | the driver — all four ladders, one JSON schema (`peclet-scaling-1`) |
 | `make_bed.py`, `bed_phi0.45_r18_s0.npz` | the unit cell and the script that grew it |
-| `snellius/install_bench.sh` | site build of the released tag (one tree per backend) |
+| `snellius/install_bench.sh` | site build of a tag, branch or commit SHA (one tree per backend) |
 | `snellius/run_gpu.sh`, `run_cpu.sh` | one rung each |
 | `snellius/submit_ladders.sh` | queues a whole ladder with the right allocation per rung |
 | `snellius/snellius_env.sh` | the 2024a toolchain every script agrees on |

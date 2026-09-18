@@ -48,7 +48,9 @@ tar --exclude='__pycache__' --exclude='zenodo/build' --exclude='.quarto' \
   echo
   echo "packaged          : $(date -Is)"
   echo "peclet-examples   : $COMMIT"
-  echo "software          : peclet 1.1.0 (all packages tagged v1.1.0, 2026-09-12)"
+  echo "software          : peclet.flow 1.1.0 (tag v1.1.0, umbrella 24b0417)"
+  echo "                    with peclet-core 1.0.2 (v1.0.2) and peclet-morton 1.0.1 (v1.0.1)"
+  echo "                    -- the exact pins are in census-*.txt, taken from the build itself"
   echo "                    concept DOI 10.5281/zenodo.21132445"
   echo "machine           : Snellius (SURF), partitions gpu_h100 and genoa"
   echo

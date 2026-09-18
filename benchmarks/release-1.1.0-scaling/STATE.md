@@ -43,51 +43,47 @@ NON-periodic domain faces and this study is triply periodic.
 
 ## Where we are now
 
-**Builds done, pilot green, ladders NOT yet submitted.**
+**MEASUREMENT COMPLETE. Page and deposit built. Not yet published.**
 
-Both trees built at the pinned ref and import correctly — `flow 1.0.1 space Cuda has_mpi True`
-and `space OpenMP has_mpi True`. Census confirms umbrella `5b527ec`, core `e6a612d`,
-flow `d05eb15`, morton `6e8abef` in both.
+39 runs at the v1.1.0 tag: 35 primary + 4 targeted repeats. All report `flow_version 1.1.0` and
+`velocity_solver multigrid`. No failures.
 
-### Pilot (2 of 3 rungs; the 4-GPU rung is still queued)
+| | 1.1.0 |
+|---|---|
+| Weak, 32 H100 @ 1.81 Gcells | 30.8 → 19.8 Mcell/s per GPU, **64 % efficiency**, iterations flat 29.7 → 29.8 |
+| Strong, genoa 24 → 1536 cores | 36.3 s → **0.89 s**, 40.9×, **64 % of ideal** |
+| Strong, 1 → 32 H100 | 1.8 s → 0.54 s, 3.4× (11 % of ideal) |
+| Gate ⟨u⟩ | **8e−11** worst over 27 runs, 1 → 1536 ranks, both backends |
+| TGV control | 4e−16 over 7 runs; weak 73 % |
+| Permeability | k/R² = 0.017122, 3 rungs, spread 5e−13 |
+| Depth control | 4 levels costs **81×** (179 435 vs 2 202 ms) at 8 GPUs, iterations unchanged |
 
-| rung | ms/step | vmg active | pressure iters | gate ⟨u⟩ |
-|---|---|---|---|---|
-| 1 H100, CUDA | **1840.5** | True | 29.7 | 1.6388902085859007e-04 |
-| 192 genoa cores, OpenMP | 8479.5 | True | 29.7 | 1.6388902085859007e-04 |
+**Why weak efficiency is 64 %** — from this record's own phase timers: momentum is 828 ms at the
+base and grows 38 %; the projection is 1006 → 1705 ms, +70 %. The cheaper momentum solve leaves the
+step dominated by the phase that scales worst.
 
-Two things this establishes before any real money is spent:
+**The 16-GPU strong rung is anomalous, reproducible and undiagnosed.** 1349 ms against 574 at 8 and
+539 at 32; 4 allocations agree to 1.02×. Momentum sweeps (29) and pressure iterations (29.7) are
+IDENTICAL at all three rungs, so it is not convergence — the same work runs ~2.3× slower.
+Decomposition shape is ruled out on monotonicity (S/V 0.0312 / 0.0417 / 0.0521, worst-shaped rung
+fastest).
 
-1. **The condition-number rule selects the V-cycle, as predicted.** 1840.5 ms is the number the
-   previous campaign measured for the velocity multigrid *pinned by hand* (1840 ms) against its own
-   default's 4025 ms. So 1.1.0's automatic rule now picks, by itself, what the old default could
-   not.
-2. **The equivalence gate agrees to the last digit across backends** — CUDA on one GPU and OpenMP
-   on 192 ranks return the same ⟨u⟩. That is the property the whole record rests on.
+## Built and waiting
 
-### Two defects found and fixed in the pilot, which is what a pilot is for
+- page `index.qmd` (rendered, no placeholders), figures, `gates.md`, `summary.md`, `headline.json`
+- deposit `zenodo/build/`: tarball + HTML + PDF + both build censuses + `MANIFEST.sha256`
+- `benchmarks/index.qmd` card now points at this record
 
-- `velocity_solver()` is bound on **`diagnostics`**, not on the solver. The driver called
-  `s.velocity_solver()` and got an AttributeError. The runs survived only because the diagnostic is
-  read through a guard (`_opt`) that refuses to lose a completed run's timings to a renamed query.
-  Fixed to `s.diagnostics.velocity_solver()` and re-synced; the queued 4-GPU rung picks it up.
-- The build's `flow.__version__` is **1.0.1**, so every result JSON records `flow_version: 1.0.1`.
-  A page titled 1.1.0 whose own raw data says 1.0.1 is not publishable as-is — see the open
-  question below.
+## Next action — needs the user
 
-### Open — needs the user
-
-1. **Tag and bump 1.1.0 from `5b527ec`?** That makes the version string, the record and the data
-   agree with no re-run. Alternatives: label the record by commit, or carry an explicit
-   "measured at `5b527ec`, released as 1.1.0" provenance line and leave the raw field honest.
-2. **Is anything still due to land in `flow` or `core` before the tag?** A compute-path change
-   forces the affected ladders to re-run; an inert one (the core pointer delta is precedent) does
-   not.
-
-### Next action
-
-Wait for the 4-GPU pilot rung — the first multi-GPU run on this build and so the first exercise of
-the halo path — then release `weak`, `strong-gpu`, `strong-cpu`, `tgv`, `march`, `spread`, `levels`.
+1. **Delete `benchmarks/release-1.0.0-scaling/`.** The replacement is done everywhere else, but the
+   removal was blocked as an irreversible local action, so the superseded directory is still in the
+   tree. Its history is in git either way.
+2. **Merge `bench/release-1.1.0-scaling` into main and deploy** (the site publishes from main).
+3. **Zenodo:** `ZENODO_TOKEN=... ./zenodo/make_deposit.sh --upload` creates a DRAFT; publishing is a
+   deliberate click and mints the DOI.
+4. **MORPHO:** the drafted edit now needs 1.1.0's numbers — **1.8 Gcells at 64 % with cut-cell IBM**
+   (73 % for the geometry-free control), not the 79 %/88 % drafted against the previous record.
 
 ## Budget (checked 2026-09-16)
 

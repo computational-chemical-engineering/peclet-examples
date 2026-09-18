@@ -300,8 +300,11 @@ for _ in range(NSTEPS):
     t1 = time.perf_counter()
     rec = {"wall": world.allreduce(t1 - t0, op=MPI.MAX),
            "iters": int(s.diagnostics.last_pressure_iterations())}
+    # momentum_sweeps is what separates "more iterations" from "slower iterations" when a rung
+    # misbehaves, and the solver already returns it -- the previous campaign discovered the hard way
+    # that dropping it from this whitelist is what makes a momentum anomaly undiagnosable.
     for kk in ("predictor", "momentum", "projection", "pressure_allreduce",
-               "pressure_allreduce_count"):
+               "pressure_allreduce_count", "momentum_sweeps"):
         if kk in tm:
             op = MPI.SUM if kk.endswith("count") else MPI.MAX
             rec[kk] = world.allreduce(float(tm[kk]), op=op)
