@@ -182,5 +182,14 @@ filters:
 
 execute:
   freeze: auto
+  # 2x the pixels in every executed figure, with the display size written into the image, so
+  # the SITE layout does not change — the figures simply stop being soft on a retina display,
+  # and stop having to be enlarged when a release film puts one on a 4K frame.
+  # `fig-dpi` alone would NOT work: each page sets its own `figure.dpi` in an rcParams block,
+  # which overrides it. See the film's design note, films/QUALITY.md §4.3, in
+  # ~/Codes/youtube_publishing.
+  # A freeze key is the md5 of the .qmd alone, so this does not invalidate anything: pages
+  # keep replaying their current figures and roll over to retina as each is re-executed.
+  fig-format: retina
 
 bibliography: references.bib

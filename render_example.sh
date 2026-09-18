@@ -4,7 +4,10 @@
 #   ./render_example.sh <example-name> [--keep-freeze]
 set -euo pipefail
 SUITE=/home/frankp/Codes/suite
-QUARTO=$HOME/.local/quarto-1.6.40/bin/quarto
+# Quarto lives in the suite venv (the one venv every project activates), not on the system
+# PATH and not in a tarball under ~/.local — that tarball was 1.6.40, three minor versions
+# behind, and was deleted on 2026-09-18.
+QUARTO=$SUITE/.venv/bin/quarto
 export QUARTO_PYTHON=$SUITE/.venv/bin/python
 # The SDF-showcase batch (2026-08-30) builds: flow/dem CUDA + the core geom authoring module +
 # the pure-Python coupling package. Override PECLET_LOCAL_BUILD in the environment for a page that
