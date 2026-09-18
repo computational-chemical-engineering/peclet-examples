@@ -41,12 +41,13 @@ pip install peclet-flow-cu13 peclet-dem-cu13   # CUDA wheels for the GPU section
 
 ---
 
-## Start here: the 1.0.0 film
+## Start here: the 1.1.0 film
 
 :::::: {.section-lead}
-Seven minutes on what the suite does and — at length — the evidence for it: the exact solutions
-first, then published experiments, then performance measured against another open-source solver on
-the same grid and the same machine.
+Eight minutes on what the suite does and — at length — the evidence for it: the exact solutions
+first, then published experiments, then the release's own scaling record — 32 H100 GPUs carrying
+1.81 billion cells at 64 % weak efficiency, with every rung of the ladder returning the same mean
+velocity to one part in ten billion.
 
 ::::::
 
@@ -56,8 +57,8 @@ the same grid and the same machine.
      (`.ratio > *`), so the <p> gets the 16x9 box and the iframe falls back to its intrinsic
      300x150 — the film renders as a thumbnail. Fixed 2026-09-17. -->
 <div class="ratio ratio-16x9" style="max-width:100%;margin:0 auto;">
-  <iframe src="https://www.youtube.com/embed/L_uAHnL6Gq8?rel=0&amp;modestbranding=1"
-          title="Peclet 1.0.0 — resolve what you can, model what you must"
+  <iframe src="https://www.youtube.com/embed/7D5Em5zvZRI?rel=0&amp;modestbranding=1"
+          title="Peclet 1.1.0 — resolve what you can, model what you must"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           referrerpolicy="strict-origin-when-cross-origin"
           allowfullscreen
