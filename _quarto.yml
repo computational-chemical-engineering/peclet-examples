@@ -28,6 +28,12 @@ website:
   repo-url: "https://github.com/computational-chemical-engineering/peclet-examples"
   repo-actions: [source, issue]
   page-navigation: true
+  # Social cards. For a code nobody has heard of, the first visitors arrive from a link someone
+  # shared — and without these a shared link renders as a bare URL. Quarto fills og:title and
+  # og:description from each page's own title and subtitle, at render time: no page source
+  # changes, no freeze touched (the same constraint the filters below document).
+  open-graph: true
+  twitter-card: true
   navbar:
     logo: assets/peclet-logo-circle.svg
     left:
@@ -179,6 +185,9 @@ format:
 # changes and no freeze is invalidated. See the header of the filter for why that matters.
 filters:
   - _download-badge.lua
+  # Meta description from each page's subtitle, at RENDER time for the same freeze reason the
+  # badge filter documents. See the header of _landing.lua (also for what was tried and cut).
+  - _landing.lua
 
 execute:
   freeze: auto
