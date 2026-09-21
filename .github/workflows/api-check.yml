@@ -42,23 +42,15 @@ jobs:
         with:
           python-version: "3.12"
 
-      # cfd-dem pulls peclet-coupling, which four pages import. peclet-core is SEPARATE: it is
-      # sdist-only and sits behind the [mpi] extra, so `pip install peclet` does NOT provide
-      # `peclet.core.geom` — which eleven pages import for CSG scene authoring and which has nothing
-      # to do with MPI. Without it those eleven fail with ModuleNotFoundError, as the 2026-09-14 and
-      # 2026-09-21 scheduled sweeps both did. It builds from sdist with no MPI toolchain present
-      # (core's find_package(MPI) only disables the halo when it misses). Everything else here is
-      # what the pages plot and render with.
-      # peclet-core is an sdist whose build is core/python/CMakeLists.txt, and that file does
-      # `find_package(MPI REQUIRED COMPONENTS CXX)` — so installing it needs an MPI toolchain even
-      # though the eleven pages want it only for `core.geom`, which has no MPI in it at all.
-      - name: MPI toolchain (peclet-core builds from sdist and its CMake requires MPI)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq libopenmpi-dev
-
+      # cfd-dem pulls peclet-coupling, which four pages import. Scene authoring needs nothing
+      # extra any more: peclet 1.2.0 put `peclet.geom` (wheels, numpy-only) in the base install
+      # (suite/docs/CORE_BOUNDARY.md). Before that it was `peclet.core.geom` in the sdist-only
+      # peclet-core, so this job had to apt-install an MPI toolchain to build a package the pages
+      # wanted purely for geometry — that step, and the separate peclet-core install, are gone.
       - name: Install peclet and the pages' stack
         run: |
           python -m pip install --upgrade pip
-          pip install "peclet[cfd-dem]" peclet-core numpy scipy pandas matplotlib pyvista scikit-image \
+          pip install "peclet[cfd-dem]" numpy scipy pandas matplotlib pyvista scikit-image \
                       plotly ipython imageio trimesh h5py
           pip install -e .        # peclet_examples, the repo's own helpers
           pip list | grep -i peclet

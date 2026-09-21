@@ -48,22 +48,14 @@ if _local:
         sys.path.insert(0, p)
 elif importlib.util.find_spec("peclet") is None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet", "scikit-image"], check=True)
-# peclet.core.geom (CSG authoring) ships in peclet-core, which is an sdist: its CMake does
-# find_package(MPI REQUIRED) even though geom itself uses no MPI, so it needs a toolchain.
-if importlib.util.find_spec("peclet.core") is None:
-    if subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet-core"]).returncode:
-        raise SystemExit(
-            "This page needs peclet-core for peclet.core.geom. It builds from source and its\n"
-            "CMake requires MPI: on Colab/Ubuntu run  !apt-get install -y libopenmpi-dev\n"
-            "and re-run this cell. See https://computational-chemical-engineering.github.io/peclet/DEPLOYMENT/")
 ```
 
 ::: {.callout-note}
 ## Requires a recent `peclet`
-`set_wall_transform` and `diagnostics.wall_sdf_at` are new, and the CSG authoring layer
-(`peclet.core.geom`) is newer than the current PyPI release; on Colab you need a source build of
-`peclet-core` and `peclet-dem` until the next release goes out. The page is *frozen*, so it renders
-and reads correctly either way.
+`set_wall_transform` and `diagnostics.wall_sdf_at` are new. The CSG authoring layer is
+`peclet.geom`, which `pip install peclet` provides as a wheel from peclet 1.2.0 — before that it was
+`peclet.core.geom` in the sdist-only `peclet-core`, which needed an MPI toolchain
+(suite/docs/CORE_BOUNDARY.md). The page is *frozen*, so it renders and reads correctly either way.
 :::
 
 ```{python}
@@ -73,7 +65,7 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 from skimage import measure
 
-from peclet.core import geom
+from peclet import geom
 from peclet import dem as pdem
 
 plt.rcParams.update({"figure.dpi": 130, "font.size": 9, "axes.axisbelow": True,
@@ -447,7 +439,7 @@ CHECK = textwrap.dedent("""
     for _p in os.environ.get("PECLET_LOCAL_BUILD", "").split(os.pathsep):
         if _p:
             sys.path.insert(0, _p)
-    from peclet.core import geom
+    from peclet import geom
     from peclet import dem as pdem
 
     RP, R_COL, H_COL, R_IMP, Y_IMP, G = 0.4, 10.0, 14.0, 8.0, 3.0, 9.81
