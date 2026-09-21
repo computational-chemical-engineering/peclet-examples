@@ -17,9 +17,20 @@ element granular dynamics** (spheres and arbitrary SDF shapes), and **coupled ga
 (Kokkos: CUDA, HIP, OpenMP; MPI for multi-rank).
 
 ```bash
-pip install peclet          # CPU wheels — every page here runs from this
-pip install peclet-flow-cu13 peclet-dem-cu13   # CUDA wheels for the GPU sections
+pip install peclet          # CPU (OpenMP) wheels — every page here runs from this
 ```
+
+For the GPU sections, install the CUDA family **into its own environment** — `peclet-cu13` provides
+the same `peclet.*` imports as `peclet`, so the two are mutually exclusive:
+
+```bash
+python -m venv .venv-gpu && source .venv-gpu/bin/activate
+pip install peclet-cu13     # CUDA 13: flow + pnm + dem + voro, and morton
+```
+
+Linux x86-64 (on Windows, inside WSL2). Only an NVIDIA driver is needed — no CUDA toolkit; the
+runtime arrives as a dependency wheel. Multi-GPU/MPI and AMD/HIP are source or container builds:
+see [Install & run](https://computational-chemical-engineering.github.io/peclet/DEPLOYMENT/).
 
 **Why peclet?**
 
@@ -831,8 +842,8 @@ pip install peclet && git clone https://github.com/computational-chemical-engine
 quarto render peclet-examples/examples/taylor-green/index.qmd --execute
 ```
 
-The GPU sections (million-particle beds, cube drums, DNS) need the CUDA wheels or a local build —
-each page's *Reproduce this* section gives the exact commands.
+The GPU sections (million-particle beds, cube drums, DNS) need `peclet-cu13` (in its own venv, as
+above) or a local build — each page's *Reproduce this* section gives the exact commands.
 
 :::::: {.callout-note}
 ## How these pages build
