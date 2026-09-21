@@ -48,7 +48,7 @@ if _local:
     for p in _local.split(os.pathsep):
         sys.path.insert(0, p)
 elif importlib.util.find_spec("peclet") is None:
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet", "scikit-image"],
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet", "peclet-core", "scikit-image"],
                    check=True)
 ```
 
@@ -685,7 +685,7 @@ static.
 
 ```bash
 # from PyPI (needs a peclet newer than the current release — see the note at the top)
-pip install peclet scikit-image
+pip install peclet peclet-core scikit-image
 quarto render examples/pall-ring-packing/index.qmd --execute
 
 # from a local suite build

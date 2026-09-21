@@ -50,7 +50,7 @@ if _local:
     for p in _local.split(os.pathsep):
         sys.path.insert(0, p)
 elif importlib.util.find_spec("peclet") is None:
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet"], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet", "peclet-core"], check=True)
 ```
 
 ```{python}
