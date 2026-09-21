@@ -47,8 +47,15 @@ if _local:
     for p in _local.split(os.pathsep):
         sys.path.insert(0, p)
 elif importlib.util.find_spec("peclet") is None:
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet", "peclet-core", "scikit-image"],
-                   check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet", "scikit-image"], check=True)
+# peclet.core.geom (CSG authoring) ships in peclet-core, which is an sdist: its CMake does
+# find_package(MPI REQUIRED) even though geom itself uses no MPI, so it needs a toolchain.
+if importlib.util.find_spec("peclet.core") is None:
+    if subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peclet-core"]).returncode:
+        raise SystemExit(
+            "This page needs peclet-core for peclet.core.geom. It builds from source and its\n"
+            "CMake requires MPI: on Colab/Ubuntu run  !apt-get install -y libopenmpi-dev\n"
+            "and re-run this cell. See https://computational-chemical-engineering.github.io/peclet/DEPLOYMENT/")
 ```
 
 ::: {.callout-note}

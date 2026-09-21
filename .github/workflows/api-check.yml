@@ -49,6 +49,12 @@ jobs:
       # 2026-09-21 scheduled sweeps both did. It builds from sdist with no MPI toolchain present
       # (core's find_package(MPI) only disables the halo when it misses). Everything else here is
       # what the pages plot and render with.
+      # peclet-core is an sdist whose build is core/python/CMakeLists.txt, and that file does
+      # `find_package(MPI REQUIRED COMPONENTS CXX)` — so installing it needs an MPI toolchain even
+      # though the eleven pages want it only for `core.geom`, which has no MPI in it at all.
+      - name: MPI toolchain (peclet-core builds from sdist and its CMake requires MPI)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libopenmpi-dev
+
       - name: Install peclet and the pages' stack
         run: |
           python -m pip install --upgrade pip
