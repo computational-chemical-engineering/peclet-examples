@@ -172,7 +172,35 @@ for lab, z in rows:
 
 ## The collision fix
 
-<!-- FILLED IN: short account + link to flow/doc/vof_overlap_design.md -->
+When two markers overlap, the Weymouth–Yue advection of each one leaves **sub-cell debris** in
+cells the other bubble fills: volume fractions of order $10^{-8}$ to $10^{-3}$, strung out along the
+rim of the contact lens. Every such cell passes the "is this interfacial?" test, so the
+height-function cascade gives it a curvature — and over a debris cell nothing in the stencil is a
+real interface, so that curvature is garbage: values of 273 and −428 per cell were measured where the
+bubble's own curvature is about 0.4 per cell. Multiplied by $\sigma\nabla C_k$, it produced the one-step blow-up.
+The balanced-force pairing of the per-marker forces with the union colour, which had been blamed, is
+exact for a constant curvature and was not the cause.
+
+The fix has three parts, all inside the block container:
+
+- **Debris removal with exact return.** After every advection, a marker's cells that are interfacial
+  but have no cell above $C = \tfrac12$ within two cells are cleared, and their volume goes back to
+  the same marker's genuine interface, weighted by $C(1-C)$. Values below the wisp threshold
+  ($10^{-8}$) are cleared the same way. Every marker's volume is conserved to round-off
+  ($\le 2\times10^{-14}$ relative over thousands of steps). TBFsolver instead deletes fragments and
+  does not return them.
+- **A curvature bound** $|\kappa| \le 1/\Delta_{\min}$ per cell, active only for block markers, as
+  a backstop for any stencil the removal misses.
+- **A capillary time-step bound for the gas–gas contact.** Where two markers overlap, a phantom
+  interface separates two gas regions, so the capillary limit is set by the gas density rather
+  than the liquid's. The bound switches on only while markers overlap.
+
+A static non-overlapping bubble is unchanged. A two-bubble shear collision that blew up at step
+2910 now completes. The bubbly channel that died at step 10 706 runs past 13 000 steps with
+volumes conserved to $2\times10^{-14}$. MPI runs at 1, 2 and 4 ranks are bitwise identical. The
+design note, with every measured gate, is
+[`doc/vof_overlap_design.md`](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_overlap_design.md)
+in `peclet.flow`.
 
 ## Cost
 
