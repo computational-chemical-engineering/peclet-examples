@@ -1,0 +1,193 @@
+---
+title: "A bubble column, run twice: peclet.flow vs TBFsolver"
+subtitle: "Sixteen deformable bubbles rising in a closed column between two walls, on the same grid from the same initial state, in peclet's multiple-marker VoF on one GPU and in TBFsolver — the reference implementation of that method — on 24 CPU cores."
+author: "Peclet"
+date: "2026-09-25"
+categories: [flow, VoF, bubbly flow, accuracy, performance, benchmark, validation]
+jupyter: python3
+resources:
+  - data/
+  - scripts/
+---
+
+## What this measures
+
+A **bubble column** is the simplest bubbly flow with a large-scale structure of its own: gas
+rises, the liquid it displaces has to come back down, and in a closed column it does so along
+the walls, setting up a circulation that in turn moves the bubbles sideways. This page runs one
+such column with two codes that implement the *same* method:
+
+- **[TBFsolver](https://github.com/cifanip/TBFsolver)** (Cifani et al., ["Highly scalable DNS
+  solver for turbulent bubble-laden channel flow"](https://www.sciencedirect.com/science/article/pii/S0045793018303311),
+  *Computers & Fluids* 2018) — the MPI+OpenMP Fortran code that introduced **multiple-marker VoF on moving
+  blocks**: every bubble carries its own volume-fraction field on its own small box, so two
+  bubbles that touch can never merge numerically.
+- **`peclet.flow`** — the same container (one Weymouth–Yue geometric VoF field per bubble on a
+  moving box, the union colour `max_k C_k` for density and viscosity, each bubble's own
+  balanced-force surface tension summed into the momentum equation) on Kokkos, running here on
+  one RTX 5080.
+
+Both runs use **the same 128 × 96 × 64 cubic grid, the same 16 bubble centres, the same physical
+parameters and the same closed-column forcing**, so every difference below is a difference of
+discretisation, not of set-up.
+
+::: {.callout-note}
+## Why this page exists
+Colliding bubbles used to be *outside* peclet's rating: two markers that interpenetrated during
+a collision produced, a few hundred steps later, a one-step velocity blow-up. Building this
+benchmark is how that failure was found, diagnosed (not the force pairing it had been blamed on,
+but a curvature estimate on sub-cell debris one marker leaves inside another) and fixed. The
+section [The collision fix](#the-collision-fix) summarises it.
+:::
+
+## The case
+
+Units: bubble diameter $D$, liquid density $\rho_l$ and gravity $g$ are 1. The bubbles are
+case **E1** of Loisy, Naso & Spelt (*J. Fluid Mech.* **816**, 2017) — Archimedes number
+$Ar = \sqrt{\rho_l(\rho_l-\rho_g) g D^3}/\mu_l = 29.9$ and Bond number
+$Bo = (\rho_l-\rho_g) g D^2/\sigma = 2.0$, weakly ellipsoidal bubbles whose isolated rise
+Reynolds number is about 31 — with density and viscosity ratios $\rho_g/\rho_l =
+\mu_g/\mu_l = 0.02$ as in Bunner & Tryggvason (*J. Fluid Mech.* **466**, 2002).
+
+| | |
+|---|---|
+| column | $8D$ tall (periodic), $6D$ between the no-slip walls, $4D$ deep (periodic) |
+| grid | 128 × 96 × 64 cubic cells, $D/h = 16$ |
+| bubbles | 16, a perturbed 4 × 2 × 2 array; void fraction 4.36 % |
+| forcing | $(\rho - \langle\rho\rangle)\,g$ along the column, and **zero net volume flux** |
+| run | $t = 0 \ldots 150\,\sqrt{D/g}$; statistics over $t \in [50, 150]$ |
+
+The zero-net-flux constraint is what makes this a *batch* column. Without it (TBFsolver's
+`flowCtrl 3`, the mean pressure gradient fixed at the mixture weight and the flux free), the
+liquid descending along the walls feels an upward wall friction that nothing balances and the
+whole column develops a steadily growing net upflow — measured at
+$d\langle\rho u\rangle/dt \approx -0.0056$ before we switched. Both codes now remove the mean
+velocity after every step (TBFsolver `flowCtrl 2`, `flow_rate 0`).
+
+```{python}
+#| code-summary: "Data loading + shared figure style"
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+
+DATA = "data"
+plt.rcParams.update({"figure.dpi": 130, "font.size": 10, "axes.grid": True,
+                     "grid.alpha": 0.3, "axes.axisbelow": True,
+                     "figure.facecolor": "white", "savefig.bbox": "tight"})
+C_PECLET = "#2a78d6"
+C_TBF = "#e34948"
+
+
+def ld(name):
+    p = os.path.join(DATA, name + ".npz")
+    return np.load(p, allow_pickle=True) if os.path.exists(p) else None
+
+
+tbf = ld("tbf_closed_t150")
+pec = ld("peclet_closed")
+T0, T1 = 50.0, 150.0
+
+
+def window(z, key="rise_speed"):
+    m = (z["t"] >= T0) & (z["t"] <= T1)
+    return z[key][m]
+```
+
+## Rise speed
+
+The observable is the **drift velocity** — the gas-phase mean velocity relative to the
+volume-averaged mixture velocity, positive upward — computed identically from both codes' fields.
+
+```{python}
+#| label: fig-rise
+#| fig-cap: "Mean bubble drift velocity against time. Both runs start from rest from the same 16 centres; the shaded band is the statistics window."
+fig, ax = plt.subplots(figsize=(6.5, 3.2))
+ax.axvspan(T0, T1, color="0.93", zorder=0)
+ax.plot(tbf["t"], tbf["rise_speed"], color=C_TBF, lw=1.2, label="TBFsolver (24 CPU cores)")
+if pec is not None:
+    ax.plot(pec["t"], pec["rise_speed"], color=C_PECLET, lw=1.2, label="peclet.flow (1 GPU)")
+ax.set_xlabel(r"$t\,\sqrt{g/D}$")
+ax.set_ylabel(r"drift velocity $/\sqrt{gD}$")
+ax.legend(loc="lower right")
+plt.show()
+
+for name, z in (("TBFsolver", tbf), ("peclet.flow", pec)):
+    if z is None:
+        continue
+    w = window(z)
+    print(f"{name:12s} mean drift over [{T0:.0f},{T1:.0f}] = {w.mean():.4f} +- {w.std():.4f}  "
+          f"(Re = {w.mean() * 29.9 / np.sqrt(0.98):.1f})")
+```
+
+## The column's structure
+
+```{python}
+#| label: fig-profiles
+#| fig-cap: "Plane-averaged void fraction (left) and liquid velocity along the column (right; positive = downward) across the wall-normal direction, averaged over the statistics window."
+fig, axs = plt.subplots(1, 2, figsize=(7.5, 3.2))
+for z, c, lab in ((tbf, C_TBF, "TBFsolver"), (pec, C_PECLET, "peclet.flow")):
+    if z is None:
+        continue
+    m = (z["t"] >= T0) & (z["t"] <= T1)
+    y = z["y"]
+    axs[0].plot(y, z["alpha_y"][m].mean(axis=0), color=c, label=lab)
+    axs[1].plot(y, z["u_liq_y"][m].mean(axis=0), color=c, label=lab)
+axs[0].set_xlabel("$y/D$"); axs[0].set_ylabel(r"void fraction $\langle\alpha\rangle$")
+axs[1].set_xlabel("$y/D$"); axs[1].set_ylabel(r"liquid velocity $/\sqrt{gD}$")
+axs[0].legend()
+plt.tight_layout(); plt.show()
+```
+
+## Conservation
+
+```{python}
+#| label: fig-volume
+#| fig-cap: "Relative change of the total gas volume. peclet's markers conserve their volume to round-off by construction — debris and sub-threshold residue are returned to the bubble they came from; TBFsolver deletes fragments and satellites and does not return them."
+fig, ax = plt.subplots(figsize=(6.5, 3.0))
+ax.plot(tbf["t"], tbf["gas_volume"] / tbf["gas_volume"][0] - 1, color=C_TBF, label="TBFsolver")
+if pec is not None:
+    v = pec["marker_volume_total"]
+    ax.plot(pec["t"], v / v[0] - 1, color=C_PECLET, label="peclet.flow (sum of markers)")
+ax.set_xlabel(r"$t\,\sqrt{g/D}$"); ax.set_ylabel("relative gas volume change")
+ax.legend(); plt.show()
+```
+
+## Where the two codes differ, and why
+
+<!-- FILLED IN AFTER THE PRODUCTION RUN: transient gap, smoothing ablation, resolution checks -->
+
+```{python}
+#| label: tbl-transient
+#| tbl-cap: "Drift velocity in the start-up transient. TBFsolver at two resolutions, TBFsolver with its property smoothing switched off, and peclet."
+rows = [("TBFsolver, D/h = 16", tbf), ("TBFsolver, D/h = 24", ld("tbf_closed_d24_t5")),
+        ("TBFsolver, no smoothing", ld("tbf_closed_nosmooth_t5")), ("peclet.flow, D/h = 16", pec),
+        ("peclet.flow, D/h = 24", ld("peclet_closed_d24_t5"))]
+print(f"{'':28s}" + "".join(f"   t = {k}" for k in range(1, 6)))
+for lab, z in rows:
+    if z is None:
+        continue
+    vals = [z["rise_speed"][np.argmin(abs(z["t"] - k))] for k in range(1, 6)]
+    print(f"{lab:28s}" + "".join(f"   {v:.3f}" for v in vals))
+```
+
+## The collision fix
+
+<!-- FILLED IN: short account + link to flow/doc/vof_overlap_design.md -->
+
+## Cost
+
+<!-- FILLED IN: ms/step, steps, wall time, hardware for both -->
+
+## Reproduce this
+
+```bash
+# the case, shared by both codes
+python scripts/case.py
+# TBFsolver (patched to read explicit bubble centres: tbfsolver/bubblePositions.patch)
+python scripts/make_tbf_case.py && cp -r tbfsolver/case tbfsolver/run
+(cd tbfsolver/run && OMP_NUM_THREADS=3 mpirun -np 8 --bind-to none ./TBFsolver > run.log)
+python scripts/tbf_read.py tbfsolver/run --out data/tbf_closed_t150.npz
+# peclet.flow
+python scripts/run_peclet.py --out peclet/run
+python scripts/peclet_reduce.py peclet/run --out data/peclet_closed.npz --log peclet/run.log
+```
