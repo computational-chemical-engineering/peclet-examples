@@ -1,0 +1,16 @@
+--- /home/frankp/Codes/TBFsolver/src/VOF/VOF.f90	2026-08-30 09:51:27.528384180 +0200
++++ /tmp/claude-1003/-home-frankp-Codes-suite/ead398a0-dcae-4941-9337-36222cb4b0f1/scratchpad/VOF_nosmooth.f90	2026-09-24 23:24:21.357299765 +0200
+@@ -239,7 +239,12 @@
+         integer :: i,smooth_level
+         
+         smooth_level=1
+-        
++
++        ! peclet ablation: NO smoothing (cs = c), to test the property-smoothing hypothesis
++        cs%f_ = c%f_
++        call updateBoundaries(cs)
++        return
++
+         !step 1
+         call cellToVertex(c%f_,s_cv,							        &	
+         				  this%mesh_%xc_,this%mesh_%yc_,this%mesh_%zc_,	&

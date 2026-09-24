@@ -22,6 +22,8 @@ Bubbles: Loisy, Naso & Spelt, J. Fluid Mech. 816 (2017) 94, case E1 — Archimed
 (weakly ellipsoidal, isolated Re0 ~ 31 from Loth 2008), with rho_g/rho_l = mu_g/mu_l = 0.02 as in
 Bunner & Tryggvason (2002). Units: D = rho_l = g = 1.
 """
+import os
+
 import numpy as np
 
 # --- physics (D = rho_l = g = 1) ----------------------------------------------------------
@@ -38,7 +40,8 @@ U_REF = np.sqrt(G * D)         # the gravitational velocity scale; isolated U0 ~
 
 # --- geometry -----------------------------------------------------------------------------
 LX, LY, LZ = 8.0, 6.0, 4.0     # vertical (periodic), wall-normal (walls), spanwise (periodic)
-CELLS_PER_D = 16
+CELLS_PER_D = int(os.environ.get("BUBBLE_COLUMN_CELLS_PER_D", "16"))   # 16 = the benchmark; the
+#   environment override exists only for the page's resolution check (24), never for the benchmark
 NX, NY, NZ = int(LX * CELLS_PER_D), int(LY * CELLS_PER_D), int(LZ * CELLS_PER_D)   # 128 x 96 x 64
 H = D / CELLS_PER_D
 
