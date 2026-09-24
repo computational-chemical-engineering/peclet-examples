@@ -42,3 +42,8 @@ benchmarks/foxberry-scaling/results/**/*.log
 # run logs and frame dumps from the long solver scripts
 *.log
 examples/*/rivulets_*/
+
+# TBFsolver bubble-column run directories (snapshots ~130 MB each; the case/ specs are versioned);
+# run_open/ is the stopped flowCtrl 3 (open, weight-balanced) contrast run
+benchmarks/bubble-column/tbfsolver/run/
+benchmarks/bubble-column/tbfsolver/run_open/
