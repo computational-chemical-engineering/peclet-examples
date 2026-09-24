@@ -47,3 +47,5 @@ examples/*/rivulets_*/
 # run_open/ is the stopped flowCtrl 3 (open, weight-balanced) contrast run
 benchmarks/bubble-column/tbfsolver/run/
 benchmarks/bubble-column/tbfsolver/run_open/
+benchmarks/bubble-column/tbfsolver/run150/
+benchmarks/bubble-column/peclet/

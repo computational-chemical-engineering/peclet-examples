@@ -68,8 +68,8 @@ def bubble_centres():
 VOID_FRACTION = NB * np.pi / 6 * D ** 3 / (LX * LY * LZ)
 
 # --- run control --------------------------------------------------------------------------
-T_END = 60.0                   # ~60 D/U0
-T_STATS = 20.0                 # statistics window [T_STATS, T_END]
+T_END = 150.0                  # ~150 D/U0: the column circulation needs ~50 to settle (TBFsolver run)
+T_STATS = 50.0                 # statistics window [T_STATS, T_END]
 DT_OUT = 1.0                   # snapshot interval (TBFsolver dtout; peclet sampling)
 
 
