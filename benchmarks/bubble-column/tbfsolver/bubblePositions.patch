@@ -1,0 +1,45 @@
+--- VOF/vofBlocks.f90.orig	2026-09-24 09:50:49.075737952 +0200
++++ VOF/vofBlocks.f90	2026-09-24 09:50:49.095738105 +0200
+@@ -1247,6 +1247,9 @@
+ 		integer :: i,j,k,bi
+ 		integer :: nx,ny,nz
+ 		logical :: random_distr
++		logical :: usePosFile
++		real(DP), allocatable :: posFile(:,:)
++		integer :: ib, nposf
+ 		
+ 		nx = mesh%nx_
+ 		ny = mesh%ny_
+@@ -1287,6 +1290,18 @@
+ 		
+ 		!set static bubble number
+ 		s_nb = nbx*nby*nbz
++
++		! peclet benchmark patch: optional explicit centres (one "x y z" line per bubble,
++		! in the nbx-fastest order of the loop below)
++		inquire(file='specs/bubblePositions', exist=usePosFile)
++		if (usePosFile) then
++			allocate(posFile(3,s_nb))
++			open(unit=77, file='specs/bubblePositions', status='old', action='read')
++			do ib=1,s_nb
++				read(77,*) posFile(1,ib), posFile(2,ib), posFile(3,ib)
++			end do
++			close(77)
++		end if
+ 		
+ 		!allocate bubble indexes array
+ 		call allocateArray(s_idx_init,1,6,1,s_nb)
+@@ -1310,6 +1325,13 @@
+ 						z0 = z0 + (rnd(3)-0.5d0)*0.3d0*sz
+ 					end if
+ 								
++					! peclet benchmark patch: explicit positions from specs/bubblePositions
++					if (usePosFile) then
++						x0 = posFile(1,bi)
++						y0 = posFile(2,bi)
++						z0 = posFile(3,bi)
++					end if
++
+ 					call init_indexes_box(mesh,bi,x0,y0,z0,R)
+ 					
+ 					s_pos_init(1,bi)=x0
