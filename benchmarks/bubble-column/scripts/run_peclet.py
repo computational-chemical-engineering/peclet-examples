@@ -71,6 +71,12 @@ def build(blocks=None):
     rho_av = case.RHO_L + (case.RHO_G - case.RHO_L) * alpha
     s.set_property_model("force_x", "linear", "C",
                          [S * (case.RHO_L - rho_av) * case.G, S * (case.RHO_G - case.RHO_L) * case.G])
+    # CLOSED column: zero net volume flux, the batch-column condition (TBFsolver flowCtrl 2,
+    # flow_rate 0). At the end of every step the solver adds one uniform shift to every x-face
+    # velocity so its volume mean is 0: x is periodic and the walls are y faces, so the field stays
+    # discretely divergence-free, and the net upflow that wall friction on the down-flowing liquid
+    # would otherwise build up is removed. A device reduction -- no host round trip per step.
+    s.set_bulk_velocity(True, "x", 0.0)
     return s
 
 
@@ -154,14 +160,7 @@ def main():
                 raise SystemExit(f"step {step}: {nm} = {L[nm]} — state broken; last checkpoint kept")
         dt = min(DTSAFE * L["cfl_dt"], DTSAFE * L["capillary_dt"], next_out - t)
         s.set_dt(dt)
-        s.step()
-        # CLOSED column: zero net volume flux, the batch-column condition (TBFsolver flowCtrl 2,
-        # flow_rate 0).  A uniform shift of every x-face velocity keeps the field discretely
-        # divergence-free (x is periodic, the walls are y faces) and removes the net upflow that
-        # wall friction on the down-flowing liquid would otherwise build up.
-        u = s.get_u()
-        ub = float(u.mean())
-        s.set_velocity(0, np.asfortranarray(u - ub))
+        s.step()                                       # closes the net flux itself (build())
         t += dt
         step += 1
         nstep += 1
