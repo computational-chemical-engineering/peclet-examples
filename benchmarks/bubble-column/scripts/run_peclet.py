@@ -56,7 +56,10 @@ def build(blocks=None):
     s.set_property_model("rho", "linear", "C", [case.RHO_L, case.RHO_G - case.RHO_L])
     s.set_property_model("mu", "linear", "C", [S * S * case.MU_L, S * S * (case.MU_G - case.MU_L)])
     s.set_surface_tension(S ** 3 * case.SIGMA)
-    s.set_pressure_chebyshev(True, 800, 1e-10)       # last: the rho closure re-selects the driver
+    s.set_pressure_pcg(True, 800, 1e-10)             # last: the rho closure re-selects the driver.
+    # MG-PCG, not the variable-density default Chebyshev: single GPU (no dot-product latency to
+    # hide) and Chebyshev re-estimates its spectral bounds every step under variable density --
+    # measured 54 vs 104 ms/step on this case, same 1e-10 tolerance.
     if blocks is None:
         seeds = [(c[0] * S, c[1] * S, c[2] * S, case.R * S) for c in case.bubble_centres()]
         s.enable_vof_blocks(seeds)
