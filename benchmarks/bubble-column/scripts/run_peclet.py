@@ -75,11 +75,11 @@ def build(blocks=None):
     s.set_property_model("force_x", "linear", "C",
                          [S * (case.RHO_L - rho_av) * case.G, S * (case.RHO_G - case.RHO_L) * case.G])
     # CLOSED column: zero net volume flux, the batch-column condition (TBFsolver flowCtrl 2,
-    # flow_rate 0). At the end of every step the solver adds one uniform shift to every x-face
-    # velocity so its volume mean is 0: x is periodic and the walls are y faces, so the field stays
+    # flow_rate 0) -- a mixture superficial velocity of 0 along x. At the end of every step the
+    # solver adds one uniform shift to every x-face velocity so its volume mean is 0: x is periodic and the walls are y faces, so the field stays
     # discretely divergence-free, and the net upflow that wall friction on the down-flowing liquid
     # would otherwise build up is removed. A device reduction -- no host round trip per step.
-    s.set_bulk_velocity(True, "x", 0.0)
+    s.set_superficial_velocity(True, "x", 0.0)
     return s
 
 
