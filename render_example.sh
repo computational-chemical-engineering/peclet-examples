@@ -24,6 +24,9 @@ export QUARTO_PYTHON=$SUITE/.venv/bin/python
 # 2026-09-21 need its tree too:  cmake -S $SUITE/geom/python -B $SUITE/geom/build_gal && cmake --build ...
 export PECLET_LOCAL_BUILD="${PECLET_LOCAL_BUILD:-$SUITE/geom/build_gal:$SUITE/core/python/build_gal_cuda:$SUITE/flow/build_gal_cuda:$SUITE/dem/build_gal_cuda:$SUITE/voro/build_gal_cuda:$SUITE/pnm/build_gal_cuda:$SUITE/coupling/build_gal_cuda}"
 export PATH=/usr/local/cuda-13.2/bin:$PATH
+# Without OMP_PROC_BIND, Kokkos prints an OpenMP warning block INTO the page output (seven pages
+# carried it after the 2026-10-02 re-freeze until this was set).
+export OMP_PROC_BIND=${OMP_PROC_BIND:-false}
 name="$1"; shift || true
 target="examples/$name/index.qmd"
 [ -f "$target" ] || { echo "no such example: $target"; exit 1; }

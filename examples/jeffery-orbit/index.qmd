@@ -275,7 +275,7 @@ for r in runs:
 | the spheroid's centre | held; force not applied | Jeffery's problem is torque-only |
 
 @eq-jeffery is for **unbounded** shear; the two $r = 2$ boxes land within a few percent of it,
-with the residual a mix of confinement, periodic images, resolution, and the ~0.7% uncertainty the
+with the residual a mix of confinement, periodic images, resolution, and the ~0.5% uncertainty the
 larger box's own shear-rate control carries. That is the honest error bar on a genuinely hard
 configuration — a body whose orientation, and therefore whose cut-cell geometry, changes every
 single step for a thousand coupled steps, with the torque recomputed from the discrete reaction

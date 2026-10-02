@@ -73,7 +73,7 @@ print("pack: %d rings, %.2f x %.2f periodic in x,z; bed spans y = %.2f .. %.2f; 
       "%d tree nodes ride along" % (len(pos), L, L, ymin, ymax, len(node_ints) // 3))
 ```
 
-The bed's own measured properties, from the packing page: bulk voidage $\varepsilon = 0.797$,
+The bed's own measured properties, from the packing page: bulk voidage $\varepsilon = 0.800$,
 specific surface $S_v = 8.35/D$, ring volume $V_{\text{ring}} = 0.268\,D^3$ — those, not a
 handbook row, feed the correlation below.
 
@@ -188,7 +188,7 @@ $$ {#eq-ergun}
 
 ```{python}
 #| label: sweep
-EPS = 0.797
+EPS = 0.800
 V_RING, S_RING = 0.268, 6.561             # measured on the packing page, in ring diameters
 DP = 6.0 * V_RING / S_RING * RES          # Sauter diameter 6V/S = 0.245 D, in cells
 rows = []
@@ -269,7 +269,7 @@ plt.show()
 | regime covered | viscous (Blake–Kozeny); the inertial transition needs Re_D ≳ 10 — see *Adapt* |
 
 The honest framing, spelled out: Ergun's 150/1.75 were fitted to granular packings; a 48-ring bed
-of thick-walled ($t/D = 0.12$) mini-rings at $\varepsilon = 0.797$ is outside that fit's
+of thick-walled ($t/D = 0.12$) mini-rings at $\varepsilon = 0.800$ is outside that fit's
 population, so landing **inside the factor-of-two band** — here in fact within ~10% across the
 sweep — is the right claim, not percent agreement, which the correlation itself could not support
 here. The covered range is the viscous regime; pushing into the inertial branch at this viscosity
