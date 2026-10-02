@@ -20,7 +20,9 @@ export QUARTO_PYTHON=$SUITE/.venv/bin/python
 #       -DCMAKE_PREFIX_PATH="$SUITE/extern/install/nvidia-cuda" && cmake --build build_gal_cuda -j
 # NOTE the interpreter must NOT have peclet wheels installed, or a page whose bootstrap mishandles
 # this variable silently renders against the WHEEL instead of your build and you never find out.
-export PECLET_LOCAL_BUILD="${PECLET_LOCAL_BUILD:-$SUITE/core/python/build_gal_cuda:$SUITE/flow/build_gal_cuda:$SUITE/dem/build_gal_cuda:$SUITE/voro/build_gal_cuda:$SUITE/pnm/build_gal_cuda:$SUITE/coupling/build_gal_cuda}"
+# peclet.geom (host-only, no Kokkos/MPI) left peclet-core in 1.2.0; the eleven pages ported to it on
+# 2026-09-21 need its tree too:  cmake -S $SUITE/geom/python -B $SUITE/geom/build_gal && cmake --build ...
+export PECLET_LOCAL_BUILD="${PECLET_LOCAL_BUILD:-$SUITE/geom/build_gal:$SUITE/core/python/build_gal_cuda:$SUITE/flow/build_gal_cuda:$SUITE/dem/build_gal_cuda:$SUITE/voro/build_gal_cuda:$SUITE/pnm/build_gal_cuda:$SUITE/coupling/build_gal_cuda}"
 export PATH=/usr/local/cuda-13.2/bin:$PATH
 name="$1"; shift || true
 target="examples/$name/index.qmd"
