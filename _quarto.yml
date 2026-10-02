@@ -159,6 +159,8 @@ website:
             text: "Porous-bed scaling & permeability (Snellius H100)"
           - href: benchmarks/voro-update-throughput/index.qmd
             text: "Voronoi update throughput (workstation → H100)"
+          - href: benchmarks/bubble-column/index.qmd
+            text: "Bubble column: peclet vs TBFsolver (multiple-marker VoF)"
     right:
       - text: "Docs"
         href: "https://computational-chemical-engineering.github.io/peclet/"

@@ -86,6 +86,18 @@ under MPI halved the step again.
 :::
 
 ::: {.g-col-12 .g-col-md-6}
+### [Bubble column: peclet vs TBFsolver →](bubble-column/index.qmd)
+Sixteen deformable bubbles in a closed walled column, run in peclet's multiple-marker VoF and in
+TBFsolver on the same grid from the same state. Single bubbles and in-line wakes agree to a few
+per cent; the swarm differs by ~15 % through near-contact behaviour neither code resolves —
+checked against a drafting pair, a resolution study and Loisy et al.'s published free swarms.
+Building it found and fixed three defects in peclet (collision curvature, a lower-wall leak,
+viscosity placement).
+
+*flow · VoF · bubbly flow · code comparison · validation*
+:::
+
+::: {.g-col-12 .g-col-md-6}
 ### [Channel DNS multi-GPU scaling on Snellius H100 →](channel-scaling/index.qmd)
 The performance companion to the [wall-bounded turbulence](../examples/wall-bounded-turbulence/index.qmd)
 DNS: measured **weak scaling** of the distributed incompressible solver on NVIDIA H100 with GPU-aware
