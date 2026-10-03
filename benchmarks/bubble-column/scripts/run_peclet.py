@@ -56,10 +56,14 @@ def build(blocks=None):
     s.set_property_model("rho", "linear", "C", [case.RHO_L, case.RHO_G - case.RHO_L])
     s.set_property_model("mu", "linear", "C", [S * S * case.MU_L, S * S * (case.MU_G - case.MU_L)])
     s.set_surface_tension(S ** 3 * case.SIGMA)
-    s.set_pressure_pcg(True, 800, 1e-10)             # last: the rho closure re-selects the driver.
+    s.set_pressure_pcg(True, 800, 1e-8)              # last: the rho closure re-selects the driver.
     # MG-PCG, not the variable-density default Chebyshev: single GPU (no dot-product latency to
     # hide) and Chebyshev re-estimates its spectral bounds every step under variable density --
-    # measured 54 vs 104 ms/step on this case, same 1e-10 tolerance.
+    # measured 54 vs 104 ms/step on this case at the same tolerance.
+    # rtol 1e-8 (USER DECISION 2026-10-03; the solver default stays 1e-10): flow's D1 tolerance
+    # study on this case (flow doc/vof_step_performance_log.md, WO-13 + the rerun on main a0afc9b)
+    # gives 24 % fewer pressure iterations (13.9 -> 10.6) with the total gas-volume drift still at
+    # 5e-12 per 2000 steps and the static-drop / Hysing results unchanged to <= 2e-11.
     if blocks is None:
         seeds = [(c[0] * S, c[1] * S, c[2] * S, case.R * S) for c in case.bubble_centres()]
         s.enable_vof_blocks(seeds)
