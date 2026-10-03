@@ -264,27 +264,32 @@ are bitwise identical. Design and gates:
 
 ## Cost
 
-Measured on the **same Snellius genoa node** (2 × AMD EPYC 9654), both codes pinned to the same
-cores, `peclet.flow` at commit 7fdec0d (2026-09-25):
+Measured on **Snellius genoa nodes** (2 × AMD EPYC 9654). TBFsolver ran on the same node in every
+job, both codes pinned to the same cores; `peclet.flow` main as of 2026-10-03 (commit d02d3b0):
 
-| ms per step | TBFsolver | peclet.flow |
-|---|---|---|
-| 24 cores (8 MPI × 3 threads) | 45–46 | 199–203 |
-| 24 cores (1 × 24 threads) | — | 186–189 |
-| 192 cores | 25–33 | 76–81 |
-| one GPU (RTX 5080), current main | — | **42.7** |
+| ms per step | TBFsolver | peclet.flow | peclet.flow, `-march=znver4` |
+|---|---|---|---|
+| 24 cores (8 MPI × 3 threads) | 45–46 | 166–169 | 163 |
+| 24 cores (1 × 24 threads) | — | 144 | 140 |
+| 192 cores | 25 | 82–85 | 84 |
+| one GPU (RTX 5080) | — | **36–37** | — |
 
 Time steps are equal (≈ 1.55 × 10⁻³ in both), so cost per step is cost per simulated time.
 
-On one GPU peclet runs this case about as fast as TBFsolver on 24 CPU cores; on the CPU it is
-4× slower. Two-thirds of peclet's CPU step is the pressure solve: TBFsolver solves a
-constant-coefficient Poisson equation directly by FFT (the Dodd–Ferrante splitting), peclet the
-exact variable-coefficient one iteratively. A performance programme is under way (design:
-[`doc/vof_step_performance_design.md`](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_step_performance_design.md)):
-the first part — a face-form multigrid operator, fused ghost fills, device-resident Krylov
-scalars, batched per-bubble stages, all bit-for-bit identical in results — took the GPU step from
-54 to 42.7 ms; a device-resident coarse solve and an opt-in constant-coefficient pressure driver
-come next. This table will be updated as they land.
+On one GPU peclet runs this case faster than TBFsolver on 24 CPU cores; on the CPU it is about
+3× slower. The difference is mostly the pressure solve (60 % of peclet's CPU step): TBFsolver
+solves a constant-coefficient Poisson equation directly by FFT (the Dodd–Ferrante splitting);
+peclet solves the exact variable-coefficient one with multigrid-preconditioned CG. We built and
+tested the constant-coefficient splitting in peclet too — it is stable, and needs 40 % fewer
+pressure iterations, but a bubble at rest then carries spurious currents about 5000× larger than
+with the exact projection, so it is parked, not shipped.
+
+Since the first measurement (2026-09-25: 186–203 ms on 24 cores, 54 ms on the GPU) a
+performance programme ([design](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_step_performance_design.md))
+has landed: a face-form multigrid operator, fused ghost fills, device-resident Krylov scalars,
+batched per-bubble stages and curvature fallback — all bit-for-bit identical in results — and a
+device-resident coarse-grid solve, which removed the last GPU↔host transfers in the step. The CPU
+pressure solve is the next target.
 
 ## Reproduce this
 
