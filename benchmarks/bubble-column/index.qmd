@@ -60,6 +60,7 @@ Reynolds number is about 31 (Loth 2008) — with density and viscosity ratios $\
 | bubbles | 16, a perturbed 4 × 2 × 2 array; void fraction 4.36 % |
 | forcing | $(\rho - \langle\rho\rangle)\,g$ along the column, and **zero net volume flux** |
 | run | $t = 0 \ldots 150\,\sqrt{D/g}$; statistics over $t \in [50, 150]$ |
+| pressure | exact variable-coefficient projection, MG-PCG to relative residual $10^{-8}$ |
 
 The zero-net-flux constraint makes this a *batch* column: without it, the liquid descending along
 the walls feels an upward wall friction that nothing balances, and the whole column develops a
@@ -124,9 +125,9 @@ for z, c, lab in RUNS:
           f"liquid around the gas {slip.mean():.3f}")
 ```
 
-peclet's bubbles rise **about 15 % faster** than TBFsolver's without smoothing (and 22 % faster
+peclet's bubbles rise **about 19 % faster** than TBFsolver's without smoothing (and 24 % faster
 than with it). The large-scale circulation is not the reason: measured against the liquid that
-actually surrounds the gas, the slip differs by the same 15 %. Why they differ is the subject of
+actually surrounds the gas, the slip still differs by 14 %. Why they differ is the subject of
 [Where the two codes differ](#where-the-two-codes-differ-and-why).
 
 ## The column's structure
@@ -152,7 +153,7 @@ with the liquid coming down along both walls.
 
 ```{python}
 #| label: fig-volume
-#| fig-cap: "Relative change of the total gas volume. peclet's markers conserve their volume to round-off — debris and sub-threshold residue are returned to the bubble they came from; TBFsolver deletes fragments and satellites."
+#| fig-cap: "Relative change of the total gas volume. peclet's markers conserve their volume to the pressure tolerance (1e-10 at the 1e-8 used here) — debris and sub-threshold residue are returned to the bubble they came from; TBFsolver deletes fragments and satellites."
 fig, ax = plt.subplots(figsize=(6.5, 3.0))
 for z, c, lab in RUNS:
     v = z["marker_volume_total"] if "marker_volume_total" in z else z["gas_volume"]
@@ -161,7 +162,7 @@ ax.set_xlabel(r"$t\,\sqrt{g/D}$"); ax.set_ylabel("relative gas volume change")
 ax.legend(); plt.show()
 ```
 
-peclet: $-7\times10^{-13}$ after 94 350 steps. TBFsolver: $-1.2\,\%$ (with smoothing),
+peclet: $+1.3\times10^{-10}$ after 94 980 steps ($-7\times10^{-13}$ with the pressure solved to $10^{-10}$; the case runs at $10^{-8}$, which needs 24 % fewer pressure iterations). TBFsolver: $-1.2\,\%$ (with smoothing),
 $-1.4\times10^{-4}$ (without).
 
 ## Where the two codes differ, and why
