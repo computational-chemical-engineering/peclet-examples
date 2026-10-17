@@ -3,6 +3,7 @@ title: "A bubble column, run twice: peclet.flow vs TBFsolver"
 subtitle: "Sixteen deformable bubbles rising in a closed column between two walls, on the same grid from the same initial state, in peclet's multiple-marker VoF and in TBFsolver — the reference implementation of that method — with an isolated-bubble, a drafting-pair and a published-swarm check to say where they agree and where they do not."
 author: "Peclet"
 date: "2026-10-02"
+date-modified: "2026-10-17"
 categories: [flow, VoF, bubbly flow, accuracy, performance, benchmark, validation]
 jupyter: python3
 resources:
@@ -28,6 +29,10 @@ the walls. This page runs one such column with two codes that implement the *sam
 Both runs use **the same 128 × 96 × 64 cubic grid, the same 16 bubble centres, the same physical
 parameters and the same closed-column forcing**, so every difference below is a difference of
 discretisation, not of set-up.
+
+![The column at $t = 100$ ($D/h = 16$), from the peclet run: the sixteen bubbles, and behind them
+the liquid velocity along the column averaged over the depth — down along both walls, up through
+the core. Bubbles that cross a periodic face are drawn whole.](figures/bubbles_t100.png){#fig-bubbles width=75%}
 
 ::: {.callout-note}
 ## What building this benchmark found and fixed in peclet
@@ -125,9 +130,9 @@ for z, c, lab in RUNS:
           f"liquid around the gas {slip.mean():.3f}")
 ```
 
-peclet's bubbles rise **about 19 % faster** than TBFsolver's without smoothing (and 24 % faster
+peclet's bubbles rise **about 20 % faster** than TBFsolver's without smoothing (and 26 % faster
 than with it). The large-scale circulation is not the reason: measured against the liquid that
-actually surrounds the gas, the slip still differs by 14 %. Why they differ is the subject of
+actually surrounds the gas, the slip still differs by 15 %. Why they differ is the subject of
 [Where the two codes differ](#where-the-two-codes-differ-and-why).
 
 ## The column's structure
@@ -146,8 +151,8 @@ axs[0].legend(fontsize=8)
 plt.tight_layout(); plt.show()
 ```
 
-Both codes put the gas in the core (void fraction ≈ 0.053 in the middle, ≈ 0.01 near the walls)
-with the liquid coming down along both walls.
+Both codes put the gas in the core (void fraction 0.04–0.07 in the middle, highest in peclet) and
+keep it off the walls, with the liquid coming down along both walls.
 
 ## Conservation
 
@@ -162,7 +167,7 @@ ax.set_xlabel(r"$t\,\sqrt{g/D}$"); ax.set_ylabel("relative gas volume change")
 ax.legend(); plt.show()
 ```
 
-peclet: $+1.3\times10^{-10}$ after 94 980 steps ($-7\times10^{-13}$ with the pressure solved to $10^{-10}$; the case runs at $10^{-8}$, which needs 24 % fewer pressure iterations). TBFsolver: $-1.2\,\%$ (with smoothing),
+peclet: $+1.2\times10^{-10}$ after 94 369 steps ($-7\times10^{-13}$ with the pressure solved to $10^{-10}$; the case runs at $10^{-8}$, which needs 24 % fewer pressure iterations). TBFsolver: $-1.2\,\%$ (with smoothing),
 $-1.4\times10^{-4}$ (without).
 
 ## Where the two codes differ, and why
@@ -265,32 +270,44 @@ are bitwise identical. Design and gates:
 
 ## Cost
 
-Measured on **Snellius genoa nodes** (2 × AMD EPYC 9654). TBFsolver ran on the same node in every
-job, both codes pinned to the same cores; `peclet.flow` main as of 2026-10-03 (commit d02d3b0):
+Measured on **Snellius genoa nodes** (2 × AMD EPYC 9654), TBFsolver and peclet in the same job on
+the same cores, median of three runs; `peclet.flow` main as of 2026-10-17 (commit 2ea4c65), pressure
+to relative residual $10^{-8}$ (TBFsolver's FFT solve is direct). The GPU row is a workstation.
 
 | ms per step | TBFsolver | peclet.flow | peclet.flow, `-march=znver4` |
 |---|---|---|---|
-| 24 cores (8 MPI × 3 threads) | 45–46 | 166–169 | 163 |
-| 24 cores (1 × 24 threads) | — | 144 | 140 |
-| 192 cores | 25 | 82–85 | 84 |
-| one GPU (RTX 5080) | — | **36–37** | — |
+| 24 cores (8 MPI × 3 threads) | 45 | 116 | 112 |
+| 24 cores (1 × 24 threads) | — | 68 | 63 |
+| 192 cores | 25 | 57 | 56 |
+| one GPU (RTX 5080) | — | **22** (19 with the FP32 V-cycle) | — |
 
-Time steps are equal (≈ 1.55 × 10⁻³ in both), so cost per step is cost per simulated time.
+Time steps are equal (≈ 1.55 × 10⁻³ in both), so cost per step is cost per simulated time. The
+previous table (2026-10-03) solved the pressure to $10^{-10}$; at that tolerance the CPU rows are
+now 139, 80 and 70 ms (then 166–169, 144 and 82–85), and the GPU row was 36–37 ms.
 
-On one GPU peclet runs this case faster than TBFsolver on 24 CPU cores; on the CPU it is about
-3× slower. The difference is mostly the pressure solve (60 % of peclet's CPU step): TBFsolver
-solves a constant-coefficient Poisson equation directly by FFT (the Dodd–Ferrante splitting);
-peclet solves the exact variable-coefficient one with multigrid-preconditioned CG. We built and
-tested the constant-coefficient splitting in peclet too — it is stable, and needs 40 % fewer
-pressure iterations, but a bubble at rest then carries spurious currents about 5000× larger than
-with the exact projection, so it is parked, not shipped.
+On one GPU peclet runs this case twice as fast as TBFsolver on 24 CPU cores. On 24 cores, as one
+rank, it is 1.4–1.5× slower than TBFsolver, on 192 cores 2.3×. Half of peclet's CPU step (51 %) is
+the pressure solve: TBFsolver solves a constant-coefficient Poisson equation directly by FFT (the
+Dodd–Ferrante splitting); peclet solves the exact variable-coefficient one with
+multigrid-preconditioned CG, about ten iterations per step. We built and tested the
+constant-coefficient splitting in peclet too — it is stable, and needs 40 % fewer pressure
+iterations, but a bubble at rest then carries spurious currents about 5000× larger than with the
+exact projection, so it is parked, not shipped.
 
-Since the first measurement (2026-09-25: 186–203 ms on 24 cores, 54 ms on the GPU) a
-performance programme ([design](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_step_performance_design.md))
-has landed: a face-form multigrid operator, fused ghost fills, device-resident Krylov scalars,
-batched per-bubble stages and curvature fallback — all bit-for-bit identical in results — and a
-device-resident coarse-grid solve, which removed the last GPU↔host transfers in the step. The CPU
-pressure solve is the next target.
+The 8 × 3 row is slow for a reason of our own: the recent host-side speed-ups of the pressure solve
+are on the single-rank path only, and the distributed CPU path does not have them yet. That is the
+next target.
+
+Since the first measurement (2026-09-25: 186–203 ms on 24 cores, 54 ms on the GPU) two performance
+programmes have landed
+([step](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_step_performance_design.md),
+[pressure](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_projection_cost_design.md)):
+a face-form multigrid operator, fused ghost fills, device-resident Krylov scalars, batched
+per-bubble stages, cheaper curvature, a device-resident coarse-grid solve and leaner host kernels and
+reductions — all bit-for-bit identical in results. One option changes the arithmetic and is
+therefore opt-in: a single-precision multigrid V-cycle under the double-precision CG
+(`set_pressure_vcycle_precision("auto")`). On the GPU it takes the step from 22 to 19 ms at the same
+iteration count, and a solve that does not converge with it is redone in double precision.
 
 ## Reproduce this
 
@@ -307,4 +324,5 @@ python scripts/run_peclet.py --out peclet/run
 python scripts/peclet_reduce.py peclet/run --out data/peclet_closed.npz --log peclet/run.log
 # resolution check: BUBBLE_COLUMN_CELLS_PER_D=24 before either code's commands
 # isolated bubble, drafting pair, Loisy free array: scripts/studies/{iso,pair2,run_loisy,run_single}.py
+# the picture of the bubbles (Blender 4.5): render/README.md
 ```
