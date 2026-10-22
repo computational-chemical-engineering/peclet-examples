@@ -3,7 +3,7 @@ title: "A bubble column, run twice: peclet.flow vs TBFsolver"
 subtitle: "Sixteen deformable bubbles rising in a closed column between two walls, on the same grid from the same initial state, in peclet's multiple-marker VoF and in TBFsolver — the reference implementation of that method — with an isolated-bubble, a drafting-pair and a published-swarm check to say where they agree and where they do not."
 author: "Peclet"
 date: "2026-10-02"
-date-modified: "2026-10-17"
+date-modified: "2026-10-22"
 categories: [flow, VoF, bubbly flow, accuracy, performance, benchmark, validation]
 jupyter: python3
 resources:
@@ -270,44 +270,60 @@ are bitwise identical. Design and gates:
 
 ## Cost
 
-Measured on **Snellius genoa nodes** (2 × AMD EPYC 9654), TBFsolver and peclet in the same job on
-the same cores, median of three runs; `peclet.flow` main as of 2026-10-17 (commit 2ea4c65), pressure
-to relative residual $10^{-8}$ (TBFsolver's FFT solve is direct). The GPU row is a workstation.
+Measured on **Snellius genoa nodes** (2 × AMD EPYC 9654), pressure to relative residual $10^{-8}$
+(TBFsolver's FFT solve is direct). The 24-core rows are cores 0–23, one NUMA domain, median of two
+runs in job 28464076 (2026-10-22), `peclet.flow` 353baa8 with core v1.7.0 — the code of
+`peclet.flow` main (0abafe2) for these layouts; at 12 × 2 main restores the legacy partition, which
+is the row shown. TBFsolver and the 192-core rows are job 28238662 (2026-10-17, median of three,
+`peclet.flow` 2ea4c65, not re-measured).
 
-| ms per step | TBFsolver | peclet.flow | peclet.flow, `-march=znver4` |
+| ms per step, 24 cores | peclet.flow | TBFsolver |
+|---|---|---|
+| 1 × 24 threads | **68.0** | — |
+| 3 MPI × 8 threads (one rank per CCD) | 78.5 | — |
+| 6 × 4 | 81.7 | — |
+| 12 × 2 | 82.1 | — |
+| 24 × 1 | 85.5 | — |
+| 8 × 3 | 100.1 | **45** |
+| **192 cores** (64 × 3; 2ea4c65) | 57 | 25 |
+
+| ms per step, one GPU | V-cycle `"auto"` (default) | V-cycle `"fp64"` | `peclet.flow` |
 |---|---|---|---|
-| 24 cores (8 MPI × 3 threads) | 45 | 116 | 112 |
-| 24 cores (1 × 24 threads) | — | 68 | 63 |
-| 192 cores | 25 | 57 | 56 |
-| one GPU (RTX 5080) | — | **22** (19 with the FP32 V-cycle) | — |
+| RTX 5080 (workstation, 2026-10-19) | **13.5** | 16.6 | main since 7af6dee |
+| H100 (Snellius) | 16.1 | 16.9 | e4f75df, before the coarse-grid work |
 
 Time steps are equal (≈ 1.55 × 10⁻³ in both), so cost per step is cost per simulated time. The
-previous table (2026-10-03) solved the pressure to $10^{-10}$; at that tolerance the CPU rows are
-now 139, 80 and 70 ms (then 166–169, 144 and 82–85), and the GPU row was 36–37 ms.
+2026-10-03 table solved the pressure to $10^{-10}$; at that tolerance, at 2ea4c65, the 8 × 3, 1 × 24
+and 192-core rows were 139, 80 and 70 ms (then 166–169, 144 and 82–85), and the GPU row 36–37 ms.
 
-On one GPU peclet runs this case twice as fast as TBFsolver on 24 CPU cores. On 24 cores, as one
-rank, it is 1.4–1.5× slower than TBFsolver, on 192 cores 2.3×. Half of peclet's CPU step (51 %) is
-the pressure solve: TBFsolver solves a constant-coefficient Poisson equation directly by FFT (the
-Dodd–Ferrante splitting); peclet solves the exact variable-coefficient one with
-multigrid-preconditioned CG, about ten iterations per step. We built and tested the
+On one GPU peclet runs this case 3.3× faster than TBFsolver on 24 CPU cores. On 24 cores, in its
+best layouts (1 × 24 and 3 × 8), it is 1.5–1.7× slower than TBFsolver; on 192 cores 2.3×. Half of
+peclet's CPU step (51 %) is the pressure solve: TBFsolver solves a constant-coefficient Poisson
+equation directly by FFT (the Dodd–Ferrante splitting); peclet solves the exact variable-coefficient
+one with multigrid-preconditioned CG, about ten iterations per step. We built and tested the
 constant-coefficient splitting in peclet too — it is stable, and needs 40 % fewer pressure
 iterations, but a bubble at rest then carries spurious currents about 5000× larger than with the
 exact projection, so it is parked, not shipped.
 
-The 8 × 3 row is slow for a reason of our own: the recent host-side speed-ups of the pressure solve
-are on the single-rank path only, and the distributed CPU path does not have them yet. That is the
-next target.
+The distributed CPU path has had its communication reworked (core 1.6.0: persistent halo exchange,
+faces-only stencil halos, on-node shared memory) and a balanced default partition (core 1.7.0,
+which alone took 24 × 1 from 102 to 86 ms); 8 × 3 is down from 116 ms at 2ea4c65. What remains between the layouts is
+placement: a genoa CCD has 8 cores sharing one L3, and a 3-thread rank that straddles two CCDs costs
+about 18 ms per step in the synchronisation-bound kernels. On a genoa-like node, run one rank
+without MPI (1 × 24), or one rank per CCD (3 × 8); never 8 × 3.
 
-Since the first measurement (2026-09-25: 186–203 ms on 24 cores, 54 ms on the GPU) two performance
+Since the first measurement (2026-09-25: 186–203 ms on 24 cores, 54 ms on the GPU) three performance
 programmes have landed
 ([step](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_step_performance_design.md),
-[pressure](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_projection_cost_design.md)):
-a face-form multigrid operator, fused ghost fills, device-resident Krylov scalars, batched
-per-bubble stages, cheaper curvature, a device-resident coarse-grid solve and leaner host kernels and
-reductions — all bit-for-bit identical in results. One option changes the arithmetic and is
-therefore opt-in: a single-precision multigrid V-cycle under the double-precision CG
-(`set_pressure_vcycle_precision("auto")`). On the GPU it takes the step from 22 to 19 ms at the same
-iteration count, and a solve that does not converge with it is redone in double precision.
+[pressure](https://github.com/computational-chemical-engineering/peclet-flow/blob/main/doc/vof_projection_cost_design.md),
+and the distributed host path above): a face-form multigrid operator, fused ghost fills,
+device-resident Krylov scalars, batched per-bubble stages, cheaper curvature, a device-resident
+coarse-grid solve and leaner host kernels and reductions — all bit-for-bit identical in results.
+Since 2026-10-17 the GPU step went from 22 to 13.5 ms: faster statistics kernels, the coarse-grid
+factorisation overlapped on a second stream, and the single-precision multigrid V-cycle under the
+double-precision CG now the device default (`set_pressure_vcycle_precision("auto")`; a solve that
+does not converge with it is restarted in double precision). The host path stays in double
+precision.
 
 ## Reproduce this
 
