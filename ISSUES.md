@@ -20,6 +20,25 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 ---
 
+## rayleigh-benard: accuracy prose at Ra = 3e6 is stale after the 1.5.0 re-execution
+
+- **Status:** open (fix at the next re-render; a prose edit forces the ~4 h re-execution)
+- **Package / area:** gallery page `examples/rayleigh-benard`
+- **Found in:** 1.5.0 gallery re-check (GPU, peclet-cu13 1.5.0), 2026-10-23
+- **Observed:** Nu bot/top/vol = 8.36/8.36/8.35 (+-0.11) at Ra = 1e6 (Xu 8.34: matches the prose's 0.2 %) and 11.37/11.25/11.31 (+-0.12) at 3e6 (Xu 11.47: -0.9 to -1.9 %); the prose says 0.7 % at 3e6 and "our three agree to ~0.1 %". The 1.0.0 freeze had 8.09/8.09/8.12 (-3 %) and 11.44/11.43/11.45.
+- **Expected:** prose that matches the frozen numbers, or quotes them via inline expressions.
+- **Notes:** the Ra = 1e6 move (+0.27, ~2 sigma of the combined error) is toward the DNS and back to what the prose was written against; at 3e6 the shifts are mixed in sign (1 sigma) -> statistical scatter of a chaotic average, no systematic change found.
+
+## bubble-column benchmark runs WITHOUT momentum advection
+
+- **Status:** open — USER 2026-10-23: advection ON by default in flow (being landed) and the benchmark is re-run after the open case-A fixes (full stress default, Q6)
+- **Package / area:** flow (default `advect_ = false`, flow `src/flow_ibm.hpp:5022`) / benchmark scripts
+- **Found in:** bubble-column benchmark (`scripts/run_peclet.py`, `studies/*.py`); case-A G5 diagnosis, `bubble_column_perf/validation/G5_DIAG.md`
+- **Observed:** `scripts/run_peclet.py` (and `studies/*.py`) never call `set_advection(True)`, and the flow default is off, so the published run is unsteady Stokes in the momentum equation.
+- **Expected:** a bubble-column benchmark with momentum advection.
+- **Repro:** grep `set_advection` in the scripts: no hit.
+- **Notes:** the re-run also changes the cost table (advection adds work per step).
+
 ## Height-function curvature falls back to the PLIC paraboloid on ~90 % of interface cells (was 37 %), and the droplet damping deficit doubles with it
 
 - **Status:** RESOLVED in peclet 1.1.0 (core `e6a612d` + flow `28d3224`); verified 2026-09-16 by re-rendering this page against the PUBLISHED `peclet-cu13` 1.1.0 wheels — see the resolution at the end of the entry
