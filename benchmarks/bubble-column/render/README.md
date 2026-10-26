@@ -7,22 +7,21 @@ walls; orange: up, in the gas-laden core). The colour bar is added by `compose.p
 is transparent; the glass refracts a neutral world, never the page, so the image reads on the
 light and the dark site theme.
 
-- Web figure: `../figures/bubbles_t100.png` (t = 100, 1152 × 1568, 256-colour palette PNG, < 1 MB).
-- Finals (rendered at 3000 × 4000 with 1024 samples, trimmed to about 2900 × 3900): `~/Pictures/bubble-column/` (`bubbles_t100.png`,
-  `bubbles_t150.png`, raw and with the colour bar).
+- Web figure: `../figures/bubbles_t150.png` (t = 150, 1152 × 1552, 256-colour palette PNG, < 1 MB).
+- Finals in `~/Pictures/bubble-column/` (3000 × 4000, 1024 samples) are of an **earlier run without
+  momentum advection** (peclet-flow 2ea4c65, t = 100 and 150); they have not been re-rendered.
 
-The rendered state is from the page's own run (`../scripts/run_peclet.py`) at peclet-flow main
-2ea4c65 (2026-10-17, RTX 5080): its checkpoint at t = 100 and t = 150. It is **not** the state
-behind `../data/peclet_closed.npz`, which is an earlier, statistically equivalent run of the same
-case (the swarm is chaotic; two builds part at round-off level after t ≈ 20).
+The web figure is the final checkpoint (t = 150) of the run behind `../data/peclet_closed.npz`:
+`../scripts/run_peclet.py` at peclet-flow main 9cb691a (2026-10-25, RTX 5080; momentum advection
+and the full viscous stress, both flow's defaults).
 
 ## Data
 
 Not in git (`data/` is gitignored). The checkpoints come from
 
 ```bash
-python ../scripts/run_peclet.py --out run --t-end 100 && cp run/ckpt.npz ckpt_t100.npz   # ~ 22 min on an RTX 5080
-python ../scripts/run_peclet.py --out run                && cp run/ckpt.npz ckpt_t150.npz   # resumes to t = 150
+python ../scripts/run_peclet.py --out run && cp run/ckpt.npz ckpt_t150.npz   # ~ 28 min on an RTX 5080
+# an earlier instant: --t-end 100 first, copy run/ckpt.npz, then rerun without it to resume to t = 150
 ```
 
 A checkpoint holds every bubble's own colour field on its moving box, in unwrapped cell
@@ -36,11 +35,11 @@ cannot compile kernels for the RTX 5080, sm_120). Run from `data/`:
 
 ```bash
 cd data
-python ../bubbles_mesh.py ckpt_t100.npz mesh_t100.npz      # ~ 5 s: C_k = 1/2 isosurfaces + velocity panel
-blender -b -P ../render.py -- mesh_t100.npz $PWD/bubbles_t100_raw.png 1200 1600 512 glass gpu
-python ../compose.py bubbles_t100_raw.png ../../figures/bubbles_t100.png --width 1600 --colours 256 --check
-blender -b -P ../render.py -- mesh_t100.npz $PWD/final_t100_raw.png 3000 4000 1024 glass gpu   # final
-python ../compose.py final_t100_raw.png final_t100.png --width 4000
+python ../bubbles_mesh.py ckpt_t150.npz mesh_t150.npz      # ~ 5 s: C_k = 1/2 isosurfaces + velocity panel
+blender -b -P ../render.py -- mesh_t150.npz $PWD/bubbles_t150_raw.png 1200 1600 512 glass gpu
+python ../compose.py bubbles_t150_raw.png ../../figures/bubbles_t150.png --width 1600 --colours 256 --check
+blender -b -P ../render.py -- mesh_t150.npz $PWD/final_t150_raw.png 3000 4000 1024 glass gpu   # final
+python ../compose.py final_t150_raw.png final_t150.png --width 4000
 ```
 
 - **Interfaces:** each bubble is meshed whole from its own marker field (marching cubes at
@@ -53,6 +52,5 @@ python ../compose.py final_t100_raw.png final_t100.png --width 4000
 - **Styles:** `glass` (used), `pearl` (glass with a milky body), `solid` (satin); append
   `_nopanel` to drop the velocity panel. `cpu` instead of `gpu` renders on 16 threads (the
   1200 × 1600 × 512 web render takes ~ 3 min there).
-- **These renders** were made with `cpu` (the GPU was busy with the resolution check): the web
-  figure in 164 s, each final in ~ 26 min. Re-renders are identical up to sampling noise.
+- **These renders** were made with `cpu`: the web figure takes about 3 min, a final about 26 min. Re-renders are identical up to sampling noise.
 - **Previews:** `450 600 32 glass cpu` renders in ~ 15 s.

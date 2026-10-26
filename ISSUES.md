@@ -31,7 +31,7 @@ into the `peclet` suite. See [STYLE_GUIDE.md §8](STYLE_GUIDE.md): log it here
 
 ## bubble-column benchmark runs WITHOUT momentum advection
 
-- **Status:** open — USER 2026-10-23: advection ON by default in flow (being landed) and the benchmark is re-run after the open case-A fixes (full stress default, Q6)
+- **Status:** resolved 2026-10-26 — advection ON by default in flow since 2026-10-23, full viscous stress the default at 9cb691a; the column (D/h 16, 24) and the lone-bubble, pair and Loisy studies re-run at 9cb691a and the page rewritten (drift 0.977 → 0.806, TBFsolver no smoothing 0.811). The CPU cost rows are still pre-advection and labelled so; the RTX 5080 run took 17 ms/step (13.5 before).
 - **Package / area:** flow (default `advect_ = false`, flow `src/flow_ibm.hpp:5022`) / benchmark scripts
 - **Found in:** bubble-column benchmark (`scripts/run_peclet.py`, `studies/*.py`); case-A G5 diagnosis, `bubble_column_perf/validation/G5_DIAG.md`
 - **Observed:** `scripts/run_peclet.py` (and `studies/*.py`) never call `set_advection(True)`, and the flow default is off, so the published run is unsteady Stokes in the momentum equation.

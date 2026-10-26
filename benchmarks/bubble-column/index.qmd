@@ -3,7 +3,7 @@ title: "A bubble column, run twice: peclet.flow vs TBFsolver"
 subtitle: "Sixteen deformable bubbles rising in a closed column between two walls, on the same grid from the same initial state, in peclet's multiple-marker VoF and in TBFsolver — the reference implementation of that method — with an isolated-bubble, a drafting-pair and a published-swarm check to say where they agree and where they do not."
 author: "Peclet"
 date: "2026-10-02"
-date-modified: "2026-10-22"
+date-modified: "2026-10-26"
 categories: [flow, VoF, bubbly flow, accuracy, performance, benchmark, validation]
 jupyter: python3
 resources:
@@ -30,9 +30,18 @@ Both runs use **the same 128 × 96 × 64 cubic grid, the same 16 bubble centres,
 parameters and the same closed-column forcing**, so every difference below is a difference of
 discretisation, not of set-up.
 
-![The column at $t = 100$ ($D/h = 16$), from the peclet run: the sixteen bubbles, and behind them
-the liquid velocity along the column averaged over the depth — down along both walls, up through
-the core. Bubbles that cross a periodic face are drawn whole.](figures/bubbles_t100.png){#fig-bubbles width=75%}
+![The column at $t = 150$ ($D/h = 16$), the end of the peclet run on this page: the sixteen
+bubbles, and behind them the liquid velocity along the column averaged over the depth (blue: down;
+orange: up). Bubbles that cross a periodic face are drawn whole.](figures/bubbles_t150.png){#fig-bubbles width=75%}
+
+::: {.callout-important}
+## Correction, 2026-10-26
+An earlier version of this page ran peclet without momentum advection, which `peclet.flow` then
+did by default, and with the Laplacian form of the viscous term. Its peclet numbers were wrong,
+and so was its conclusion that the two codes differ in the column. The numbers here are with
+momentum advection and the full viscous stress (`peclet.flow` 9cb691a, 2026-10-25), except the
+CPU timings in [Cost](#cost), which are labelled.
+:::
 
 ::: {.callout-note}
 ## What building this benchmark found and fixed in peclet
@@ -46,7 +55,7 @@ Three defects, none of which the regression suite could see:
    viscosity sat half a cell off the staggered control volume, which made the viscous term first
    order and, in the wall-normal direction, asymmetric. A mirror-symmetry test now guards it.
 
-Every result on this page is from the corrected code (`peclet.flow` main, 2026-09-25 onwards).
+These fixes are in every result on this page.
 :::
 
 ## The case
@@ -130,10 +139,10 @@ for z, c, lab in RUNS:
           f"liquid around the gas {slip.mean():.3f}")
 ```
 
-peclet's bubbles rise **about 20 % faster** than TBFsolver's without smoothing (and 26 % faster
-than with it). The large-scale circulation is not the reason: measured against the liquid that
-actually surrounds the gas, the slip still differs by 15 %. Why they differ is the subject of
-[Where the two codes differ](#where-the-two-codes-differ-and-why).
+peclet's mean drift, **0.806**, is **0.6 % below** TBFsolver's without smoothing (0.811) and 3.6 %
+above TBFsolver with smoothing (0.778). Measured against the liquid that surrounds the gas, the
+slip is 0.813 in peclet and 0.804 in TBFsolver without smoothing (+1.1 %). peclet does not smooth,
+so the like-for-like comparison is with TBFsolver without smoothing.
 
 ## The column's structure
 
@@ -151,14 +160,16 @@ axs[0].legend(fontsize=8)
 plt.tight_layout(); plt.show()
 ```
 
-Both codes put the gas in the core (void fraction 0.04–0.07 in the middle, highest in peclet) and
-keep it off the walls, with the liquid coming down along both walls.
+Both codes put the gas in the core and keep it off the walls: over the central quarter of the gap
+the void fraction is 0.053 in peclet, 0.054 in TBFsolver without smoothing and 0.052 with it. The
+liquid comes down along both walls, at most 0.175 in peclet against 0.197 and 0.224 in TBFsolver,
+and is nearly at rest in the core in all three runs (below 0.01).
 
 ## Conservation
 
 ```{python}
 #| label: fig-volume
-#| fig-cap: "Relative change of the total gas volume. peclet's markers conserve their volume to the pressure tolerance (1e-10 at the 1e-8 used here) — debris and sub-threshold residue are returned to the bubble they came from; TBFsolver deletes fragments and satellites."
+#| fig-cap: "Relative change of the total gas volume. peclet's markers conserve their volume to the pressure tolerance — debris and sub-threshold residue are returned to the bubble they came from; TBFsolver deletes fragments and satellites."
 fig, ax = plt.subplots(figsize=(6.5, 3.0))
 for z, c, lab in RUNS:
     v = z["marker_volume_total"] if "marker_volume_total" in z else z["gas_volume"]
@@ -167,81 +178,109 @@ ax.set_xlabel(r"$t\,\sqrt{g/D}$"); ax.set_ylabel("relative gas volume change")
 ax.legend(); plt.show()
 ```
 
-peclet: $+1.2\times10^{-10}$ after 94 369 steps ($-7\times10^{-13}$ with the pressure solved to $10^{-10}$; the case runs at $10^{-8}$, which needs 24 % fewer pressure iterations). TBFsolver: $-1.2\,\%$ (with smoothing),
-$-1.4\times10^{-4}$ (without).
+peclet: $+2.7\times10^{-11}$ after 96 779 steps, with the pressure solved to $10^{-8}$. TBFsolver:
+$-1.2\,\%$ (with smoothing), $-1.4\times10^{-4}$ (without).
 
-## Where the two codes differ, and why
+## The column taken apart
 
 The column mixes everything — single-bubble drag, wake interaction, near-contact — so we
-separated them.
+separated them. All peclet runs below use the same build as the column.
 
-**One bubble.** In the same walled box, peclet and TBFsolver *without smoothing* agree within
-1–4 %; TBFsolver's smoothing slows a lone bubble by 8–14 %:
+**One bubble.** In the same walled box, at $D/h = 16$; the terminal speed is the mean drift over the
+last ten time units (it still creeps up by about $10^{-3}$ per time unit at the end):
 
-| terminal rise speed | peclet | TBFsolver, no smoothing | TBFsolver |
+| terminal rise speed, $D/h = 16$ | peclet | TBFsolver, no smoothing | TBFsolver |
 |---|---|---|---|
-| box 4 × 4 × 4 $D$ (periodic image 4 $D$ above) | 1.300 | 1.309 | 1.155 |
-| box 8 × 4 × 4 $D$ | 1.077 | 1.122 | 0.989 |
-| box 2 × 4 × 4 $D$ (in its own wake at the column's spacing) | 1.770 | 1.746 | 1.522 |
+| box 4 × 4 × 4 $D$ (periodic image 4 $D$ above) | 1.229 | 1.309 | 1.155 |
+| box 8 × 4 × 4 $D$ | 1.063 | 1.122 | 0.989 |
+| box 2 × 4 × 4 $D$ (in its own wake at the column's spacing) | 1.600 | 1.746 | 1.522 |
+
+At $D/h = 16$ peclet is 5–8 % below TBFsolver without smoothing; TBFsolver's smoothing slows the
+bubble by 12–13 %. Most of the difference to TBFsolver without smoothing is TBFsolver's resolution.
+Refined in the 4 × 4 × 4 box, peclet stays where it is and TBFsolver comes down towards it:
+
+| 4 × 4 × 4 $D$ box | $D/h = 16$ | 24 | 32 |
+|---|---|---|---|
+| peclet | 1.229 | 1.222 | 1.222 |
+| TBFsolver, no smoothing | 1.309 | 1.280 | 1.262 |
+| peclet vs. TBFsolver | −6.1 % | −4.6 % | −3.2 % |
+
+TBFsolver still falls by 1.4 % from 24 to 32; a linear extrapolation in $h$ of its two finest
+values gives 1.207, within 1.2 % of peclet. A model difference of about 1 % cannot be excluded
+without a finer TBFsolver run. In peclet the lone bubble does not depend on the advection scheme
+(Koren instead of SOU: −0.1 %), on the time step (halved: −0.4 %) or on the marker container (a
+single colour field: 0.0 %). It does depend on the form of the viscous term: with the Laplacian the
+earlier version of this page used, it rises at 1.429, 16 % faster.
 
 **Two bubbles.** A trailing bubble released 2 $D$ below a leading one, offset sideways by
-$0.1D$: before contact the lateral dynamics are the same in both codes. They part at **near
-contact** — and both do something set by the grid, not by physics:
+$0.1D$, catches up, comes into near contact and passes:
 
 | drafting pair | closest film (centre–centre) | trailing bubble passes at |
 |---|---|---|
-| peclet, $D/h = 16$ | $+0.163D$ = 2.6 cells (0.93 $D$) | $t = 20.6$ |
-| peclet, $D/h = 24$ | $+0.066D$ = 1.6 cells (0.86 $D$) | $t = 18.1$ |
+| peclet, $D/h = 16$ | $+0.0085D$ = 0.14 cells (0.91 $D$) | $t = 14.4$ |
+| peclet, $D/h = 24$ | $-0.0034D$, overlap 0.08 cells (0.86 $D$) | $t = 13.85$ |
 | TBFsolver (no smoothing), $D/h = 16$ | $-0.051D$, overlap 0.8 cells (0.74 $D$) | $t = 12.1$ |
 | TBFsolver (no smoothing), $D/h = 24$ | $-0.033D$, overlap 0.8 cells (0.74 $D$) | $t = 13.1$ |
 
-peclet keeps a liquid film of a couple of cells that resists draining, so the pair "tumbles"
-slowly; TBFsolver lets the two markers interpenetrate by about one cell and passes quickly.
-peclet's film thins faster than the grid spacing, so it is not converged lubrication either;
-the two codes move towards each other with refinement. Neither resolves real film drainage at
-these grids (the single-field VoF path in peclet reproduces the multiple-marker pair to
-$10^{-5}D$, so this is the flow solver's near-contact behaviour, not the bubble container).
+Both codes bring the bubbles to within a cell of each other: peclet to a film of a fraction of a
+cell, TBFsolver to an overlap of about one cell. The passing times move together under refinement,
+from 2.3 time units apart at $D/h = 16$ to 0.75 at 24. A film below one cell is not resolved
+lubrication in either code.
 
-**Many bubbles.** In a swarm these near-contact encounters are where the codes part, which is
-why the column's drift differs while the single-bubble and in-line-wake cases agree. Resolution
-does not close it: the start-up transient is converged in both codes, and peclet is 7–10 %
-faster from $t = 2$ on.
+The single-field VoF path in peclet (one colour field for both bubbles) follows the
+multiple-marker pair to $2\times10^{-6}D$ up to $t = 8.5$ and to $1.5\times10^{-5}D$ at $t = 8.7$.
+At $t = 8.75$, with the film at $0.10D$ = 1.6 cells, its two bubbles merge. One colour field cannot
+keep this film open; the multiple markers can.
+
+**Many bubbles.** In the start-up transient peclet is 1.5–4 % below TBFsolver without smoothing at
+$D/h = 16$ and 1.5–3 % below at $D/h = 24$; peclet itself changes by less than 0.4 % between the two
+grids. The $D/h = 24$ runs end at $t = 60$, so their statistics window, $t \in [50, 60]$, is a
+tenth of the $D/h = 16$ one: we compare drift and slip there, not the noisier profiles.
 
 ```{python}
 #| label: tbl-transient
-#| tbl-cap: "Drift velocity in the start-up transient at two resolutions."
+#| tbl-cap: "Drift velocity in the start-up transient at two resolutions, and drift and slip over t in [50, 60] where a run reaches t = 60."
 rows = [("peclet.flow, D/h = 16", pec), ("peclet.flow, D/h = 24", ld("peclet_closed_d24_t60")),
         ("TBFsolver no smoothing, D/h = 16", tbfns),
         ("TBFsolver no smoothing, D/h = 24", ld("tbf_closed_nosmooth_d24_t60")),
         ("TBFsolver, D/h = 16", tbf), ("TBFsolver, D/h = 24", ld("tbf_closed_d24_t5"))]
-print(f"{'':34s}" + "".join(f"   t = {k}" for k in range(1, 6)))
+print(f"{'':34s}" + "".join(f"   t = {k}" for k in range(1, 6)) + "   drift, slip [50, 60]")
 for lab, z in rows:
     if z is None:
         continue
     vals = [z["rise_speed"][np.argmin(abs(z["t"] - k))] for k in range(1, 6)]
-    print(f"{lab:34s}" + "".join(f"   {v:.3f}" for v in vals))
+    line = f"{lab:34s}" + "".join(f"   {v:.3f}" for v in vals)
+    m = (z["t"] >= 50.0) & (z["t"] <= 60.0)
+    if z["t"][-1] >= 60.0 - 1e-2:
+        a, ul = z["alpha_y"][m], z["u_liq_y"][m]
+        slip = -(first(z["u_gas"][m]) - (a * ul).sum(1) / a.sum(1))
+        line += f"   {z['rise_speed'][m].mean():.3f}, {slip.mean():.3f}"
+    print(line)
 ```
+
+At $D/h = 24$ the drift over $[50, 60]$ is 0.810 in peclet and 0.808 in TBFsolver without
+smoothing (+0.2 %); the slip is 0.806 and 0.808 (−0.2 %). How noisy so short a window is shows
+at $D/h = 16$: over $[50, 60]$ the two codes give 0.793 and 0.760, over $[50, 150]$ 0.806 and 0.811.
 
 **An independent reference.** Loisy, Naso & Spelt computed free swarms of exactly these E1 bubbles
 with a level-set method (one field; bubbles never touch at this void fraction). Eight bubbles in a
-triply periodic cube at void fraction 3.8 %, drift normalised by the isolated rise speed
-$U_0$ (Loth):
+triply periodic cube at void fraction 3.8 %, $D/h = 20$, drift over $t \ge 30$ normalised by the
+isolated rise speed $U_0$ (Loth):
 
 | free array, E1, 8 bubbles, $\phi = 3.8\,\%$ | $U/U_0$ |
 |---|---|
-| peclet, multiple-marker, ratios 0.02 / 0.02 | 0.99 |
-| peclet, single field, ratios 0.02 / 0.02 | 0.99 |
-| peclet, single field, **Loisy's ratios** ($\rho_g/\rho_l = 10^{-3}$, $\mu_g/\mu_l = 10^{-2}$) | **0.89** |
+| peclet, multiple-marker, ratios 0.02 / 0.02 | 0.81 |
+| peclet, single field, ratios 0.02 / 0.02 | 0.81 |
+| peclet, single field, **Loisy's ratios** ($\rho_g/\rho_l = 10^{-3}$, $\mu_g/\mu_l = 10^{-2}$) | **0.74** |
 | Loisy, Naso & Spelt 2017, fig. 21 | ≈ 0.80 |
 
-The property ratios matter (0.99 → 0.89); at matching ratios peclet is about 11 % above the
-level-set result — the same order as the code-to-code spread from near-contact treatment above.
+The property ratios matter (0.81 → 0.74). At Loisy's own ratios peclet is 7 % below the level-set
+result; we have not traced that difference. No bubbles merged in either single-field run (closest
+gaps $0.22D$ and $0.30D$).
 
-**Reading.** For a single bubble and for in-line wake interaction the two codes agree to a few
-per cent. In a swarm the mean rise speed is sensitive, at the 10–15 % level, to how bubbles behave
-at near contact — a film of one or two grid cells in peclet, an overlap of about one cell in
-TBFsolver, merging within a cell in a level-set code — and none of these is converged physics at
-$D/h = 16$–24. A swarm drift from any of these methods carries that uncertainty.
+**Reading.** In the column, peclet and TBFsolver without smoothing agree to about 1 % in drift and
+slip at both resolutions, and the lone-bubble difference at $D/h = 16$ closes as TBFsolver is
+refined. The open point is the 7 % against Loisy et al. at their property ratios.
 
 ## The collision fix
 
@@ -270,6 +309,16 @@ are bitwise identical. Design and gates:
 
 ## Cost
 
+::: {.callout-note}
+## Measured before momentum advection was on
+The CPU and GPU timings in the tables below were measured without momentum advection and with the
+Laplacian viscous term (`peclet.flow` 353baa8, 2ea4c65, 7af6dee, e4f75df); they have not been
+re-measured. On the RTX 5080 the column run of this page, with advection and the full viscous
+stress at 9cb691a, took a median 17 ms per step (14 ms in its 500-step smoke run), against the
+13.5 ms in the GPU table. With advection the time step stays at the capillary limit; the run to
+$t = 150$ took 2.6 % more steps.
+:::
+
 Measured on **Snellius genoa nodes** (2 × AMD EPYC 9654), pressure to relative residual $10^{-8}$
 (TBFsolver's FFT solve is direct). The 24-core rows are cores 0–23, one NUMA domain, median of two
 runs in job 28464076 (2026-10-22), `peclet.flow` 353baa8 with core v1.7.0 — the code of
@@ -296,7 +345,8 @@ Time steps are equal (≈ 1.55 × 10⁻³ in both), so cost per step is cost per
 2026-10-03 table solved the pressure to $10^{-10}$; at that tolerance, at 2ea4c65, the 8 × 3, 1 × 24
 and 192-core rows were 139, 80 and 70 ms (then 166–169, 144 and 82–85), and the GPU row 36–37 ms.
 
-On one GPU peclet runs this case 3.3× faster than TBFsolver on 24 CPU cores. On 24 cores, in its
+On one GPU peclet runs this case 3.3× faster than TBFsolver on 24 CPU cores (2.6× at the 17 ms of
+the run with advection). On 24 cores, in its
 best layouts (1 × 24 and 3 × 8), it is 1.5–1.7× slower than TBFsolver; on 192 cores 2.3×. Half of
 peclet's CPU step (51 %) is the pressure solve: TBFsolver solves a constant-coefficient Poisson
 equation directly by FFT (the Dodd–Ferrante splitting); peclet solves the exact variable-coefficient
@@ -335,10 +385,11 @@ python scripts/case.py
 python scripts/make_tbf_case.py --out tbfsolver/run150 && cp TBFsolver tbfsolver/run150/
 (cd tbfsolver/run150 && OMP_NUM_THREADS=3 mpirun -np 8 --bind-to none ./TBFsolver > run.log)
 python scripts/tbf_read.py tbfsolver/run150 --out data/tbf_closed_t150.npz
-# peclet.flow (GPU or CPU build of peclet-flow main)
+# peclet.flow (GPU or CPU build of peclet-flow main, 9cb691a or later: momentum advection and the
+# full viscous stress are its defaults)
 python scripts/run_peclet.py --out peclet/run
 python scripts/peclet_reduce.py peclet/run --out data/peclet_closed.npz --log peclet/run.log
 # resolution check: BUBBLE_COLUMN_CELLS_PER_D=24 before either code's commands
 # isolated bubble, drafting pair, Loisy free array: scripts/studies/{iso,pair2,run_loisy,run_single}.py
-# the picture of the bubbles (Blender 4.5): render/README.md
+# the picture of the bubbles (Blender 4.5) from the run's final checkpoint: render/README.md
 ```
