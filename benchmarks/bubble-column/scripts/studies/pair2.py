@@ -51,7 +51,7 @@ def build_struct(C0):
                          [S * (case.RHO_L - rho_av) * case.G, S * (case.RHO_G - case.RHO_L) * case.G])
     s.set_superficial_velocity(True, "x", 0.0)
     if ABL == "mom":
-        s.enable_vof_momentum(case.RHO_G, case.RHO_L)
+        s.enable_vof_momentum(rho_c0=case.RHO_L, rho_c1=case.RHO_G)   # C = 1 is the gas here
     return s
 
 
